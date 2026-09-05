@@ -60,17 +60,20 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
       <div className="app-shell">
       <header className="header">
         <div className="header-left">
+          {/* ONE brand element at any width (user ruling): below md the coloured official
+              globe is the home link; from md up only the official negative lockup is —
+              CSS toggles them (app/globals.css .brand-mark / .brand-lockup-link). Both
+              carry the home-link semantics so whichever is visible is the link. */}
           <Link href="/welding/1" className="brand-mark" aria-label="T.EN — Technip Energies, back to page 1">
-            {/* The official globe, cut from the colour lockup (docs/brand-README.md). Plain <img>:
-                a 512px PNG in a 44px circle needs no next/image pipeline. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/brand/ten-globe-official.png" alt="" aria-hidden="true" width={44} height={44} />
           </Link>
           {/* Header chrome is navy in both schemes, so the lockup is always the dark-surface
-              (negative) file — never switched by data-theme (docs/brand-README.md). Hidden
-              below md; the globe carries the brand there. */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img className="brand-lockup" src="/brand/ten-lockup-negative.png" alt="Technip Energies" width={1200} height={582} />
+              (negative) file — never switched by data-theme (docs/brand-README.md). */}
+          <Link href="/welding/1" className="brand-lockup-link" aria-label="T.EN — Technip Energies, back to page 1">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img className="brand-lockup" src="/brand/ten-lockup-negative.png" alt="" aria-hidden="true" width={1200} height={582} />
+          </Link>
           <div className="header-title">
             <h1>Welding Statistics Dashboard</h1>
             <div className="subtitle">{subtitle}</div>

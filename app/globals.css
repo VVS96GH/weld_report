@@ -1175,7 +1175,10 @@ html {
   }
 }
 
-/* ---------- brand mark + lockup (every mood; docs/brand-README.md) ---------- */
+/* ---------- brand mark OR lockup — exactly one at any width (docs/brand-README.md) ----------
+   < md: the coloured official globe is the home link (every mood).
+   ≥ md, ten mood: only the official negative lockup (white wordmark with text).
+   ≥ md, legacy moods: the globe stays — the negative lockup is T.EN-specific. */
 .brand-mark {
   flex: none;
   display: inline-flex;
@@ -1194,21 +1197,25 @@ html {
   height: 44px;
   object-fit: cover;
 }
-.brand-lockup {
+.brand-lockup-link {
   display: none;
-  height: 48px;
-  width: auto;
+  flex: none;
   /* clear space ≥ the mark's radius (22px) on every side; the title sits beyond it */
   margin-inline: 22px;
+  border-radius: 4px;
+}
+.brand-lockup {
+  display: block;
+  height: 48px;
+  width: auto;
 }
 @media (min-width: 768px) {
-  .brand-lockup {
+  [data-mood="ten"] .brand-mark {
+    display: none;
+  }
+  [data-mood="ten"] .brand-lockup-link {
     display: block;
   }
-}
-/* legacy moods never had a lockup slot; the mockup header keeps the mark + title only */
-:root:not([data-mood="ten"]) .brand-lockup {
-  display: none;
 }
 [data-mood="ten"] .logo {
   display: none;
