@@ -1,0 +1,112 @@
+/* T.EN tokens fixture used by tests/token-lint.test.ts.
+ *
+ * The colour VALUES here are copied verbatim from docs/ten-design-system.md
+ * §2.1 (the real design-system spec), scoped under `:root[data-mood="ten"]`
+ * / `:root[data-mood="ten"][data-theme="light"]` per that doc's own §2.1
+ * comment ("SCOPED to the `ten` mood ... its `data-scheme` axis is this
+ * app's existing `data-theme`") — the same scoping app/styles/tokens.css
+ * ships with. This fixture doubles as a check that the real palette is
+ * WCAG-compliant, independent of whatever app/styles/tokens.css contains
+ * at lint time. */
+
+:root[data-mood="ten"] {
+  /* ---- Layer 1 — brand ---- */
+  --ten-accent: #0070ef;
+  --ten-navy: #004c84;
+  --ten-teal: #3d98b7;
+  --ten-lime: #a2c61c;
+  --ten-sage: #80c7a0;
+  --ten-coral: #ee7766;
+  --ten-amber: #fdc300;
+  --ten-red: #e84242;
+  --ten-grey: #878787;
+  --ten-light-grey: #dedede;
+
+  /* ---- Layer 2 — brand/structure ---- */
+  --accent: var(--ten-accent);
+  --brand-dark: var(--ten-navy);
+  --brand-2: var(--ten-teal);
+  --info: var(--ten-teal);
+
+  /* ---- Layer 2 — status ---- */
+  --ok: var(--ten-lime);
+  --ok-soft: var(--ten-sage);
+  --attention: var(--ten-coral);
+  --warn: var(--ten-amber);
+  --bad: var(--ten-red);
+  --danger: var(--ten-red);
+  --on-ok: #2b3707;
+  --on-ok-soft: #1e3d2c;
+  --on-attention: #3a140f;
+  --on-warn: #4a3900;
+  --on-bad: #ffffff;
+  --bad-fill: #c62f2f;
+  --on-bad-fill: #ffffff;
+
+  /* a gradient/non-colour token — must be skipped, not crash the parser */
+  --bg-gradient: linear-gradient(150deg, #0a2c4e 0%, #081f3a 55%, #06192c 100%);
+
+  /* ---- DARK scheme ---- */
+  --bg: #06192c;
+  --surface: #102d49;
+  --surface-2: #0c2540;
+  --border: #274863;
+  --fg: #eaf2fa;
+  --muted: #a8c0d6;
+  --faint: #7c97ae;
+  --heading: #bcd3e8;
+
+  --mag-green: var(--ok);
+  --on-mag-green: var(--on-ok);
+  --mag-yellow: var(--warn);
+  --on-mag-yellow: var(--on-warn);
+  --mag-orange: #ff9d4d;
+  --on-mag-orange: #3a1a05;
+  --mag-crimson: #ff7a9c;
+  --on-mag-crimson: #3d0a19;
+  --mag-red: #ff6b6b;
+  --on-mag-red: #3a0b0b;
+  --mag-dark-red: #e05252;
+  --on-mag-dark-red: #2a0505;
+
+  --mark-bg: var(--heading);
+  --mark-fg: var(--brand-dark);
+}
+
+:root[data-mood="ten"][data-theme="light"] {
+  --bg: #eef1f4;
+  --bg-gradient: var(--bg);
+  --surface: #ffffff;
+  --surface-2: #f7f9fb;
+  --border: #e4e9ee;
+  --fg: #0a1c2e;
+  --muted: #52606b;
+  --faint: #78848c;
+  --heading: var(--brand-dark);
+
+  --mag-orange: var(--attention);
+  --on-mag-orange: var(--on-attention);
+  --mag-crimson: #f4728f;
+  --on-mag-crimson: #37091a;
+  --mag-red: var(--bad-fill);
+  --on-mag-red: var(--on-bad-fill);
+  --mag-dark-red: #8c1b1b;
+  --on-mag-dark-red: #ffffff;
+
+  --mark-bg: var(--brand-dark);
+  --mark-fg: #ffffff;
+
+  /* ok/ok-soft/attention/warn/bad/bad-fill and their inks, and
+   * mag-green/mag-yellow, are intentionally NOT overridden here — they are
+   * "scheme-independent" per §2.1 and light inherits the dark values above. */
+}
+
+@media print {
+  /* Must be ignored entirely by the linter's dark/light block extraction —
+   * it even name-drops the string "@media" and the dark selector once more
+   * in a comment, on purpose, as a regression check for that parsing bug. */
+  :root[data-mood="ten"] {
+    --bg: #fff;
+    --fg: #10202e;
+  }
+}

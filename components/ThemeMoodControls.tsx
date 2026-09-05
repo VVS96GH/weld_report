@@ -20,12 +20,12 @@ import {
 // preview the palette the way the mockup's dropdown did). The T.EN dots are its
 // layer-1 brand hexes: accent, coral, sage.
 const MOODS: readonly { id: MoodId; icon: string; label: string; dots: readonly string[] }[] = [
-  { id: "ten", icon: "\u{1F310}", label: "T.EN", dots: ["#0070ef", "#ee7766", "#80c7a0"] },
-  { id: "pastel", icon: "\u{1F3A8}", label: "Pastel", dots: ["#ffadd8", "#ae9cff", "#b4fad9"] },
-  { id: "ocean", icon: "\u{1F30A}", label: "Ocean", dots: ["#9ae9f5", "#6bbcff", "#5e81d1"] },
-  { id: "desert", icon: "\u{1F3DC}\u{FE0F}", label: "Desert", dots: ["#ffe77d", "#ffd061", "#f0b860"] },
-  { id: "upsidedown", icon: "\u{1F52E}", label: "Upside Down", dots: ["#a80000", "#003e7d", "#385b94"] },
-  { id: "powerbi", icon: "\u{1F4CA}", label: "Power BI", dots: ["#ED7D31", "#70AD47", "#FFD966"] },
+  { id: "ten", icon: "\u{1F310}", label: "T.EN", dots: ["#0070ef", "#ee7766", "#80c7a0"] }, // token-lint: allow-hex — mood swatch
+  { id: "pastel", icon: "\u{1F3A8}", label: "Pastel", dots: ["#ffadd8", "#ae9cff", "#b4fad9"] }, // token-lint: allow-hex — mood swatch
+  { id: "ocean", icon: "\u{1F30A}", label: "Ocean", dots: ["#9ae9f5", "#6bbcff", "#5e81d1"] }, // token-lint: allow-hex — mood swatch
+  { id: "desert", icon: "\u{1F3DC}\u{FE0F}", label: "Desert", dots: ["#ffe77d", "#ffd061", "#f0b860"] }, // token-lint: allow-hex — mood swatch
+  { id: "upsidedown", icon: "\u{1F52E}", label: "Upside Down", dots: ["#a80000", "#003e7d", "#385b94"] }, // token-lint: allow-hex — mood swatch
+  { id: "powerbi", icon: "\u{1F4CA}", label: "Power BI", dots: ["#ED7D31", "#70AD47", "#FFD966"] }, // token-lint: allow-hex — mood swatch
 ];
 
 const DENSITIES: readonly { id: DensityId; label: string; hint: string }[] = [

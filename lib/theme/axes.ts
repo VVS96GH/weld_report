@@ -34,12 +34,12 @@ export const DENSITY_KEY = "ten.density";
  * very first frame (before the stylesheet loads) is navy, never white. Keep in
  * sync with `--bg-gradient`'s final linear-gradient in app/styles/tokens.css.
  */
-export const TEN_HTML_BACKGROUND = "linear-gradient(150deg, #0a2c4e 0%, #081f3a 55%, #06192c 100%)";
+export const TEN_HTML_BACKGROUND = "linear-gradient(150deg, #0a2c4e 0%, #081f3a 55%, #06192c 100%)"; // token-lint: allow-hex — spec §2 pre-paint literal
 
 /** Inline, dependency-free, runs before hydration. Any failure keeps the SSR defaults. */
 export const PRE_PAINT_SCRIPT = `(function(){try{var d=document.documentElement,ls=window.localStorage;
 var m=ls.getItem(${JSON.stringify(MOOD_KEY)});if(m&&${JSON.stringify(MOOD_IDS)}.indexOf(m)>=0){d.setAttribute("data-mood",m);}
 var t=ls.getItem(${JSON.stringify(THEME_KEY)});if(t==="dark"||t==="light"){d.setAttribute("data-theme",t);}
 var n=ls.getItem(${JSON.stringify(DENSITY_KEY)});if(n&&${JSON.stringify(DENSITY_IDS)}.indexOf(n)>=0){d.setAttribute("data-density",n);}
-if(d.getAttribute("data-mood")==="ten"&&d.getAttribute("data-theme")==="light"){d.style.background="#eef1f4";}
+if(d.getAttribute("data-mood")==="ten"&&d.getAttribute("data-theme")==="light"){d.style.background="#eef1f4";} // token-lint: allow-hex — spec §2 pre-paint literal
 }catch(e){}})();`;

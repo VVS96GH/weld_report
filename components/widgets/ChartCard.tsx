@@ -44,10 +44,10 @@ type Palette = {
 };
 
 const FALLBACK_PALETTE: Palette = {
-  colors: ["#ED7D31", "#70AD47", "#FFD966", "#F4B183", "#A9D18E"],
-  primary: "#ED7D31",
-  grid: "rgba(255,255,255,0.08)",
-  text: "#cccccc",
+  colors: ["#ED7D31", "#70AD47", "#FFD966", "#F4B183", "#A9D18E"], // token-lint: allow-hex — legacy mood fallback
+  primary: "#ED7D31", // token-lint: allow-hex — legacy mood fallback
+  grid: "rgba(255,255,255,0.08)", // token-lint: allow-hex — legacy mood fallback
+  text: "#cccccc", // token-lint: allow-hex — legacy mood fallback
   attention: null,
   font: undefined,
 };
