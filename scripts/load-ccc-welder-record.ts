@@ -28,7 +28,7 @@ import path from "node:path";
 import { Client } from "pg";
 import ExcelJS from "exceljs";
 import {
-  CopySink, closeLoad, copyLine, fmt, num, openLoad, parseDate, readDelimited,
+  closeLoad, copyLine, copyRows, fmt, num, openLoad, parseDate, readDelimited,
   requireEnvUrl, secs, sha256File, txt,
 } from "./load-common";
 import { CCC_WELDER_WELD_COLUMNS as WELD_COLUMNS } from "./load-columns";
@@ -169,9 +169,9 @@ function cellText(v: unknown): string {
   return String(v);
 }
 
-type Emit = (row: (string | null)[] | null) => Promise<void>;
+type RowGen = AsyncGenerator<(string | null)[]>;
 
-async function streamCsv(loadId: number, seq: Map<string, number>, stats: Stats, emit: Emit): Promise<void> {
+async function* streamCsv(loadId: number, seq: Map<string, number>, stats: Stats): RowGen {
   let index: Map<string, number> | null = null;
   for await (const line of readDelimited(path.join(process.cwd(), CSV_FILE), {
     delimiter: ",", encoding: "utf-8", width: WIDTH, mode: "pad",
@@ -193,20 +193,21 @@ async function streamCsv(loadId: number, seq: Map<string, number>, stats: Stats,
       continue;
     }
     stats.csvKept += 1;
-    await emit(buildRow(g, loadId, seq, stats));
+    const row = buildRow(g, loadId, seq, stats);
+    if (row) yield row;
     if ((stats.csvLines & 0xfffff) === 0) trackRss(stats);
   }
 }
 
-async function streamXlsx(loadId: number, seq: Map<string, number>, stats: Stats, emit: Emit): Promise<void> {
+async function* streamXlsx(loadId: number, seq: Map<string, number>, stats: Stats): RowGen {
   const reader = new ExcelJS.stream.xlsx.WorkbookReader(path.join(process.cwd(), XLSX_FILE), {
     worksheets: "emit", sharedStrings: "cache", hyperlinks: "ignore", styles: "cache",
     entries: "ignore",
   });
   let header: Map<string, number> | null = null;
   for await (const sheet of reader) {
-    for await (const row of sheet) {
-      const values = row.values as unknown[];   // 1-based; index 0 is always empty
+    for await (const xlsxRow of sheet) {
+      const values = xlsxRow.values as unknown[];   // 1-based; index 0 is always empty
       const cells: string[] = [];
       for (let i = 1; i <= WIDTH; i += 1) cells.push(cellText(values[i]));
       if (header === null) {
@@ -219,7 +220,8 @@ async function streamXlsx(loadId: number, seq: Map<string, number>, stats: Stats
         const i = header?.get(h);
         return i === undefined ? "" : (cells[i] ?? "");
       };
-      await emit(buildRow(g, loadId, seq, stats));
+      const row = buildRow(g, loadId, seq, stats);
+      if (row) yield row;
       if ((stats.xlsxRows & 0xffff) === 0) trackRss(stats);
     }
     break; // the workbook has exactly one sheet of interest
@@ -261,9 +263,8 @@ async function dryRun(): Promise<boolean> {
   console.log(`  ${XLSX_FILE}  (${fmt(statSync(path.join(process.cwd(), XLSX_FILE)).size)} bytes)`);
   const stats = newStats();
   const seq = new Map<string, number>();
-  const emit: Emit = async (row) => { if (row) stats.written += 1; };
-  await streamCsv(0, seq, stats, emit);
-  await streamXlsx(0, seq, stats, emit);
+  for await (const _row of streamCsv(0, seq, stats)) { void _row; stats.written += 1; }
+  for await (const _row of streamXlsx(0, seq, stats)) { void _row; stats.written += 1; }
   stats.distinctJointIds = seq.size;
   trackRss(stats);
   return report(stats, t0);
@@ -303,17 +304,26 @@ async function live(): Promise<void> {
 
     const stats = newStats();
     const seq = new Map<string, number>();
-    const sink = new CopySink(client, "weld", [...WELD_COLUMNS]);
+    // ONE COPY, pulled lazily by copyRows: the CSV and the workbook are two
+    // sources but a single stream, so there is never a second COPY in flight on
+    // this connection (see the note on copyRows in scripts/load-common.ts).
     const tCopy = Date.now();
-    const emit: Emit = async (row) => {
-      if (!row) return;
-      stats.written += 1;
-      await sink.write(copyLine(row));
-    };
-    await streamCsv(loadId, seq, stats, emit);
-    await streamXlsx(loadId, seq, stats, emit);
-    stats.distinctJointIds = seq.size;
-    const rows = await sink.end();
+    async function* lines(): AsyncGenerator<string> {
+      for await (const row of streamCsv(loadId, seq, stats)) {
+        stats.written += 1;
+        yield copyLine(row);
+      }
+      for await (const row of streamXlsx(loadId, seq, stats)) {
+        stats.written += 1;
+        yield copyLine(row);
+      }
+      stats.distinctJointIds = seq.size;
+    }
+    const rows = await copyRows(client, "weld", [...WELD_COLUMNS], lines(), {
+      label: "CCC welder record -> weld",
+      onProgress: (n, b) =>
+        console.log(`  ... ${fmt(n)} rows / ${fmt(b)} bytes / RSS ${stats.peakRssMb} MB`),
+    });
     console.log(`  copy    ${fmt(rows)} rows in ${secs(tCopy)}`);
 
     // One pass for every CCC NDE branch (§5.3 #7) and testpack_no_all (§5.3 #5).
@@ -381,5 +391,7 @@ async function main(): Promise<void> {
 
 main().catch((err: unknown) => {
   console.error(err instanceof Error ? (err.stack ?? err.message) : err);
-  process.exitCode = 1;
+  // exit(), not exitCode: a stalled COPY leaves a producer parked on a promise
+  // that will never settle, and that handle would otherwise keep the process alive.
+  process.exit(1);
 });

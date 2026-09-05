@@ -14,6 +14,8 @@
 import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
 import { once } from "node:events";
+import { Readable, type Writable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import type { Client } from "pg";
 import { from as copyFrom } from "pg-copy-streams";
 
@@ -156,36 +158,133 @@ export function sha256File(filePath: string): Promise<string> {
   return once(stream, "end").then(() => hash.digest("hex"));
 }
 
-/** A COPY sink that batches ~4 MB at a time and honours backpressure. */
-export class CopySink {
-  private batch = "";
-  private readonly stream: NodeJS.WritableStream;
-  rows = 0;
+/**
+ * ONE COPY at a time, per connection, with back-pressure handled by
+ * `stream.pipeline` and a stall watchdog.
+ *
+ * ===================== WHY THIS REPLACED `CopySink` =====================
+ * The old `CopySink` let a caller open two COPY streams on one `Client`
+ * (load-ccc-joint-record.ts:228-229 did exactly that: `tmp_jr` and `weld`).
+ * node-postgres serialises queries per connection, so the SECOND `copyFrom`
+ * only sits in the client's query queue — its Writable is never attached to
+ * the socket and nothing ever consumes it. After ~4 MB of buffered rows its
+ * `write()` returned false, the old code did `await once(stream, 'drain')`
+ * (load-common.ts:177), and that 'drain' could never fire. The await never
+ * settled, so the producing loop stopped, so the FIRST COPY stopped being fed:
+ * `pg_stat_progress_copy.tuples_processed` froze at 829,562 with the node
+ * process blocked at 8 s of CPU. A deadlock, not slowness.
+ *
+ * Three things prevent it recurring:
+ *  1. `copyRows()` is the only way to COPY, it owns the whole stream lifecycle,
+ *     and `ACTIVE_COPY` throws immediately if a second one is started on the
+ *     same client. A deadlock becomes a loud error.
+ *  2. `pipeline()` owns back-pressure. It also propagates errors BOTH ways, so
+ *     a server-side COPY failure rejects instead of hanging.
+ *  3. The watchdog destroys the stream if no bytes move for `stallSeconds`, so
+ *     even an unforeseen stall dies with a diagnosis instead of waiting forever.
+ */
 
-  constructor(client: Client, table: string, columns: string[]) {
-    this.stream = client.query(
-      copyFrom(`COPY ${table} (${columns.join(", ")}) FROM STDIN WITH (FORMAT text)`),
-    ) as unknown as NodeJS.WritableStream;
+/** Clients with a COPY in flight. A second concurrent COPY is a deadlock. */
+const ACTIVE_COPY = new WeakSet<Client>();
+
+export interface CopyOptions {
+  /** Shown in progress and error messages. */
+  label: string;
+  /** Abort if no bytes reach the server for this long. Default 60 s. */
+  stallSeconds?: number;
+  /** Called every ~4 MB with the running totals, for progress logging. */
+  onProgress?: (rows: number, bytes: number) => void;
+}
+
+/**
+ * Streams pre-escaped COPY lines into `table`. Returns the row count.
+ * `lines` is pulled lazily, so the producer only runs as fast as the server
+ * drains — which is the whole point.
+ */
+export async function copyRows(
+  client: Client,
+  table: string,
+  columns: string[],
+  lines: AsyncIterable<string>,
+  opts: CopyOptions,
+): Promise<number> {
+  if (ACTIVE_COPY.has(client)) {
+    throw new Error(
+      `refusing to start COPY into ${table} (${opts.label}): another COPY is already in ` +
+      `flight on this connection. node-postgres runs one query per connection, so the ` +
+      `second COPY would queue, never drain, and deadlock the first. Run them in ` +
+      `sequence, or open a second Client.`,
+    );
   }
+  ACTIVE_COPY.add(client);
 
-  async write(line: string): Promise<void> {
-    this.rows += 1;
-    this.batch += line;
-    if (this.batch.length >= 4 << 20) {
-      const b = this.batch;
-      this.batch = "";
-      if (!this.stream.write(b)) await once(this.stream, "drain");
+  let rows = 0;
+  let bytes = 0;
+  let lastBytes = -1;
+  let lastMove = Date.now();
+  const stallMs = (opts.stallSeconds ?? 60) * 1000;
+
+  // Batch into ~4 MB chunks: one write per 20k-ish rows instead of per row.
+  async function* batched(): AsyncGenerator<string> {
+    let buf = "";
+    for await (const line of lines) {
+      rows += 1;
+      buf += line;
+      if (buf.length >= 4 << 20) {
+        bytes += buf.length;
+        opts.onProgress?.(rows, bytes);
+        yield buf;
+        buf = "";
+      }
+    }
+    if (buf.length > 0) {
+      bytes += buf.length;
+      opts.onProgress?.(rows, bytes);
+      yield buf;
     }
   }
 
-  async end(): Promise<number> {
-    if (this.batch.length > 0 && !this.stream.write(this.batch)) {
-      await once(this.stream, "drain");
+  const dest = client.query(
+    copyFrom(`COPY ${table} (${columns.join(", ")}) FROM STDIN WITH (FORMAT text)`),
+  ) as unknown as Writable;
+
+  // The watchdog RACES the pipeline instead of only destroying the stream.
+  // Destroying is not enough: in a real stall the producer is parked on a promise
+  // that will never settle (the old bug parked it on a 'drain' that could not
+  // fire), and Node cannot cancel a pending promise — so `pipeline` itself never
+  // settles either and the process would still hang, just with a message logged.
+  // Racing lets the caller's catch run, roll back, and exit non-zero while the
+  // orphaned generator stays parked; the loaders' top-level catch then calls
+  // process.exit so a dangling handle cannot keep the process alive.
+  let onStall: ((e: Error) => void) | null = null;
+  const stalled = new Promise<never>((_resolve, reject) => { onStall = reject; });
+  const watchdog = setInterval(() => {
+    if (bytes !== lastBytes) {
+      lastBytes = bytes;
+      lastMove = Date.now();
+      return;
     }
-    this.stream.end();
-    await once(this.stream, "finish");
-    return this.rows;
+    if (Date.now() - lastMove > stallMs) {
+      const err = new Error(
+        `COPY into ${table} (${opts.label}) made no progress for ` +
+        `${Math.round((Date.now() - lastMove) / 1000)} s at ${rows} rows / ${bytes} bytes. ` +
+        `Aborting rather than hanging. Check for a second concurrent COPY on this ` +
+        `connection, a wedged producer, or a server-side lock.`,
+      );
+      clearInterval(watchdog);
+      dest.destroy(err);
+      onStall?.(err);
+    }
+  }, 5000);
+  watchdog.unref();
+
+  try {
+    await Promise.race([pipeline(Readable.from(batched()), dest), stalled]);
+  } finally {
+    clearInterval(watchdog);
+    ACTIVE_COPY.delete(client);
   }
+  return rows;
 }
 
 export interface CommonOptions {

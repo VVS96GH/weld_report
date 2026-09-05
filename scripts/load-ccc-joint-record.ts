@@ -26,7 +26,7 @@ import { statSync, existsSync } from "node:fs";
 import path from "node:path";
 import { Client } from "pg";
 import {
-  CopySink, closeLoad, copyLine, fmt, num, openLoad, parseDate, readDelimited,
+  closeLoad, copyLine, copyRows, fmt, num, openLoad, parseDate, readDelimited,
   requireEnvUrl, secs, sha256File, txt,
 } from "./load-common";
 import {
@@ -129,7 +129,10 @@ async function* rows(loadId: number, stats: Stats, jointIds: Set<string> | null)
           num(g("Sheet No")), sub, txt(g("Rework Code")), txt(suffix),
           txt(g("Original Joint")), txt(g("Tracer Shot")), null,
           txt(g("Test Package No")),
-          sub === null ? null : `${txt(g("Weld Report No")) ?? ""}-${sub}`,
+          // welder_id: NULL for this source. The joint record has no welder column
+          // (only Welder(Root/Heat/Fill/Cap)), and a fabricated id is worse than an
+          // absent one — orchestrator ruling on D10.
+          null,
           // The joint record IS the CCC PWHT/NDE source, so these rows carry their
           // own overlay values directly rather than joining back to themselves.
           txt(g("PWHT")), txt(g("PWHT Report No")), parseDate(g("PWHT Date")),
@@ -224,17 +227,34 @@ async function live(): Promise<void> {
     await client.query("DELETE FROM weld WHERE source = $1", [SOURCE]);
     await client.query("DELETE FROM ccc_joint_pwht");
 
+    // TWO SEQUENTIAL PASSES, NOT TWO CONCURRENT COPYs.
+    // node-postgres runs one query per connection, so a second COPY opened while
+    // the first is in flight never gets attached to the socket, never drains, and
+    // deadlocks the first once ~4 MB has buffered. That is exactly what the first
+    // version of this loader did (tuples_processed froze at 829,562). Re-reading a
+    // 634 MB file costs ~9 s; a deadlock costs the whole load.
     const stats = newStats();
-    const jrSink = new CopySink(client, "tmp_jr", [...JR_COLUMNS]);
-    const weldSink = new CopySink(client, "weld", [...WELD_COLUMNS]);
     const tCopy = Date.now();
-    for await (const r of rows(loadId, stats, null)) {
-      await jrSink.write(copyLine(r.jr));
-      if (r.weld) await weldSink.write(copyLine(r.weld));
+
+    async function* jrLines(): AsyncGenerator<string> {
+      for await (const r of rows(loadId, stats, null)) yield copyLine(r.jr);
     }
-    const jrRows = await jrSink.end();
-    const weldRows = await weldSink.end();
-    console.log(`  copy    ${fmt(jrRows)} JR rows + ${fmt(weldRows)} weld rows in ${secs(tCopy)}`);
+    const jrRows = await copyRows(client, "tmp_jr", [...JR_COLUMNS], jrLines(), {
+      label: "joint record -> tmp_jr",
+      onProgress: (n, b) => console.log(`  ... tmp_jr ${fmt(n)} rows / ${fmt(b)} bytes`),
+    });
+    console.log(`  copy    ${fmt(jrRows)} JR rows in ${secs(tCopy)}`);
+
+    const tWeld = Date.now();
+    const pass2 = newStats();
+    async function* weldLines(): AsyncGenerator<string> {
+      for await (const r of rows(loadId, pass2, null)) if (r.weld) yield copyLine(r.weld);
+    }
+    const weldRows = await copyRows(client, "weld", [...WELD_COLUMNS], weldLines(), {
+      label: "joint record NOT WELDED -> weld",
+      onProgress: (n, b) => console.log(`  ... weld ${fmt(n)} rows / ${fmt(b)} bytes`),
+    });
+    console.log(`  copy    ${fmt(weldRows)} NOT-WELDED rows in ${secs(tWeld)}`);
 
     // The collapse. MAX() matches the DAX (`MAXX(FILTER(JR, Joint ID = …), …)`),
     // and is_ambiguous makes a genuine conflict countable instead of invisible —
@@ -303,5 +323,7 @@ async function main(): Promise<void> {
 
 main().catch((err: unknown) => {
   console.error(err instanceof Error ? (err.stack ?? err.message) : err);
-  process.exitCode = 1;
+  // exit(), not exitCode: a stalled COPY leaves a producer parked on a promise
+  // that will never settle, and that handle would otherwise keep the process alive.
+  process.exit(1);
 });

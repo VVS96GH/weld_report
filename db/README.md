@@ -515,6 +515,10 @@ only ever see it on CCC rows.
 |---|---|---|---:|
 | `load-spool-dump.ts` | `Spool Dump.txt`, `Spool.csv` | `spool` | 198,647 + 331,979 |
 | `load-ccc-joint-record.ts` | `AllTrain_CSVExport_Joint Record.csv` | `ccc_joint_pwht` + `weld` | 1,470,065 + 130,994 |
+
+`welder_id` is left NULL for `CCC_JOINT_RECORD` rows: the joint record has no welder
+column (only `Welder(Root/Heat/Fill/Cap)`), and a fabricated identifier is worse than an
+absent one.
 | `load-ccc-welder-record.ts` | `CSVExport_Welder Record.csv` + the ACC/REJ workbook | `weld` | 5,432,993 |
 
 Each takes `--dry-run`, which parses the real files with **no database** and prints the counts
@@ -530,6 +534,39 @@ above so a drift in a source file is caught before anything is written. Add thes
 **Order matters.** `load-ccc-welder-record.ts` refuses to start if `ccc_joint_pwht` is empty:
 the CCC NDE branches are a `LEFT JOIN` to it, and loading first would write NULLs into
 `pwht_y_n_ccc` and friends and look perfectly successful.
+
+### One COPY at a time — the deadlock that made this a rule
+
+The first joint-record loader opened two `COPY` streams on one `Client`, one into
+`tmp_jr` and one into `weld`, and fed both from a single pass. It deadlocked in
+production at 829,562 rows: `pg_stat_progress_copy.tuples_processed` froze and the node
+process sat at 243 MB RSS with 8 s of CPU — blocked, not slow.
+
+**node-postgres runs one query per connection.** The second `copyFrom` only joined the
+client's query queue; its `Writable` was never attached to the socket, so nothing consumed
+it. Once ~4 MB of `weld` rows had buffered, `write()` returned `false`, the loader awaited
+`'drain'`, and that `'drain'` could never fire. The await never settled, the producing loop
+stopped, and the *first* COPY — the one that was working — stopped being fed.
+
+`scripts/load-common.ts::copyRows()` is now the only way to COPY, and it forecloses this
+three ways:
+
+1. **A re-entrancy guard.** A second `copyRows()` on a client that already has one in flight
+   throws immediately, naming the deadlock. A hang becomes a loud error.
+2. **`stream.pipeline` owns back-pressure**, and propagates errors both ways — a server-side
+   COPY failure now rejects instead of hanging.
+3. **A stall watchdog** aborts if no bytes reach the server for 60 s (configurable). It
+   *races* the pipeline rather than only destroying the stream, because in a real stall the
+   producer is parked on a promise that can never settle and Node cannot cancel one — so the
+   pipeline would not settle either. The loaders' top-level catch calls `process.exit(1)` so
+   the parked generator cannot keep the process alive.
+
+Both guards are proven against the live database, not just reasoned about: a second
+concurrent COPY throws while the outer one still completes, and a deliberately wedged
+producer is rejected after 10 s instead of hanging.
+
+The joint-record loader now makes **two sequential passes** over the file. Re-reading 634 MB
+costs ~9 s; the deadlock cost the whole load.
 
 ### `Spool Dump.txt`: pad the line, never re-join it
 

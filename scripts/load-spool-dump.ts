@@ -24,7 +24,7 @@ import { statSync, existsSync } from "node:fs";
 import path from "node:path";
 import { Client } from "pg";
 import {
-  CopySink, closeLoad, copyLine, fmt, num, openLoad, parseDate, readDelimited,
+  closeLoad, copyLine, copyRows, fmt, num, openLoad, parseDate, readDelimited,
   requireEnvUrl, secs, sha256File, txt, type Encoding,
 } from "./load-common";
 import { SPOOL_DUMP_MAP, TALISMAN_SPOOL_MAP, spoolColumns } from "./load-columns";
@@ -241,11 +241,14 @@ async function live(specs: MasterSpec[], truncate: boolean): Promise<void> {
       const stats = newStats();
       const seen = new Set<string>();
       const cols = columnsFor(spec);
-      const sink = new CopySink(client, "spool", cols);
-      for await (const r of rows(spec, loadId, cols, stats, seen)) {
-        await sink.write(copyLine(r));
+      async function* lines(): AsyncGenerator<string> {
+        for await (const r of rows(spec, loadId, cols, stats, seen)) yield copyLine(r);
       }
-      const n = await sink.end();
+      const n = await copyRows(client, "spool", cols, lines(), {
+        label: spec.source,
+        onProgress: (rowCount, bytes) =>
+          console.log(`  ... ${fmt(rowCount)} rows / ${fmt(bytes)} bytes copied`),
+      });
       await client.query("COMMIT");
       report(spec, stats, t0);
       await closeLoad(client, loadId, stats.lines, n, stats.droppedRevisionStatus, {
@@ -280,5 +283,7 @@ async function main(): Promise<void> {
 
 main().catch((err: unknown) => {
   console.error(err instanceof Error ? (err.stack ?? err.message) : err);
-  process.exitCode = 1;
+  // exit(), not exitCode: a stalled COPY leaves a producer parked on a promise
+  // that will never settle, and that handle would otherwise keep the process alive.
+  process.exit(1);
 });
