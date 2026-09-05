@@ -52,6 +52,9 @@ rules are right; the pbix stores 958,634 for its own (19 days older) snapshot.
 | `0006_views.sql` | the `nde_result` long view and `mv_weekly_progress` |
 | `0007_literal_null_tokens.sql` | supersedes `weld_text()` from 0001 and `mv_weekly_progress` from 0006 — see "Null tokens" below |
 | `0008_page_scope_indexes.sql` | `weld_svcclass_wd` — see "Indexes on `weld`" below |
+| `0009_weld_source_ccc_joint_record.sql` | **runs outside a transaction** — adds the `CCC_JOINT_RECORD` enum value (R2-03) |
+| `0010_batch2_schema.sql` | `weld_to_date` v3, fractional films, 23 new `weld` columns, `spool`, `ccc_joint_pwht`, the ref tables, `load.source` vocabulary |
+| `0011_mv_weekly_progress_v3.sql` | re-creates `mv_weekly_progress` after 0010 dropped it — **the current definition** |
 
 `0002` and `0003` are produced by `scripts/gen-schema-columns.ts` from
 `analysis/dump/columns.json` and **are committed**. Never hand-edit them; edit
@@ -280,6 +283,193 @@ rows satisfies the predicate) and two hash aggregates instead of eleven sorts.
 2. the join to `calendar` is on `weld_date`, so rows without a weld date are absent. That
    matches M01/M05/M06, but M12 (rejected joints) has no weld-date predicate in the DAX, so the
    `rejected` column here is "rejected AND welded" and is a lower bound on the live M12.
+
+## Batch-2 schema (CCC, spools, workbooks) — migrations 0009-0011
+
+Sources: `analysis/sources2/{rulings,plan,ccc-column-map,trend-seed-plan,workbooks,profile}.md`
+and `analysis/pbix/project-wd-wr-inco-acciona.md`. Rulings R2-01…R2-16 are binding.
+
+### `weld_source` gains a fifth value
+
+`CCC_JOINT_RECORD` (R2-03) for the 130,994 NOT-WELDED rows of
+`AllTrain_CSVExport_Joint Record.csv` — a different file with a different grain from
+`CSVExport_Welder Record.csv`. Labelling them `CCC_WELDER_RECORD` would make provenance a lie.
+
+`ALTER TYPE … ADD VALUE` is why `scripts/migrate.ts` now understands a
+`-- migrate: no-transaction` marker on line 1 of a migration: such a file is run with
+autocommit and **must be internally idempotent**, because nothing rolls back. `0009` is the
+only file that carries it.
+
+### `weld` grows by 23 columns
+
+| column | type | filled by | why |
+|---|---|---|---|
+| `area_classification_label` | text | every loader | CCC's `Area Group-2` renames to `Area Classification` but its values are TEXT (`Train-8 Process` ×1,493,903) while the dump's are 7-digit codes. The pbix's PR-all table has 22 distinct classes = the union. `area_classification` stays `integer` (dump only, NULL for CCC); **group and slice on the label**. Migration 0010 backfills the dump rows. |
+| `weldpoint_seq` | integer | loader | `ROW_NUMBER() OVER (PARTITION BY joint_id ORDER BY id)`. `seq = 1` is the pbix `WeldPoint No.1 WP1` flag that 14 `Total … Dia WP1 …` measures — the entire dia-inch welded volume — key on. |
+| `welder_id` | text | loader | `welder \|\| '-' \|\| sub_contractor`. 96 visuals and 19 measures group by this, **not** by `welder`: badge numbers collide across subcontractors (3,940 vs 3,896). |
+| `testpack_no_all` | text | loader | `TESTPACK No "PR All"`. CCC's from the joint record's `Test Package No`, else `max(testpack_no)` over `joint_id`. Cardinality 17,875 → 29,456; without it the TESTPACK page undercounts 40 % of packages. |
+| `manual_ut_report_no_all`, `manual_ut_status_all`, `manual_ut_date_all`, `ut_operator_id_all`, `ut_report_all`, `ut_date_all` | text/date | loader | **UT-tracker overlays, kept separate on purpose.** The pbix has both an imported `Manual UT Report No` and a *calculated* `Manual UT Report No.` (with the dot) — different columns, the second overwriting the first from the UT trackers. Same for Date / Status / Operator ID. Merging each pair would destroy the raw value. Read the `_all` column for "PR all" metrics; the raw column keeps what the source file said. |
+| `mt_report_ccc`, `mt_date_ccc`, `mt_pct_ccc`, `pt_report_ccc`, `pt_date_ccc`, `pt_pct_ccc`, `pmi_report_ccc`, `pmi_date_ccc`, `ht_report_ccc`, `ht_date_ccc`, `dwir_ccc_from_jr`, `thickness_from_jr`, `rework_code_all` | mixed | CCC loader | The "… CCC" measure branches. Every one is a `LEFT JOIN ccc_joint_pwht ON joint_id` with `MAX()` over the group, because the joint record is joint-grained and CCC's fact rows are welder-pass-grained (R2-01). `dwir_ccc_from_jr` is the joint record's `Weld Report No`; `DWIR Report "PR All"` is then `coalesce(dwir_no, dwir_ccc_from_jr)` — an expression, not a stored column. |
+
+Plus three indexes: `weld_welder_id`, `weld_wp1` (partial, `WHERE weldpoint_seq = 1`) and
+`weld_testpack_all`.
+
+**Films are fractional now (R2-04).** `total_no_of_films_acc`, `total_no_of_films_rej` and the
+generated `rt_film_total` are `numeric(10,4)`. CCC's `RT Film Total` is a weld-point *share*,
+not a film count — `0.75` on 296,274 rows, 145 distinct values — and the DAX SUMs it. The
+dump's values are whole numbers and are unchanged. `mv_weekly_progress.films_taken` /
+`films_accepted` / `films_rejected` are therefore `numeric`: **format them, never cast to
+integer.** Widening the two columns forced dropping the generated column, which forced
+dropping and re-creating the matview — hence `0011`.
+
+### What is NOT in `weld`, on purpose
+
+`analysis/pbix/project-wd-wr-inco-acciona.md` §5.4 lists ~60 pbix "columns" that are really
+aggregates written as columns — every `RT Film Ratio % …`/`UT Rej Rate % …` and its `STATUS`
+twin, `Days Since Last …`, the `CROSS CHECK` flags, `Open_Punch_*`. Those belong in a
+`GROUP BY` in `lib/metrics`, not in the fact table, and are deliberately absent. The two
+`Index` row-order relationships are not ported either — join on `joint_id`.
+
+The five columns `ccc-column-map.md` names that `weld` still does not have are all empty in
+every row of every source: `last_reshoot_date1` / `last_reshoot_report_no1` /
+`last_reshoot_result1` (the M meant to drop them and misspelled the names) and
+`ht_batch_no` / `ht_batch_status` (two of the 29 all-empty dump columns; the M adds them blank
+for CCC). Empty in both sources = no column.
+
+### `spool` — two masters, one table (R2-06)
+
+`Spool Dump.txt` has **zero CCC spools** (GAC 103,260 / TEKFEN 82,072 / MEDGULF 17,020);
+CCC's live in `Spool.csv` (Talisman) under other names. One table, `source spool_source`
+(`SPOOL_DUMP` | `TALISMAN_SPOOL`), PK `(source, spool_id)`.
+
+| `spool` column | `Spool Dump.txt` | `Spool.csv` (Talisman) |
+|---|---|---|
+| `spool_id` | `ISO Number` + `-` + `Spool No.` | `QCISO NO` + `-` + `SPOOL NO` |
+| `iso_number` / `spool_no` | `ISO Number` / `Spool No.` | `QCISO NO` / `SPOOL NO` |
+| `spool_weight` | `Spool Weight` | `WEIGHT` |
+| `fabrication_order` | — | `FABRICATION ORDER` |
+| `material_issue` | `Material Check` | `MATERIAL ISSUE` |
+| `cut_fit` | — | `CUT / FIT` |
+| `start_fab` | `START FAB` | — |
+| **`fabricated`** | `FABRICATED` | `SHOP WELD COMPLETE` |
+| **`qc_release`** | `QC RELEASE` | `QC SPOOL RELEASED TO NDT/PWHT` |
+| `pwht_date` | — | `PWHT` |
+| `shop_nde_done` | — | `SHOP NDE DONE` |
+| `sent_to_paint` | `SENT TO PAINT` | `PAINT RELEASE` |
+| **`painted`** | `PAINTED` | `PAINT COMPLETE` |
+| `final_qc` | `FINAL QC` | `QC RELEASE FROM PAINTING` |
+| `paint_report_date` / `paint_report_no` | — | `PAINTING REPORT DATE` / `PAINTING REPORT NO` |
+| `laydown` | `LAYDOWN` | `SENT TO LAYDOWN` |
+| `laydown_move` | — | `LAYDOWN MOVE` |
+| **`to_site`** | `TO SITE` | `SITE MOVE` |
+| **`erected`** | `ERECTED` | `SPOOL ERECTION DONE` |
+| `field_weld_complete` | — | `FIELD WELD COMPLETE` |
+| `field_nde_done` | — | `FIELD NDE DONE` (a date) |
+| `field_weld_nde_completed` | `Field Weld NDE Completed` (**text**) | — |
+| `spool_nde_status` | `Spool Nde Status` | — |
+| `welded_bolt`, `supported`, `rft`, `mir_no`, `mir_date`, `qc_sign_off`, `erec_mir_*`, `testpack_test_done_date` | same-named | — |
+| all scope/geometry columns (`area_classification`, `line_no`, `service_class`, `shop_dia`, …) | same-named | — |
+
+The five bolded rows are the milestones the DAX `LOOKUPVALUE`s read
+(`Weld Dump[Fabricated Date]`, `[QC Release Date]`, `[PAINTED Date]`, `[To Site Date]`,
+`[ERECTED Date]`, `[Status Spool NDE]`), so those are the ones that must be right.
+
+`Spool Dump.txt` columns dropped as unmapped noise: `QC13 Form No`, `W10/P Form No`,
+`W24 Form No`, `QC13`, `W10P`, `QR Code`, `Barcode`-adjacent form numbers, the insulation and
+cladding block (`RELEASE FOR INSULATION`, `INSULATION COMPLETION`, `INSULATION TYPE`,
+`CLADDING`, `TQ/SDR FOR INSULATION`, `INSU FINAL INSP RFI NO`), the painting-touch-up block,
+`IWP CODE`, `TRACING *`, `ETA`, `Field Pipe`, `Material Check`-adjacent duplicates, and the
+five columns empty in all 202,352 rows (`RELEASE FOR TRACING`, `Commissioning Package`,
+`GPSNCOORDINATE`, `GPSECOORDINATE`, `PED`, `GWBS`, `BHS`, `WHS`). Talisman drops only
+`LAYDOWN LOCATION` (empty in all 331,979 rows).
+
+Framing: `Spool Dump.txt` has **193,563 lines containing a `"`** — the inch mark in `Line No`
+(`BD6132034A01-6"(1C1KL)-S(52)(25)`). `COPY … FORMAT text`, never CSV, or 96 % of rows break
+(R2-06). The header names 101/102 (`BHS`, `WHS`) have no data field, exactly like
+`Weld Dump.txt`: every line carries 100 fields. Filter `Revision Status = ''` → 198,647 rows,
+after which `spool_id` is unique (all 335 duplicates are cancelled rows).
+
+### `ccc_joint_pwht` — the CCC joint-record lookup
+
+**A separate table, not folded into `weld`.** The joint record is joint-grained (1,560,273
+kept rows) while CCC's fact rows are welder-pass-grained (5,430,732); folding it in would copy
+the same PWHT value onto ~4 rows each and invite the `count(*)` double-count R2-01 warns about.
+The pbix does the same: `PWHT Y/N CCC`, `PWHT Report No CCC` and `PWHT Date No CCC` are
+`LOOKUPVALUE` calculated columns keyed `Joint ID "JR"` → `Joint ID`.
+
+The `weld.*_ccc` columns are the *materialised overlay* of this table onto the fact rows, so
+that M45/M46/M47/M61/M65 stay single-table predicates. This table is the auditable source.
+
+The name says PWHT for historical reasons; it carries the **whole** joint-record lookup —
+MT/PT/PMI/HT reports and dates, `Test Package No`, `Weld Report No`, `Wall Thickness`,
+`Rework Code`.
+
+> **Grain warning for the loader.** 1,560,273 kept rows collapse to 1,470,065 distinct
+> `Joint ID`s, so the key is **not** unique in the file. The loader must collapse to one row
+> per joint, record how many source rows it merged in `source_rows`, and set `is_ambiguous`
+> when the merged rows disagree. DAX `LOOKUPVALUE` returns BLANK on a genuine conflict; we
+> make the conflict countable instead of invisible.
+>
+> There is **no `25.01` token** in this file — `PWHT` is a clean `Y` (202,786) / `N`
+> (1,357,487). Ruling R-04's ambiguous value is a Weld Dump artefact only.
+
+### `weld_weekly_snapshot` — scope and the raw label (R2-08)
+
+New columns `scope text NOT NULL DEFAULT 'ALL'` and `label_raw text`; PK is now
+`(week_end_date, sub_contractor, scope, metric)`. Normalisation at load:
+
+| workbook cell | `sub_contractor` | `scope` | `label_raw` |
+|---|---|---|---|
+| `GAC SG` | `GAC` | `SG` | `GAC SG` |
+| `TEKFEN TMCP` | `TEKFEN` | `TMCP` | `TEKFEN TMCP` |
+| `Inco` / `INCO` | `INCO` | `ALL` | as found |
+| (MPI sheet, no such column) | `PROJECT` | `ALL` | — |
+
+`ALTER`, never `DROP`: this history is the only copy outside the workbooks (R-08), and
+`--truncate` still does not clear it.
+
+### Reference tables for the seeding lane
+
+| table | source | rows | note |
+|---|---|---:|---|
+| `ref_exclusion_list` | `TO BE EXLUDE FROM DATA.xlsx` | 596 | **R2-02: stored UNAPPLIED.** No loader or metric may filter on it without an explicit ruling. Referenced by no Power Query. |
+| `ref_ut_tracker_ccc` | `UT TRACKER (CCC)_Talisman.xlsx`, sheet `TalismanUT_update` | 9,419 | R2-14. All 24 columns including `TPI Date` / `TPI Report No`, which the pbix M predates. The `Reject` sheet (30 rows) is a subset and is **not** loaded. `ut1_rep_no` is the natural key (9,419 distinct). `welder_id` can hold a PAIR (`W-276/W-442`) — text, never split at load. |
+| `ref_mpi_done` | `CUM MPI Done .xlsx` | 124 | Project totals, no sub-contractor column. Values are **cumulative running totals**, not weekly deltas. Also seeded into `weld_weekly_snapshot` as `M71` / `M71PT` with `sub_contractor = 'PROJECT'`. |
+| `ref_active_welders` | `CUM Trend Active Welders.xlsx` | 576 | Weekly active welders. **Not** M90 (`Project_Welder`, the SCTR register, still missing) — its own metric id `M90W`. Two of the 576 value cells are blank: store NULL, never 0. |
+
+### `load.source` is text with a CHECK, no longer the enum
+
+`load.source` described only rows that land in the fact table. Batch 2 loads spool masters,
+workbooks and a tracker, none of which are weld rows. It is now `text` with a CHECK over:
+
+```
+WELD_DUMP  CCC_WELDER_RECORD  CCC_JOINT_RECORD  ACCIONA  INCO      -- fact sources (also weld_source values)
+SPOOL_DUMP  TALISMAN_SPOOL  WEEKLY_SNAPSHOT  UT_TRACKER_CCC        -- dimension / reference
+EXCLUSION_LIST  MPI_DONE  ACTIVE_WELDERS
+WELD_LENGTH  WPS_REGISTER  QUALIFIED_WELDERS                       -- tables that exist, files still missing
+```
+
+`weld.source` stays the `weld_source` enum. The two vocabularies overlap; they are not the same.
+
+### Dates: `weld_to_date` v3 (R2-11)
+
+Four branches now — `dd-MMM-yyyy` (the dump), `dd-MMM-yy`, `yyyy/mm/dd` (CCC's welder and
+joint records) and `yyyy-mm-dd` (the workbooks). Still non-raising: the month names are
+enumerated so `to_date()` can never see an unknown `MON`, and anything unmatched returns NULL
+instead of aborting a 5.4-million-row INSERT.
+
+### Reading the migration log
+
+Migrations are append-only, so more than one file can define the same object. **Always read
+the highest-numbered definition:**
+
+* `weld_text()` — 0001, superseded by **0007**
+* `weld_to_date()` — 0001, superseded by **0010**
+* `mv_weekly_progress` — 0006, 0007, superseded by **0011**
+* `weld` — created by 0003 (generated), altered by 0008 and 0010
+
+`scripts/sql-schema.ts` replays the whole log and `scripts/check-sql-columns.ts` checks the
+*effective* schema, so a stale earlier definition cannot make a check pass by accident.
 
 ---
 

@@ -23,10 +23,21 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
   duration_ms integer     NOT NULL DEFAULT 0
 )`;
 
+/**
+ * A file whose first 400 characters contain `-- migrate: no-transaction` is run
+ * OUTSIDE a transaction.  Needed for statements Postgres refuses inside one —
+ * `ALTER TYPE … ADD VALUE` (0009) is the case that forced this, and
+ * `CREATE INDEX CONCURRENTLY` would be another.  Such a file must be written so
+ * that a partial application is harmless: use IF NOT EXISTS everywhere, because
+ * nothing rolls back.
+ */
+const NO_TRANSACTION_MARKER = "-- migrate: no-transaction";
+
 interface Migration {
   filename: string;
   sql: string;
   sha256: string;
+  noTransaction: boolean;
 }
 
 function loadMigrations(): Migration[] {
@@ -35,7 +46,12 @@ function loadMigrations(): Migration[] {
     .sort()
     .map((filename) => {
       const sql = readFileSync(path.join(MIGRATIONS_DIR, filename), "utf8");
-      return { filename, sql, sha256: createHash("sha256").update(sql).digest("hex") };
+      return {
+        filename,
+        sql,
+        sha256: createHash("sha256").update(sql).digest("hex"),
+        noTransaction: sql.slice(0, 400).includes(NO_TRANSACTION_MARKER),
+      };
     });
 }
 
@@ -79,26 +95,46 @@ async function main(): Promise<void> {
         continue;
       }
       if (statusOnly) {
-        console.log(`  + ${m.filename} (pending)`);
+        console.log(`  + ${m.filename} (pending)${m.noTransaction ? " [no-transaction]" : ""}`);
         changed += 1;
         continue;
       }
       const t0 = Date.now();
-      await client.query("BEGIN");
-      try {
-        await client.query(m.sql);
-        await client.query(
-          "INSERT INTO schema_migrations (filename, sha256, duration_ms) VALUES ($1, $2, $3)",
-          [m.filename, m.sha256, Date.now() - t0],
-        );
-        await client.query("COMMIT");
-      } catch (err) {
-        await client.query("ROLLBACK");
-        throw new Error(`migration ${m.filename} failed: ${(err as Error).message}`, {
-          cause: err,
-        });
+      if (m.noTransaction) {
+        // No BEGIN/COMMIT: the file contains something Postgres will not run
+        // inside a transaction block. It must be internally idempotent.
+        try {
+          await client.query(m.sql);
+          await client.query(
+            "INSERT INTO schema_migrations (filename, sha256, duration_ms) VALUES ($1, $2, $3)",
+            [m.filename, m.sha256, Date.now() - t0],
+          );
+        } catch (err) {
+          throw new Error(
+            `migration ${m.filename} failed OUTSIDE a transaction — the database may be ` +
+              `partially changed; the file is written to be re-runnable: ${(err as Error).message}`,
+            { cause: err },
+          );
+        }
+      } else {
+        await client.query("BEGIN");
+        try {
+          await client.query(m.sql);
+          await client.query(
+            "INSERT INTO schema_migrations (filename, sha256, duration_ms) VALUES ($1, $2, $3)",
+            [m.filename, m.sha256, Date.now() - t0],
+          );
+          await client.query("COMMIT");
+        } catch (err) {
+          await client.query("ROLLBACK");
+          throw new Error(`migration ${m.filename} failed: ${(err as Error).message}`, {
+            cause: err,
+          });
+        }
       }
-      console.log(`  + ${m.filename} (${Date.now() - t0} ms)`);
+      console.log(
+        `  + ${m.filename} (${Date.now() - t0} ms)${m.noTransaction ? " [no-transaction]" : ""}`,
+      );
       changed += 1;
     }
     console.log(
