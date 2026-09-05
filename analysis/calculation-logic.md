@@ -1304,6 +1304,8 @@ frozen copy, not a refreshable source, and the whole point of the rebuild is a l
 Evidence for (b) being safe: pages 19–40 and the GAC/TEK/MED half of 4–11, 42–44 are 100 %
 `Weld Dump`-bound (§1.2) and §4 shows they reproduce.
 
+*File-presence table above superseded by §7 C-12.*
+
 **R-02 — Are cancelled welds in or out?**
 **Out. Confirmed, not inferred.** The `Weld Dump` M query has
 `#"Revision Status" = Table.SelectRows(#"Changed Type", each ([Revision Status] = ""))`, and
@@ -1638,3 +1640,495 @@ $ wc -l analysis/calculation-logic.md                      -> ~1631
 Mockup labels covered: **172 / 172** (§2.1). Mockup pages in the build sheet: **44 / 44** (§3).
 Files this lane wrote: `analysis/calculation-logic.md`, `analysis/reconcile_check.py`,
 `analysis/reconcile_results.json`. Nothing else was touched.
+
+## §7 Corrections from the batch-2 source recon (2026-09-05)
+
+Additive only — nothing above this line was edited or deleted. Each item below cites the
+original section/line of this file it corrects and the batch-2 evidence file/line
+(`analysis/sources2/*.md` unless noted) that supports the correction. Ruling references
+(`R2-xx`) are to `analysis/sources2/rulings.md`; `R2-10` is the ruling that ordered this
+section written.
+
+### C-1 — §1.1 evidence point 2 is a no-op on the delivered export
+
+**§1.1 says** (`analysis/calculation-logic.md:146-149`):
+> Its M query ends with
+> `#"Replaced Value # to CCC" = Table.ReplaceValue(Custom1,"#","CCC",Replacer.ReplaceText,{"Sub-Contractor"})`
+> — the sub-contractor code `#` is rewritten to the literal string `CCC`.
+
+**What is actually true.** On the delivered `sources/CSVExport_Welder Record.csv`,
+`Sub-Con Code` is **already `CCC` on all 5,430,732 rows** — there is no `#` in that column to
+replace. The `#` value the M is written to expect lives instead in **`Original Joint`**
+(5,389,971 rows) and, separately, in `AllTrain_CSVExport_Joint Record.csv`'s `Del Flag` /
+`Weld Point First` / `Original Joint` / `Latest Joint` columns. The M step at
+`analysis/pbix/model.md:3918` is real and does run, it is just a no-op on this export
+(0 rows match `"#"` in `Sub-Contractor`/`Sub-Con Code`).
+Evidence: `analysis/sources2/ccc-column-map.md:33` (`already "CCC" in all 5,430,732 rows — the
+M's "#"->"CCC" ReplaceValue is a NO-OP on this export`); `analysis/sources2/profile.md:60-61`
+(`Original Joint` 1 distinct `#`×5,389,971; `Sub-Con Code` 1 distinct `CCC`×5,430,732).
+
+**Consequence for the build.** An ETL must not treat the `"#"→"CCC"` rewrite as load-bearing
+logic to reproduce, or as a signal that `Sub-Con Code` ever needs disambiguating — it is a
+straight rename (`sub_contractor := 'Sub-Con Code'`, unconditionally `'CCC'`). Nothing to fix,
+but §1.1's narrative implies the replace is what *produces* the `CCC` value; it does not.
+
+**Ruling:** R2-10.
+
+### C-2 — §1.3 undercounts the renames (25, not 22) and omits 4 derived columns
+
+**§1.3 says** (`analysis/calculation-logic.md:202-203`):
+> `CSVExport_Welder Record` is renamed onto the `Weld Dump` shape. Renames, verbatim from
+> `Table.RenameColumns` steps 1–7 of that query:
+
+...and lists 22 rows (lines 205-228).
+
+**What is actually true.** The same `Table.RenameColumns` step performs **25** renames, not
+22. The 3 missing are the reshoot renames (blank on 5,430,732 CCC rows, but real renames the
+M performs regardless):
+
+| CCC export column | renamed to |
+|---|---|
+| `Reshoot-1 RT/UT Report No.` | `RT Re-Shoot Rep` |
+| `Reshoot-1 RT/UT Date` | `RT Re-Shoot Data` |
+| `Reshoot-1 RT Film Total` | `RT Re-Shoot Films` |
+
+Evidence: `analysis/sources2/ccc-column-map.md:64-66`.
+
+§1.3 also omits **4 derived columns** the same M query adds that are *not* blank
+placeholders (§1.3 line 234-236 already documents `Dia Inch Factor` and
+`Cutting Date = Beveling Date = Fitup Date = Weld Date`; these 4 are the ones missing):
+
+1. **`RT Weld Status`** — synthesised, not sourced:
+   `if [RT Report] = "blank" then "HS" else if [RT%] = 100 then "HS CCC" else if [Tracer Shot]
+   = "T" then "T" else ""`. The first branch tests the *literal string* `"blank"`, which never
+   occurs (`RT Report` is empty or a report number) — it is dead code. The live result is
+   `HS CCC` on the 484,130 `RT%=100` rows, `T` on part of the 4,215 tracer rows, `''`
+   elsewhere. `HS CCC` is a token `Weld Dump` never produces, but it is already present in
+   this file's own §0.6 status whitelist (`analysis/calculation-logic.md:121`), so §0.6 is
+   correct as written — only §1.3's column inventory is incomplete.
+2. **`Total No of films Acc`** = `[RT Film Total] − [Total No of films Rej]` — this is what
+   makes `weld.rt_film_total` (a GENERATED `acc+rej` column, §0.5) round-trip the CCC source
+   value exactly.
+3. **`Joint ID`** = `[ISO Number] & "-" & [Spool No.] & "-" & [Weld No.] & "" & [Repair Suffix]`
+   — added within this same CCC-harmonisation query (distinct from the generic `joint_id`
+   recipe in §0.5, which is the *result*, not the M step that produces it for CCC).
+4. **`Spool ID`** = `[ISO Number] & "-" & [Spool No.]` — likewise added within this query.
+
+Evidence: `analysis/sources2/ccc-column-map.md:92` (`RT Weld Status` formula),
+`:130-135` (dead `"blank"` branch and `HS CCC` explanation), `:89` and `:136-137`
+(`Total No of films Acc`), `:123-124` (`Joint ID`, `Spool ID`).
+
+**Consequence for the build.** An ETL that only ports 22 renames will silently drop the 3
+reshoot columns (harmless — they are empty on every CCC row) but, more seriously, one that
+only ports the blank/placeholder columns from §1.3's list and skips `RT Weld Status` /
+`Total No of films Acc` will produce `rt_weld_status = NULL` and a non-round-tripping
+`rt_film_total` for every CCC row — breaking M20-M26 and the §0.6 status whitelist checks
+for CCC.
+
+**Ruling:** R2-10, R2-13.
+
+### C-3 — `Original Joint` semantics are inverted from the name
+
+**No existing calculation-logic.md text states this** — §1.3 and §0.5 do not mention
+`Original Joint` at all for CCC (it is dropped from the model by `Table.RemoveColumns` per
+`analysis/sources2/ccc-column-map.md:139-141`, and is absent from the `weld` column map). It
+is documented here because it is load-bearing for how repairs are identified in the raw CSV,
+which the earlier §1.1 discussion of the `"#"→"CCC"` no-op (C-1) touches on directly.
+
+**What is actually true.** `Original Joint` reads `#` on 5,389,971 rows and blank on 40,761
+rows, and **the 40,761 blanks are exactly the rows that carry a non-blank `Repair Suffix`**
+(compare: `Repair Suffix` non-empty on 40,761 rows, `analysis/sources2/profile.md:77`). So
+`'#'` means *this row **is** an original joint*; blank means *this row is a repair/reweld
+attempt*. The column name reads as if blank were the default/normal case and `#` marked
+something special; it is the opposite.
+Evidence: `analysis/sources2/ccc-column-map.md:32` (`"#" on 5,389,971 rows, blank on 40,761 -
+and the 40,761 blanks are exactly the rows that carry a Repair Suffix... Inverted from the
+name`); `analysis/sources2/profile.md:60` (`Original Joint` 1 distinct `#`×5,389,971) and
+`:77` (`Repair Suffix` 40,761 non-empty).
+
+**Consequence for the build.** Any future logic keyed on "is this an original joint" must
+test `original_joint IS NOT NULL` (or, equivalently, `repair_suffix IS NULL`), never the
+reverse. The column is dropped from `weld` per the existing M (it survives nowhere in the
+target schema), so this is a note for anyone re-deriving repair/reweld logic from the raw
+CSV rather than from `weld.repair_suffix`, not a change to §6 DDL.
+
+**Ruling:** R2-10, R2-12.
+
+### C-4 — §5 R-04's `PWHT Y/N = 25.01` is a Weld Dump artefact only; CCC's PWHT is clean
+
+**§5 R-04 says** (`analysis/calculation-logic.md:1331-1332`):
+> **`PWHT Y/N = 25.01` (580,860 rows, the most common value).**
+> Options: (a) treat as data error and null it; (b) treat as `N`; (c) treat as **both** `Y`
+> and `N`, which is what the DAX does...
+
+That finding is correct as far as it goes, but it is scoped to `Weld Dump.txt`'s own
+`PWHT Y/N` column and does not say so explicitly.
+
+**What is actually true.** CCC's PWHT status does **not** come through that column at all —
+CCC has no `PWHT Y/N` in its own export (§1.3 already says the M adds `PWHT Y/N` blank for
+CCC rows) and is instead looked up from `AllTrain_CSVExport_Joint Record.csv`'s own `PWHT`
+column, which is a **clean `Y`/`N`** with no ambiguous token: `Y` = 202,786 / `N` = 1,357,487
+(on the 1,560,273 `Del Flag=""` kept rows). There is no `25.01` anywhere in that file.
+Evidence: `analysis/sources2/ccc-column-map.md:219-221` (`PWHT is a clean Y/N - Y 202,786 / N
+1,357,487 on the kept rows. There is no 25.01 token here: ruling R-04's ambiguous value is a
+Weld Dump artefact only`); `analysis/sources2/profile.md:377,414` (raw `PWHT` column, full
+file: `N`=1,403,778, `Y`=208,662).
+
+**Consequence for the build.** The `PWHT_AMBIGUOUS_TOKEN = '25.01'` handling R-04 prescribes
+is needed only for `source='WELD_DUMP'` rows. CCC's PWHT (via the `AllTrain_…Joint Record`
+lookup, `PWHT Y/N CCC` / `PWHT Report No CCC` / `PWHT Date No CCC`) never needs the
+ambiguous-token branch — implementing it there would be dead code, and testing CCC PWHT
+measures against `IN {'N','25.01'}` would silently accept nothing extra (harmless) but
+signals a misunderstanding of the source if written.
+
+**Ruling:** R2-10 (general corrections charge); the CCC PWHT lookup path itself has no
+separately numbered ruling.
+
+### C-5 — §1's grain statement needs a DISTINCT-safety audit trigger for every §2 measure
+
+**No existing text in §0.1/§1 states CCC's grain explicitly** — §0.1 (`analysis/calculation-
+logic.md:30`) says only "one row per weld-record (the same grain the pbix fact tables have)",
+which is true but does not warn that CCC inflates row-to-joint ratio far more than
+`Weld Dump` does.
+
+**What is actually true.** CCC's `CSVExport_Welder Record.csv` is **weld-pass grain**:
+5,430,732 rows over **1,339,063 distinct Joint IDs** — about 4.06 rows per joint on average
+(one row per welder pass: `Weld Point Code` C/F/R/H × `Welded(Weld Point)` 1-32). Any
+`count(*)` or ungated `sum()` over `weld` for a CCC-inclusive scope inflates roughly 4×
+relative to a per-joint answer.
+Evidence: `analysis/sources2/profile.md:49` (`Joint ID... 5,430,732 rows, 1,339,063 distinct,
+no (4,091,669 dup rows)`); `analysis/sources2/plan.md:38-40` (`5,430,732 CCC rows over
+1,339,063 distinct Joint IDs... every count(*) inflates ~4x; only count(DISTINCT joint_id) is
+safe`); `analysis/sources2/rulings.md` R2-01 (`Weld-pass grain... Every metric must be
+count(DISTINCT joint_id) / DISTINCT-safe; the metrics lane re-audits every §2 measure and
+flags any count(*)`).
+
+**Consequence for the build.** Per R2-01, every §2 measure must be re-audited for
+DISTINCT-safety before it is trusted against CCC-inclusive scopes. This lane did **not**
+rewrite §2 (out of scope for a docs-only correction) — it only grepped it. Every joint-count
+expression in §2 already uses `count(DISTINCT w.joint_id)` (safe). The `sum()` expressions
+below have **no** `weldpoint_no = 1` filter or other per-joint dedupe and **must be
+re-audited by the metrics lane** before being trusted for CCC:
+
+| §2 measure | file:line | expression |
+|---|---|---|
+| M24 "R" term (`"PR all"`) | `analysis/calculation-logic.md:473` | `sum(w.total_no_of_films_rej) FILTER (WHERE NOT w.exclude_ut_films AND w.rt_acc_rej IS DISTINCT FROM 'RS' AND w.rt_acc_rej IS DISTINCT FROM 'U/Review' AND NOT w.exclude_debris_films)` |
+| M26 total (per-WPS pages) | `analysis/calculation-logic.md:494` | `sum(w.rt_film_total) FILTER (WHERE w.rt_acc_rej IS DISTINCT FROM 'RS')` |
+| M26 "A" | `analysis/calculation-logic.md:495` | `sum(w.total_no_of_films_acc) FILTER (WHERE w.rt_acc_rej IS DISTINCT FROM 'RS')` |
+| M26 "R" | `analysis/calculation-logic.md:496` | `sum(w.total_no_of_films_rej)` — fully unfiltered |
+| M34 UT Def. Len.m | `analysis/calculation-logic.md:557` | `sum(w.defect_length_m) FILTER (WHERE w.manual_ut_report_no IS NOT NULL AND w.manual_ut_status='R')` |
+
+Note M20-M23/M33/M35 (lines 425, 432, 439, 458-464, 544) already gate on `weldpoint_no = 1`
+and are DISTINCT-safe as written; M26 is *documented in §2 itself* as deliberately
+unfiltered ("used only on the per-WPS pages", `analysis/calculation-logic.md:486-499`) and
+verified against the GAC mockup, so its lack of a joint filter may be intentional DAX
+behaviour rather than a bug — the metrics lane must confirm the same reasoning holds once
+CCC's much higher rows-per-joint ratio is in the union, not assume it from the GAC case.
+
+**Ruling:** R2-01.
+
+### C-6 — `RT Film Total` is fractional on CCC; M20-M26 go fractional (R2-04)
+
+**§0.5 says** (`analysis/calculation-logic.md:106`):
+> `coalesce(total_no_of_films_acc,0)+coalesce(total_no_of_films_rej,0)`
+
+— defining `rt_film_total` generically, without flagging that the CCC operand is not an
+integer film count. §1.3 does not mention it either.
+
+**What is actually true.** On CCC, `RT Film Total` is a **weld-point share** of a joint's
+films, not a whole-film count: it takes 145 distinct decimal values, most commonly `0.75`
+on **296,274 rows**, plus `1.0` (83,911), `0.5` (76,411), `1.25` (24,304), etc. This is
+fundamentally different from `Weld Dump`'s whole-film counts.
+Evidence: `analysis/sources2/profile.md:101` (`RT Film Total | decimal | ... 0.0 … 6.5 · 0.75
+×296,274, 1.0×83,911, 0.5×76,411, 1.25×24,304 ...`); `analysis/sources2/ccc-column-map.md:57`
+(`decimal, not integer: 0.75 296,274 ... 145 distinct... every film metric (M20-M26) becomes
+fractional for CCC`); `analysis/sources2/rulings.md` R2-04 (`Keep fractional... rt_film_total
+/total_no_of_films_* become numeric(10,4)`).
+
+**Consequence for the build.** §6 DDL for `rt_film_total` / `total_no_of_films_acc` /
+`total_no_of_films_rej` must be `numeric(10,4)`, not integer, or CCC's film totals silently
+truncate to 0/1 and every M20-M26 result for CCC is wrong. `Weld Dump`'s own values are
+whole numbers and are unaffected by the wider type.
+
+**Ruling:** R2-04.
+
+### C-7 — CCC's `RT%` vocabulary has a `0` bucket and no `30`; impacts the §3 CCC page split
+
+**§3.3 says** (`analysis/calculation-logic.md:1079`):
+> CCC pages (mk 12–18): `Weld Cat` › `Service Class + Service Cat+NDT Remarks` › `RT%`
+> (label style `6R1B P 100`)
+
+— and the page table (`analysis/calculation-logic.md:1086-1092`, mk 12-18) already only
+covers `RT%` slicers `100`, `5`, `10`, `20` for CCC (no `30` row appears), so the *page count*
+was already correct; what is missing is the *reason*, and the fact that the `0` bucket is the
+largest one and never surfaces on any of those pages.
+
+**What is actually true.** `RT/UT(%)` on CCC has exactly 5 values: `0` (**3,421,891 rows** —
+the majority, mostly the rows with no RT ordered at all), `5` (1,223,209), `100` (484,130),
+`10` (279,920), `20` (21,582). There is **no `30`**, which `Weld Dump` does have (mk 26 /
+pbix page 50, GAC-only). So CCC pages 12-18 correctly have no `RT%=30` twin of mk 26 — but
+they also have no page for the `0` bucket, meaning 3.42 M of CCC's 5.43 M rows (63%) are
+outside the RT%-slicer page split entirely.
+Evidence: `analysis/sources2/profile.md:104` (`RT/UT(%) | int | 5,430,732 | 0 | 5 | 1.000 |
+0.0 … 100.0 · 0×3,421,891, 5×1,223,209, 100×484,130, 10×279,920, 20×21,582`);
+`analysis/sources2/ccc-column-map.md:60` (`No 30 (the dump has one) and a huge 0 bucket the
+dump does not have. The report's RT%-split pages (100/30/20/10/5) have no CCC 30% page and
+gain a 0% bucket`).
+
+**Consequence for the build.** No page needs to be added or removed (the mockup/pbix
+inventory already lacks both a CCC-30% page and a CCC-0% page, matching the source), but any
+"total CCC joints by RT%" reconciliation must expect the `0` bucket's 3.42M rows to fall
+outside mk 12-18's coverage — it is not a bug in the page inventory, it is 63% of CCC's raw
+rows genuinely having no RT% slicer page.
+
+**Ruling:** none numbered specifically; falls under R2-10's general "spec corrections" charge.
+
+### C-8 — `RT Selected Date` is empty on every CCC row; M51 aging is honest-empty for CCC (R2-05)
+
+**§1.3 does not mention this column.** It is in the CCC→`weld` map (renamed from `RT/UT
+Request Date`) but its all-empty status and the M51 consequence are undocumented in
+`calculation-logic.md`.
+
+**What is actually true.** `RT/UT Request Date` (renamed `RT Selected Date` /
+`rt_selected_date`) is **empty in all 5,430,732 CCC rows**. M51's five RT-backlog-aging
+buckets (within 3 days / 3-7 / 7-15 / 15-30 / above 30, `analysis/calculation-logic.md:725`)
+are driven entirely by `RT Selected Date`, so they are not computable for CCC from this file.
+Evidence: `analysis/sources2/ccc-column-map.md:61` (`empty in all 5,430,732 rows -> ...
+rt_selected_date is NULL for every CCC row. The RT-backlog aging buckets (M51) are driven by
+RT Selected Date; they cannot be computed for CCC from this file`); `analysis/sources2/
+profile.md:105` (`RT/UT Request Date | empty | 0 | 5,430,732 | 0 | - | (all rows empty)`).
+
+**Consequence for the build.** Per ruling R2-05, M51 for `sub_contractor='CCC'` must render
+the five buckets **honest-empty** ("—" with a provenance note), never substituting
+`RT Date`/`Weld Date` or any other column to manufacture an aging value. `gap-check.md`
+already lists this as a hard blocker with nothing to ask for (`analysis/sources2/
+gap-check.md:74`: `RT/UT Request Date is empty in the export itself`).
+
+**Ruling:** R2-05.
+
+### C-9 — Framing hazards in three of the five batch-2 files
+
+**No existing calculation-logic.md text covers these** (the file predates the batch-2 source
+delivery).
+
+**What is actually true, per file:**
+
+1. **`AllTrain_CSVExport_Joint Record.csv`** — header names **143** columns, but every one of
+   the 1,612,440 physical data lines carries **145** comma-separated fields. Field 144 is
+   empty on all rows; field 145 holds the ISO's line-number fragment on 1,029,449 rows. Both
+   are unnamed; a loader must **truncate** to 143 fields (as `Csv.Document(Columns=143)`
+   does), not fail on the ragged line count.
+   Evidence: `analysis/sources2/profile.md:211-237` (`M Columns= 143`, `header fields
+   counted 143`, `lines with > 143 fields | 1,612,440`, `Field-count histogram: 145→
+   1,612,440`); `analysis/sources2/ccc-column-map.md:226-230`.
+2. **`Spool Dump.txt`** — header names **102** columns (`BHS`, `WHS` at positions 101/102
+   have no data field), but every one of the 202,352 physical data lines carries only **100**
+   `;`-delimited fields; pad, do not fail. Separately, **193,563 of those lines contain a `"`**
+   — the inch mark inside `Line No` values like `BD6132034A01-6"(1C1KL)-S(52)(25)` — so a
+   loader **must use `COPY … TEXT`, never `COPY … CSV`**, or ~96% of rows break on quote
+   parsing.
+   Evidence: `analysis/sources2/profile.md:430-456` (`M Columns= 102`, `header fields counted
+   102`, `lines with < 102 fields | 202,352`, `lines containing a " | 193,563`, `Field-count
+   histogram: 100→202,352`); `analysis/sources2/plan.md:20` (loader must pad to 100 fields);
+   `analysis/sources2/plan.md:30-31` (`use COPY … TEXT, never CSV, or 96% of rows break`).
+3. **`Joint.csv`** — has **15,499 RFC-4180-quoted `QCISO NO` values**. Because the pbix's own
+   Power Query reads this file with `QuoteStyle.None`, it takes those quoted values
+   **literally** (quote characters included) — meaning **those join keys are corrupt in the
+   shipped pbix too**, not just in a naive ETL. A byte-faithful port must reproduce the same
+   corruption (or explicitly diverge and document why), not silently "fix" the quoting and
+   thereby disagree with the pbix's own `Joint.csv` join behaviour.
+   Evidence: `analysis/sources2/plan.md:32-34` (`Joint.csv has 15,499 RFC-4180-quoted QCISO
+   NO values which QuoteStyle.None makes the pbix read literally, so those join keys are
+   corrupt in the pbix too`); `analysis/sources2/profile.md:606` (`lines that look quoted
+   (field starts ") | 15,499`, `talisman-joint` section); `analysis/sources2/gap-check.md:38`.
+
+**Consequence for the build.** All three are load-time hazards, not measure-logic hazards:
+(1) and (2) are ETL truncation/padding rules; (3) is a decision the metrics lane must make
+explicitly (reproduce the pbix's corrupted keys, or fix them and accept a divergence from the
+pbix's own `Joint.csv` cross-check numbers) — and per R2-07, `Joint.csv` is not loaded at all
+in the current plan, so (3) is dormant until/unless a future page needs it.
+
+**Ruling:** R2-07 (for the load-at-all question); (1) and (2) are load mechanics with no
+ruling number of their own.
+
+### C-10 — §1's row-count lineage for `CSVExport_Welder Record` (mandatory §1.4 split, R2-16)
+
+**§1.2 states the row count without deriving it** (`analysis/calculation-logic.md:175`):
+> **CCC** (p.3, 7, 12–18, 41) | ... | `PCI CCC PBI WORK FILES\CSVExport_Welder Record.csv`
+> (+ `AllTrain_CSVExport_Joint Record.csv` for PWHT) | **NO** | 5,433,009 (+1,560,273) |
+
+§1.4 (`analysis/calculation-logic.md:260-271`) documents the *mechanism* (rows with an RT
+report are dropped from the CSV and replaced by the ACC/REJ workbook) but, written before the
+batch-2 sources arrived, does not give the reconciled counts.
+
+**What is actually true.** The pbix's stored **5,433,009** rows for `CSVExport_Welder Record`
+decompose exactly as:
+
+* **4,791,434** rows from `CSVExport_Welder Record.csv` with `RT/UT Report No.` blank
+  (the CSV has 5,430,732 data lines total; 639,298 of them have a non-blank RT report and are
+  dropped per §1.4's `#"RT Report (BLANK)"` filter), **plus**
+* **641,575** rows from `CSVExport_Welder Record - FOR PIC UPDATE (ACC REJ).xlsx`
+  (all of its rows, after its own `[RT/UT Report No.] <> "-" and <> ""` filter)
+* = **4,791,434 + 641,575 = 5,433,009**, exact match to the pbix.
+
+Evidence: `analysis/sources2/gap-check.md:11` (`5,430,732 data lines; 4,791,434 with blank
+RT/UT Report No. + 641,575 from the ACC/REJ workbook = 5,433,009 = the pbix's stored row
+count, exactly`); `analysis/sources2/plan.md:23` (`load-ccc-welder-record.ts ... keep only
+RT/UT Report No.='' from the CSV (4,791,434) and append the workbook's 641,575 = 5,433,009`);
+`analysis/sources2/rulings.md` R2-16 (`the §1.4 split is mandatory — CSV rows with RT/UT
+Report No. = '' (4,791,434) + all 641,575 workbook rows = 5,433,009`).
+
+**Consequence for the build.** The §1.4 split is not optional load-order housekeeping — it is
+the only way to reach the pbix's stored row count. An ETL that loads the CSV alone
+(5,430,732 rows, or 4,791,434 if it applies the blank-report filter but forgets the workbook
+append) will under-count CCC's tested-joint population, and one that unions the CSV and the
+workbook without dropping the CSV's RT-reported rows will double-count every RT'd joint.
+
+**Ruling:** R2-16.
+
+### C-11 — §5 R-08's trend-workbook `RT Backlog` column is dead since 2024-06-28; 9/11 comparable cells reconcile
+
+**§5 R-08 says** (`analysis/calculation-logic.md:1369-1371`):
+> The underlying measures use `TODAY()`, so the history is genuinely unrecoverable from a
+> single dump: you cannot ask this dump what the backlog was on 19-Dec.
+
+That is correct as written, but written before the workbooks themselves arrived and were
+checked against `analysis/reconcile_results.json`.
+
+**What is actually true, now that the workbooks are in hand:**
+
+* The `TREND Report` workbook's **`RT Backlog` column (feeds M40) is effectively dead**: it
+  is `0` for every sub-contractor in every week since **2024-06-28** — only **19 of the 132**
+  weeks (all in Feb-Jun 2024) have any non-zero value at all.
+* At the most recent comparable week (**2026-08-28**, the same as-of date as the loaded dump),
+  **9 of 11** cells checked against `analysis/reconcile_results.json` (computed independently
+  by `analysis/reconcile_check.py`) reproduce **exactly**:
+
+  | sub-contractor | metric | workbook | reconcile_results.json | verdict |
+  |---|---|---:|---:|---|
+  | GAC (non-SG) | PWHT Backlog All Types | 424 | `GAC/NONSG/pwht_backlog_all_types` = 424 | exact |
+  | GAC (non-SG) | PWHT Backlog For RT | 131 | `pwht_backlog_BW_GW_CLET_MW` = 131 | exact |
+  | GAC (non-SG) | RT B.log & PWHT "Y" Done + "N" | 234 | 64 + 170 | exact |
+  | GAC (non-SG) | RT B.log & PWHT Not Done | 55 | `rt_backlog_and_pwht_Y_not_done` = 55 | exact |
+  | GAC SG | PWHT Backlog For RT | 3 | `GAC/SG/pwht_backlog_BW_GW_CLET_MW` = 3 | exact |
+  | TEKFEN | PWHT Backlog All Types | 26 | 26 | exact |
+  | TEKFEN | PWHT Backlog For RT | 11 | 11 | exact |
+  | MEDGULF | PWHT Backlog All Types | 43 | 43 | exact |
+  | MEDGULF | PWHT Backlog For RT | 24 | 24 | exact |
+  | MEDGULF | RT B.log & PWHT "Y" Done + "N" | 23 | 0 + 23 | exact |
+  | TEKFEN | RT Backlog | 0 | 0 | agrees (both zero, uninformative) |
+
+  The two remaining checked cells (GAC `RT Backlog` workbook=0 vs reconcile=292; MEDGULF
+  `RT Backlog` workbook=0 vs reconcile=23) are exactly the dead column disagreeing with a live
+  computation — consistent with, not contradicting, the dead-column finding above.
+
+Evidence: `analysis/sources2/trend-seed-plan.md:75-106` (full reconciliation table and the
+`RT Backlog` dead-column paragraph); `analysis/reconcile_results.json` (independent source of
+the right-hand column).
+
+**Consequence for the build.** R-08's recommendation stands (seed `weld_weekly_snapshot` from
+the workbooks), but with ruling R2-09's refinement: seed `RT Backlog` **as-is** (the zeros are
+honest history, not a loading defect) and mark the M40 trend series `provisional` in the
+widget note until the first ETL-computed week lands — do not attempt to backfill it from the
+dump, and do not treat the 2 disagreeing cells as a reconciliation failure of this lane's
+script; they are the expected shape of a dead column.
+
+**Ruling:** R2-08, R2-09; see also the pointer added under §5 R-01 below (C-12) for the
+present/missing status of the two trend workbook files themselves.
+
+### C-12 — §5 R-01's file list: updated present/missing status (superseded by this item)
+
+**§5 R-01 says** (`analysis/calculation-logic.md:1269`):
+> **R-01 — CCC source files are missing. Which way do we go?**
+
+...and lists 14 of the 15 files as absent (`present` = "no" for everything except
+`Weld Dump.txt`), written before the batch-2 delivery.
+
+**What is actually true.** Reproducing every file's pbix row count exactly
+(`analysis/sources2/gap-check.md` §A), against the same 15-file list:
+
+| # | R-01 file | now present? | evidence |
+|---:|---|---|---|
+| 1 | `Weld Dump.txt` | **yes** (unchanged) | 958,615 rows in `weld` |
+| 2 | `CSVExport_Welder Record.csv` | **yes — new** | 5,430,732 lines; split reproduces 5,433,009 exactly (C-10) |
+| 3 | `CSVExport_Welder Record - FOR PIC UPDATE (ACC REJ).xlsx` | **yes — new** | 641,575 rows = pbix exactly |
+| 4 | `AllTrain_CSVExport_Joint Record.csv` | **yes — new** | 1,612,440 lines → 1,560,273 (`Del Flag=""`) → 130,994 NOT WELDED, both exact |
+| 5 | `Acciona_Latest Add to Query.xlsx` | **no** | not in `sources/` under any name |
+| 6 | `Master Weld_Latest.xlsx` (Inco) | **no** | not in `sources/`; excluded by default anyway (R-03) |
+| 7 | `Spool Dump.txt` | **yes — new** | 202,352 lines − 3,705 cancelled = 198,647 = pbix exactly |
+| 8 | `Weld Length.xlsx` | **no** | M33/M34/M36 at `"PR all"` scope still unbuildable |
+| 9 | `UT TRACKER (CCC)_Talisman.xlsx` | **yes — new** | 9,419 rows = pbix exactly |
+| 10 | `UT TRACKER (GAC)_Master.xlsx` | **no** | tiny file, still worth asking for |
+| 11 | `UT TRACKER (TEK).xlsx` | **no** | 10 rows |
+| 12 | `CUM Trend file RT and PWHT Backlog .xlsx` | **yes — new** | 943 rows = pbix exactly |
+| 13 | `CUM Trend RT% UT% RejRate.xlsx` | **yes — new** | 976 rows = pbix exactly |
+| 14 | `SCTR NFE WELDERS APPLIED.xls` | **no** | M90 KPI still unsourced; partial substitute (`CUM Trend Active Welders.xlsx`, a different measure) now present |
+| 15 | `WPQ RECORD REGISTER.xlsx` | **no** | M91 KPI still unsourced |
+
+By direct count of the table above: **8 present, 7 still missing** (rows 1-4, 7, 9, 12, 13 =
+yes; rows 5, 6, 8, 10, 11, 14, 15 = no). Note: `analysis/sources2/gap-check.md`'s own section
+heading (line 6) says "9 present, 6 still missing" — a discrepancy with its own 15-row table
+that this lane could not resolve from the evidence file alone; flagging it for the metrics
+lane rather than silently picking one number. Either way the shape is the same: roughly
+half the R-01 list arrived.
+
+**Extras** — files present that R-01 never asked for (`analysis/sources2/gap-check.md` §B):
+`Joint.csv` (QC cross-check table, not loaded — C-13/R2-07), `Spool.csv` (CCC's spool master —
+C-13/R2-06), `ovAssets_1619.xlsx` and `Flange Progress.xlsx` (flange dashboard only, R-11),
+`CUM MPI Done .xlsx` (feeds M71), `CUM Trend Active Welders.xlsx` (a weekly active-welder
+count, *not* M90), `TO BE EXLUDE FROM DATA.xlsx` (596-row exclusion list, unapplied per
+R2-02), plus assorted scratch files (`Project Welders By Weekend .csv`, `New Text
+Document.txt`, two `Back up/` copies, two chart screenshots) that are superseded or
+commentary-only.
+
+**Consequence for the build.** 8 of the 30 GAC/TEKFEN/MEDGULF-only pages were already
+buildable from `Weld Dump.txt` alone; the batch-2 delivery now additionally unlocks all 8 CCC
+pages + the CCC slice of pages 1-2 (minus CCC `Weld Length` metrics and RT-backlog aging,
+still blocked — C-8), the `FABRICATED` metrics for GAC/TEKFEN/MEDGULF via `Spool Dump.txt`
+(not CCC — see C-13), the six weekly trend charts (C-11), and M71. Still blocked: Acciona's
+row on p.2, Inco, `"PR all"`-scope `Weld Length` metrics, GAC/TEKFEN UT at `"PR all"` scope,
+M90, M91, and the entire flange dashboard (R-11).
+
+**Ruling:** R2-16 and the general R2-10 corrections charge; see `analysis/sources2/gap-check.md`
+§§A-D for the complete file-by-file detail this table summarises.
+
+### C-13 — `Spool Dump.txt` has zero CCC spools; CCC's spools are in `Spool.csv` (R2-06); `Joint.csv` is a QC table, not loaded (R2-07)
+
+**§1.2 says** (`analysis/calculation-logic.md:187`):
+> `Spool Dump` (feeds `Status FABRICATED`, used by M44/M48/M49) | `Spool Dump` | — |
+> `Spool Dump.txt` | **NO** | 198,647 |
+
+— listing `Spool Dump.txt` as feeding `Status FABRICATED` without noting it has no CCC
+coverage at all, and without mentioning `Spool.csv` (CCC's own spool master) or `Joint.csv`
+anywhere in the file.
+
+**What is actually true.**
+
+* `Spool Dump.txt`'s `Spool Shop Sub Contractor` / `Spool Field Sub Contractor` / etc. columns
+  take exactly 3 values across all 202,352 rows: `GAC` (103,260), `TEKFEN` (82,072),
+  `MEDGULF` (17,020). **Zero rows are CCC.** CCC's spool milestones instead live in
+  `Spool.csv` (331,979 rows, exact match to pbix `Talisman Spool Dump`), under a different
+  column vocabulary (`FABRICATION ORDER`, `CUT / FIT`, `SHOP WELD COMPLETE`, `PWHT` renamed
+  `PWHT Date Spool`, `SHOP NDE DONE`, `SITE MOVE`, `SPOOL ERECTION DONE`, `FIELD WELD
+  COMPLETE`, `FIELD NDE DONE`) — a second, CCC-side spool master alongside `Spool Dump.txt`.
+* `Joint.csv` (1,548,056 lines → 3,098,341 pbix rows after two `Table.ExpandListColumn`
+  splits) is a **QC cross-check table**, not a metric source: it joins 1:1 to `Project
+  WD+WR+INCO+Acciona[Index]` and carries 22 calculated columns whose names
+  (`Weld Date TR/F Talisman & Welder Record`, `RT Report TR/F Talisman & Joint Record`, …)
+  exist to prove the PIC export agrees with Talisman, not to feed any mockup metric.
+
+Evidence: `analysis/sources2/profile.md:476-480` (`Spool Shop Sub Contractor | text |
+202,352 | 0 | 3 | 1.000 | GAC×103,260, TEKFEN×82,072, MEDGULF×17,020`);
+`analysis/sources2/gap-check.md:38-39,56-59` (`Spool Dump.txt contains only GAC/TEKFEN/MEDGULF
+shop-sub-contractor spools, zero CCC. CCC's spool milestones are in Spool.csv instead...
+Joint.csv... A QC cross-check table, not a metric source... Do not load it into weld`);
+`analysis/sources2/rulings.md` R2-06 (`One spool table with a source spool_source column...`)
+and R2-07 (`Not loaded now. QC cross-check table; revisit if a page needs it`).
+
+**Consequence for the build.** M44/M48/M49 (`RT Backlog FABRICATED` and its PWHT
+combinations) can only be computed for GAC/TEKFEN/MEDGULF from `Spool Dump.txt` as things
+stand; CCC's equivalent needs `Spool.csv` loaded and mapped onto the same `spool` schema with
+a `source`/`spool_source` discriminator (per R2-06) before CCC's `FABRICATED` metrics are
+buildable. `Joint.csv` stays unloaded — not a missing-file gap, a deliberate exclusion.
+
+**Ruling:** R2-06, R2-07.
