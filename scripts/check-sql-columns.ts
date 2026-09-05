@@ -51,17 +51,24 @@ function tableColumns(sql: string, table: string): Set<string> {
   return out;
 }
 
-/** Column names selected by a `CREATE MATERIALIZED VIEW <name> AS` block. */
-function matviewBody(sql: string, name: string): string {
+/**
+ * Bodies of every `CREATE MATERIALIZED VIEW <name> AS` block.  There is more than
+ * one: a later migration re-creates the view, and BOTH definitions have to be
+ * column-clean because a fresh database applies them in sequence.
+ */
+function matviewBodies(sql: string, name: string): string[] {
   const re = new RegExp(
     `CREATE\\s+MATERIALIZED\\s+VIEW\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?${name}\\s+AS`,
-    "i",
+    "gi",
   );
-  const m = re.exec(sql);
-  if (!m) throw new Error(`no CREATE MATERIALIZED VIEW for ${name}`);
-  const body = sql.slice(m.index + m[0].length);
-  const end = body.indexOf("WITH NO DATA");
-  return end < 0 ? body : body.slice(0, end);
+  const out: string[] = [];
+  for (const m of sql.matchAll(re)) {
+    const body = sql.slice((m.index ?? 0) + m[0].length);
+    const end = body.indexOf("WITH NO DATA");
+    out.push(end < 0 ? body : body.slice(0, end));
+  }
+  if (out.length === 0) throw new Error(`no CREATE MATERIALIZED VIEW for ${name}`);
+  return out;
 }
 
 let failures = 0;
@@ -153,10 +160,12 @@ function main(): void {
     missing(staged, stg).join(", "),
   );
 
-  const mv = matviewBody(sql, "mv_weekly_progress");
-  const mvCols = [...mv.matchAll(/\bw\.([a-z_][a-z0-9_]*)/g)].map((m) => m[1]);
+  const mvBodies = matviewBodies(sql, "mv_weekly_progress");
+  const mvCols = mvBodies.flatMap((b) =>
+    [...b.matchAll(/\bw\.([a-z_][a-z0-9_]*)/g)].map((m) => m[1]),
+  );
   check(
-    `mv_weekly_progress reads ${new Set(mvCols).size} distinct w.<column>, all in weld`,
+    `mv_weekly_progress (${mvBodies.length} definitions) reads ${new Set(mvCols).size} distinct w.<column>, all in weld`,
     missing(mvCols, weld).length === 0,
     missing(mvCols, weld).join(", "),
   );

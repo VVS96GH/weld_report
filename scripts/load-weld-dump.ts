@@ -9,8 +9,8 @@
  * Options
  *   --file <path>   override WELD_DUMP_PATH
  *   --dry-run       parse only, NO database.  Prints the record count, the
- *                   field-count histogram, per-column null-token counts, date-parse
- *                   failures and the row counts the M filters would produce.
+ *                   field-count histogram, per-column literal-token counts,
+ *                   date-parse failures and the row counts the M filters would produce.
  *   --truncate      wipe `weld`, `stg_weld_dump` and the `load` ledger first.
  *                   (`weld_weekly_snapshot` is preserved — its history cannot be
  *                   recomputed, ruling R-08.)
@@ -33,7 +33,7 @@ import { from as copyFrom } from "pg-copy-streams";
 import { sourceColumns } from "./weld-columns";
 import {
   DROPPED_WELD_DATES,
-  NULL_TOKENS,
+  LITERAL_TOKENS,
   buildRejectCountsSql,
   buildWeldInsert,
   copyColumns,
@@ -44,7 +44,7 @@ const FIELD_COUNT = 223;
 const SEMI = 59; // ';'
 const SOURCE = "WELD_DUMP";
 
-const NULL_TOKEN_SET = new Set(NULL_TOKENS);
+const LITERAL_TOKEN_SET = new Set(LITERAL_TOKENS);
 const DATE_RE =
   /^[0-9]{1,2}-(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)-([0-9]{4}|[0-9]{2})$/i;
 
@@ -181,7 +181,7 @@ function toCopyLine(loadId: number, lineNo: number, raw: string): string {
 interface DryRunStats {
   records: number;
   fieldHistogram: Map<number, number>;
-  nullTokens: Map<number, Map<string, number>>;
+  literalTokens: Map<number, Map<string, number>>;
   dateFailures: Map<number, number>;
   dateNonEmpty: Map<number, number>;
   afterFilters: number;
@@ -217,7 +217,7 @@ async function dryRun(opts: Options): Promise<DryRunStats> {
   const stats: DryRunStats = {
     records: 0,
     fieldHistogram: new Map(),
-    nullTokens: new Map(),
+    literalTokens: new Map(),
     dateFailures: new Map(),
     dateNonEmpty: new Map(),
     afterFilters: 0,
@@ -240,11 +240,11 @@ async function dryRun(opts: Options): Promise<DryRunStats> {
 
     for (let i = 0; i < f.length; i += 1) {
       const v = f[i];
-      if (v.length > 0 && v.length <= 4 && NULL_TOKEN_SET.has(v)) {
-        let per = stats.nullTokens.get(i);
+      if (v.length > 0 && v.length <= 4 && LITERAL_TOKEN_SET.has(v)) {
+        let per = stats.literalTokens.get(i);
         if (!per) {
           per = new Map();
-          stats.nullTokens.set(i, per);
+          stats.literalTokens.set(i, per);
         }
         per.set(v, (per.get(v) ?? 0) + 1);
       }
@@ -308,8 +308,8 @@ function printDryRun(opts: Options, stats: DryRunStats, ms: number, sha: string)
   }
   console.log(`  ROWS THAT WOULD REACH weld    ${stats.afterFilters.toLocaleString().padStart(9)}`);
   console.log("");
-  console.log("null tokens by column (profile.md §8.2)");
-  const tokenRows = [...stats.nullTokens].sort((a, b) => a[0] - b[0]);
+  console.log("literal tokens kept by column (profile.md §8.2 — NOT nulled; see db/README.md)");
+  const tokenRows = [...stats.literalTokens].sort((a, b) => a[0] - b[0]);
   let tokenTotal = 0;
   for (const [i, per] of tokenRows) {
     const parts = [...per].sort((a, b) => b[1] - a[1]).map(([t, n]) => `${t}(${n.toLocaleString()})`);

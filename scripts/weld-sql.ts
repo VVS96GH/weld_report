@@ -24,8 +24,31 @@ export const PWHT_AMBIGUOUS_TOKEN = "25.01";
 /** Weld Dates the M query throws away (source-system garbage), §0.4 step 12. */
 export const DROPPED_WELD_DATES = ["2026-12-30", "2026-08-29", "2026-08-30"];
 
-/** Null tokens beyond '' (profile.md §8.2). */
-export const NULL_TOKENS = ["NA", "N/A", "?", "#N/A"];
+/**
+ * Tokens that LOOK like nulls but are KEPT AS LITERAL TEXT.
+ *
+ * The pbix does not null them.  Its M code replaces "NA" with "" in exactly six
+ * columns (below) and nowhere else, and the DAX then relies on the literals
+ * surviving: `RT Weld Status IN {"?","","S"}` matches a literal '?', and
+ * `RT Report <> ""` counts a literal 'NA' as tested.  Nulling them globally cost
+ * 2 GAC + 2 TEKFEN joints on M10 against the reference numbers.
+ *
+ * The dry run still reports their per-column counts — they are worth watching —
+ * but under the heading "literal tokens kept", not "null tokens".
+ */
+export const LITERAL_TOKENS = ["NA", "N/A", "?", "#N/A"];
+
+/**
+ * The ONLY columns where the M blanks "NA" (model.md lines 3661-3666,
+ * #"Replaced Value NA" … #"Replaced Value NA Mir").  All six are date-typed, and
+ * weld_to_date() already returns NULL for anything that is not dd-MMM-yyyy, so the
+ * replace() below is behaviourally a no-op — it is emitted anyway so the M step
+ * list is fully represented in the generated SQL.  It is safe: no month
+ * abbreviation contains the substring "NA".
+ */
+export const M_NA_BLANKED_COLUMNS = [
+  "preheat_date", "weld_date", "cutting_date", "beveling_date", "fitup_date", "mir_date",
+];
 
 const STG_TABLE = "stg_weld_dump";
 
@@ -53,6 +76,10 @@ const TEXT_TRANSFORMS: Record<string, (col: string) => string> = {
     `replace(replace(replace(replace(replace(replace(replace(${c}, '/', '-'),` +
     ` '45455', '12-Jun-2024'), '45433', '21-May-2024'), '45432', '20-May-2024'),` +
     ` '45441', '29-May-2024'), '45442', '30-May-2024'), '45456', '13-Jun-2024')`,
+  // #"Replaced Value NA" .. #"Replaced Value NA Mir" — the six columns, and only
+  // these six, where the M blanks the literal "NA".
+  weld_date: (c) => `replace(${c}, 'NA', '')`,
+  mir_date: (c) => `replace(${c}, 'NA', '')`,
   // #"Replaced Value6".."Replaced Value12"
   testpack_sub_contractor: (c) =>
     `replace(replace(replace(replace(${c}, 'GAC,GAC,GAC', 'GAC'), 'GAC,GAC', 'GAC'),` +
@@ -68,13 +95,15 @@ const VALUE_OVERRIDES: Record<string, string> = {
   //   each if Text.Contains([RT Report], "PAUT") then "PAUT" else null
   // Text.Contains is case-SENSITIVE in M, so LIKE (not ILIKE).
   ht_remarks: `CASE WHEN s.rt_report LIKE '%PAUT%' THEN 'PAUT' END`,
-  // #"9/5/0202 to null …" — three columns carry a year-0202 typo date
-  fitup_date: `nullif(weld_to_date(s.fitup_date), DATE '0202-09-05')`,
-  cutting_date: `nullif(weld_to_date(s.cutting_date), DATE '0202-09-05')`,
-  beveling_date: `nullif(weld_to_date(s.beveling_date), DATE '0202-09-05')`,
+  // #"9/5/0202 to null …" — three columns carry a year-0202 typo date.
+  // The inner replace() is the M's "NA" -> "" step for these columns.
+  fitup_date: `nullif(weld_to_date(replace(s.fitup_date, 'NA', '')), DATE '0202-09-05')`,
+  cutting_date: `nullif(weld_to_date(replace(s.cutting_date, 'NA', '')), DATE '0202-09-05')`,
+  beveling_date: `nullif(weld_to_date(replace(s.beveling_date, 'NA', '')), DATE '0202-09-05')`,
   // #"8/3/0202 to null Preheat Date" + #"10/11/0202 to null Preheat Date"
   preheat_date:
-    `nullif(nullif(weld_to_date(s.preheat_date), DATE '0202-08-03'), DATE '0202-10-11')`,
+    `nullif(nullif(weld_to_date(replace(s.preheat_date, 'NA', '')), DATE '0202-08-03'),` +
+    ` DATE '0202-10-11')`,
 };
 
 function castExpr(col: WeldColumn): string {

@@ -50,6 +50,7 @@ rules are right; the pbix stores 958,634 for its own (19 days older) snapshot.
 | `0004_reference.sql` | `calendar`, `spool`, `weld_length_by_dia`, `ref_qualified_welders`, `ref_wps_register`, `weld_weekly_snapshot` |
 | `0005_calendar.sql` | populates `calendar` for 2021-05-08 … 2026-12-31 (2,064 rows) |
 | `0006_views.sql` | the `nde_result` long view and `mv_weekly_progress` |
+| `0007_literal_null_tokens.sql` | supersedes `weld_text()` from 0001 and `mv_weekly_progress` from 0006 — see "Null tokens" below |
 
 `0002` and `0003` are produced by `scripts/gen-schema-columns.ts` from
 `analysis/dump/columns.json` and **are committed**. Never hand-edit them; edit
@@ -87,7 +88,11 @@ and are dropped from `weld` (listed in the header comment of `0003_weld.sql`).
 
 ## Null tokens and dates
 
-`''` is the normal absent marker (160,838,613 of 223,248,422 cells). Four more tokens occur:
+**Only `''` is NULL.** `weld_text(v)` = `nullif(btrim(v), '')`, and every text column goes
+through it, so a blank field is SQL `NULL` — which is what `analysis/calculation-logic.md`
+§0.2 assumes.
+
+Four tokens *look* like nulls and are deliberately **kept as literal text**:
 
 | token | cells | columns |
 |---|---:|---:|
@@ -96,16 +101,34 @@ and are dropped from `weld` (listed in the header comment of `0003_weld.sql`).
 | `?` | 226 | 2 |
 | `#N/A` | 7 | 1 |
 
-`weld_text(v)` = `btrim` then `nullif` each of `''`, `NA`, `N/A`, `?`, `#N/A`. **Every** text
-column goes through it, so a blank field is SQL `NULL` — which is what
-`analysis/calculation-logic.md` §0.2 assumes:
+**The pbix does not null them, and we reproduce that.** Its M code replaces `"NA"` with `""`
+in exactly six columns — `Preheat Date`, `Weld Date`, `Cutting Date`, `Beveling Date`,
+`Fitup Date`, `MIR Date` (`analysis/pbix/model.md` lines 3661-3666) — and nowhere else. The
+DAX then relies on the literals surviving everywhere else:
+
+* `[RT Report] <> ""` counts a literal `'NA'` as **tested**;
+* `[RT Weld Status] IN {"?","","S"}` matches a literal `'?'` (81 rows; `PMI Weld Status` has
+  145 more).
+
+Nulling them globally was the first version of this loader and it was wrong by exactly the
+rows you would predict: M10 came out at GAC 38,759 / TEKFEN 23,128 against the reference
+38,761 / 23,130, and `rt_report IN ('NA','N/A')` is 2 GAC + 2 TEKFEN rows. Fixed in
+`0007_literal_null_tokens.sql`.
+
+The six `"NA"`-blanked columns are unaffected either way, because `weld_to_date()` already
+returns NULL for anything that is not `dd-MMM-yyyy`. The loader still emits the M's
+`replace(x,'NA','')` on them so the step list is traceable in the generated SQL; it is safe
+because no month abbreviation contains the substring `NA`.
+
+`btrim()` stays: profile.md §8.3 lists 20 columns carrying leading/trailing whitespace, and
+§6.2 explicitly wants `'No '` and `'No'` in `hold_status` to be one state.
 
 | DAX | Postgres |
 |---|---|
 | `[X] = ""` | `x IS NULL` |
-| `[X] <> ""` | `x IS NOT NULL` |
+| `[X] <> ""` | `x IS NOT NULL` (a literal `'NA'` satisfies this — intentionally) |
 | `[X] <> "RS"` (true when blank too) | `x IS DISTINCT FROM 'RS'` — **not** `<> 'RS'` |
-| `[X] IN {"?","","S"}` | `(x IS NULL OR x = 'S')` |
+| `[X] IN {"?","","S"}` | `(x IS NULL OR x IN ('?','S'))` |
 | `DIVIDE(a,b)` | `a::numeric / NULLIF(b,0)` |
 
 Dates: all 38 date-typed columns are `dd-MMM-yyyy` (`27-JUN-2024`). `weld_to_date()` also
@@ -113,7 +136,8 @@ accepts `dd-MMM-yy` because `Manual UT Date` and `Checked Date` mix the two — 
 `text` per §8.1, so the second format matters only for a future CCC source. The regex spells
 out the twelve month names on purpose: `to_date()` **raises** on an unknown month, and one
 raise would abort the whole 958,615-row INSERT. Anything that does not match becomes NULL.
-Dry-run failure counts (all of them are the `NA` token, none are a parse bug):
+Dry-run failure counts (all of them are the `NA` token, none are a parse bug — and the
+token is kept literally in the *text* columns, only these date columns turn it into NULL):
 
 ```
 mir_date 12,121 · preheat_date 174,993 · weld_date 226 · fitup_date 76
