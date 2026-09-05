@@ -15,7 +15,10 @@
     "db:migrate": "node --env-file-if-exists=.env --import tsx scripts/migrate.ts",
     "db:load": "node --env-file-if-exists=.env --import tsx scripts/load-weld-dump.ts",
     "lint:tokens": "node scripts/token-lint.mjs",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "db:seed:snapshot": "node --env-file-if-exists=.env --import tsx scripts/seed-weekly-snapshot.ts",
+    "db:load:ut-ccc": "node --env-file-if-exists=.env --import tsx scripts/load-ut-tracker-ccc.ts",
+    "db:load:exclusions": "node --env-file-if-exists=.env --import tsx scripts/load-exclusion-list.ts"
   },
   "dependencies": {
     "chart.js": "4.5.1",
