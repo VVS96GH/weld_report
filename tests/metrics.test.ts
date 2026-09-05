@@ -22,7 +22,10 @@ import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { closePool, databaseUrl, query } from "@/lib/db";
 import {
+  Params,
   RT_WELD_TYPES,
+  scopeConditions,
+  SOURCES_EP,
   type Scope,
   type GroupSpec,
 } from "@/lib/metrics/scope";
@@ -201,6 +204,21 @@ afterAll(async () => {
 
 // ── the suite ───────────────────────────────────────────────────────────────
 
+describe("source scoping (no database needed)", () => {
+  it("every scope emits a `source` predicate, so CCC can never leak in", () => {
+    for (const [name, scope] of Object.entries(SCOPES)) {
+      const p = new Params();
+      const conds = scopeConditions(scope, p);
+      expect(
+        conds.some((c) => c.includes("source::text = ANY")),
+        `${name} must be source-scoped`,
+      ).toBe(true);
+      // The default is the "EP" family — the Weld Dump alone.
+      expect(p.list()[0], `${name} default source`).toEqual([...SOURCES_EP]);
+    }
+  });
+});
+
 describe.skipIf(Boolean(skipReason))("load reproduction", () => {
   it(`keeps ${REF.records_after_powerquery_filters} rows after the Power Query filters`, async () => {
     const rows = await query<{ n: string }>(
@@ -227,6 +245,32 @@ describe.skipIf(Boolean(skipReason))("load reproduction", () => {
     const got: Record<string, number> = {};
     for (const r of rows) got[r.rt_pct ?? ""] = Number(r.n);
     expect(got).toEqual(REF.rt_pct_vocabulary);
+  });
+
+  it("the dump pins are source-scoped: adding CCC cannot move them", async () => {
+    // The reference numbers below are all "EP" family. Asking for the same
+    // scope with the source spelled out explicitly must give the identical
+    // answer, which is what guarantees a CCC load leaves them alone.
+    const implicitScope: Scope = { subContractor: "GAC" };
+    const explicitScope: Scope = { subContractor: "GAC", sources: SOURCES_EP };
+    const [a, b] = await Promise.all([
+      weldingStats(implicitScope),
+      weldingStats(explicitScope),
+    ]);
+    expect(a).toEqual(b);
+    expect(a.joints_welded).toBe(REF.scopes["GAC/ALL"].joints_welded);
+  });
+
+  it("the page-1 EP-scope figures are unchanged by the phase-2 work", async () => {
+    // Regression pin for the orchestrator's mid-flight finding: the "PR all"
+    // family must not move the "EP" answers. These are the project scope of
+    // mockup page 1 over the loaded dump (GAC+TEKFEN+MEDGULF, SC <> Inco).
+    const ep: Scope = { sources: SOURCES_EP, excludeSubContractors: ["Inco"] };
+    const [w, rt] = await Promise.all([weldingStats(ep), rtStats(ep)]);
+    expect(w.joints_welded, "M01 joints welded").toBe(859_151);
+    expect(rt.films, "M20 films taken").toBe(244_071);
+    expect(rt.films_rejected, "M22 films rejected").toBe(1_350);
+    expect(rt.films_all, "M26 all-weld-point films (deliberately ungated)").toBe(338_888);
   });
 
   it("has the expected max weld_date (the default as_of)", async () => {

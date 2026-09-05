@@ -77,3 +77,88 @@ export async function wpsRegister(): Promise<
     return [];
   }
 }
+
+// ── batch-2 landing tables ──────────────────────────────────────────────────
+
+/**
+ * `CUM MPI Done .xlsx` → `ref_mpi_done` (124 weekly rows, project-wide, no
+ * sub-contractor column). The values are **cumulative running totals**, not
+ * weekly deltas, so the latest week IS the project total to date.
+ *
+ * This is not one of the 172 mockup labels — no widget binds it — but it is the
+ * only sourced MPI figure the project has, and the seeder also writes it into
+ * `weld_weekly_snapshot` as `M71` / `M71PT`. Returns `null` when unloaded.
+ */
+export async function mpiDoneLatest(): Promise<{
+  week_end_date: string;
+  mpi_done: number | null;
+  mpi_pt_done: number | null;
+} | null> {
+  try {
+    const rows = await query(
+      `SELECT week_end_date::text AS week_end_date, mpi_done, mpi_pt_done` +
+        ` FROM ref_mpi_done ORDER BY week_end_date DESC LIMIT 1`,
+    );
+    const parsed = z
+      .array(
+        z.object({
+          week_end_date: z.string(),
+          mpi_done: z.union([z.null(), z.coerce.number()]),
+          mpi_pt_done: z.union([z.null(), z.coerce.number()]),
+        }),
+      )
+      .parse(rows);
+    return parsed[0] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * `CUM Trend Active Welders.xlsx` → `ref_active_welders`, metric `M90W`.
+ *
+ * **Not M90.** `Project_Welder` is `Sum(SCTR OVERALL APPLIED WELDERS[QUALIFIED
+ * WELDERS])` from a register that is still missing (§7 C-12 row 14); this is a
+ * weekly *active*-welder count, a different measure. Wiring it to the page-1
+ * `Project_Welder` KPI would be a substitution, not a computation, so
+ * {@link qualifiedWelders} stays the only source for that card.
+ *
+ * Two of the 576 workbook cells are blank and are stored NULL, never 0.
+ */
+export async function activeWeldersLatest(): Promise<
+  Array<{ sub_contractor: string; welders: number | null; week_end_date: string }>
+> {
+  try {
+    const rows = await query(
+      `SELECT a.sub_contractor, a.welders, a.week_end_date::text AS week_end_date` +
+        `  FROM ref_active_welders a` +
+        ` WHERE a.week_end_date = (SELECT max(week_end_date) FROM ref_active_welders)` +
+        ` ORDER BY 1`,
+    );
+    return z
+      .array(
+        z.object({
+          sub_contractor: z.string(),
+          welders: z.union([z.null(), z.coerce.number()]),
+          week_end_date: z.string(),
+        }),
+      )
+      .parse(rows);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * R2-02: `TO BE EXLUDE FROM DATA.xlsx` is loaded **unapplied**. No metric may
+ * filter on it without an explicit ruling. Exposed only so a future feature
+ * flag has one obvious place to start, and so its size is visible.
+ */
+export async function exclusionListSize(): Promise<number> {
+  try {
+    const rows = await query(`SELECT count(*)::text AS n FROM ref_exclusion_list`);
+    return z.object({ n: zCount }).parse(rows[0] ?? { n: 0 }).n;
+  } catch {
+    return 0;
+  }
+}

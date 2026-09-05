@@ -1,10 +1,15 @@
 /**
  * PWHT metrics — M60, M62–M66.
  *
- * `"EP"`/`"WD"` scope. The `"PR all"` twins (M61, and the CCC branch of
- * M63/M66) read `PWHT Y/N CCC` / `PWHT Report No CCC`, which come from
- * `AllTrain_CSVExport_Joint Record.csv` — not in `sources/` and not in the
- * §8.1 column contract, so they are not implemented (ruling R-01).
+ * Both scopes. The `"EP"`/`"WD"` family reads `pwht_weld_status` / `pwht_report`
+ * off the dump; the `"PR all"` family adds the CCC branch, which reads
+ * `pwht_y_n_ccc` / `pwht_report_no_ccc` — the materialised overlay of
+ * `ccc_joint_pwht` (from `AllTrain_CSVExport_Joint Record.csv`) onto CCC's
+ * welder-pass rows.
+ *
+ * §7 C-4: CCC's PWHT is a clean `Y`/`N` (202,786 / 1,357,487). The `'25.01'`
+ * ambiguous token of ruling R-04 is a `Weld Dump` artefact and is deliberately
+ * NOT tested on the CCC branch — writing it there would be dead code.
  *
  * Reality check from the dump: `PWHT Weld Status` only ever holds
  * `NR` (152,412), `HS` (873) and `H` (11), so M60 can never exceed 884 over
@@ -18,6 +23,7 @@ import {
   type GroupSpec,
   Params,
   PWHT_BACKLOG_STATUS,
+  PWHT_BACKLOG_STATUS_PRALL,
   PWHT_YES_TOKENS,
   RT_BACKLOG_STATUS,
   RT_BACKLOG_STATUS_100,
@@ -168,4 +174,89 @@ export async function pwhtBacklogAging(
 /** Map one row of a combined `pwhtAggs()` select into {@link PwhtStats}. */
 export function pwhtStatsFromRow(raw: unknown): PwhtStats {
   return PwhtRow.parse(raw);
+}
+
+// ── "PR all" variants ───────────────────────────────────────────────────────
+
+/**
+ * M61 `[PWHT All BACKLOG All WELD TYPE "PR all"]` — two added terms:
+ *
+ *   CCC:   Weld Date > 0 AND PWHT Y/N CCC = "Y" AND PWHT Report No CCC = ""
+ *   rest:  PWHT Weld Status IN {…+'T1-2','HS CCC'} AND PWHT Report = ""
+ *
+ * The branches are disjoint by construction — dump rows have no
+ * `pwht_y_n_ccc`, CCC rows have no `pwht_weld_status` — so the DAX's `+` and a
+ * single OR give the same answer; the `+` is kept for literal parity.
+ */
+export function pwhtBacklogCccCond(p: Params, a = "w"): string {
+  return and([
+    `${a}.weld_date IS NOT NULL`,
+    `${a}.pwht_y_n_ccc = ${p.add("Y")}`,
+    `${a}.pwht_report_no_ccc IS NULL`,
+  ]);
+}
+
+/** The non-CCC branch of M61 — the `"PR all"` status list (adds `'T1-2'`). */
+export function pwhtBacklogCondPrAll(p: Params, a = "w"): string {
+  return and([
+    inList(`${a}.pwht_weld_status`, PWHT_BACKLOG_STATUS_PRALL, p),
+    `${a}.pwht_report IS NULL`,
+  ]);
+}
+
+/** M65 `[PWHT Done All Weld Types "PR all"]` — the coalesced report column. */
+export function pwhtDoneCondPrAll(a = "w"): string {
+  return `coalesce(${a}.pwht_report, ${a}.pwht_report_no_ccc) IS NOT NULL`;
+}
+
+export function pwhtAggsPrAll(p: Params, a = "w"): AggSpec[] {
+  const ccc = pwhtBacklogCccCond(p, a);
+  const rest = pwhtBacklogCondPrAll(p, a);
+  const rtTypes = inList(`${a}.weld_type`, RT_WELD_TYPES, p);
+  const count = (cond: string) => `count(DISTINCT ${a}.joint_id) ${filterWhere([cond])}`;
+  return [
+    // M61 = CCC branch + everyone else
+    {
+      key: "pwht_backlog_all_types",
+      sql: `${count(ccc)} + ${count(rest)}`,
+    },
+    // M62 "PR all" = M61 + RT weld types
+    {
+      key: "pwht_backlog_rt_types",
+      sql: `${count(and([ccc, rtTypes]))} + ${count(and([rest, rtTypes]))}`,
+    },
+    // M63 "PR all" = M62 + RT% = 100
+    {
+      key: "pwht_backlog_rt100",
+      sql:
+        `${count(and([ccc, rtTypes, `${a}.rt_pct = 100`]))}` +
+        ` + ${count(and([rest, rtTypes, `${a}.rt_pct = 100`]))}`,
+    },
+    // M64 "PR all" — the SG/TMCP special case is a page filter, not a formula
+    // change, so the RT-not-done predicate is shared with the "EP" flavour.
+    {
+      key: "pwht_backlog_rt_not_done",
+      sql: count(pwhtBacklogRtNotDoneCond(p, a)),
+    },
+    // M65 "PR all"
+    { key: "pwht_done", sql: count(pwhtDoneCondPrAll(a)) },
+    {
+      key: "pwht_required",
+      sql:
+        `${count(inList(`${a}.pwht_y_n`, PWHT_YES_TOKENS, p))}` +
+        ` + ${count(`${a}.pwht_y_n_ccc = ${p.add("Y")}`)}`,
+    },
+  ];
+}
+
+/** M61–M65 for one `"PR all"` scope. Same row shape as {@link pwhtStats}. */
+export async function pwhtStatsPrAll(scope: Scope): Promise<PwhtStats> {
+  const p = new Params();
+  const sql = buildGroupedSelect({
+    groups: [],
+    aggs: pwhtAggsPrAll(p),
+    where: scopeWhere(scope, p),
+  });
+  const rows = await query(sql, p.list());
+  return PwhtRow.parse(rows[0] ?? EMPTY);
 }

@@ -153,11 +153,26 @@ describe("honest-empty: no fabricated zeros with no data", () => {
   });
 
   it("every CCC page carries a note naming the missing source", async () => {
+    // The CCC pages are built now (phase 2); with the fixture returning no rows
+    // they must still disclose that CCC's export is not loaded rather than
+    // presenting empty tables as fact.
     for (const n of [3, 7, 12, 13, 14, 15, 16, 17, 18, 41]) {
       const model = await getWeldingPage(n);
       const notes = model.widgets.filter((w) => w.kind === "text");
       expect(
-        notes.some((w) => w.kind === "text" && /CCC is not loaded/.test(w.text)),
+        notes.some((w) => w.kind === "text" && /CCC is not loaded yet/.test(w.text)),
+        `page ${n}`,
+      ).toBe(true);
+    }
+  });
+
+  it("the CCC NDE pages disclose the R2-05 aging blackout", async () => {
+    for (const n of [12, 14, 16, 18]) {
+      const model = await getWeldingPage(n);
+      expect(
+        model.widgets.some(
+          (w) => w.kind === "text" && /ruling R2-05/.test(w.text),
+        ),
         `page ${n}`,
       ).toBe(true);
     }

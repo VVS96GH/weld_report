@@ -1,14 +1,21 @@
 /**
  * UT / PAUT metrics — M30, M31, M33, M37, M38.
  *
- * Only the `"EP"` family is implementable. M32/M34/M35/M36/M39 key off the
- * calculated columns `[Manual UT Report No.]` / `[Manual UT Status.]`, which
- * coalesce through `UT TRACKER (CCC)_Talisman`, `UT TRACKER (GAC)` and
- * `UT TRACKER (TEK)` — none of which is in `sources/` (ruling R-05). The dump
- * does carry raw `manual_ut_report_no` / `manual_ut_status` columns (§8.1 #198,
- * #199), but those are the *pre-coalesce* source values, not the calc columns,
- * so using them would silently under-count CCC and mis-state GAC/TEKFEN.
- * Callers get honest-empty for the project-scope UT KPIs instead.
+ * The `"EP"` family reads `ut_weld_status` / `ut_report` off the dump.
+ *
+ * The `"PR all"` family (M32/M34) reads the UT-tracker OVERLAY columns
+ * `manual_ut_report_no_all` / `manual_ut_status_all`, which the loader
+ * materialises from `[Manual UT Report No.]` / `[Manual UT Status.]` — the
+ * pbix's *calculated* columns (note the trailing dot), kept separate from the
+ * imported `manual_ut_report_no` so the raw value survives
+ * (project-wd-wr-inco-acciona.md §5.3 #8). `UT TRACKER (CCC)_Talisman.xlsx` is
+ * loaded (R2-14); `UT TRACKER (GAC)_Master.xlsx` and `UT TRACKER (TEK).xlsx`
+ * are still missing, so GAC/TEKFEN keep their raw `UT Acc/Rej` fallback and
+ * ruling R-05 stays open for them.
+ *
+ * M35/M36 stay honest-empty: `[Inspected Length(MM).]` resolves through
+ * `[Weld Length "PR all"]`, a `LOOKUPVALUE` into the `Weld Length` dimension
+ * (`weld_length_by_dia`), and that workbook is still absent (§7 C-12).
  *
  * Reality check: MEDGULF has zero rows with a `UT Report` in this dump, which
  * matches the mockup's blank UT columns on pages 6 and 11 (§4.6 finding 5).
@@ -143,4 +150,125 @@ export async function utStatsBy(
 /** Map one row of a combined `utAggs()` select into {@link UtStats}. */
 export function utStatsFromRow(raw: unknown): UtStats {
   return toStats(UtRow.parse(raw));
+}
+
+// ── "PR all" variants ───────────────────────────────────────────────────────
+
+/**
+ * M32 `[Numb UT "PR All"]` — keys off `[Manual UT Report No.]`, the calculated
+ * overlay, NOT `UT Report`.
+ * `[Numb UT "R" "PR All"]` adds `[Manual UT Status.] = "R"`;
+ * `[Numb UT "A" "PR All"]` is the subtraction, exactly as the DAX writes it.
+ */
+export function utDoneCondPrAll(a = "w"): string {
+  return `${a}.manual_ut_report_no_all IS NOT NULL`;
+}
+
+/**
+ * M34 `[UT Defect Length by Joint "PR all"]` — `SUM([Defect Length(MM).])` over
+ * rows with a manual UT report and status `R`.
+ *
+ * `[Defect Length(MM).]`
+ * (project-wd-wr-inco-acciona.md:2114-2138) is:
+ *   Inco + manual report        -> [Repair Length (mm)] / 1000   (no Inco rows, no column)
+ *   manual report AND By UT='Y' -> [Rej Length]                  (per-row, dump)
+ *   CCC AND Manual UT Status.='R' -> LOOKUPVALUE(UT TRACKER (CCC)[Defect Lenght(MM).])
+ *   else                        -> 0
+ *
+ * DISTINCT-SAFETY DIVERGENCE (ruling R2-01). The CCC term is a **joint-level
+ * lookup**, not a per-pass share: the tracker holds one row per joint, so
+ * adding it on every one of CCC's ~4 welder-pass rows would inflate the answer
+ * ~4x. It is therefore gated on `weldpoint_seq = 1` (the pbix `WP1` flag). The
+ * `Rej Length` term is a genuine per-row column on the dump and stays ungated.
+ * This is the rule the audit settles on: per-row source values sum ungated,
+ * joint-level lookups are de-duplicated to one row per joint.
+ */
+export function defectLengthExpr(p: Params, a = "w"): string {
+  const ccc = p.add("CCC");
+  const r = p.add("R");
+  const y = p.add("Y");
+  return (
+    `CASE\n` +
+    `         WHEN ${a}.manual_ut_report_no_all IS NOT NULL AND ${a}.by_ut = ${y} THEN ${a}.rej_length\n` +
+    `         WHEN ${a}.manual_ut_status_all = ${r} AND ${a}.sub_contractor = ${ccc} AND ${a}.weldpoint_seq = 1\n` +
+    `           THEN (SELECT max(t.weld_defect_length) FROM ref_ut_tracker_ccc t WHERE t.joint_id = ${a}.joint_id)\n` +
+    `         ELSE 0\n` +
+    `       END`
+  );
+}
+
+export function utAggsPrAll(p: Params, a = "w"): AggSpec[] {
+  const done = utDoneCondPrAll(a);
+  const rejected = and([done, `${a}.manual_ut_status_all = ${p.add("R")}`]);
+  return [
+    { key: "ut_done", sql: `count(DISTINCT ${a}.joint_id) ${filterWhere([done])}` },
+    // [Numb UT "A" "PR All"] = [Numb UT "PR All"] - [Numb UT "R" "PR All"]
+    {
+      key: "ut_accepted",
+      sql:
+        `count(DISTINCT ${a}.joint_id) ${filterWhere([done])}` +
+        ` - count(DISTINCT ${a}.joint_id) ${filterWhere([rejected])}`,
+    },
+    { key: "ut_rejected", sql: `count(DISTINCT ${a}.joint_id) ${filterWhere([rejected])}` },
+    // M33 "PR all" needs [Weld Length "PR all"], a LOOKUPVALUE into the missing
+    // `Weld Length` workbook — NULL here, rendered honest-empty by the caller.
+    { key: "ut_weld_length_m", sql: `NULL::numeric` },
+    // M34
+    {
+      key: "ut_rej_length_m",
+      sql: `sum(${defectLengthExpr(p, a)}) ${filterWhere([done, `${a}.manual_ut_status_all = ${p.add("R")}`])}`,
+    },
+  ];
+}
+
+/** M32, M34, M37 for one `"PR all"` scope. */
+export async function utStatsPrAll(scope: Scope): Promise<UtStats> {
+  const p = new Params();
+  const sql = buildGroupedSelect({
+    groups: [],
+    aggs: utAggsPrAll(p),
+    where: scopeWhere(scope, p),
+  });
+  try {
+    const rows = await query(sql, p.list());
+    return toStats(UtRow.parse(rows[0] ?? EMPTY));
+  } catch {
+    // ref_ut_tracker_ccc missing → the whole UT block is unknown, not zero.
+    return toStats(UtRow.parse(EMPTY));
+  }
+}
+
+/** `true` when `ref_ut_tracker_ccc` has rows (R2-14); otherwise M34 is unknown. */
+export async function utTrackerCccLoaded(): Promise<boolean> {
+  try {
+    const rows = await query<{ present: boolean }>(
+      "SELECT EXISTS (SELECT 1 FROM ref_ut_tracker_ccc) AS present",
+    );
+    return Boolean(rows[0]?.present);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * `true` when the UT-tracker OVERLAY has actually been materialised onto the
+ * fact rows for this scope.
+ *
+ * This is the gate the KPIs need, not {@link utTrackerCccLoaded}: the tracker
+ * workbook can be loaded (9,419 rows in `ref_ut_tracker_ccc`) while
+ * `manual_ut_report_no_all` is still NULL on every `weld` row, because the
+ * overlay is written by the CCC loader. Asking the wrong question turns
+ * "not loaded yet" into a fabricated `0` on the page-1 UT cards.
+ */
+export async function utOverlayLoaded(scope: Scope): Promise<boolean> {
+  const p = new Params();
+  const sql =
+    `SELECT EXISTS (SELECT 1 FROM weld w WHERE ${scopeWhere(scope, p)}` +
+    ` AND w.manual_ut_report_no_all IS NOT NULL) AS present`;
+  try {
+    const rows = await query<{ present: boolean }>(sql, p.list());
+    return Boolean(rows[0]?.present);
+  } catch {
+    return false;
+  }
 }

@@ -49,22 +49,41 @@ import {
   type AgingBuckets,
   backlogAging,
   backlogAgingBy,
+  coverageGapByServiceClass,
+  fabricatedAggs,
+  fabricatedStatsFromRow,
+  type FabricatedStats,
+  hasHaValues,
   rtAggs,
+  rtAggsPrAll,
   rtBacklogAggs,
+  rtBacklogAggsPrAll,
   rtBacklogCond,
+  rtBacklogCondPrAll,
   rtBacklogStatsFromRow,
+  rtPrAllStatsFromRow,
   rtStatsFromRow,
+  spoolMasterLoaded,
   type RtBacklogStats,
   type RtStats,
 } from "@/lib/metrics/rt";
 import {
   pwhtAggs,
+  pwhtAggsPrAll,
   pwhtBacklogCond,
+  pwhtBacklogCondPrAll,
   pwhtStatsFromRow,
   type PwhtStats,
 } from "@/lib/metrics/pwht";
-import { utAggs, utStatsFromRow, type UtStats } from "@/lib/metrics/ut";
 import {
+  utAggs,
+  utAggsPrAll,
+  utOverlayLoaded,
+  utStatsFromRow,
+  type UtStats,
+} from "@/lib/metrics/ut";
+import {
+  sourceHasRows,
   weldingAggs,
   weldingStatsFromRow,
   weldTypeDistribution,
@@ -76,7 +95,9 @@ import { wpsRejectionTable } from "@/lib/metrics/wps";
 import { approvedWpsCount, qualifiedWelders } from "@/lib/metrics/refs";
 import {
   latestWeekEnd,
+  PROVISIONAL_METRICS,
   SNAPSHOT_METRICS,
+  SNAPSHOT_SCOPES,
   weeklyProgress,
   weeklySnapshot,
 } from "@/lib/metrics/trend";
@@ -86,6 +107,9 @@ import {
   Params,
   type Scope,
   scopeWhere,
+  SOURCES_CCC,
+  SOURCES_EP,
+  SOURCES_PR_ALL_LOADED,
 } from "@/lib/metrics/scope";
 import { query } from "@/lib/db";
 
@@ -170,7 +194,13 @@ export const TOTAL_PAGES = 44;
 /** KPI placeholder for a metric the loaded sources cannot produce. */
 export const HONEST_EMPTY = "—";
 
-const NF = new Intl.NumberFormat("en-US");
+/**
+ * Whole-number formatter. Films are `numeric(10,4)` since ruling R2-04 — CCC's
+ * `RT Film Total` is a per-weld-point share — so a total can be 481,319.25.
+ * The mockup prints film counts as integers, so display rounds; the underlying
+ * value is never rounded.
+ */
+const NF = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 
 function fixed(dp: number): Intl.NumberFormat {
   return new Intl.NumberFormat("en-US", {
@@ -205,6 +235,10 @@ function kpiPct(v: number | null | undefined): string {
   return v === null || v === undefined ? HONEST_EMPTY : `${fixed(2).format(v * 100)}%`;
 }
 
+function kpiNum(v: number | null | undefined, dp: number): string {
+  return v === null || v === undefined ? HONEST_EMPTY : fixed(dp).format(v);
+}
+
 // ── metric bundle ───────────────────────────────────────────────────────────
 
 export type Bundle = {
@@ -220,7 +254,17 @@ export type Bundle = {
   backlog: RtBacklogStats;
   rtAging: AgingBuckets | null;
   pwhtAging: AgingBuckets | null;
+  /**
+   * M44/M48/M49. `null` when the `spool` masters are not loaded — the
+   * difference between "no fabricated spools" and "we cannot know".
+   */
+  fabricated: FabricatedStats | null;
+  /** M52 coverage gap for this row's group; `null` where the page has no M52. */
+  coverageGap: number | null;
 };
+
+/** Which metric family a bundle was computed with (§0.3). */
+export type Variant = "EP" | "PR_ALL";
 
 const EMPTY_AGING: AgingBuckets = {
   within_3: 0,
@@ -280,57 +324,79 @@ function emptyBundle(): Bundle {
     },
     rtAging: null,
     pwhtAging: null,
+    fabricated: null,
+    coverageGap: null,
   };
 }
 
-function bundleFromRow(raw: unknown): Bundle {
+function bundleFromRow(raw: unknown, variant: Variant, withFabricated: boolean): Bundle {
   return {
     present: true,
     welding: weldingStatsFromRow(raw),
-    rt: rtStatsFromRow(raw),
+    rt: variant === "EP" ? rtStatsFromRow(raw) : rtPrAllStatsFromRow(raw),
     ut: utStatsFromRow(raw),
     pwht: pwhtStatsFromRow(raw),
     backlog: rtBacklogStatsFromRow(raw),
     rtAging: null,
     pwhtAging: null,
+    fabricated: withFabricated ? fabricatedStatsFromRow(raw) : null,
+    coverageGap: null,
   };
 }
 
-function allAggs(p: Params) {
+function allAggs(p: Params, variant: Variant, withFabricated: boolean) {
   return [
     ...weldingAggs(p),
-    ...rtAggs(p),
-    ...utAggs(p),
-    ...rtBacklogAggs(p),
-    ...pwhtAggs(p),
+    ...(variant === "EP" ? rtAggs(p) : rtAggsPrAll(p)),
+    ...(variant === "EP" ? utAggs(p) : utAggsPrAll(p)),
+    ...(variant === "EP" ? rtBacklogAggs(p) : rtBacklogAggsPrAll(p)),
+    ...(variant === "EP" ? pwhtAggs(p) : pwhtAggsPrAll(p)),
+    ...(withFabricated ? fabricatedAggs(p) : []),
   ];
 }
+
+/** Per-page facts that decide which measures can be answered at all. */
+export type Availability = {
+  variant: Variant;
+  /** `spool` has rows → M44/M48/M49 are computable. */
+  spool: boolean;
+  /**
+   * The UT-tracker OVERLAY (`manual_ut_report_no_all`) is materialised on the
+   * fact rows for this scope. NOT the same as "the tracker workbook is loaded":
+   * the workbook can be in `ref_ut_tracker_ccc` while the overlay is still
+   * NULL everywhere, and computing M32/M34 then yields a fabricated 0.
+   */
+  utTracker: boolean;
+  /** `weld` holds rows for this page's sources. */
+  sourceLoaded: boolean;
+};
 
 /**
  * One round-trip for every non-aging metric a widget group needs, at the
  * scope's grand total. This is the "batch per widget group" the brief asks
  * for: a 14-column table costs one query, not fourteen.
  */
-async function bundleTotal(scope: Scope): Promise<Bundle> {
+async function bundleTotal(scope: Scope, av: Availability): Promise<Bundle> {
   const p = new Params();
   const sql = buildGroupedSelect({
     groups: [],
-    aggs: allAggs(p),
+    aggs: allAggs(p, av.variant, av.spool),
     where: scopeWhere(scope, p),
   });
   const rows = await query(sql, p.list());
-  return rows[0] ? bundleFromRow(rows[0]) : emptyBundle();
+  return rows[0] ? bundleFromRow(rows[0], av.variant, av.spool) : emptyBundle();
 }
 
 /** The same bundle grouped by one dimension. */
 async function bundleBy(
   scope: Scope,
   group: GroupSpec,
+  av: Availability,
 ): Promise<Map<string | null, Bundle>> {
   const p = new Params();
   const sql = buildGroupedSelect({
     groups: [group],
-    aggs: allAggs(p),
+    aggs: allAggs(p, av.variant, av.spool),
     where: scopeWhere(scope, p),
   });
   const rows = await query(sql, p.list());
@@ -340,15 +406,32 @@ async function bundleBy(
     const key = rec[group.key] === null || rec[group.key] === undefined
       ? null
       : String(rec[group.key]);
-    out.set(key, bundleFromRow(raw));
+    out.set(key, bundleFromRow(raw, av.variant, av.spool));
   }
   return out;
+}
+
+/** Probe the batch-2 tables once per page rather than once per widget. */
+async function availability(
+  variant: Variant,
+  sources: readonly string[],
+): Promise<Availability> {
+  const [spool, utTracker, sourceLoaded] = await Promise.all([
+    spoolMasterLoaded(),
+    utOverlayLoaded({ sources }),
+    sourceHasRows(sources),
+  ]);
+  return { variant, spool, utTracker, sourceLoaded };
 }
 
 const GROUP_WELD_CAT: GroupSpec = { key: "weld_cat", sql: "w.weld_cat" };
 const GROUP_SERVICE_CLASS: GroupSpec = {
   key: "service_class_cat_wd",
   sql: "w.service_class_cat_wd",
+};
+const GROUP_SERVICE_CLASS_NDT: GroupSpec = {
+  key: "service_class_cat_ndt",
+  sql: "w.service_class_cat_ndt",
 };
 const GROUP_RT_PCT: GroupSpec = { key: "rt_pct", sql: "w.rt_pct::text" };
 const GROUP_SUBCON: GroupSpec = {
@@ -363,20 +446,6 @@ const GROUP_SUBCON: GroupSpec = {
  * loaded sources. They render blank, and the page discloses why.
  */
 const UNAVAILABLE_HEADERS = new Map<string, string>([
-  ["RT Backlog FABRICATED", "Spool Dump.txt (FABRICATED status) is not loaded"],
-  ["RT B.log & FAB-D", "Spool Dump.txt (FABRICATED status) is not loaded"],
-  [
-    'RT B.log & PWHT "Y" Done + PWHT "N" FAB-D',
-    "Spool Dump.txt (FABRICATED status) is not loaded",
-  ],
-  [
-    'RT B.LOG & PWHT"Y" NOT Done FAB-D',
-    "Spool Dump.txt (FABRICATED status) is not loaded",
-  ],
-  [
-    'RT B.Log & PWHT"Y" NOT Done FAB-D',
-    "Spool Dump.txt (FABRICATED status) is not loaded",
-  ],
   ["UT Def Len m", "the UT tracker workbooks are not loaded (M34)"],
   ["UT Def Len.m", "the UT tracker workbooks are not loaded (M34)"],
   ["UT Def. Len.m", "the UT tracker workbooks are not loaded (M34)"],
@@ -384,10 +453,26 @@ const UNAVAILABLE_HEADERS = new Map<string, string>([
   ["% Rej UT Len", "the UT tracker workbooks are not loaded (M36)"],
   ["UT Rej% Len", "the UT tracker workbooks are not loaded (M36)"],
   ["% of Rej UT by Length", "the UT tracker workbooks are not loaded (M36)"],
-  ["RT5% B.log Joints", "M52 needs the CCC service-class grain (HA / NDT Remarks)"],
-  ["RT10% B.log Joints", "M52 needs the CCC service-class grain (HA / NDT Remarks)"],
-  ["RT20% B.log Joints", "M52 needs the CCC service-class grain (HA / NDT Remarks)"],
-  ["RT20% Backlog", "M52 needs the CCC service-class grain (HA / NDT Remarks)"],
+]);
+
+/** Column headers whose metric is M44/M48/M49 — gated on the `spool` masters. */
+const FABRICATED_HEADERS = new Map<string, keyof FabricatedStats>([
+  ["RT Backlog FABRICATED", "rt_backlog_fabricated"],
+  ["RT B.log & FAB-D", "rt_backlog_fabricated"],
+  [
+    'RT B.log & PWHT "Y" Done + PWHT "N" FAB-D',
+    "rt_backlog_pwht_y_done_or_n_fabricated",
+  ],
+  ['RT B.LOG & PWHT"Y" NOT Done FAB-D', "rt_backlog_pwht_y_not_done_fabricated"],
+  ['RT B.Log & PWHT"Y" NOT Done FAB-D', "rt_backlog_pwht_y_not_done_fabricated"],
+]);
+
+/** Column headers whose metric is M52 (the RT-coverage gap). */
+const COVERAGE_GAP_HEADERS = new Set([
+  "RT5% B.log Joints",
+  "RT10% B.log Joints",
+  "RT20% B.log Joints",
+  "RT20% Backlog",
 ]);
 
 /**
@@ -399,6 +484,11 @@ function metricCell(header: string, b: Bundle): string | null {
   if (UNAVAILABLE_HEADERS.has(header)) return "";
   // No result row for this group: unknown, not zero.
   if (!b.present) return "";
+  const fab = FABRICATED_HEADERS.get(header);
+  if (fab) return b.fabricated ? cellInt(b.fabricated[fab]) : "";
+  if (COVERAGE_GAP_HEADERS.has(header)) {
+    return b.coverageGap === null ? "" : fixed(2).format(b.coverageGap);
+  }
   switch (header) {
     // ── welding ──
     case "Joints Welded":
@@ -679,9 +769,9 @@ function note(ctx: Ctx, msg: string): void {
 }
 
 const CCC_NOTE =
-  "CCC is not loaded: sources/ holds no CCC rows and the Talisman exports " +
-  "(CSVExport_Welder Record.csv, AllTrain_CSVExport_Joint Record.csv) are " +
-  "missing, so every figure on this page is unavailable — not zero.";
+  "CCC is not loaded yet: weld holds no CCC_WELDER_RECORD / CCC_JOINT_RECORD " +
+  "rows, so every figure on this page is unavailable — not zero. The page is " +
+  "built and will fill in as soon as the Talisman loaders have run.";
 
 const TREND_NOTE =
   "Weekly backlog and cumulative rejection-rate charts read " +
@@ -701,6 +791,22 @@ const MT_PT_SERIES_NOTE =
   "mv_weekly_progress does not carry MT/PT counts, so there is nothing to " +
   "plot per week (the page-total MT/PT Done KPI is computed).";
 
+const PROVISIONAL_NOTE =
+  "Provisional series (ruling R2-09): the RT Backlog column of the trend " +
+  "workbook is 0 for every sub-contractor in every week since 2024-06-28, so " +
+  "this line is seeded honest history, not a live backlog. It will step when " +
+  "the first ETL-computed week lands.";
+
+const CCC_AGING_NOTE =
+  "CCC aging buckets are blank on purpose (ruling R2-05): RT Selected Date is " +
+  "empty on all 5,430,732 rows of the CCC export, so M51 has no clock. No " +
+  "substitute date is used.";
+
+const HA_NOTE =
+  "M52's coverage ratio is computed one grain coarser than the DAX: weld.ha is " +
+  "empty for this scope, because the HA l0_abs_guide lookup file is not in " +
+  "sources/ and Subsystem Code / System no did not yield a handover area.";
+
 const REGISTER_NOTE =
   "Project_Welder and WPS Approved come from the manual registers " +
   "ref_qualified_welders / ref_wps_register; both are empty.";
@@ -713,18 +819,7 @@ const PROJECT_SCOPE_NOTE =
 // ── page families ───────────────────────────────────────────────────────────
 
 /** Pages whose every widget is unavailable, with the reason. */
-const UNAVAILABLE_PAGES = new Map<number, string>([
-  [3, CCC_NOTE],
-  [7, CCC_NOTE],
-  [12, CCC_NOTE],
-  [13, CCC_NOTE],
-  [14, CCC_NOTE],
-  [15, CCC_NOTE],
-  [16, CCC_NOTE],
-  [17, CCC_NOTE],
-  [18, CCC_NOTE],
-  [41, CCC_NOTE],
-]);
+const UNAVAILABLE_PAGES = new Map<number, string>();
 
 type SubconConf = {
   sub: string;
@@ -734,11 +829,41 @@ type SubconConf = {
   excludeWeldTypes?: readonly string[];
 };
 
+/** CCC binds `Project WD+WR+INCO+Acciona`; everyone else binds `Weld Dump` (§1.2). */
+function variantFor(sub: string): Variant {
+  return sub === "CCC" ? "PR_ALL" : "EP";
+}
+
+/** CCC's fact rows live in its own two files (R2-03). */
+function sourcesFor(sub: string): readonly string[] {
+  return sub === "CCC" ? SOURCES_CCC : SOURCES_EP;
+}
+
+/**
+ * §3.3 row grouping: CCC pages key on
+ * `Service Class + Service Cat+NDT Remarks` (label style `6R1B P 100` — CCC has
+ * no `Service Cat`, hence the double space); GAC/TEKFEN/MEDGULF key on
+ * `Service Class+Service Cat "WD"` (`1C3AS ABDF`). Do not merge the two.
+ */
+function serviceClassGroup(sub: string): GroupSpec {
+  return sub === "CCC" ? GROUP_SERVICE_CLASS_NDT : GROUP_SERVICE_CLASS;
+}
+
 /** mockup page → subcontractor scope for the NDE/PWHT pages 19–40. */
 const NDE_PAGES = new Map<
   number,
   { sub: string; rtPct: number; kind: "nde" | "pwht" }
 >([
+  // CCC (§3.3 mk 12-18). There is deliberately no CCC RT-30 % page: CCC's
+  // `RT/UT(%)` vocabulary is {0, 5, 10, 20, 100} — no 30 — and the 0 bucket
+  // (3.42 M of 5.43 M rows) has no page either (§7 C-7).
+  [12, { sub: "CCC", rtPct: 100, kind: "nde" }],
+  [13, { sub: "CCC", rtPct: 100, kind: "pwht" }],
+  [14, { sub: "CCC", rtPct: 5, kind: "nde" }],
+  [15, { sub: "CCC", rtPct: 5, kind: "pwht" }],
+  [16, { sub: "CCC", rtPct: 10, kind: "nde" }],
+  [17, { sub: "CCC", rtPct: 10, kind: "pwht" }],
+  [18, { sub: "CCC", rtPct: 20, kind: "nde" }],
   [19, { sub: "GAC", rtPct: 100, kind: "nde" }],
   [20, { sub: "GAC", rtPct: 100, kind: "pwht" }],
   [21, { sub: "GAC", rtPct: 5, kind: "nde" }],
@@ -765,6 +890,8 @@ const NDE_PAGES = new Map<
 
 /** mockup page → subcontractor scope for the status pages 4–6 and 8–11. */
 const SUBCON_PAGES = new Map<number, SubconConf[]>([
+  [3, [{ sub: "CCC" }]],
+  [7, [{ sub: "CCC" }]],
   // page 4 renders GAC twice: "Except SLG Service" then "SLG Service Only".
   [4, [{ sub: "GAC", serviceCat: "NONSG" }, { sub: "GAC", serviceCat: "SG" }]],
   [5, [{ sub: "TEKFEN", tmcpPipe: false }]],
@@ -777,6 +904,8 @@ const SUBCON_PAGES = new Map<number, SubconConf[]>([
 
 /** mockup page → the per-WPS pivots on pages 42–44 (page 41 is CCC). */
 const WPS_PAGES = new Map<number, SubconConf[]>([
+  // §3.4 mk 41: rows `wps_no`; `WT<>THD`, `wps_no IS NOT NULL`.
+  [41, [{ sub: "CCC", excludeWeldTypes: ["THD"] }]],
   // §3.4: the GAC "Except Slug Catcher" pivot drops `DMY`; the Slug-Catcher
   // pivot (the `Weld Dump` visual) does not.
   [
@@ -798,6 +927,7 @@ const WPS_PAGES = new Map<number, SubconConf[]>([
 
 function baseScope(conf: SubconConf): Scope {
   return {
+    sources: sourcesFor(conf.sub),
     subContractor: conf.sub,
     serviceCat: conf.serviceCat,
     tmcpPipe: conf.tmcpPipe,
@@ -864,16 +994,29 @@ export async function getWeldingPage(
 // ── page 1 — project KPIs and charts ────────────────────────────────────────
 
 async function buildProjectKpiPage(spec: SpecPage, ctx: Ctx): Promise<Widget[]> {
-  const scope: Scope = { excludeSubContractors: ["Inco"] };
+  // §3.1: every visual on pbix page 21 carries `SC <> Inco`. The union is the
+  // "PR all" family; ACCIONA and INCO are still unloaded (§7 C-12).
+  const scope: Scope = {
+    sources: SOURCES_PR_ALL_LOADED,
+    excludeSubContractors: ["Inco"],
+  };
+  const av = await availability("PR_ALL", SOURCES_PR_ALL_LOADED);
   const [b, welders, wpsApproved, weekly, dist] = await Promise.all([
-    bundleTotal(scope),
+    bundleTotal(scope, av),
     qualifiedWelders(),
     approvedWpsCount(),
-    weeklyProgress({ weeks: 14, excludeWeldCats: ["J"], excludeSubContractors: ["Inco"] }),
+    weeklyProgress({
+      weeks: 14,
+      excludeWeldCats: ["J"],
+      excludeSubContractors: ["Inco"],
+      sources: SOURCES_PR_ALL_LOADED,
+    }),
     weldTypeDistribution({ ...scope, excludeWeldTypes: ["THD"] }),
   ]);
   note(ctx, PROJECT_SCOPE_NOTE);
-  note(ctx, UT_TRACKER_NOTE);
+  if (!av.utTracker) note(ctx, UT_TRACKER_NOTE);
+  if (!av.spool) note(ctx, FABRICATED_NOTE);
+  if (!(await sourceHasRows(SOURCES_CCC))) note(ctx, CCC_NOTE);
   if (welders === null || wpsApproved === null) note(ctx, REGISTER_NOTE);
 
   const kpi = (label: string, value: string): KpiWidget => ({
@@ -913,14 +1056,29 @@ async function buildProjectKpiPage(spec: SpecPage, ctx: Ctx): Promise<Widget[]> 
         case "WPS Approved":
           out.push(kpi(w.label, kpiInt(wpsApproved)));
           break;
-        // M32/M34/M35/M36/M39 — need the UT trackers (R-05).
+        // M39 / M32 — the UT-tracker overlay columns. Computable only where a
+        // tracker was loaded; UT TRACKER (GAC) and (TEK) are still missing, so
+        // GAC/TEKFEN contribute nothing and the card says so (R-05).
         case "Numb UT/PAUT":
+          out.push(av.utTracker ? kpi(w.label, kpiInt(b.ut.ut_done)) : emptyKpi(w));
+          break;
         case 'UT/PAUT "A"':
+          out.push(av.utTracker ? kpi(w.label, kpiInt(b.ut.ut_accepted)) : emptyKpi(w));
+          break;
         case 'UT/PAUT "R"':
+          out.push(av.utTracker ? kpi(w.label, kpiInt(b.ut.ut_rejected)) : emptyKpi(w));
+          break;
+        // M35/M36 resolve through [Weld Length "PR all"], a LOOKUPVALUE into
+        // the `Weld Length` workbook that is still absent (§7 C-12 row 8).
         case "UT Rej% Len":
         case "UT Insp Len":
-        case "UT Def.Length":
           out.push(emptyKpi(w));
+          break;
+        // M34 — the CCC term needs ref_ut_tracker_ccc.
+        case "UT Def.Length":
+          out.push(
+            av.utTracker ? kpi(w.label, kpiNum(b.ut.ut_rej_length_m, 3)) : emptyKpi(w),
+          );
           break;
         default:
           out.push(emptyKpi(w));
@@ -932,13 +1090,30 @@ async function buildProjectKpiPage(spec: SpecPage, ctx: Ctx): Promise<Widget[]> 
     } else if (w.kind === "chart" && w.canvas_id === "chart1_weldtype") {
       out.push(donutChart(w, dist));
     } else if (w.kind === "chart") {
+      const metrics = snapshotMetricsFor(w, { project: true });
+      const isRate = metrics.some(
+        (m) =>
+          m === SNAPSHOT_METRICS.RT_FILM_REJECTION_RATE_PROJECT ||
+          m === SNAPSHOT_METRICS.UT_LENGTH_REJECTION_RATE_PROJECT,
+      );
+      // The page-1 backlog bars are `Sum(TREND Report[…])` with no
+      // sub-contractor in the visual — a project total, so sum the parties.
+      // `scope: ALL` keeps a `GAC SG` row from being added on top of `GAC`.
+      // The two rejection-rate lines are already project-wide values repeated
+      // on every party row, so they are deduplicated, never summed.
       const points = await weeklySnapshot({
-        metrics: snapshotMetricsFor(w),
-        subContractor: undefined,
+        metrics,
+        // The project rate lines (M25P/M36P) are written once per PARTY with
+        // the same project-wide value — the seeder has no PROJECT row for them
+        // (that sentinel carries only the MPI metrics) — so they are
+        // deduplicated per week, never summed and never filtered to PROJECT.
+        scope: SNAPSHOT_SCOPES.ALL,
+        aggregate: !isRate,
         weeks: w.labels.length,
       });
-      out.push(snapshotChart(w, points));
+      out.push(snapshotChart(w, points, { project: true }));
       if (points.length === 0) note(ctx, TREND_NOTE);
+      if (metrics.some((m) => PROVISIONAL_METRICS.has(m))) note(ctx, PROVISIONAL_NOTE);
     } else {
       out.push(emptyWidget(w));
     }
@@ -982,7 +1157,7 @@ function weeklyCatChart(
  */
 const SNAPSHOT_SERIES = new Map<string, string>([
   ["RT/UT+PWHT", SNAPSHOT_METRICS.RT_BACKLOG_PWHT_NOT_DONE],
-  ["RT/UT Only", SNAPSHOT_METRICS.RT_BACKLOG],
+  ["RT/UT Only", SNAPSHOT_METRICS.RT_BACKLOG_PWHT_Y_DONE_PLUS_N],
   ["PWHT+RT/UT", SNAPSHOT_METRICS.PWHT_BACKLOG_FOR_RT],
   ["PWHT+RT", SNAPSHOT_METRICS.PWHT_BACKLOG_FOR_RT],
   ["PWHT Only", SNAPSHOT_METRICS.PWHT_BACKLOG_ALL_TYPES],
@@ -990,26 +1165,60 @@ const SNAPSHOT_SERIES = new Map<string, string>([
   ["% UT Rej Length", SNAPSHOT_METRICS.UT_LENGTH_REJECTION_RATE],
 ]);
 
-function snapshotMetricsFor(spec: SpecChart): string[] {
+/**
+ * Page 1's two rejection-rate lines are the PROJECT columns of the same
+ * workbook (`Project RT % Rej Rate` / `Project UT % Rej Rate`), a flat value
+ * repeated on every sub-contractor row of a week — not the per-party rate.
+ */
+const SNAPSHOT_SERIES_PROJECT = new Map<string, string>([
+  ["% RT Rej Film", SNAPSHOT_METRICS.RT_FILM_REJECTION_RATE_PROJECT],
+  ["% UT Rej Length", SNAPSHOT_METRICS.UT_LENGTH_REJECTION_RATE_PROJECT],
+]);
+
+/**
+ * Rate metrics are stored as fractions (`0.0027` = 0.27 %, exactly as the
+ * workbook holds them) but the mockup's chart data are percent numbers
+ * (`"0.27"`), and the axes are labelled `percent-axis`. Scale on the way out so
+ * the stored value stays the source of truth.
+ */
+const RATE_METRICS: ReadonlySet<string> = new Set([
+  SNAPSHOT_METRICS.RT_FILM_REJECTION_RATE,
+  SNAPSHOT_METRICS.UT_LENGTH_REJECTION_RATE,
+  SNAPSHOT_METRICS.RT_FILM_REJECTION_RATE_PROJECT,
+  SNAPSHOT_METRICS.UT_LENGTH_REJECTION_RATE_PROJECT,
+]);
+
+function snapshotMetricsFor(
+  spec: SpecChart,
+  opts: { project?: boolean } = {},
+): string[] {
+  const map = opts.project ? SNAPSHOT_SERIES_PROJECT : SNAPSHOT_SERIES;
   return spec.datasets
-    .map((d) => SNAPSHOT_SERIES.get(d.label ?? ""))
+    .map((d) => map.get(d.label ?? "") ?? SNAPSHOT_SERIES.get(d.label ?? ""))
     .filter((m): m is string => Boolean(m));
 }
 
 function snapshotChart(
   spec: SpecChart,
   points: Awaited<ReturnType<typeof weeklySnapshot>>,
+  opts: { project?: boolean } = {},
 ): ChartWidget {
   const weeks = [...new Set(points.map((p) => p.week_end_date))].sort();
+  const map = opts.project ? SNAPSHOT_SERIES_PROJECT : SNAPSHOT_SERIES;
   const datasets = spec.datasets.map((d) => {
-    const metric = SNAPSHOT_SERIES.get(d.label ?? "");
+    const metric = map.get(d.label ?? "") ?? SNAPSHOT_SERIES.get(d.label ?? "");
+    const scale = metric && RATE_METRICS.has(metric) ? 100 : 1;
     return {
       label: d.label ?? "",
-      data: weeks.map(
-        (wk) =>
-          points.find((p) => p.week_end_date === wk && p.metric === metric)
-            ?.value ?? null,
-      ),
+      data: weeks.map((wk) => {
+        const v =
+          points.find((p) => p.week_end_date === wk && p.metric === metric)?.value ??
+          null;
+        if (v === null) return null;
+        // Round after scaling: 0.0045 * 100 is 0.44999999999999996 in binary
+        // floating point, and the mockup prints "0.45".
+        return scale === 1 ? v : Number((v * scale).toFixed(2));
+      }),
     };
   });
   return {
@@ -1045,22 +1254,30 @@ async function buildProjectStatusPage(
   spec: SpecPage,
   ctx: Ctx,
 ): Promise<Widget[]> {
-  const scope: Scope = { excludeSubContractors: ["Inco"], temporaryLines: false };
+  const scope: Scope = {
+    sources: SOURCES_PR_ALL_LOADED,
+    excludeSubContractors: ["Inco"],
+    temporaryLines: false,
+  };
+  const av = await availability("PR_ALL", SOURCES_PR_ALL_LOADED);
   note(ctx, PROJECT_SCOPE_NOTE);
-  note(ctx, UT_TRACKER_NOTE);
+  if (!av.utTracker) note(ctx, UT_TRACKER_NOTE);
+  if (!(await sourceHasRows(SOURCES_CCC))) note(ctx, CCC_NOTE);
   const weekEnd = await latestWeekEnd();
+  const rtTypes = { ...scope, weldTypes: ["BW", "GW", "MW", "CLET"] };
+  const noJ = { ...scope, excludeWeldCats: ["J"] };
   const [pivot, thisWeek, byCat, total, bySub, subTotal] = await Promise.all([
     weldTypePivot(scope),
     weekEnd
       ? weldTypePivot(scope, { thisWeekEnding: weekEnd })
       : Promise.resolve(null),
-    bundleBy({ ...scope, weldTypes: ["BW", "GW", "MW", "CLET"] }, GROUP_WELD_CAT),
-    bundleTotal({ ...scope, weldTypes: ["BW", "GW", "MW", "CLET"] }),
-    bundleBy({ ...scope, excludeWeldCats: ["J"] }, GROUP_SUBCON),
-    bundleTotal({ ...scope, excludeWeldCats: ["J"] }),
+    bundleBy(rtTypes, GROUP_WELD_CAT, av),
+    bundleTotal(rtTypes, av),
+    bundleBy(noJ, GROUP_SUBCON, av),
+    bundleTotal(noJ, av),
   ]);
   if (!thisWeek) note(ctx, TREND_NOTE);
-  note(ctx, FABRICATED_NOTE);
+  if (!av.spool) note(ctx, FABRICATED_NOTE);
 
   const out: Widget[] = [];
   let tableIdx = 0;
@@ -1117,6 +1334,7 @@ async function buildSubconPage(
   ctx: Ctx,
 ): Promise<Widget[]> {
   const weekEnd = await latestWeekEnd();
+  const av = await availability(variantFor(confs[0]!.sub), sourcesFor(confs[0]!.sub));
   const blocks = await Promise.all(
     confs.map(async (conf) => {
       const scope = baseScope(conf);
@@ -1125,17 +1343,23 @@ async function buildSubconPage(
         weekEnd
           ? weldTypePivot(scope, { thisWeekEnding: weekEnd })
           : Promise.resolve(null),
-        bundleBy(scope, GROUP_WELD_CAT),
-        bundleTotal(scope),
-        weeklyProgress({ subContractor: conf.sub, weeks: 8, excludeWeldCats: ["J"] }),
+        bundleBy(scope, GROUP_WELD_CAT, av),
+        bundleTotal(scope, av),
+        weeklyProgress({
+          subContractor: conf.sub,
+          weeks: 8,
+          excludeWeldCats: ["J"],
+          sources: sourcesFor(conf.sub),
+        }),
         weldTypeDistribution({ ...scope, excludeWeldTypes: ["THD"] }),
       ]);
       return { conf, pivot, thisWeek, byCat, total, weekly, dist };
     }),
   );
   if (!weekEnd) note(ctx, TREND_NOTE);
-  note(ctx, UT_TRACKER_NOTE);
-  note(ctx, FABRICATED_NOTE);
+  if (!av.utTracker) note(ctx, UT_TRACKER_NOTE);
+  if (!av.spool) note(ctx, FABRICATED_NOTE);
+  if (!av.sourceLoaded) note(ctx, sourceNote(confs[0]!.sub));
 
   const out: Widget[] = [];
   let blockIdx = 0;
@@ -1160,13 +1384,18 @@ async function buildSubconPage(
           note(ctx, MT_PT_SERIES_NOTE);
         }
       } else {
+        const metrics = snapshotMetricsFor(w);
         const points = await weeklySnapshot({
-          metrics: snapshotMetricsFor(w),
+          metrics,
           subContractor: blk.conf.sub,
+          // R2-08: the workbook's `GAC SG` label is normalised to
+          // (sub_contractor='GAC', scope='SG'); pick the matching qualifier.
+          scope: snapshotScopeFor(blk.conf),
           weeks: w.labels.length,
         });
         out.push(snapshotChart(w, points));
         if (points.length === 0) note(ctx, TREND_NOTE);
+        if (metrics.some((m) => PROVISIONAL_METRICS.has(m))) note(ctx, PROVISIONAL_NOTE);
       }
     } else if (w.kind === "table") {
       const title = w.title ?? "";
@@ -1263,7 +1492,11 @@ async function buildNdePage(
   conf: { sub: string; rtPct: number; kind: "nde" | "pwht" },
   ctx: Ctx,
 ): Promise<Widget[]> {
+  const isCcc = conf.sub === "CCC";
+  const variant = variantFor(conf.sub);
+  const classGroup = serviceClassGroup(conf.sub);
   const scope: Scope = {
+    sources: sourcesFor(conf.sub),
     subContractor: conf.sub,
     rtPct: conf.rtPct,
     temporaryLines: false,
@@ -1271,9 +1504,23 @@ async function buildNdePage(
     // §3.3: the PWHT-by-RT% pages carry the extra filter "PWHT Weld Status not
     // blank". It is a no-op for the backlog measures (their status list is
     // non-blank by construction) and restricts Joints Welded / PWHT Done.
-    pwhtStatusPresent: conf.kind === "pwht" ? true : undefined,
+    // CCC rows carry no `PWHT Weld Status` at all (its PWHT comes from the
+    // joint record), so applying it there would empty the page.
+    pwhtStatusPresent: conf.kind === "pwht" && !isCcc ? true : undefined,
   };
-  const cond = conf.kind === "pwht" ? pwhtBacklogCond : rtBacklogCond;
+  const av = await availability(variant, sourcesFor(conf.sub));
+  const cond =
+    conf.kind === "pwht"
+      ? variant === "EP"
+        ? pwhtBacklogCond
+        : pwhtBacklogCondPrAll
+      : variant === "EP"
+        ? rtBacklogCond
+        : rtBacklogCondPrAll;
+
+  // R2-05: `RT Selected Date` is empty on every CCC row, so M51/M66 have no
+  // clock for CCC. Honest-empty, never a substituted date.
+  const wantAging = !isCcc;
   const [
     total,
     byCat,
@@ -1283,23 +1530,56 @@ async function buildNdePage(
     agingByCat,
     agingByClass,
   ] = await Promise.all([
-    bundleTotal(scope),
-    bundleBy(scope, GROUP_WELD_CAT),
-    bundleBy(scope, GROUP_SERVICE_CLASS),
-    bundleBy(scope, GROUP_RT_PCT),
-    backlogAging(scope, ctx.asOf, cond),
-    backlogAgingBy(scope, ctx.asOf, cond, GROUP_WELD_CAT),
-    backlogAgingBy(scope, ctx.asOf, cond, GROUP_SERVICE_CLASS),
+    bundleTotal(scope, av),
+    bundleBy(scope, GROUP_WELD_CAT, av),
+    bundleBy(scope, classGroup, av),
+    bundleBy(scope, GROUP_RT_PCT, av),
+    wantAging ? backlogAging(scope, ctx.asOf, cond) : Promise.resolve(null),
+    wantAging
+      ? backlogAgingBy(scope, ctx.asOf, cond, GROUP_WELD_CAT)
+      : Promise.resolve(new Map<string | null, AgingBuckets>()),
+    wantAging
+      ? backlogAgingBy(scope, ctx.asOf, cond, classGroup)
+      : Promise.resolve(new Map<string | null, AgingBuckets>()),
   ]);
-  note(ctx, FABRICATED_NOTE);
-  note(ctx, UT_TRACKER_NOTE);
+  if (!av.spool) note(ctx, FABRICATED_NOTE);
+  if (!av.utTracker) note(ctx, UT_TRACKER_NOTE);
+  if (isCcc) note(ctx, CCC_AGING_NOTE);
+  if (!av.sourceLoaded) note(ctx, sourceNote(conf.sub));
 
-  const attach = (b: Bundle, aging: AgingBuckets | undefined): Bundle =>
-    conf.kind === "pwht"
-      ? { ...b, pwhtAging: aging ?? EMPTY_AGING }
-      : { ...b, rtAging: aging ?? EMPTY_AGING };
+  // M52 appears BOTH as a column of the details table and as its own table on
+  // the 5/10/20 % pages, so compute the per-group gap once and reuse it.
+  const wantGap = spec.widgets.some(
+    (w) =>
+      w.kind === "table" &&
+      w.columns.some((c) => COVERAGE_GAP_HEADERS.has(c)),
+  );
+  const gapByGroup = wantGap
+    ? new Map(
+        (
+          await coverageGapByServiceClass(scope, conf.rtPct / 100, classGroup, {
+            byHa: await hasHaValues(scope),
+          })
+        ).map((r) => [r.group, r.backlog_joints] as const),
+      )
+    : new Map<string | null, number>();
+  const gapTotal = wantGap
+    ? [...gapByGroup.values()].reduce((a, v) => a + v, 0)
+    : null;
 
-  const totalB = attach(total, agingTotal);
+  const attach = (
+    b: Bundle,
+    aging: AgingBuckets | undefined,
+    gap: number | null = gapTotal,
+  ): Bundle => {
+    const withGap: Bundle = { ...b, coverageGap: wantGap ? gap : null };
+    if (!wantAging) return withGap;
+    return conf.kind === "pwht"
+      ? { ...withGap, pwhtAging: aging ?? EMPTY_AGING }
+      : { ...withGap, rtAging: aging ?? EMPTY_AGING };
+  };
+
+  const totalB = attach(total, agingTotal ?? undefined);
 
   const out: Widget[] = [];
   for (const w of spec.widgets) {
@@ -1319,15 +1599,18 @@ async function buildNdePage(
         .sort()) {
         rows.push({
           label: cls,
-          bundle: attach(byClass.get(cls)!, agingByClass.get(cls)),
+          bundle: attach(byClass.get(cls)!, agingByClass.get(cls), gapByGroup.get(cls) ?? 0),
         });
       }
       out.push(metricTable(w, rows, totalB));
+    } else if (key === "Service Class+NDT Remarks") {
+      // §3.3 mk 14/16/18 second table: M52, the RT-coverage gap.
+      out.push(await coverageGapTable(w, scope, conf.rtPct, classGroup, ctx));
     } else if (key === "RT%") {
       const rows: RowSpec[] = [];
       const pctKey = String(conf.rtPct);
       const pctBundle = byRtPct.get(pctKey);
-      if (pctBundle) rows.push({ label: pctKey, bundle: attach(pctBundle, agingTotal) });
+      if (pctBundle) rows.push({ label: pctKey, bundle: attach(pctBundle, agingTotal ?? undefined) });
       for (const c of orderedCats(byCat.keys())) {
         rows.push({ label: c, bundle: attach(byCat.get(c)!, agingByCat.get(c)) });
       }
@@ -1355,6 +1638,7 @@ async function buildWpsPage(
   confs: SubconConf[],
   ctx: Ctx,
 ): Promise<Widget[]> {
+  const av = await availability(variantFor(confs[0]!.sub), sourcesFor(confs[0]!.sub));
   const blocks = await Promise.all(
     confs.map(async (conf) => {
       const scope: Scope = {
@@ -1368,12 +1652,12 @@ async function buildWpsPage(
         // WPS rows: a joint welded under two WPSs would otherwise be counted
         // twice. Evidence (calculation-logic §3.2): mockup page 42 GAC total
         // 371,613 = page 4 GAC 375,152 − GAC DMY 3,539, i.e. a distinct count.
-        bundleTotal(scope),
+        bundleTotal(scope, av),
       ]);
       return { rows, total };
     }),
   );
-  void ctx;
+  if (!av.sourceLoaded) note(ctx, sourceNote(confs[0]!.sub));
   const out: Widget[] = [];
   let i = 0;
   for (const w of spec.widgets) {
@@ -1431,4 +1715,56 @@ async function buildWpsPage(
     });
   }
   return out;
+}
+
+/**
+ * R2-08: the trend workbooks label some rows `GAC SG` / `TEKFEN TMCP`; the
+ * seeder splits those into `sub_contractor` + `scope`. Map a page block onto
+ * the qualifier it needs.
+ */
+function snapshotScopeFor(conf: SubconConf): string | undefined {
+  if (conf.serviceCat === "SG") return SNAPSHOT_SCOPES.SG;
+  if (conf.tmcpPipe === true) return SNAPSHOT_SCOPES.TMCP;
+  if (conf.serviceCat === "NONSG") return SNAPSHOT_SCOPES.ALL;
+  return undefined;
+}
+
+/**
+ * M52 — the "RT Backlog" second table on the CCC 5/10/20 % pages: how many more
+ * joints must be shot to reach the contractual coverage for each service class.
+ * Rows with a gap of 0 are dropped, exactly as the mockup does
+ * (`>0`, §3.3 mk 14).
+ */
+async function coverageGapTable(
+  spec: SpecTable,
+  scope: Scope,
+  rtPct: number,
+  group: GroupSpec,
+  ctx: Ctx,
+): Promise<TableWidget> {
+  const target = rtPct / 100;
+  const byHa = await hasHaValues(scope);
+  if (!byHa) note(ctx, HA_NOTE);
+  const rows = await coverageGapByServiceClass(scope, target, group, { byHa });
+  const body = rows
+    .filter((r) => r.backlog_joints > 0)
+    .sort((a, b) => b.backlog_joints - a.backlog_joints)
+    .map((r) => [r.group ?? "", fixed(2).format(r.backlog_joints)]);
+  const total = rows.reduce((a, r) => a + r.backlog_joints, 0);
+  const totalRow = ["Total", total === 0 ? "" : fixed(2).format(total)];
+  return {
+    kind: "table",
+    title: spec.title ?? "",
+    columns: spec.columns,
+    rows: [...body, totalRow],
+    total_row: totalRow,
+  };
+}
+
+/** Provenance note for a page whose fact source has not been loaded yet. */
+function sourceNote(sub: string): string {
+  return sub === "CCC"
+    ? CCC_NOTE
+    : `${sub} is not loaded: weld holds no rows for this subcontractor's source, ` +
+        `so every figure on this page is unavailable — not zero.`;
 }

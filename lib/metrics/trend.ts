@@ -32,21 +32,69 @@ export const TARGET_LINES = {
   UT_UNACCEPTABLE: 0.05,
 } as const;
 
-/** Metric keys the ETL is expected to append to `weld_weekly_snapshot`. */
+/**
+ * The `metric` vocabulary of `weld_weekly_snapshot`, fixed by
+ * `analysis/sources2/trend-seed-plan.md`. They are the `M##` ids of
+ * `calculation-logic.md` §2, so a snapshot row and a live measure are
+ * comparable by name.
+ */
 export const SNAPSHOT_METRICS = {
-  RT_BACKLOG: "rt_backlog",
-  RT_BACKLOG_PWHT_NOT_DONE: "rt_backlog_pwht_not_done",
-  RT_BACKLOG_PWHT_Y_DONE_PLUS_N: "rt_backlog_pwht_y_done_plus_n",
-  PWHT_BACKLOG_ALL_TYPES: "pwht_backlog_all_types",
-  PWHT_BACKLOG_FOR_RT: "pwht_backlog_for_rt",
-  RT_FILM_REJECTION_RATE: "rt_film_rejection_rate",
-  UT_LENGTH_REJECTION_RATE: "ut_length_rejection_rate",
+  /** `TREND Report[RT Backlog]` — **dead column**, see {@link PROVISIONAL_METRICS}. */
+  RT_BACKLOG: "M40",
+  /** `RT BACKLOG & PWHT Not Done`. */
+  RT_BACKLOG_PWHT_NOT_DONE: "M47",
+  /** `RT BACKLOG & PWHT "Y" Done + "N"`. */
+  RT_BACKLOG_PWHT_Y_DONE_PLUS_N: "M48",
+  /** `PWHT Backlog All Types`. */
+  PWHT_BACKLOG_ALL_TYPES: "M60",
+  /** `PWHT Backlog For RT` (BW/GW/CLET/MW). */
+  PWHT_BACKLOG_FOR_RT: "M62",
+  /** `PWHT BACKLOG RT NOT Done (SG+TMCP)`. */
+  PWHT_BACKLOG_RT_NOT_DONE: "M64",
+  /** `TREND RT UT[RT% Rate]` — per sub-contractor film rejection rate. */
+  RT_FILM_REJECTION_RATE: "M25",
+  /** `TREND RT UT[UT% Rate]` — per sub-contractor UT length rejection rate. */
+  UT_LENGTH_REJECTION_RATE: "M36",
+  /** `TREND RT UT[Project RT % Rej Rate]` — the project-wide flat line. */
+  RT_FILM_REJECTION_RATE_PROJECT: "M25P",
+  /** `TREND RT UT[Project UT % Rej Rate]`. */
+  UT_LENGTH_REJECTION_RATE_PROJECT: "M36P",
+  /** Weekly active welders — NOT M90 (`Project_Welder`), which is still absent. */
+  ACTIVE_WELDERS: "M90W",
+  /** `CUM MPI Done[MPI Done]` — cumulative, project-wide. */
+  MPI_DONE: "M71",
+  /** `CUM MPI Done[MPI / PT Done]`. */
+  MPI_PT_DONE: "M71PT",
 } as const;
+
+/**
+ * Ruling R2-09: series the seeder wrote as-is from a column that stopped being
+ * maintained. `TREND Report[RT Backlog]` is `0` for every sub-contractor in
+ * every week since 2024-06-28 (only 19 of 132 weeks are non-zero, all in
+ * Feb-Jun 2024), so the M40 trend line is a flat zero for the last two years —
+ * honest history, not a loading defect. Any widget that plots one of these must
+ * say `provisional` until the first ETL-computed week lands.
+ */
+export const PROVISIONAL_METRICS: ReadonlySet<string> = new Set([
+  SNAPSHOT_METRICS.RT_BACKLOG,
+]);
+
+/** R2-08: the `scope` qualifier split off the workbook's sub-contractor label. */
+export const SNAPSHOT_SCOPES = {
+  ALL: "ALL",
+  SG: "SG",
+  NONSG: "NONSG",
+  TMCP: "TMCP",
+} as const;
+
+/** R2-08: MPI rows carry no sub-contractor; the seeder writes this sentinel. */
+export const SNAPSHOT_PROJECT = "PROJECT";
 
 const SnapshotRow = z.object({
   // Selected as `::text`; see the note in lib/db.ts on date/timezone drift.
   week_end_date: z.string().transform((v) => v.slice(0, 10)),
   sub_contractor: zText,
+  scope: zText,
   metric: z.string(),
   value: zSum,
 });
@@ -61,8 +109,19 @@ export type SnapshotPoint = z.infer<typeof SnapshotRow>;
 export async function weeklySnapshot(opts: {
   metrics: readonly string[];
   subContractor?: string | null;
+  /** R2-08 qualifier: `ALL` | `SG` | `NONSG` | `TMCP`. Omit to take every scope. */
+  scope?: string;
   weeks?: number;
+  /**
+   * Project-level series: sum `value` across sub-contractors per (week, metric)
+   * instead of returning one row per party. That is what the mockup's page-1
+   * backlog bars are — `Sum(TREND Report[…])` with no sub-contractor in the
+   * visual. Pair it with `scope: 'ALL'` so a `GAC SG` row is not added on top
+   * of its own `GAC` parent.
+   */
+  aggregate?: boolean;
 }): Promise<SnapshotPoint[]> {
+  if (opts.metrics.length === 0) return [];
   const p = new Params();
   const conds = [`s.metric = ANY(${p.any(opts.metrics)})`];
   if (opts.subContractor === null) {
@@ -70,17 +129,28 @@ export async function weeklySnapshot(opts: {
   } else if (opts.subContractor !== undefined) {
     conds.push(`s.sub_contractor = ${p.add(opts.subContractor)}`);
   }
+  if (opts.scope !== undefined) {
+    conds.push(`s.scope = ${p.add(opts.scope)}`);
+  }
   const limit = p.add(opts.weeks ?? 14);
+  const select = opts.aggregate
+    ? `SELECT s.week_end_date::text AS week_end_date, NULL::text AS sub_contractor,\n` +
+      `       NULL::text AS scope, s.metric, sum(s.value) AS value\n` +
+      `  FROM weld_weekly_snapshot s JOIN weeks ON weeks.week_end_date = s.week_end_date\n` +
+      ` WHERE ${conds.join(" AND ")}\n` +
+      ` GROUP BY 1, 4\n` +
+      ` ORDER BY 1, 4`
+    : `SELECT s.week_end_date::text AS week_end_date, s.sub_contractor, s.scope, s.metric, s.value\n` +
+      `  FROM weld_weekly_snapshot s JOIN weeks ON weeks.week_end_date = s.week_end_date\n` +
+      ` WHERE ${conds.join(" AND ")}\n` +
+      ` ORDER BY s.week_end_date, s.metric`;
   const sql =
     `WITH weeks AS (\n` +
     `  SELECT DISTINCT s.week_end_date FROM weld_weekly_snapshot s\n` +
     `   WHERE ${conds.join(" AND ")}\n` +
     `   ORDER BY 1 DESC LIMIT ${limit}\n` +
     `)\n` +
-    `SELECT s.week_end_date::text AS week_end_date, s.sub_contractor, s.metric, s.value\n` +
-    `  FROM weld_weekly_snapshot s JOIN weeks ON weeks.week_end_date = s.week_end_date\n` +
-    ` WHERE ${conds.join(" AND ")}\n` +
-    ` ORDER BY s.week_end_date, s.metric`;
+    select;
   try {
     const rows = await query(sql, p.list());
     return z.array(SnapshotRow).parse(rows);

@@ -212,3 +212,21 @@ export async function weldTypeDistribution(
 export function weldingStatsFromRow(raw: unknown): WeldingStats {
   return WeldingRow.parse(raw);
 }
+
+/**
+ * `true` when `weld` holds at least one row for the given sources.
+ *
+ * Used to tell "this subcontractor has no welds" from "this subcontractor's
+ * export is not loaded yet" — the difference between a legitimate 0 and an
+ * honest-empty. Cheap: an `EXISTS`, not a `count(*)`.
+ */
+export async function sourceHasRows(sources: readonly string[]): Promise<boolean> {
+  const p = new Params();
+  const sql = `SELECT EXISTS (SELECT 1 FROM weld w WHERE w.source::text = ANY(${p.any(sources)}::text[])) AS present`;
+  try {
+    const rows = await query<{ present: boolean }>(sql, p.list());
+    return Boolean(rows[0]?.present);
+  } catch {
+    return false;
+  }
+}

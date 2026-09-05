@@ -23,15 +23,38 @@ import { z } from "zod";
 
 /** §0.3 — the fact-table scope discriminator. */
 export const SOURCES_EP = ["WELD_DUMP"] as const;
+
+/** CCC's own two files: the welder-pass fact export + the NOT-WELDED joints (R2-03). */
+export const SOURCES_CCC = ["CCC_WELDER_RECORD", "CCC_JOINT_RECORD"] as const;
+
+/**
+ * The `"PR all"` union as the pbix defines it. ACCIONA and INCO are still
+ * absent from `sources/` (calculation-logic §7 C-12), so nothing can be
+ * computed for them — use {@link SOURCES_PR_ALL_LOADED} for real queries and
+ * keep this list as the documented target.
+ */
 export const SOURCES_PR_ALL = [
   "WELD_DUMP",
   "CCC_WELDER_RECORD",
+  "CCC_JOINT_RECORD",
   "ACCIONA",
   "INCO",
 ] as const;
 
 /**
- * R-04: `PWHT Y/N = '25.01'` (580,860 rows) is counted as BOTH `Y` and `N`,
+ * `"PR all"` restricted to what is actually loadable today. Every project-scope
+ * page must disclose that ACCIONA/INCO are missing rather than implying the
+ * union is complete.
+ */
+export const SOURCES_PR_ALL_LOADED = [
+  "WELD_DUMP",
+  "CCC_WELDER_RECORD",
+  "CCC_JOINT_RECORD",
+] as const;
+
+/**
+ * R-04 / §7 C-4: `PWHT Y/N = '25.01'` (580,860 rows) is counted as BOTH `Y` and
+ * `N`,
  * exactly as the DAX does (`PWHT Y/N IN {"Y","25.01"}` in the done measures
  * and `IN {"N","25.01"}` in the no-PWHT ones). Named so the report owner can
  * rule on it later without hunting through the SQL.
@@ -68,6 +91,15 @@ export const RT_BACKLOG_STATUS_PRALL = [...RT_BACKLOG_STATUS, "T1-2"] as const;
 
 /** Second branch of every RT-backlog measure: `RT% = 100 AND status IN {?,'',S}`. */
 export const RT_BACKLOG_STATUS_100 = ["?", "S"] as const; // '' is handled as NULL
+
+/**
+ * R2-13 / §7 C-2: CCC rows carry a synthesised `RT Weld Status` of `HS CCC` on
+ * every `RT% = 100` row (484,130 of them) — a token `Weld Dump` never emits.
+ * `HS CCC` is already in {@link RT_BACKLOG_STATUS} verbatim from the DAX, so the
+ * CCC hold list needs no special-casing; this constant exists so the intent is
+ * greppable and the ruling is testable.
+ */
+export const CCC_RT_HOLD_TOKEN = "HS CCC";
 
 /** §0.6 — PWHT hold list, `"EP"`/`"WD"` flavour = the RT list without `'HS CCC'`. */
 export const PWHT_BACKLOG_STATUS = RT_BACKLOG_STATUS.filter(
@@ -149,6 +181,13 @@ export type Scope = {
   pwhtStatusPresent?: boolean;
   /** §0.3 source discriminator; defaults to the `"EP"` scope. */
   sources?: readonly string[];
+  /**
+   * `Area Classification` as text — the pbix `"PR all"` vocabulary (22 values:
+   * the dump's 7-digit codes plus CCC's `Train-8 Process` style names). Group
+   * and slice on this, never on the integer `area_classification`, which is
+   * NULL for every CCC row.
+   */
+  areaClassificationLabel?: string;
 };
 
 /**
@@ -223,6 +262,9 @@ export function scopeConditions(
   }
   if (scope.pwhtStatusPresent) {
     c.push(`${a}.pwht_weld_status IS NOT NULL`);
+  }
+  if (scope.areaClassificationLabel !== undefined) {
+    c.push(`${a}.area_classification_label = ${p.add(scope.areaClassificationLabel)}`);
   }
   return c;
 }
@@ -342,4 +384,22 @@ export const zText = z.union([z.null(), z.string()]);
 export function divide(a: number | null, b: number | null): number | null {
   if (a === null || b === null || b === 0) return null;
   return a / b;
+}
+
+
+// ── FABRICATED (M44 / M48 / M49) ────────────────────────────────────────────
+
+/**
+ * `[Status FABRICATED]` / `[Spool ID Status] = "Fabricated"`.
+ *
+ * The DAX looks the spool up by `Spool ID` and asks whether it has a
+ * `FABRICATED` date. Ruling R2-06 unions the two spool masters into one table
+ * with a `source` discriminator: `Spool Dump.txt` covers GAC/TEKFEN/MEDGULF
+ * (its `FABRICATED` column) and `Spool.csv` covers CCC (its `SHOP WELD
+ * COMPLETE`, mapped onto the same `fabricated` column) — §7 C-13. `Spool
+ * Dump.txt` holds **zero** CCC spools, so matching on `spool_id` alone is
+ * unambiguous; the source is not part of the predicate.
+ */
+export function fabricatedCond(a = "w"): string {
+  return `EXISTS (SELECT 1 FROM spool sp WHERE sp.spool_id = ${a}.spool_id AND sp.fabricated IS NOT NULL)`;
 }

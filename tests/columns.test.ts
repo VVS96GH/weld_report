@@ -28,9 +28,10 @@ function dumpColumns(): Set<string> {
   return out;
 }
 
-/** §6.2 derived columns + the surrogate key. */
+/** §6.2 derived columns, the surrogate key, and the 0003 "M placeholder" set. */
 const DERIVED = new Set([
   "id",
+  "load_id",
   "source",
   "joint_id",
   "spool_id",
@@ -43,7 +44,63 @@ const DERIVED = new Set([
   "exclude_ut_films",
   "exclude_debris_films",
   "is_cancelled",
+  // Blank placeholders in 0003 that CCC's export fills
+  // (project-wd-wr-inco-acciona.md §5.2).
+  "rt_ut",
+  "ndt_remarks",
+  "tracer_shot",
+  "weld_point_code",
+  "original_joint",
+  "repair_suffix",
+  "pwht_y_n_ccc",
+  "pwht_report_no_ccc",
+  "pwht_date_no_ccc",
+  "spool_status",
+  "ha",
 ]);
+
+/**
+ * Batch-2 additions, parsed out of the migrations rather than transcribed, so
+ * the contract cannot drift from `db/migrations/0010_batch2_schema.sql`.
+ */
+function batch2Columns(): Set<string> {
+  const out = new Set<string>();
+  const dir = path.join(ROOT, "db/migrations");
+  for (const f of readdirSync(dir)) {
+    if (!f.endsWith(".sql")) continue;
+    const sql = readFileSync(path.join(dir, f), "utf8");
+    for (const m of sql.matchAll(/ADD COLUMN IF NOT EXISTS\s+([a-z0-9_]+)/gi)) {
+      out.add(m[1]);
+    }
+  }
+  return out;
+}
+
+/** `spool` (R2-06) — aliased `sp` in lib/metrics/scope.ts. */
+function spoolColumns(): Set<string> {
+  const sql = readFileSync(
+    path.join(ROOT, "db/migrations/0010_batch2_schema.sql"),
+    "utf8",
+  );
+  const block = sql.slice(sql.indexOf("CREATE TABLE spool ("));
+  const body = block.slice(0, block.indexOf("PRIMARY KEY"));
+  const out = new Set<string>();
+  for (const m of body.matchAll(/^\s{2}([a-z0-9_]+)\s+[a-z]/gim)) out.add(m[1]);
+  return out;
+}
+
+/** `ref_ut_tracker_ccc` (R2-14) — aliased `t` in lib/metrics/ut.ts. */
+function utTrackerColumns(): Set<string> {
+  const sql = readFileSync(
+    path.join(ROOT, "db/migrations/0010_batch2_schema.sql"),
+    "utf8",
+  );
+  const block = sql.slice(sql.indexOf("CREATE TABLE IF NOT EXISTS ref_ut_tracker_ccc ("));
+  const body = block.slice(0, block.indexOf(");"));
+  const out = new Set<string>();
+  for (const m of body.matchAll(/^\s{2}([a-z0-9_]+)\s+[a-z]/gim)) out.add(m[1]);
+  return out;
+}
 
 /** §6.5 `mv_weekly_progress`, per db/migrations/0006_views.sql. */
 const MV_WEEKLY_PROGRESS = new Set([
@@ -77,6 +134,9 @@ const WEEKLY_SNAPSHOT = new Set([
   "value",
   "load_id",
   "recorded_at",
+  // R2-08
+  "scope",
+  "label_raw",
 ]);
 
 function readLib(): Array<{ file: string; text: string }> {
@@ -116,19 +176,27 @@ function collectRefs(): Ref[] {
     for (const m of text.matchAll(/\bs\.([a-z][a-z0-9_]*)\b/g)) {
       refs.push({ file, alias: "weld_weekly_snapshot", column: m[1] });
     }
+    for (const m of text.matchAll(/\bsp\.([a-z][a-z0-9_]*)\b/g)) {
+      refs.push({ file, alias: "spool", column: m[1] });
+    }
+    for (const m of text.matchAll(/\bt\.([a-z][a-z0-9_]*)\b/g)) {
+      refs.push({ file, alias: "ref_ut_tracker_ccc", column: m[1] });
+    }
   }
   return refs;
 }
 
 describe("SQL column names exist in the schema contract", () => {
   it("references no unknown column", () => {
-    const weld = new Set([...dumpColumns(), ...DERIVED]);
-    expect(weld.size).toBeGreaterThan(200);
+    const weld = new Set([...dumpColumns(), ...DERIVED, ...batch2Columns()]);
+    expect(weld.size).toBeGreaterThan(230);
 
     const allowed: Record<string, Set<string>> = {
       weld,
       mv_weekly_progress: MV_WEEKLY_PROGRESS,
       weld_weekly_snapshot: WEEKLY_SNAPSHOT,
+      spool: spoolColumns(),
+      ref_ut_tracker_ccc: utTrackerColumns(),
     };
 
     const refs = collectRefs();
