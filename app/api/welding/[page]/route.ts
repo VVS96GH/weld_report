@@ -1,0 +1,50 @@
+/**
+ * `GET /api/welding/{1..44}?as_of=YYYY-MM-DD` — one `PageModel` as JSON.
+ *
+ * `params` is a Promise in Next 16 (see
+ * `node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/route.md`
+ * → "context (optional)"). `as_of` overrides the reporting date that stands in
+ * for the DAX `TODAY()`; the default is `max(weld_date)` of the current load
+ * (see `lib/db.ts`).
+ */
+
+import type { NextRequest } from "next/server";
+import { getWeldingPage, TOTAL_PAGES } from "@/lib/pages/welding";
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ page: string }> },
+): Promise<Response> {
+  const { page } = await params;
+  const n = Number(page);
+  if (!Number.isInteger(n) || n < 1 || n > TOTAL_PAGES) {
+    return Response.json(
+      { error: `page must be an integer 1..${TOTAL_PAGES}`, page },
+      { status: 404 },
+    );
+  }
+
+  const asOf = request.nextUrl.searchParams.get("as_of");
+  if (asOf !== null && !ISO_DATE.test(asOf)) {
+    return Response.json(
+      { error: "as_of must be YYYY-MM-DD", as_of: asOf },
+      { status: 400 },
+    );
+  }
+
+  try {
+    const model = await getWeldingPage(n, asOf ? { as_of: asOf } : {});
+    return Response.json(model);
+  } catch (err) {
+    return Response.json(
+      {
+        error: "failed to build page",
+        page: n,
+        detail: err instanceof Error ? err.message : String(err),
+      },
+      { status: 503 },
+    );
+  }
+}
