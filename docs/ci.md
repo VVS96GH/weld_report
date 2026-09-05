@@ -48,3 +48,13 @@ npm run typecheck && npm run lint && npm run lint:tokens && npm test
 node --import tsx scripts/check-sql-columns.ts
 git diff --cached --stat        # and grep the diff for tokens / passwords
 ```
+
+### Lessons from the first runs
+
+- Run #1: `tsc` needs `next typegen` first (the `LayoutProps`/`PageProps` globals live in
+  `.next/types`); the service's host port mapping collided with a Postgres already bound on
+  the runner; Chart.js controllers were unregistered in the production bundle (a real app bug,
+  caught only by e2e against `next build`); `upload-artifact@v4` needs GitHub-only APIs — v3.
+- Runs #2/#4: a service named plain `postgres` resolved to a *different* Postgres between two
+  steps of the same job on the shared runner network (auth failed on an unchanged URL). The
+  service is now `weldpg` with a CI-only password, and a `--ping` step waits for it.

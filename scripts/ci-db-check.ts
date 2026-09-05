@@ -13,8 +13,14 @@ const masked = url.replace(/\/\/([^:]+):[^@]+@/, "//$1:***@");
 console.log(`ci-db-check: ${masked} (DATABASE_URL ${process.env.DATABASE_URL ? "set" : "unset, using default"})`);
 
 async function main(): Promise<void> {
-  const client = new pg.Client({ connectionString: url });
+  const client = new pg.Client({ connectionString: url, connectionTimeoutMillis: 5000 });
   await client.connect();
+  if (process.argv.includes("--ping")) {
+    const who = await client.query("select current_user, inet_server_addr()::text as addr, version()");
+    console.log("ping ok:", who.rows[0]);
+    await client.end();
+    return;
+  }
   const one = async <T,>(sql: string): Promise<T> => (await client.query(sql)).rows[0] as T;
 
   const cal = await one<{ n: number }>("select count(*)::int as n from calendar");

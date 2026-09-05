@@ -53,11 +53,15 @@ jobs:
   db-migrate:
     runs-on: ubuntu-latest
     services:
-      postgres:
+      # unique service name + password: on the shared runner network a service
+      # called plain `postgres` resolved to a different Postgres between two
+      # steps of the same job (run #2 migrated fine, run #4 failed auth on the
+      # same URL) — see docs/ci.md
+      weldpg:
         image: postgres:17.6-bookworm
         env:
           POSTGRES_USER: weld
-          POSTGRES_PASSWORD: weld
+          POSTGRES_PASSWORD: weld-ci-7d1c
           POSTGRES_DB: weld_report
         # no host port mapping: the job runs in a container on the same docker
         # network and reaches the service by its hostname; publishing 5432 on the
@@ -66,7 +70,7 @@ jobs:
           --health-cmd "pg_isready -U weld -d weld_report"
           --health-interval 5s --health-timeout 5s --health-retries 20
     env:
-      DATABASE_URL: postgres://weld:weld@postgres:5432/weld_report
+      DATABASE_URL: postgres://weld:weld-ci-7d1c@weldpg:5432/weld_report
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -74,6 +78,13 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
       - run: npm ci
+      - name: wait for the database service
+        run: |
+          for i in $(seq 1 30); do
+            node --import tsx scripts/ci-db-check.ts --ping && exit 0
+            sleep 2
+          done
+          echo "database service never became reachable" >&2; exit 1
       - name: apply every migration to an empty database
         run: npm run db:migrate
       - name: re-run is a no-op
