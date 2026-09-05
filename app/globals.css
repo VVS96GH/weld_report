@@ -1175,6 +1175,45 @@ html {
   }
 }
 
+/* ---------- brand mark + lockup (every mood; docs/brand-README.md) ---------- */
+.brand-mark {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  overflow: hidden;
+  /* the ring is the only thing that follows the mood; the globe itself is never recoloured */
+  box-shadow: 0 0 0 2px var(--accent-primary);
+}
+.brand-mark img {
+  display: block;
+  width: 44px;
+  height: 44px;
+  object-fit: cover;
+}
+.brand-lockup {
+  display: none;
+  height: 48px;
+  width: auto;
+  /* clear space ≥ the mark's radius (22px) on every side; the title sits beyond it */
+  margin-inline: 22px;
+}
+@media (min-width: 768px) {
+  .brand-lockup {
+    display: block;
+  }
+}
+/* legacy moods never had a lockup slot; the mockup header keeps the mark + title only */
+:root:not([data-mood="ten"]) .brand-lockup {
+  display: none;
+}
+[data-mood="ten"] .logo {
+  display: none;
+}
+
 /* ---------- shell ---------- */
 [data-mood="ten"] body {
   font-family: var(--font-sans);
@@ -1214,20 +1253,6 @@ html {
   padding-block: 10px;
   padding-inline: 20px;
   z-index: 30;
-}
-/* orb + rings motif: a perfect circle with a concentric hairline ring */
-[data-mood="ten"] .logo {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: var(--accent);
-  color: white;
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 11px;
-  box-shadow:
-    0 0 0 4px var(--accent-a15),
-    0 0 0 5px rgb(191 217 240 / 0.28);
 }
 [data-mood="ten"] .header-title h1 {
   font-family: var(--font-display);

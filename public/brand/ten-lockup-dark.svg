@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 100" role="img"
+     aria-label="T.EN — Technip Energies">
+  <defs>
+    <radialGradient id="g_base" cx="38%" cy="30%" r="95%">
+      <stop offset="0%" stop-color="#3E92F3"/>
+      <stop offset="42%" stop-color="#0070EE"/>
+      <stop offset="100%" stop-color="#0348DD"/>
+    </radialGradient>
+    <radialGradient id="g_glow" cx="50%" cy="106%" r="62%">
+      <stop offset="0%" stop-color="#A8DF8F"/>
+      <stop offset="38%" stop-color="#96D5B8" stop-opacity=".9"/>
+      <stop offset="75%" stop-color="#96D5B8" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="g_sheen" cx="32%" cy="20%" r="55%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity=".28"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <g>  <circle cx="50" cy="50" r="50" fill="url(#g_base)"/>
+  <circle cx="50" cy="50" r="50" fill="url(#g_glow)"/>
+  <circle cx="50" cy="50" r="50" fill="url(#g_sheen)"/>
+  <text x="50" y="61" text-anchor="middle"
+        font-family="Poppins,'DejaVu Sans',Inter,sans-serif" font-weight="800"
+        font-size="30" letter-spacing="-0.5" fill="#FFFFFF">T.EN</text></g>
+  <text x="118" y="46" font-family="Poppins,'DejaVu Sans',Inter,sans-serif" font-weight="700" font-size="26"
+        letter-spacing="4" fill="#FFFFFF">TECHNIP</text>
+  <text x="118" y="78" font-family="Poppins,'DejaVu Sans',Inter,sans-serif" font-weight="700" font-size="26"
+        letter-spacing="4" fill="#FFFFFF">ENERGIES</text>
+</svg>

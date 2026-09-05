@@ -60,7 +60,17 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
       <div className="app-shell">
       <header className="header">
         <div className="header-left">
-          <div className="logo">NFE</div>
+          <Link href="/welding/1" className="brand-mark" aria-label="T.EN — Technip Energies, back to page 1">
+            {/* The official globe, cut from the colour lockup (docs/brand-README.md). Plain <img>:
+                a 512px PNG in a 44px circle needs no next/image pipeline. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/brand/ten-globe-official.png" alt="" aria-hidden="true" width={44} height={44} />
+          </Link>
+          {/* Header chrome is navy in both schemes, so the lockup is always the dark-surface
+              (negative) file — never switched by data-theme (docs/brand-README.md). Hidden
+              below md; the globe carries the brand there. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img className="brand-lockup" src="/brand/ten-lockup-negative.png" alt="Technip Energies" width={1200} height={582} />
           <div className="header-title">
             <h1>Welding Statistics Dashboard</h1>
             <div className="subtitle">{subtitle}</div>

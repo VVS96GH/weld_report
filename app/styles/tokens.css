@@ -115,6 +115,13 @@
   --chart-8: #b75b55;
   --chart-attention: #e24131; /* coral re-stepped for the navy surface: rejections / backlog ("look here") */
   --chart-grid-line: rgba(188, 211, 232, 0.12);
+
+  /* ---- Brand assets (docs/brand-README.md): the file follows the SURFACE the logo lands on.
+     Chrome is navy in both schemes, so it always takes the dark-surface (negative) lockup;
+     --brand-lockup is for a lockup placed on the page surface and flips with the scheme. ---- */
+  --brand-mark: url("/brand/ten-globe-official.png");
+  --brand-lockup: url("/brand/ten-lockup-negative.png");
+  --brand-lockup-chrome: url("/brand/ten-lockup-negative.png");
 }
 
 /* ---- Density (rem base; overridden by data-density) — GLOBAL, every mood ---- */
@@ -166,10 +173,14 @@
   --chart-8: #89312e;
   --chart-attention: #c21b0f;
   --chart-grid-line: rgba(10, 28, 46, 0.08);
+  --brand-lockup: url("/brand/ten-lockup-colour.png");
 }
 
 /* ============ PRINT — ink-saving light palette, chrome dropped (global) ============ */
 @media print {
+  :root[data-mood="ten"] {
+    --brand-lockup: url("/brand/ten-lockup-mono-black.png");
+  }
   :root {
     --bg: #fff;
     --bg-gradient: #fff;
