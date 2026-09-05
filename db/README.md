@@ -671,6 +671,7 @@ four loaders, all measured live.
 | `load-inco.ts` | `Inco/Master Weld_Latest.xlsx` | `weld` (INCO) | 10,327 |
 | `load-weld-length.ts` | `Weld Length/Weld Length.xlsx` + `Rework code.xlsx` | `weld_length_by_dia`, `ref_code_label`, `weld.weld_length_m` | 98 + 73 + 6.07 M updated |
 | `load-welders.ts` | `Welders/SCTR NFE WELDERS APPLIED.xls` + `Welders Power Q for PBI .xlsx` | `ref_qualified_welders`, `ref_welder_qualification`, `ref_welder_status_weekly` | 6 + 5,484 + 6,096 |
+| `apply-ut-overlay.ts` | `ref_ut_tracker_ccc` | `weld.*_all` (6 cols) | 61,139 CCC rows |
 
 ```json
 "db:load:acciona":     "node --env-file-if-exists=.env --import tsx scripts/load-acciona.ts",
@@ -791,6 +792,62 @@ relationship between the two matches on almost nothing; treat them as independen
 display labels only, never a join key, never a filter, and never a source of truth about
 which codes exist — the fact tables are. 73 rows: `rework_code` 32, `defect_code` 18,
 `nde_status` 9, `weld_type` 14.
+
+
+### The CCC UT overlay — `ref_ut_tracker_ccc` into the six `*_all` columns
+
+CCC's welder record has **no UT columns at all**: `ut_report`, `ut_acc_rej`, `ut_date` and
+`ut_operator_id` are NULL on all 5,432,993 rows. The pbix gets CCC's UT from
+`UT TRACKER (CCC)_Talisman` through DAX **calculated columns**, not through the union — so
+the overlay cannot happen at COPY time, and it is an `UPDATE` in
+`scripts/lib/ut-overlay.ts` that either loader runs.
+
+| `weld` column | source | DAX it reproduces |
+|---|---|---|
+| `ut_report_all` | tracker `UT1 REP NO` | `UT Report "PR All"`, CCC branch |
+| `ut_date_all` | tracker `UT1 DATE` | `UT Date "PR All"`, CCC branch |
+| `manual_ut_report_no_all` | tracker `UT1 REP NO` | `Manual UT Report No.` |
+| `manual_ut_date_all` | tracker `UT1 DATE` | `Manual UT Date.` |
+| `manual_ut_status_all` | tracker `UT1 RESULT` | `Manual UT Status.`, CCC branch |
+| `ut_operator_id_all` | tracker `UT OPE1`, **only where `rt_ut = 'UT'`** | `UT Operator ID.` — the DAX gates that one on `[RT/UT] = "UT"` inside its `CALCULATE`, and no other |
+
+The tracker's other 18 columns are not overlay sources: `QCISO NO` / `JOINT NO` / `SPOOL NO`
+build the key, `WELDDEFECTLENGTH` feeds `defect_length_mm` (already wired in
+`lib/metrics/ut.ts`), and the rest (`SIZE`, `Wall Thickness`, `SERVICE CLASS`, `WELD TYPE`,
+`AREA`, `WELD DATE`, the four `WELDER ID`s, `WPS CODE`, `UT OPE2`, `TPI Date`,
+`TPI Report No`, `PWHT DATE`, `PWHT REP NO`) duplicate columns `weld` already sources, or
+have no DAX consumer.
+
+**Key**: `ref_ut_tracker_ccc.joint_id` = `QCISO NO ‖ '-' ‖ SPOOL NO ‖ '-' ‖ JOINT NO`, the
+same recipe CCC's own `joint_id` uses, so it is a plain equality join. 9,412 of the tracker's
+9,419 joints match a CCC row.
+
+**Multiple tracker rows per joint**: `LOOKUPVALUE` returns BLANK when a key matches rows with
+different values. `joint_id` is unique in the tracker today (9,419 distinct over 9,419 rows),
+so it never bites; the overlay still aggregates with `max()` and **counts** multi-row joints
+rather than picking one silently. Today that count is 0.
+
+For CCC every DAX branch collapses to a plain lookup, because the row-level fallbacks are all
+NULL for CCC — `UT Report`, `UT Date`, `Manual UT Date` and `Manual UT Status` are never
+populated, so the first `IF` never fires and the `MAXX` over a joint has one distinct value.
+
+**Scope is `sub_contractor = 'CCC'`, exactly as the DAX gates it.** `WELD_DUMP` rows are left
+untouched: GAC's and TEKFEN's trackers are still absent (R-05), so their overlays stay
+honestly NULL rather than being filled from nothing. INCO's 441 PAUT rows keep what its own
+loader wrote from the DAX's Inco branch.
+
+Measured live: **61,139** CCC rows over 9,412 distinct joints; `ut_operator_id_all` lands on
+61,047 of them, the 92-row gap being the `rt_ut = 'UT'` gate plus the 11 tracker rows with no
+operator. `manual_ut_status_all` is `A` 60,935 / `R` 204.
+
+`scripts/apply-ut-overlay.ts` runs it standalone (with `--dry-run`), because the overlay's two
+inputs are loaded by different loaders and whichever runs second has to re-apply it. Adding
+two lines to the tracker loader makes that automatic:
+
+```ts
+import { applyCccUtOverlay, formatUtOverlay } from "./lib/ut-overlay";
+console.log(`  ${formatUtOverlay(await applyCccUtOverlay(client))}`);
+```
 
 ---
 

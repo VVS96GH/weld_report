@@ -32,6 +32,7 @@ import {
   refreshMatviews, requireEnvUrl, secs, sha256File, txt,
 } from "./load-common";
 import { CCC_WELDER_WELD_COLUMNS as WELD_COLUMNS } from "./load-columns";
+import { applyCccUtOverlay, formatUtOverlay } from "./lib/ut-overlay";
 import {
   EXCLUDED_JOINT_IDS, diaInchFactor, normaliseRepairSuffix, normaliseWeldType,
   repairRewaldPrAll, synthRtWeldStatus, tmcpPipePrAll,
@@ -351,6 +352,10 @@ async function live(): Promise<void> {
       FROM ccc_joint_pwht jr
       WHERE w.source = $1 AND jr.joint_id_jr = w.joint_id`, [SOURCE]);
     console.log(`  overlay ${fmt(upd.rowCount ?? 0)} rows joined to ccc_joint_pwht in ${secs(tUpd)}`);
+    // CCC's welder record has no UT columns at all; the pbix gets CCC's UT from
+    // the Talisman tracker through DAX calculated columns. The tracker is loaded
+    // by a different loader, so whichever of the two runs second applies this.
+    console.log(`  ${formatUtOverlay(await applyCccUtOverlay(client))}`);
     await client.query("COMMIT");
 
     report(stats, t0);

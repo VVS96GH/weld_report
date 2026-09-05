@@ -12,7 +12,7 @@
  *   node --import tsx scripts/check-sql-columns.ts
  */
 
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { REPO_ROOT, pgName, sourceColumns } from "./weld-columns";
 import { buildStagingDdl, buildWeldDdl, buildWeldInsert, copyColumns } from "./weld-sql";
@@ -426,6 +426,37 @@ function main(): void {
   check("the .xls is read through uv at load time, never a checked-in conversion (R3-11)",
     readFileSync(path.join(REPO_ROOT, "scripts", "load-welders.ts"), "utf8")
       .includes("scripts/py/xls_to_csv.py"));
+
+
+  // ---- 11. the CCC UT overlay --------------------------------------------
+  // CCC's welder record has NO UT columns; the pbix gets CCC's UT from the
+  // Talisman tracker through DAX calculated columns, so the overlay is an UPDATE
+  // both loaders run. These checks pin the six targets, the join key and the scope.
+  const overlaySrc = readFileSync(path.join(REPO_ROOT, "scripts/lib/ut-overlay.ts"), "utf8");
+  const UT_ALL = ["ut_report_all", "ut_date_all", "manual_ut_report_no_all",
+    "manual_ut_date_all", "manual_ut_status_all", "ut_operator_id_all"];
+  check(`the 6 UT overlay columns exist in weld`,
+    missing(UT_ALL, weld).length === 0, missing(UT_ALL, weld).join(", "));
+  for (const c of UT_ALL) {
+    check(`ut-overlay.ts sets weld.${c}`, new RegExp(`\\b${c}\\s*=`).test(overlaySrc));
+  }
+  for (const c of ["joint_id", "ut1_rep_no", "ut1_date", "ut1_result", "ut_ope1"]) {
+    check(`ut-overlay.ts reads ref_ut_tracker_ccc.${c}`,
+      names(schema.tables.get("ref_ut_tracker_ccc")).has(c) && overlaySrc.includes(c));
+  }
+  check("the overlay is scoped to sub_contractor = 'CCC' (GAC/TEKFEN trackers are absent, R-05)",
+    /WHERE w\.sub_contractor = 'CCC'/.test(overlaySrc));
+  check("the overlay joins on joint_id, the key the DAX LOOKUPVALUE uses",
+    /t\.joint_id = w\.joint_id/.test(overlaySrc));
+  check("the overlay resolves multi-row joints with max() and COUNTS them",
+    /max\(ut1_rep_no\)/.test(overlaySrc) && /ambiguousJoints/.test(overlaySrc));
+  check("ut_operator_id_all keeps the DAX's [RT/UT] = 'UT' gate",
+    /CASE WHEN w\.rt_ut = 'UT' THEN t\.ut_ope1 END/.test(overlaySrc));
+  check("load-ccc-welder-record.ts applies the overlay after its COPY",
+    readFileSync(path.join(REPO_ROOT, "scripts/load-ccc-welder-record.ts"), "utf8")
+      .includes("applyCccUtOverlay(client)"));
+  check("scripts/apply-ut-overlay.ts exists so the tracker lane can re-apply it",
+    existsSync(path.join(REPO_ROOT, "scripts/apply-ut-overlay.ts")));
 
   console.log(failures === 0 ? "\nall checks passed" : `\n${failures} check(s) FAILED`);
   if (failures > 0) process.exitCode = 1;
