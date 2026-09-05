@@ -1,0 +1,120 @@
+# Gitea Actions CI for the weld report (GitHub-Actions-compatible syntax).
+#
+# Three jobs:
+#   checks     — typecheck, eslint, token-lint, SQL column read-through, vitest
+#                (the DB-backed suites skip themselves when no loaded database
+#                is reachable — they need sources/Weld Dump.txt, which is never
+#                in git), and the mockup extractor round-trip via uv.
+#   db-migrate — applies every migration to a fresh postgres:17 service and
+#                checks the calendar seed; proves the SQL parses and converges.
+#   build-e2e  — next build in fixture mode (PAGE_SOURCE=fixture) and the
+#                Playwright layout/navigation matrix at 1280 and 360 px.
+#
+# NOTE: the Gitea runner on git.mantalis.qa was reported unhealthy since
+# 2026-07-31 — a green badge here must be confirmed against an actual run in
+# the Actions tab before anyone depends on it (see docs/ci.md).
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  NODE_VERSION: "24"
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run lint:tokens
+      - name: SQL column read-through (effective schema)
+        run: node --import tsx scripts/check-sql-columns.ts
+      - name: vitest (DB suites skip without a loaded database)
+        run: npx vitest run
+        env:
+          # nothing listens here in CI; the DB suites detect that and skip
+          DATABASE_URL: postgres://weld:weld@127.0.0.1:5432/weld_report
+      - uses: astral-sh/setup-uv@v5
+      - name: mockup extractor round-trip (spec JSON must be reproducible)
+        run: |
+          uv run analysis/mockups/extract_welding.py
+          uv run analysis/mockups/extract_flange.py
+          git diff --exit-code -- analysis/mockups
+
+  db-migrate:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17.6-bookworm
+        env:
+          POSTGRES_USER: weld
+          POSTGRES_PASSWORD: weld
+          POSTGRES_DB: weld_report
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U weld -d weld_report"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      DATABASE_URL: postgres://weld:weld@127.0.0.1:5432/weld_report
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: apply every migration to an empty database
+        run: npm run db:migrate
+      - name: re-run is a no-op
+        run: npm run db:migrate
+      - name: calendar seed and schema shape
+        run: |
+          node --import tsx -e '
+            import pg from "pg";
+            const c = new pg.Client({ connectionString: process.env.DATABASE_URL });
+            await c.connect();
+            const q = async (s) => (await c.query(s)).rows[0];
+            const cal = await q("select count(*)::int n from calendar");
+            const weld = await q("select count(*)::int n from information_schema.columns where table_name = $$weld$$");
+            const src = await q("select count(*)::int n from unnest(enum_range(null::weld_source))");
+            console.log(cal, weld, src);
+            if (cal.n !== 2064) throw new Error("calendar rows " + cal.n);
+            if (src.n < 5) throw new Error("weld_source values " + src.n);
+            await c.end();
+          '
+
+  build-e2e:
+    runs-on: ubuntu-latest
+    env:
+      PAGE_SOURCE: fixture
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+      - name: layout + navigation matrix (fixture pages)
+        run: npx playwright test --project=desktop-1280 --project=mobile-360
+        env:
+          E2E_START_SERVER: "1"
+          E2E_BASE_URL: http://127.0.0.1:3000
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

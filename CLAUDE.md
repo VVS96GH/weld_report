@@ -145,6 +145,14 @@ the pbix keeps them (migration 0007), so DAX `<> "RS"` ports to `IS DISTINCT FRO
 touching any migration. `PWHT_AMBIGUOUS_TOKEN` ('25.01', ruling R-04) is a named constant —
 never inline the literal.
 
+## Remote & CI
+
+Origin is the private Gitea repo `anatoly/welding_report` on git.mantalis.qa (token auth via
+the credential store, identity `vik <vik@mantalis.qa>`; SSH on port 2222). CI is
+`.gitea/workflows/ci.yml` (checks / db-migrate / build-e2e) — see `docs/ci.md`, including the
+100 MB blob guard and the note that the runner's health is unconfirmed: verify a run executed
+before trusting a green badge. Never commit tokens or passwords; `.env` is git-ignored.
+
 ## Repo hygiene
 
 - `sources/` (~1.7 GB of client data) is git-ignored and must never be committed.
