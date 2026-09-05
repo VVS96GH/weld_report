@@ -79,20 +79,7 @@ jobs:
       - name: re-run is a no-op
         run: npm run db:migrate
       - name: calendar seed and schema shape
-        run: |
-          node --import tsx -e '
-            import pg from "pg";
-            const c = new pg.Client({ connectionString: process.env.DATABASE_URL });
-            await c.connect();
-            const q = async (s) => (await c.query(s)).rows[0];
-            const cal = await q("select count(*)::int n from calendar");
-            const weld = await q("select count(*)::int n from information_schema.columns where table_name = $$weld$$");
-            const src = await q("select count(*)::int n from unnest(enum_range(null::weld_source))");
-            console.log(cal, weld, src);
-            if (cal.n !== 2064) throw new Error("calendar rows " + cal.n);
-            if (src.n < 5) throw new Error("weld_source values " + src.n);
-            await c.end();
-          '
+        run: node --import tsx scripts/ci-db-check.ts
 
   build-e2e:
     runs-on: ubuntu-latest
