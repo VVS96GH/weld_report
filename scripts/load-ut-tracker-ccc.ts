@@ -17,6 +17,8 @@ import { existsSync, statSync } from "node:fs";
 import path from "node:path";
 import { Client } from "pg";
 import { chunk, readSheet, toISODate, toNum, toText } from "./lib/xlsx";
+import { formatRefreshes, refreshMatviews, secs } from "./load-common";
+import { applyCccUtOverlay, formatUtOverlay } from "./lib/ut-overlay";
 
 const SOURCE = "UT_TRACKER_CCC";
 const FILE = "sources/UT TRACKER (CCC)_Talisman.xlsx";
@@ -171,6 +173,18 @@ async function main(): Promise<void> {
     await client.query("COMMIT");
     console.log(`ref_ut_tracker_ccc: inserted ${insertedRows} rows`);
 
+    // The tracker is one of the CCC UT overlay's TWO inputs; the other is CCC's
+    // fact rows, loaded by scripts/load-ccc-welder-record.ts. Whichever runs
+    // second has to re-apply the overlay, so both do. Without this, a tracker
+    // reload leaves weld.*_all holding the previous tracker's values.
+    const overlay = await applyCccUtOverlay(client);
+    console.log(`  ${formatUtOverlay(overlay)}`);
+
+    const tPost = Date.now();
+    await client.query("VACUUM (ANALYZE) weld");
+    const refreshed = await refreshMatviews(client);
+    console.log(`  post    VACUUM + ${formatRefreshes(refreshed)} — ${secs(tPost)} total`);
+
     await client.query(
       `UPDATE load SET finished_at = now(), records_read = $2, records_loaded = $3, notes = $4
        WHERE id = $1`,
@@ -178,7 +192,14 @@ async function main(): Promise<void> {
         loadId,
         mapped.length,
         insertedRows,
-        JSON.stringify({ status: "ok", distinct_ut1_rep_no: distinctReports, null_joint_id: nullJointId }),
+        JSON.stringify({
+          status: "ok",
+          distinct_ut1_rep_no: distinctReports,
+          null_joint_id: nullJointId,
+          ut_overlay_rows: overlay.rowsUpdated,
+          ut_overlay_joints: overlay.matchedJoints,
+          ut_overlay_ambiguous: overlay.ambiguousJoints,
+        }),
       ],
     );
     console.log("done");

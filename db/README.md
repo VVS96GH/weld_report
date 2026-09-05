@@ -671,6 +671,7 @@ four loaders, all measured live.
 | `load-inco.ts` | `Inco/Master Weld_Latest.xlsx` | `weld` (INCO) | 10,327 |
 | `load-weld-length.ts` | `Weld Length/Weld Length.xlsx` + `Rework code.xlsx` | `weld_length_by_dia`, `ref_code_label`, `weld.weld_length_m` | 98 + 73 + 6.07 M updated |
 | `load-welders.ts` | `Welders/SCTR NFE WELDERS APPLIED.xls` + `Welders Power Q for PBI .xlsx` | `ref_qualified_welders`, `ref_welder_qualification`, `ref_welder_status_weekly` | 6 + 5,484 + 6,096 |
+| `load-ut-tracker-ccc.ts` | `UT TRACKER (CCC)_Talisman.xlsx` | `ref_ut_tracker_ccc` + the overlay | 9,419 → 61,139 CCC rows |
 | `apply-ut-overlay.ts` | `ref_ut_tracker_ccc` | `weld.*_all` (6 cols) | 61,139 CCC rows |
 
 ```json
@@ -836,13 +837,42 @@ untouched: GAC's and TEKFEN's trackers are still absent (R-05), so their overlay
 honestly NULL rather than being filled from nothing. INCO's 441 PAUT rows keep what its own
 loader wrote from the DAX's Inco branch.
 
+
+> **`Manual UT Status.` — the CCC precedence branch is declared but DEAD, verified.**
+> `analysis/pbix/raw/prall-columns.json` shows a `VAR UTTrackerCCCID` on that column
+> that would make the row's own `RT Acc/Rej` (matched by Joint ID + Welder ID, gated
+> on `RT/UT = "UT"`) win over the tracker's `UT1 RESULT`. It is never evaluated:
+> `UTTrackerCCCID` occurs **exactly once** in that column's DAX — its own
+> declaration — and the `RETURN` chain is `GAC → TEKFEN → INCO →` an **inline**
+> `LOOKUPVALUE(tracker[UT1 RESULT], tracker[Joint ID], [Joint ID])`. DAX evaluates
+> VARs lazily, so an unreferenced VAR cannot affect the stored column.
+>
+> The contrast is the proof: on `UT Operator ID.`, `Manual UT Report No.` and
+> `Manual UT Date.` the same variable occurs **three** times each (declaration plus
+> two uses in the `RETURN`), and their gates ARE live — which is why
+> `ut_operator_id_all` carries the `rt_ut = 'UT'` gate and the other two do not.
+>
+> So `manual_ut_status_all` is tracker-only, deliberately. Applying the dead branch
+> would move 86 of the 61,155 CCC `rt_ut='UT'` rows away from what the pbix stores
+> (70 where the tracker says `R` and the row says `A`, 16 whose joint is one of the
+> 7 not in the tracker). Shipped values: `A` 60,935 / `R` 204 rows = 9,382 / 30
+> distinct joints, which is the tracker's own `A` 9,389 / `R` 30 over the 9,412
+> matched joints.
+>
+> `Manual UT Report No.` and `Manual UT Date.` were checked rather than assumed
+> symmetric: their CCC variable is `MAXX(joint rows, [UT Report "PR All"])` with
+> both arms of its inner `IF` identical, i.e. a plain tracker lookup with no
+> row-level first branch. No change needed there either.
+
 Measured live: **61,139** CCC rows over 9,412 distinct joints; `ut_operator_id_all` lands on
 61,047 of them, the 92-row gap being the `rt_ut = 'UT'` gate plus the 11 tracker rows with no
 operator. `manual_ut_status_all` is `A` 60,935 / `R` 204.
 
-`scripts/apply-ut-overlay.ts` runs it standalone (with `--dry-run`), because the overlay's two
-inputs are loaded by different loaders and whichever runs second has to re-apply it. Adding
-two lines to the tracker loader makes that automatic:
+**Both** of the overlay's inputs have their own loader, so both re-apply it:
+`load-ccc-welder-record.ts` after its COPY and `load-ut-tracker-ccc.ts` after its COMMIT.
+A tracker reload would otherwise leave `weld.*_all` holding the previous tracker's values.
+`scripts/apply-ut-overlay.ts` runs it standalone (with `--dry-run`) for anything else — a
+manual re-apply, or a check that the two are in step. The call is two lines:
 
 ```ts
 import { applyCccUtOverlay, formatUtOverlay } from "./lib/ut-overlay";

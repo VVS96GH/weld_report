@@ -455,8 +455,15 @@ function main(): void {
   check("load-ccc-welder-record.ts applies the overlay after its COPY",
     readFileSync(path.join(REPO_ROOT, "scripts/load-ccc-welder-record.ts"), "utf8")
       .includes("applyCccUtOverlay(client)"));
-  check("scripts/apply-ut-overlay.ts exists so the tracker lane can re-apply it",
+  check("scripts/apply-ut-overlay.ts exists as the standalone entry point",
     existsSync(path.join(REPO_ROOT, "scripts/apply-ut-overlay.ts")));
+  // Both of the overlay's inputs have their own loader, so BOTH must re-apply it:
+  // a tracker reload would otherwise leave weld.*_all holding the old values.
+  const trackerSrc = readFileSync(path.join(REPO_ROOT, "scripts/load-ut-tracker-ccc.ts"), "utf8");
+  check("load-ut-tracker-ccc.ts applies the overlay after its COMMIT",
+    trackerSrc.includes("applyCccUtOverlay(client)"), "no applyCccUtOverlay() call");
+  check("load-ut-tracker-ccc.ts refreshes the matviews (R3-15)",
+    trackerSrc.includes("refreshMatviews(client)"), "no refreshMatviews() call");
 
   console.log(failures === 0 ? "\nall checks passed" : `\n${failures} check(s) FAILED`);
   if (failures > 0) process.exitCode = 1;
