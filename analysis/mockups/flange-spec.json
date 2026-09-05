@@ -1,0 +1,3124 @@
+{
+  "sections": [
+    {
+      "id": "filterBar",
+      "title": "Filters",
+      "title_source": "synthesized (container has no h2/h3; class=\"filter-bar\")",
+      "widgets": [
+        {
+          "kind": "filter",
+          "id": "filterSubco",
+          "options": [
+            {
+              "value": "All",
+              "label": "All"
+            },
+            {
+              "value": "CCC",
+              "label": "CCC"
+            },
+            {
+              "value": "GAC",
+              "label": "GAC"
+            },
+            {
+              "value": "MEDGULF",
+              "label": "MEDGULF"
+            },
+            {
+              "value": "TEKFEN",
+              "label": "TEKFEN"
+            }
+          ],
+          "default": "All"
+        },
+        {
+          "kind": "filter",
+          "id": "filterHA",
+          "options": [
+            {
+              "value": "All",
+              "label": "All"
+            },
+            {
+              "value": "HA1",
+              "label": "HA1"
+            },
+            {
+              "value": "HA2",
+              "label": "HA2"
+            },
+            {
+              "value": "HA3",
+              "label": "HA3"
+            },
+            {
+              "value": "HA4",
+              "label": "HA4"
+            }
+          ],
+          "default": "All"
+        },
+        {
+          "kind": "filter",
+          "id": "filterMethod",
+          "options": [
+            {
+              "value": "All",
+              "label": "All"
+            },
+            {
+              "value": "Manual",
+              "label": "Manual"
+            },
+            {
+              "value": "Torquing",
+              "label": "Torquing"
+            },
+            {
+              "value": "Tensioning",
+              "label": "Tensioning"
+            },
+            {
+              "value": "TBN",
+              "label": "TBN"
+            }
+          ],
+          "default": "All"
+        },
+        {
+          "kind": "text",
+          "text": "✕ Reset",
+          "role": "button",
+          "onclick": "resetFilters()",
+          "source_line": 350
+        },
+        {
+          "kind": "text",
+          "text": "📊 Export",
+          "role": "button",
+          "onclick": "exportData()",
+          "source_line": 351
+        }
+      ]
+    },
+    {
+      "id": "summaryHighlights",
+      "title": "Summary Highlights",
+      "title_source": "synthesized (container has no h2/h3; class=\"summary-highlights\", 4 .summary-card tiles)",
+      "widgets": [
+        {
+          "kind": "kpi",
+          "label": "Total Register",
+          "value_id": "sumTotal",
+          "value": "358,342",
+          "sub": "Flanges",
+          "sub_id": null
+        },
+        {
+          "kind": "kpi",
+          "label": "Total Inspected",
+          "value_id": "sumInspected",
+          "value": "124,188",
+          "sub": "34.66%",
+          "sub_id": "sumInspectedPct"
+        },
+        {
+          "kind": "kpi",
+          "label": "Inspected Const-n",
+          "value_id": "sumConstn",
+          "value": "122,867",
+          "sub": "Construction",
+          "sub_id": null
+        },
+        {
+          "kind": "kpi",
+          "label": "Leaked Flange Break",
+          "value_id": "sumLeaked",
+          "value": "44",
+          "sub": "0.04%",
+          "sub_id": "sumLeakedPct"
+        }
+      ],
+      "note": "Values shown are the initial render (filters=All), computed in Python via getFilteredData(rawData) mirroring the JS applyFilters() DOM writes."
+    },
+    {
+      "id": "dashboardGrid1",
+      "title": "Project Inspection & Status Tables",
+      "title_source": "synthesized (container has no h2/h3; class=\"dashboard-grid\", first grid, 3 cards each with its own h3)",
+      "widgets": [
+        {
+          "kind": "chart",
+          "canvas_id": "inspectionDonut",
+          "title": "Project Flange Inspected",
+          "chart_type": "doughnut",
+          "labels": [
+            "Manual",
+            "Torquing",
+            "Tensioning"
+          ],
+          "datasets": [
+            {
+              "data": [
+                89738,
+                33359,
+                640
+              ],
+              "pct": [
+                "72.52",
+                "26.96",
+                "0.52"
+              ]
+            }
+          ],
+          "source_line": 363,
+          "render_function": "renderInspectionDonut",
+          "default_filter_state": {
+            "subco": "All",
+            "ha": "All",
+            "method": "All"
+          },
+          "default_data_source": "rawData.ha[HA1..HA4].methods[Manual|Torquing|Tensioning].inspected, summed",
+          "note": "Chart is NOT a static hardcoded config (unlike welding-dashboard charts): labels/datasets above are the INITIAL render only, computed here in Python by replaying the exact source formula (see `logic.renderInspectionDonut`) against `data.rawData` for the default filter state {subco:All, ha:All, method:All}. Changing any filter re-derives different values client-side; the full space of possible values is the data already captured in `data.rawData`."
+        },
+        {
+          "kind": "table",
+          "id": "subcoBody",
+          "title": "Subcontractor Flange Status",
+          "columns": [
+            "Subcontractor",
+            "Total",
+            "Const-n",
+            "PCC",
+            "Inspected",
+            "%",
+            "Leaked"
+          ],
+          "rows": {
+            "subcontractors": [
+              {
+                "name": "CCC",
+                "total": 227605,
+                "constn": 59126,
+                "pcc": 773,
+                "inspected": 59444,
+                "leaked": 0,
+                "pct": "26.12"
+              },
+              {
+                "name": "GAC",
+                "total": 53550,
+                "constn": 24054,
+                "pcc": 1311,
+                "inspected": 25022,
+                "leaked": 39,
+                "pct": "46.73"
+              },
+              {
+                "name": "MEDGULF",
+                "total": 12561,
+                "constn": 6705,
+                "pcc": 0,
+                "inspected": 6705,
+                "leaked": 0,
+                "pct": "53.38"
+              },
+              {
+                "name": "TEKFEN",
+                "total": 64626,
+                "constn": 32982,
+                "pcc": 192,
+                "inspected": 33017,
+                "leaked": 5,
+                "pct": "51.09"
+              }
+            ],
+            "total": {
+              "total": 358342,
+              "constn": 122867,
+              "pcc": 2276,
+              "inspected": 124188,
+              "leaked": 44,
+              "pct": "34.66"
+            }
+          },
+          "source_line": 364,
+          "render_function": "renderSubcoTable",
+          "default_filter_state": {
+            "subco": "All",
+            "ha": "All",
+            "method": "All"
+          },
+          "note": "Table body is populated by JS from `data.rawData` at runtime (empty <tbody> in static HTML). Rows above are the INITIAL render, computed here in Python by replaying the exact source formula in `logic.renderSubcoTable` for the default filter state."
+        },
+        {
+          "kind": "table",
+          "id": "haBody",
+          "title": "HA Flange Status",
+          "columns": [
+            "HA / Method",
+            "Total",
+            "Const-n",
+            "PCC",
+            "Inspected",
+            "%",
+            "Leaked"
+          ],
+          "rows": {
+            "ha_rows_with_method_detail": [
+              {
+                "name": "HA1",
+                "total": 156332,
+                "constn": 110667,
+                "pcc": 2167,
+                "inspected": 111889,
+                "leaked": 44,
+                "details": [
+                  {
+                    "method": "Manual",
+                    "total": 103621,
+                    "constn": 78429,
+                    "pcc": 1618,
+                    "inspected": 79476,
+                    "pct": "76.70",
+                    "leaked": 25
+                  },
+                  {
+                    "method": "TBN",
+                    "total": 982,
+                    "constn": 268,
+                    "pcc": 8,
+                    "inspected": 275,
+                    "pct": "28.00",
+                    "leaked": 0
+                  },
+                  {
+                    "method": "Tensioning",
+                    "total": 943,
+                    "constn": 544,
+                    "pcc": 65,
+                    "inspected": 591,
+                    "pct": "62.67",
+                    "leaked": 1
+                  },
+                  {
+                    "method": "Torquing",
+                    "total": 50786,
+                    "constn": 31426,
+                    "pcc": 476,
+                    "inspected": 31547,
+                    "pct": "62.12",
+                    "leaked": 18
+                  }
+                ],
+                "pct": "71.57"
+              },
+              {
+                "name": "HA2",
+                "total": 58999,
+                "constn": 8606,
+                "pcc": 47,
+                "inspected": 8650,
+                "leaked": 0,
+                "details": [
+                  {
+                    "method": "Manual",
+                    "total": 42722,
+                    "constn": 7498,
+                    "pcc": 45,
+                    "inspected": 7540,
+                    "pct": "17.65",
+                    "leaked": 0
+                  },
+                  {
+                    "method": "TBN",
+                    "total": 707,
+                    "constn": 158,
+                    "pcc": 0,
+                    "inspected": 158,
+                    "pct": "22.35",
+                    "leaked": 0
+                  },
+                  {
+                    "method": "Tensioning",
+                    "total": 601,
+                    "constn": 13,
+                    "pcc": 1,
+                    "inspected": 14,
+                    "pct": "2.33",
+                    "leaked": 0
+                  },
+                  {
+                    "method": "Torquing",
+                    "total": 14969,
+                    "constn": 937,
+                    "pcc": 1,
+                    "inspected": 938,
+                    "pct": "6.27",
+                    "leaked": 0
+                  }
+                ],
+                "pct": "14.66"
+              },
+              {
+                "name": "HA3",
+                "total": 83533,
+                "constn": 3045,
+                "pcc": 62,
+                "inspected": 3100,
+                "leaked": 0,
+                "details": [
+                  {
+                    "method": "Manual",
+                    "total": 55719,
+                    "constn": 2139,
+                    "pcc": 56,
+                    "inspected": 2188,
+                    "pct": "3.93",
+                    "leaked": 0
+                  },
+                  {
+                    "method": "TBN",
+                    "total": 1488,
+                    "constn": 13,
+                    "pcc": 0,
+                    "inspected": 13,
+                    "pct": "0.87",
+                    "leaked": 0
+                  },
+                  {
+                    "method": "Tensioning",
+                    "total": 750,
+                    "constn": 22,
+                    "pcc": 4,
+                    "inspected": 26,
+                    "pct": "3.47",
+                    "leaked": 0
+                  },
+                  {
+                    "method": "Torquing",
+                    "total": 25576,
+                    "constn": 871,
+                    "pcc": 2,
+                    "inspected": 873,
+                    "pct": "3.41",
+                    "leaked": 0
+                  }
+                ],
+                "pct": "3.71"
+              },
+              {
+                "name": "HA4",
+                "total": 59474,
+                "constn": 549,
+                "pcc": 0,
+                "inspected": 549,
+                "leaked": 0,
+                "details": [
+                  {
+                    "method": "Manual",
+                    "total": 43663,
+                    "constn": 534,
+                    "pcc": 0,
+                    "inspected": 534,
+                    "pct": "1.22",
+                    "leaked": 0
+                  },
+                  {
+                    "method": "TBN",
+                    "total": 281,
+                    "constn": 5,
+                    "pcc": 0,
+                    "inspected": 5,
+                    "pct": "1.78",
+                    "leaked": 0
+                  },
+                  {
+                    "method": "Tensioning",
+                    "total": 597,
+                    "constn": 9,
+                    "pcc": 0,
+                    "inspected": 9,
+                    "pct": "1.51",
+                    "leaked": 0
+                  },
+                  {
+                    "method": "Torquing",
+                    "total": 14933,
+                    "constn": 1,
+                    "pcc": 0,
+                    "inspected": 1,
+                    "pct": "0.01",
+                    "leaked": 0
+                  }
+                ],
+                "pct": "0.92"
+              }
+            ],
+            "total": {
+              "total": 358338,
+              "constn": 122867,
+              "pcc": 2276,
+              "inspected": 124188,
+              "leaked": 44,
+              "pct": "34.66"
+            }
+          },
+          "source_line": 365,
+          "render_function": "renderHATable",
+          "default_filter_state": {
+            "subco": "All",
+            "ha": "All",
+            "method": "All"
+          },
+          "note": "Each HA row carries a `details` list of per-method rows (Manual/TBN/Tensioning/Torquing), shown/hidden client-side by toggleHADetails() -- not separate table rows in the source markup."
+        }
+      ]
+    },
+    {
+      "id": "ha1Section",
+      "title": "HA1 Subcontractor & Progress",
+      "title_source": "synthesized (grid container DOES carry id=\"ha1Section\" but no own h2/h3; the 2 cards inside have their own h3, dynamically retitled to the selected HA)",
+      "widgets": [
+        {
+          "kind": "table",
+          "id": "ha1SubcoBody",
+          "title": "HA 1 Subcontractor Flange Status",
+          "columns": [
+            "Subcontractor",
+            "Total",
+            "Const-n",
+            "PCC",
+            "Inspected",
+            "%",
+            "Leaked"
+          ],
+          "rows": {
+            "subcontractors": [
+              {
+                "name": "CCC",
+                "total": 58369,
+                "constn": 50634,
+                "pcc": 773,
+                "inspected": 50952,
+                "pct": "87.29",
+                "leaked": 0
+              },
+              {
+                "name": "GAC",
+                "total": 33515,
+                "constn": 22004,
+                "pcc": 1203,
+                "inspected": 22874,
+                "pct": "68.25",
+                "leaked": 39
+              },
+              {
+                "name": "MEDGULF",
+                "total": 8631,
+                "constn": 6384,
+                "pcc": 0,
+                "inspected": 6384,
+                "pct": "73.97",
+                "leaked": 0
+              },
+              {
+                "name": "TEKFEN",
+                "total": 55817,
+                "constn": 31645,
+                "pcc": 191,
+                "inspected": 31679,
+                "pct": "56.76",
+                "leaked": 5
+              }
+            ],
+            "total": {
+              "total": 156332,
+              "constn": 110667,
+              "pcc": 2167,
+              "inspected": 111889,
+              "leaked": 44,
+              "pct": "71.57"
+            }
+          },
+          "source_line": 369,
+          "render_function": "renderHA1SubcoTable",
+          "default_filter_state": {
+            "subco": "All",
+            "ha": "All",
+            "method": "All"
+          },
+          "note": "Title/badge relabel to the selected HA when the HA filter != All (source: applyFilters(), elements #ha1SubcoTitle/#ha1Badge). Method filter is ignored by this table (see logic.renderHA1SubcoTable)."
+        },
+        {
+          "kind": "chart",
+          "canvas_id": "ha1ProgressDonut",
+          "title": "HA 1 Flange Inspection Progress",
+          "chart_type": "doughnut",
+          "labels": [
+            "Inspected Const",
+            "Inspected PCC",
+            "Remains"
+          ],
+          "datasets": [
+            {
+              "data": [
+                110667,
+                2167,
+                44757
+              ],
+              "pct": [
+                "70.79",
+                "1.39",
+                "28.63"
+              ]
+            }
+          ],
+          "source_line": 370,
+          "render_function": "renderHA1ProgressDonut",
+          "default_filter_state": {
+            "subco": "All",
+            "ha": "All",
+            "method": "All"
+          },
+          "default_data_source": "rawData.ha1Progress.All",
+          "note": "Chart is NOT a static hardcoded config (unlike welding-dashboard charts): labels/datasets above are the INITIAL render only, computed here in Python by replaying the exact source formula (see `logic.renderHA1ProgressDonut`) against `data.rawData` for the default filter state {subco:All, ha:All, method:All}. Changing any filter re-derives different values client-side; the full space of possible values is the data already captured in `data.rawData`."
+        }
+      ]
+    },
+    {
+      "id": "leakedTimelineCard",
+      "title": "Leaked Flange Break % Timeline",
+      "title_source": "h3",
+      "widgets": [
+        {
+          "kind": "chart",
+          "canvas_id": "leakedTimelineChart",
+          "title": "Leaked Flange Break % Timeline",
+          "chart_type": "line",
+          "labels": [
+            "05-Dec-25",
+            "12-Dec-25",
+            "19-Dec-25",
+            "26-Dec-25",
+            "02-Jan-26",
+            "09-Jan-26"
+          ],
+          "datasets": [
+            {
+              "label": "Leaked Flg Break %",
+              "data": [
+                0.02,
+                0.02,
+                0.02,
+                0.02,
+                0.04,
+                0.04
+              ]
+            }
+          ],
+          "source_line": 373,
+          "render_function": "renderLeakedTimelineChart",
+          "default_filter_state": {
+            "subco": "All",
+            "ha": "All",
+            "method": "All"
+          },
+          "default_data_source": "rawData.leakedTimeline.All",
+          "note": "Chart is NOT a static hardcoded config (unlike welding-dashboard charts): labels/datasets above are the INITIAL render only, computed here in Python by replaying the exact source formula (see `logic.renderLeakedTimelineChart`) against `data.rawData` for the default filter state {subco:All, ha:All, method:All}. Changing any filter re-derives different values client-side; the full space of possible values is the data already captured in `data.rawData`."
+        }
+      ]
+    },
+    {
+      "id": "repairGrid",
+      "title": "Repair Overview",
+      "title_source": "synthesized (container has no h2/h3; class=\"grid-3\", 3 cards each with own h3)",
+      "widgets": [
+        {
+          "kind": "chart",
+          "canvas_id": "repairedDonut",
+          "title": "Repaired vs To Be Repaired",
+          "chart_type": "doughnut",
+          "labels": [
+            "Repaired",
+            "To be Repaired"
+          ],
+          "datasets": [
+            {
+              "data": [
+                1926,
+                255
+              ],
+              "pct": [
+                88,
+                12
+              ]
+            }
+          ],
+          "source_line": 376,
+          "render_function": "renderRepairedDonut",
+          "default_filter_state": {
+            "subco": "All",
+            "ha": "All",
+            "method": "All"
+          },
+          "default_data_source": "rawData.repair.All",
+          "note": "Chart is NOT a static hardcoded config (unlike welding-dashboard charts): labels/datasets above are the INITIAL render only, computed here in Python by replaying the exact source formula (see `logic.renderRepairedDonut`) against `data.rawData` for the default filter state {subco:All, ha:All, method:All}. Changing any filter re-derives different values client-side; the full space of possible values is the data already captured in `data.rawData`."
+        },
+        {
+          "kind": "chart",
+          "canvas_id": "siteRepairChart",
+          "title": "Flange Repair (Site Issue)",
+          "chart_type": "bar",
+          "labels": [
+            "Oct",
+            "Nov",
+            "Dec"
+          ],
+          "datasets": [
+            {
+              "label": "CCC",
+              "data": [
+                38,
+                97,
+                8
+              ]
+            },
+            {
+              "label": "GAC",
+              "data": [
+                1,
+                2,
+                2
+              ]
+            }
+          ],
+          "source_line": 377,
+          "render_function": "renderSiteRepairChart",
+          "default_filter_state": {
+            "subco": "All",
+            "ha": "All",
+            "method": "All"
+          },
+          "default_data_source": "rawData.repair.All.site",
+          "note": "Chart is NOT a static hardcoded config (unlike welding-dashboard charts): labels/datasets above are the INITIAL render only, computed here in Python by replaying the exact source formula (see `logic.renderSiteRepairChart`) against `data.rawData` for the default filter state {subco:All, ha:All, method:All}. Changing any filter re-derives different values client-side; the full space of possible values is the data already captured in `data.rawData`."
+        },
+        {
+          "kind": "chart",
+          "canvas_id": "vendorRepairChart",
+          "title": "Flange Repair (Vendor Issue)",
+          "chart_type": "bar",
+          "labels": [
+            "Oct",
+            "Nov",
+            "Dec"
+          ],
+          "datasets": [
+            {
+              "label": "CCC",
+              "data": [
+                36,
+                63,
+                29
+              ]
+            },
+            {
+              "label": "GAC",
+              "data": [
+                0,
+                0,
+                0
+              ]
+            }
+          ],
+          "source_line": 378,
+          "render_function": "renderVendorRepairChart",
+          "default_filter_state": {
+            "subco": "All",
+            "ha": "All",
+            "method": "All"
+          },
+          "default_data_source": "rawData.repair.All.vendor",
+          "note": "Chart is NOT a static hardcoded config (unlike welding-dashboard charts): labels/datasets above are the INITIAL render only, computed here in Python by replaying the exact source formula (see `logic.renderVendorRepairChart`) against `data.rawData` for the default filter state {subco:All, ha:All, method:All}. Changing any filter re-derives different values client-side; the full space of possible values is the data already captured in `data.rawData`."
+        }
+      ]
+    },
+    {
+      "id": "inspectionProgressOverview",
+      "title": "Inspection Progress Overview",
+      "title_source": "h3",
+      "widgets": [
+        {
+          "kind": "kpi",
+          "label": "Inspected",
+          "value_id": "bubbleInspVal",
+          "value": "124,188",
+          "sub": "34.66%",
+          "sub_id": "bubbleInspPct"
+        },
+        {
+          "kind": "kpi",
+          "label": "PCC",
+          "value_id": "bubblePccVal",
+          "value": "2,276",
+          "sub": "0.64%",
+          "sub_id": "bubblePccPct",
+          "note": "DEVIATION FOUND IN SOURCE: the static HTML placeholder for #bubblePccPct/#legendPcc is 1.83 percent (= pcc/inspected = 2276/124188), but the live JS formula at source line 745 (`pccPct = d.total > 0 ? ((d.pcc / d.total) * 100).toFixed(2) : 0`) computes pcc/total = 2276/358342 = 0.64 percent, and DOMContentLoaded always calls applyFilters() on load, so the 1.83 percent placeholder is immediately overwritten and never actually shown to a user. The value above (0.64%) is the JS-computed one; the static markup's 1.83% is stale/wrong."
+        },
+        {
+          "kind": "kpi",
+          "label": "Leaked",
+          "value_id": "bubbleLeakVal",
+          "value": "44",
+          "sub": "0.04%",
+          "sub_id": "bubbleLeakPct"
+        }
+      ],
+      "note": "Rendered twice in the source markup as differently-styled 'bubbles' + an outside legend with identical values (#legendInsp/#legendPcc/#legendLeak) -- captured once here as 3 kpi widgets."
+    },
+    {
+      "id": "monthlyChartCard",
+      "title": "Monthly Inspection",
+      "title_source": "h3",
+      "widgets": [
+        {
+          "kind": "chart",
+          "canvas_id": "monthlyChart",
+          "title": "Monthly Inspection",
+          "chart_type": "bar",
+          "labels": [
+            "Aug",
+            "Sep",
+            "Oct",
+            "Nov",
+            "Dec",
+            "Jan"
+          ],
+          "datasets": [
+            {
+              "label": "Inspected",
+              "data": [
+                9344,
+                10044,
+                16764,
+                15911,
+                13336,
+                4747
+              ]
+            }
+          ],
+          "source_line": 384,
+          "render_function": "renderMonthlyChart",
+          "default_filter_state": {
+            "subco": "All",
+            "ha": "All",
+            "method": "All"
+          },
+          "default_data_source": "rawData.monthly.All",
+          "note": "Chart is NOT a static hardcoded config (unlike welding-dashboard charts): labels/datasets above are the INITIAL render only, computed here in Python by replaying the exact source formula (see `logic.renderMonthlyChart`) against `data.rawData` for the default filter state {subco:All, ha:All, method:All}. Changing any filter re-derives different values client-side; the full space of possible values is the data already captured in `data.rawData`."
+        }
+      ]
+    }
+  ],
+  "data": {
+    "rawData": {
+      "subco": {
+        "CCC": {
+          "total": 227605,
+          "constn": 59126,
+          "pcc": 773,
+          "inspected": 59444,
+          "leaked": 0,
+          "leakedPct": 0
+        },
+        "GAC": {
+          "total": 53550,
+          "constn": 24054,
+          "pcc": 1311,
+          "inspected": 25022,
+          "leaked": 39,
+          "leakedPct": 0.16
+        },
+        "MEDGULF": {
+          "total": 12561,
+          "constn": 6705,
+          "pcc": 0,
+          "inspected": 6705,
+          "leaked": 0,
+          "leakedPct": 0
+        },
+        "TEKFEN": {
+          "total": 64626,
+          "constn": 32982,
+          "pcc": 192,
+          "inspected": 33017,
+          "leaked": 5,
+          "leakedPct": 0.02
+        }
+      },
+      "ha": {
+        "HA1": {
+          "subco": {
+            "CCC": {
+              "total": 58369,
+              "constn": 50634,
+              "pcc": 773,
+              "inspected": 50952,
+              "leaked": 0,
+              "methods": {
+                "Manual": {
+                  "total": 42201,
+                  "constn": 37053,
+                  "pcc": 493,
+                  "inspected": 37295,
+                  "leaked": 0
+                },
+                "TBN": {
+                  "total": 276,
+                  "constn": 265,
+                  "pcc": 7,
+                  "inspected": 272,
+                  "leaked": 0
+                },
+                "Tensioning": {
+                  "total": 615,
+                  "constn": 464,
+                  "pcc": 15,
+                  "inspected": 467,
+                  "leaked": 0
+                },
+                "Torquing": {
+                  "total": 15277,
+                  "constn": 12852,
+                  "pcc": 258,
+                  "inspected": 12918,
+                  "leaked": 0
+                }
+              }
+            },
+            "GAC": {
+              "total": 33515,
+              "constn": 22004,
+              "pcc": 1203,
+              "inspected": 22874,
+              "leaked": 39,
+              "methods": {
+                "Manual": {
+                  "total": 21357,
+                  "constn": 16873,
+                  "pcc": 1013,
+                  "inspected": 17659,
+                  "leaked": 25
+                },
+                "TBN": {
+                  "total": 691,
+                  "constn": 1,
+                  "pcc": 1,
+                  "inspected": 1,
+                  "leaked": 0
+                },
+                "Tensioning": {
+                  "total": 259,
+                  "constn": 36,
+                  "pcc": 50,
+                  "inspected": 80,
+                  "leaked": 1
+                },
+                "Torquing": {
+                  "total": 11208,
+                  "constn": 5094,
+                  "pcc": 139,
+                  "inspected": 5134,
+                  "leaked": 13
+                }
+              }
+            },
+            "MEDGULF": {
+              "total": 8631,
+              "constn": 6384,
+              "pcc": 0,
+              "inspected": 6384,
+              "leaked": 0,
+              "methods": {
+                "Manual": {
+                  "total": 8623,
+                  "constn": 6382,
+                  "pcc": 0,
+                  "inspected": 6382,
+                  "leaked": 0
+                },
+                "TBN": {
+                  "total": 2,
+                  "constn": 2,
+                  "pcc": 0,
+                  "inspected": 2,
+                  "leaked": 0
+                },
+                "Torquing": {
+                  "total": 6,
+                  "constn": 0,
+                  "pcc": 0,
+                  "inspected": 0,
+                  "leaked": 0
+                }
+              }
+            },
+            "TEKFEN": {
+              "total": 55817,
+              "constn": 31645,
+              "pcc": 191,
+              "inspected": 31679,
+              "leaked": 5,
+              "methods": {
+                "Manual": {
+                  "total": 31440,
+                  "constn": 18121,
+                  "pcc": 112,
+                  "inspected": 18140,
+                  "leaked": 0
+                },
+                "TBN": {
+                  "total": 13,
+                  "constn": 0,
+                  "pcc": 0,
+                  "inspected": 0,
+                  "leaked": 0
+                },
+                "Tensioning": {
+                  "total": 69,
+                  "constn": 44,
+                  "pcc": 0,
+                  "inspected": 44,
+                  "leaked": 0
+                },
+                "Torquing": {
+                  "total": 24295,
+                  "constn": 13480,
+                  "pcc": 79,
+                  "inspected": 13495,
+                  "leaked": 5
+                }
+              }
+            }
+          },
+          "methods": {
+            "Manual": {
+              "total": 103621,
+              "constn": 78429,
+              "pcc": 1618,
+              "inspected": 79476,
+              "leaked": 25
+            },
+            "TBN": {
+              "total": 982,
+              "constn": 268,
+              "pcc": 8,
+              "inspected": 275,
+              "leaked": 0
+            },
+            "Tensioning": {
+              "total": 943,
+              "constn": 544,
+              "pcc": 65,
+              "inspected": 591,
+              "leaked": 1
+            },
+            "Torquing": {
+              "total": 50786,
+              "constn": 31426,
+              "pcc": 476,
+              "inspected": 31547,
+              "leaked": 18
+            }
+          }
+        },
+        "HA2": {
+          "subco": {
+            "CCC": {
+              "total": 56398,
+              "constn": 7681,
+              "pcc": 0,
+              "inspected": 7681,
+              "leaked": 0,
+              "methods": {
+                "Manual": {
+                  "total": 40873,
+                  "constn": 6628,
+                  "pcc": 0,
+                  "inspected": 6628,
+                  "leaked": 0
+                },
+                "TBN": {
+                  "total": 315,
+                  "constn": 158,
+                  "pcc": 0,
+                  "inspected": 158,
+                  "leaked": 0
+                },
+                "Tensioning": {
+                  "total": 595,
+                  "constn": 13,
+                  "pcc": 0,
+                  "inspected": 13,
+                  "leaked": 0
+                },
+                "Torquing": {
+                  "total": 14615,
+                  "constn": 882,
+                  "pcc": 0,
+                  "inspected": 882,
+                  "leaked": 0
+                }
+              }
+            },
+            "GAC": {
+              "total": 2600,
+              "constn": 925,
+              "pcc": 47,
+              "inspected": 969,
+              "leaked": 0,
+              "methods": {
+                "Manual": {
+                  "total": 1849,
+                  "constn": 870,
+                  "pcc": 45,
+                  "inspected": 912,
+                  "leaked": 0
+                },
+                "TBN": {
+                  "total": 392,
+                  "constn": 0,
+                  "pcc": 0,
+                  "inspected": 0,
+                  "leaked": 0
+                },
+                "Tensioning": {
+                  "total": 6,
+                  "constn": 0,
+                  "pcc": 1,
+                  "inspected": 1,
+                  "leaked": 0
+                },
+                "Torquing": {
+                  "total": 354,
+                  "constn": 55,
+                  "pcc": 1,
+                  "inspected": 56,
+                  "leaked": 0
+                }
+              }
+            }
+          },
+          "methods": {
+            "Manual": {
+              "total": 42722,
+              "constn": 7498,
+              "pcc": 45,
+              "inspected": 7540,
+              "leaked": 0
+            },
+            "TBN": {
+              "total": 707,
+              "constn": 158,
+              "pcc": 0,
+              "inspected": 158,
+              "leaked": 0
+            },
+            "Tensioning": {
+              "total": 601,
+              "constn": 13,
+              "pcc": 1,
+              "inspected": 14,
+              "leaked": 0
+            },
+            "Torquing": {
+              "total": 14969,
+              "constn": 937,
+              "pcc": 1,
+              "inspected": 938,
+              "leaked": 0
+            }
+          }
+        },
+        "HA3": {
+          "subco": {
+            "CCC": {
+              "total": 56474,
+              "constn": 378,
+              "pcc": 0,
+              "inspected": 378,
+              "leaked": 0,
+              "methods": {
+                "Manual": {
+                  "total": 40974,
+                  "constn": 345,
+                  "pcc": 0,
+                  "inspected": 345,
+                  "leaked": 0
+                },
+                "TBN": {
+                  "total": 287,
+                  "constn": 13,
+                  "pcc": 0,
+                  "inspected": 13,
+                  "leaked": 0
+                },
+                "Tensioning": {
+                  "total": 597,
+                  "constn": 12,
+                  "pcc": 0,
+                  "inspected": 12,
+                  "leaked": 0
+                },
+                "Torquing": {
+                  "total": 14616,
+                  "constn": 8,
+                  "pcc": 0,
+                  "inspected": 8,
+                  "leaked": 0
+                }
+              }
+            },
+            "GAC": {
+              "total": 16401,
+              "constn": 1045,
+              "pcc": 61,
+              "inspected": 1099,
+              "leaked": 0,
+              "methods": {
+                "Manual": {
+                  "total": 9427,
+                  "constn": 968,
+                  "pcc": 56,
+                  "inspected": 1017,
+                  "leaked": 0
+                },
+                "TBN": {
+                  "total": 1199,
+                  "constn": 0,
+                  "pcc": 0,
+                  "inspected": 0,
+                  "leaked": 0
+                },
+                "Tensioning": {
+                  "total": 116,
+                  "constn": 0,
+                  "pcc": 4,
+                  "inspected": 4,
+                  "leaked": 0
+                },
+                "Torquing": {
+                  "total": 5659,
+                  "constn": 77,
+                  "pcc": 1,
+                  "inspected": 78,
+                  "leaked": 0
+                }
+              }
+            },
+            "MEDGULF": {
+              "total": 1849,
+              "constn": 285,
+              "pcc": 0,
+              "inspected": 285,
+              "leaked": 0,
+              "methods": {
+                "Manual": {
+                  "total": 1849,
+                  "constn": 285,
+                  "pcc": 0,
+                  "inspected": 285,
+                  "leaked": 0
+                }
+              }
+            },
+            "TEKFEN": {
+              "total": 8809,
+              "constn": 1337,
+              "pcc": 1,
+              "inspected": 1338,
+              "leaked": 0,
+              "methods": {
+                "Manual": {
+                  "total": 3469,
+                  "constn": 541,
+                  "pcc": 0,
+                  "inspected": 541,
+                  "leaked": 0
+                },
+                "TBN": {
+                  "total": 2,
+                  "constn": 0,
+                  "pcc": 0,
+                  "inspected": 0,
+                  "leaked": 0
+                },
+                "Tensioning": {
+                  "total": 37,
+                  "constn": 10,
+                  "pcc": 0,
+                  "inspected": 10,
+                  "leaked": 0
+                },
+                "Torquing": {
+                  "total": 5301,
+                  "constn": 786,
+                  "pcc": 1,
+                  "inspected": 787,
+                  "leaked": 0
+                }
+              }
+            }
+          },
+          "methods": {
+            "Manual": {
+              "total": 55719,
+              "constn": 2139,
+              "pcc": 56,
+              "inspected": 2188,
+              "leaked": 0
+            },
+            "TBN": {
+              "total": 1488,
+              "constn": 13,
+              "pcc": 0,
+              "inspected": 13,
+              "leaked": 0
+            },
+            "Tensioning": {
+              "total": 750,
+              "constn": 22,
+              "pcc": 4,
+              "inspected": 26,
+              "leaked": 0
+            },
+            "Torquing": {
+              "total": 25576,
+              "constn": 871,
+              "pcc": 2,
+              "inspected": 873,
+              "leaked": 0
+            }
+          }
+        },
+        "HA4": {
+          "subco": {
+            "CCC": {
+              "total": 56364,
+              "constn": 433,
+              "pcc": 0,
+              "inspected": 433,
+              "leaked": 0,
+              "methods": {
+                "Manual": {
+                  "total": 40872,
+                  "constn": 418,
+                  "pcc": 0,
+                  "inspected": 418,
+                  "leaked": 0
+                },
+                "TBN": {
+                  "total": 279,
+                  "constn": 5,
+                  "pcc": 0,
+                  "inspected": 5,
+                  "leaked": 0
+                },
+                "Tensioning": {
+                  "total": 597,
+                  "constn": 9,
+                  "pcc": 0,
+                  "inspected": 9,
+                  "leaked": 0
+                },
+                "Torquing": {
+                  "total": 14616,
+                  "constn": 1,
+                  "pcc": 0,
+                  "inspected": 1,
+                  "leaked": 0
+                }
+              }
+            },
+            "GAC": {
+              "total": 1034,
+              "constn": 80,
+              "pcc": 0,
+              "inspected": 80,
+              "leaked": 0,
+              "methods": {
+                "Manual": {
+                  "total": 710,
+                  "constn": 80,
+                  "pcc": 0,
+                  "inspected": 80,
+                  "leaked": 0
+                },
+                "TBN": {
+                  "total": 2,
+                  "constn": 0,
+                  "pcc": 0,
+                  "inspected": 0,
+                  "leaked": 0
+                },
+                "Torquing": {
+                  "total": 317,
+                  "constn": 0,
+                  "pcc": 0,
+                  "inspected": 0,
+                  "leaked": 0
+                }
+              }
+            },
+            "MEDGULF": {
+              "total": 2081,
+              "constn": 36,
+              "pcc": 0,
+              "inspected": 36,
+              "leaked": 0,
+              "methods": {
+                "Manual": {
+                  "total": 2081,
+                  "constn": 36,
+                  "pcc": 0,
+                  "inspected": 36,
+                  "leaked": 0
+                }
+              }
+            }
+          },
+          "methods": {
+            "Manual": {
+              "total": 43663,
+              "constn": 534,
+              "pcc": 0,
+              "inspected": 534,
+              "leaked": 0
+            },
+            "TBN": {
+              "total": 281,
+              "constn": 5,
+              "pcc": 0,
+              "inspected": 5,
+              "leaked": 0
+            },
+            "Tensioning": {
+              "total": 597,
+              "constn": 9,
+              "pcc": 0,
+              "inspected": 9,
+              "leaked": 0
+            },
+            "Torquing": {
+              "total": 14933,
+              "constn": 1,
+              "pcc": 0,
+              "inspected": 1,
+              "leaked": 0
+            }
+          }
+        }
+      },
+      "leakedTimeline": {
+        "All": [
+          {
+            "date": "05-Dec-25",
+            "pct": 0.02
+          },
+          {
+            "date": "12-Dec-25",
+            "pct": 0.02
+          },
+          {
+            "date": "19-Dec-25",
+            "pct": 0.02
+          },
+          {
+            "date": "26-Dec-25",
+            "pct": 0.02
+          },
+          {
+            "date": "02-Jan-26",
+            "pct": 0.04
+          },
+          {
+            "date": "09-Jan-26",
+            "pct": 0.04
+          }
+        ],
+        "HA1": [
+          {
+            "date": "05-Dec-25",
+            "pct": 0.02
+          },
+          {
+            "date": "12-Dec-25",
+            "pct": 0.02
+          },
+          {
+            "date": "19-Dec-25",
+            "pct": 0.02
+          },
+          {
+            "date": "26-Dec-25",
+            "pct": 0.02
+          },
+          {
+            "date": "02-Jan-26",
+            "pct": 0.04
+          }
+        ],
+        "HA2": [],
+        "HA3": [
+          {
+            "date": "26-Dec-25",
+            "pct": 0.02
+          }
+        ],
+        "HA4": [],
+        "CCC": [
+          {
+            "date": "26-Dec-25",
+            "pct": 0.02
+          }
+        ],
+        "GAC": [
+          {
+            "date": "05-Dec-25",
+            "pct": 0.02
+          },
+          {
+            "date": "19-Dec-25",
+            "pct": 0.02
+          },
+          {
+            "date": "26-Dec-25",
+            "pct": 0.02
+          },
+          {
+            "date": "02-Jan-26",
+            "pct": 0.04
+          }
+        ],
+        "MEDGULF": [
+          {
+            "date": "02-Jan-26",
+            "pct": 0.04
+          }
+        ],
+        "TEKFEN": [
+          {
+            "date": "12-Dec-25",
+            "pct": 0.02
+          },
+          {
+            "date": "19-Dec-25",
+            "pct": 0.02
+          },
+          {
+            "date": "26-Dec-25",
+            "pct": 0.02
+          }
+        ],
+        "HA1_CCC": [
+          {
+            "date": "26-Dec-25",
+            "pct": 0.02
+          }
+        ],
+        "HA1_GAC": [
+          {
+            "date": "05-Dec-25",
+            "pct": 0.02
+          },
+          {
+            "date": "19-Dec-25",
+            "pct": 0.02
+          },
+          {
+            "date": "26-Dec-25",
+            "pct": 0.02
+          },
+          {
+            "date": "02-Jan-26",
+            "pct": 0.04
+          }
+        ],
+        "HA1_MEDGULF": [
+          {
+            "date": "02-Jan-26",
+            "pct": 0.04
+          }
+        ],
+        "HA1_TEKFEN": [
+          {
+            "date": "12-Dec-25",
+            "pct": 0.02
+          },
+          {
+            "date": "19-Dec-25",
+            "pct": 0.02
+          },
+          {
+            "date": "26-Dec-25",
+            "pct": 0.02
+          }
+        ]
+      },
+      "repair": {
+        "All": {
+          "repaired": 1926,
+          "toRepair": 255,
+          "site": [
+            {
+              "month": "Oct",
+              "ccc": 38,
+              "gac": 1
+            },
+            {
+              "month": "Nov",
+              "ccc": 97,
+              "gac": 2
+            },
+            {
+              "month": "Dec",
+              "ccc": 8,
+              "gac": 2
+            }
+          ],
+          "vendor": [
+            {
+              "month": "Oct",
+              "ccc": 36,
+              "gac": 0
+            },
+            {
+              "month": "Nov",
+              "ccc": 63,
+              "gac": 0
+            },
+            {
+              "month": "Dec",
+              "ccc": 29,
+              "gac": 0
+            }
+          ]
+        },
+        "CCC": {
+          "repaired": 829,
+          "toRepair": 85,
+          "site": [
+            {
+              "month": "Oct",
+              "ccc": 37,
+              "gac": 1
+            },
+            {
+              "month": "Nov",
+              "ccc": 97,
+              "gac": 2
+            },
+            {
+              "month": "Dec",
+              "ccc": 2,
+              "gac": 2
+            }
+          ],
+          "vendor": [
+            {
+              "month": "Oct",
+              "ccc": 29,
+              "gac": 0
+            },
+            {
+              "month": "Nov",
+              "ccc": 63,
+              "gac": 0
+            },
+            {
+              "month": "Dec",
+              "ccc": 29,
+              "gac": 0
+            }
+          ]
+        },
+        "GAC": {
+          "repaired": 1147,
+          "toRepair": 169,
+          "site": [
+            {
+              "month": "Oct",
+              "ccc": 37,
+              "gac": 1
+            },
+            {
+              "month": "Nov",
+              "ccc": 97,
+              "gac": 2
+            },
+            {
+              "month": "Dec",
+              "ccc": 8,
+              "gac": 2
+            }
+          ],
+          "vendor": [
+            {
+              "month": "Oct",
+              "ccc": 29,
+              "gac": 0
+            },
+            {
+              "month": "Nov",
+              "ccc": 63,
+              "gac": 0
+            },
+            {
+              "month": "Dec",
+              "ccc": 29,
+              "gac": 0
+            }
+          ]
+        },
+        "MEDGULF": {
+          "repaired": 762,
+          "toRepair": 110,
+          "site": [
+            {
+              "month": "Oct",
+              "ccc": 28,
+              "gac": 0
+            },
+            {
+              "month": "Nov",
+              "ccc": 96,
+              "gac": 2
+            },
+            {
+              "month": "Dec",
+              "ccc": 2,
+              "gac": 2
+            }
+          ],
+          "vendor": [
+            {
+              "month": "Oct",
+              "ccc": 29,
+              "gac": 0
+            },
+            {
+              "month": "Nov",
+              "ccc": 62,
+              "gac": 0
+            },
+            {
+              "month": "Dec",
+              "ccc": 29,
+              "gac": 0
+            }
+          ]
+        },
+        "TEKFEN": {
+          "repaired": 972,
+          "toRepair": 141,
+          "site": [
+            {
+              "month": "Oct",
+              "ccc": 37,
+              "gac": 1
+            },
+            {
+              "month": "Nov",
+              "ccc": 97,
+              "gac": 2
+            },
+            {
+              "month": "Dec",
+              "ccc": 2,
+              "gac": 2
+            }
+          ],
+          "vendor": [
+            {
+              "month": "Oct",
+              "ccc": 29,
+              "gac": 0
+            },
+            {
+              "month": "Nov",
+              "ccc": 63,
+              "gac": 0
+            },
+            {
+              "month": "Dec",
+              "ccc": 29,
+              "gac": 0
+            }
+          ]
+        },
+        "HA1": {
+          "repaired": 1175,
+          "toRepair": 178,
+          "site": [
+            {
+              "month": "Oct",
+              "ccc": 37,
+              "gac": 1
+            },
+            {
+              "month": "Nov",
+              "ccc": 97,
+              "gac": 2
+            },
+            {
+              "month": "Dec",
+              "ccc": 8,
+              "gac": 2
+            }
+          ],
+          "vendor": [
+            {
+              "month": "Oct",
+              "ccc": 29,
+              "gac": 0
+            },
+            {
+              "month": "Nov",
+              "ccc": 63,
+              "gac": 0
+            },
+            {
+              "month": "Dec",
+              "ccc": 29,
+              "gac": 0
+            }
+          ]
+        },
+        "HA2": {
+          "repaired": 631,
+          "toRepair": 58,
+          "site": [
+            {
+              "month": "Oct",
+              "ccc": 37,
+              "gac": 1
+            },
+            {
+              "month": "Nov",
+              "ccc": 97,
+              "gac": 2
+            },
+            {
+              "month": "Dec",
+              "ccc": 2,
+              "gac": 2
+            }
+          ],
+          "vendor": [
+            {
+              "month": "Oct",
+              "ccc": 29,
+              "gac": 0
+            },
+            {
+              "month": "Nov",
+              "ccc": 63,
+              "gac": 0
+            },
+            {
+              "month": "Dec",
+              "ccc": 29,
+              "gac": 0
+            }
+          ]
+        },
+        "HA3": {
+          "repaired": 728,
+          "toRepair": 80,
+          "site": [
+            {
+              "month": "Oct",
+              "ccc": 37,
+              "gac": 1
+            },
+            {
+              "month": "Nov",
+              "ccc": 97,
+              "gac": 2
+            },
+            {
+              "month": "Dec",
+              "ccc": 2,
+              "gac": 2
+            }
+          ],
+          "vendor": [
+            {
+              "month": "Oct",
+              "ccc": 29,
+              "gac": 0
+            },
+            {
+              "month": "Nov",
+              "ccc": 59,
+              "gac": 0
+            },
+            {
+              "month": "Dec",
+              "ccc": 29,
+              "gac": 0
+            }
+          ]
+        },
+        "HA4": {
+          "repaired": 91,
+          "toRepair": 22,
+          "site": [
+            {
+              "month": "Oct",
+              "ccc": 19,
+              "gac": 0
+            },
+            {
+              "month": "Nov",
+              "ccc": 14,
+              "gac": 0
+            },
+            {
+              "month": "Dec",
+              "ccc": 0,
+              "gac": 0
+            }
+          ],
+          "vendor": [
+            {
+              "month": "Oct",
+              "ccc": 6,
+              "gac": 0
+            },
+            {
+              "month": "Nov",
+              "ccc": 6,
+              "gac": 0
+            },
+            {
+              "month": "Dec",
+              "ccc": 0,
+              "gac": 0
+            }
+          ]
+        },
+        "HA1_CCC": {
+          "repaired": 827,
+          "toRepair": 85,
+          "site": [
+            {
+              "month": "Oct",
+              "ccc": 37,
+              "gac": 1
+            },
+            {
+              "month": "Nov",
+              "ccc": 97,
+              "gac": 2
+            },
+            {
+              "month": "Dec",
+              "ccc": 2,
+              "gac": 2
+            }
+          ],
+          "vendor": [
+            {
+              "month": "Oct",
+              "ccc": 29,
+              "gac": 0
+            },
+            {
+              "month": "Nov",
+              "ccc": 63,
+              "gac": 0
+            },
+            {
+              "month": "Dec",
+              "ccc": 29,
+              "gac": 0
+            }
+          ]
+        },
+        "HA1_GAC": {
+          "repaired": 1147,
+          "toRepair": 169,
+          "site": [
+            {
+              "month": "Oct",
+              "ccc": 37,
+              "gac": 1
+            },
+            {
+              "month": "Nov",
+              "ccc": 97,
+              "gac": 2
+            },
+            {
+              "month": "Dec",
+              "ccc": 8,
+              "gac": 2
+            }
+          ],
+          "vendor": [
+            {
+              "month": "Oct",
+              "ccc": 29,
+              "gac": 0
+            },
+            {
+              "month": "Nov",
+              "ccc": 63,
+              "gac": 0
+            },
+            {
+              "month": "Dec",
+              "ccc": 29,
+              "gac": 0
+            }
+          ]
+        },
+        "HA1_MEDGULF": {
+          "repaired": 754,
+          "toRepair": 109,
+          "site": [
+            {
+              "month": "Oct",
+              "ccc": 28,
+              "gac": 0
+            },
+            {
+              "month": "Nov",
+              "ccc": 96,
+              "gac": 2
+            },
+            {
+              "month": "Dec",
+              "ccc": 2,
+              "gac": 2
+            }
+          ],
+          "vendor": [
+            {
+              "month": "Oct",
+              "ccc": 29,
+              "gac": 0
+            },
+            {
+              "month": "Nov",
+              "ccc": 62,
+              "gac": 0
+            },
+            {
+              "month": "Dec",
+              "ccc": 29,
+              "gac": 0
+            }
+          ]
+        },
+        "HA1_TEKFEN": {
+          "repaired": 972,
+          "toRepair": 141,
+          "site": [
+            {
+              "month": "Oct",
+              "ccc": 37,
+              "gac": 1
+            },
+            {
+              "month": "Nov",
+              "ccc": 97,
+              "gac": 2
+            },
+            {
+              "month": "Dec",
+              "ccc": 2,
+              "gac": 2
+            }
+          ],
+          "vendor": [
+            {
+              "month": "Oct",
+              "ccc": 29,
+              "gac": 0
+            },
+            {
+              "month": "Nov",
+              "ccc": 63,
+              "gac": 0
+            },
+            {
+              "month": "Dec",
+              "ccc": 29,
+              "gac": 0
+            }
+          ]
+        }
+      },
+      "monthly": {
+        "All": [
+          {
+            "month": "Aug",
+            "value": 9344
+          },
+          {
+            "month": "Sep",
+            "value": 10044
+          },
+          {
+            "month": "Oct",
+            "value": 16764
+          },
+          {
+            "month": "Nov",
+            "value": 15911
+          },
+          {
+            "month": "Dec",
+            "value": 13336
+          },
+          {
+            "month": "Jan",
+            "value": 4747
+          }
+        ],
+        "CCC": [
+          {
+            "month": "Aug",
+            "value": 4894
+          },
+          {
+            "month": "Sep",
+            "value": 5803
+          },
+          {
+            "month": "Oct",
+            "value": 8829
+          },
+          {
+            "month": "Nov",
+            "value": 8604
+          },
+          {
+            "month": "Dec",
+            "value": 4756
+          },
+          {
+            "month": "Jan",
+            "value": 1319
+          }
+        ],
+        "GAC": [
+          {
+            "month": "Aug",
+            "value": 1290
+          },
+          {
+            "month": "Sep",
+            "value": 1578
+          },
+          {
+            "month": "Oct",
+            "value": 3334
+          },
+          {
+            "month": "Nov",
+            "value": 2351
+          },
+          {
+            "month": "Dec",
+            "value": 2510
+          },
+          {
+            "month": "Jan",
+            "value": 1215
+          }
+        ],
+        "MEDGULF": [
+          {
+            "month": "Aug",
+            "value": 406
+          },
+          {
+            "month": "Sep",
+            "value": 500
+          },
+          {
+            "month": "Oct",
+            "value": 601
+          },
+          {
+            "month": "Nov",
+            "value": 359
+          },
+          {
+            "month": "Dec",
+            "value": 476
+          },
+          {
+            "month": "Jan",
+            "value": 344
+          }
+        ],
+        "TEKFEN": [
+          {
+            "month": "Aug",
+            "value": 2754
+          },
+          {
+            "month": "Sep",
+            "value": 2163
+          },
+          {
+            "month": "Oct",
+            "value": 4000
+          },
+          {
+            "month": "Nov",
+            "value": 4597
+          },
+          {
+            "month": "Dec",
+            "value": 5594
+          },
+          {
+            "month": "Jan",
+            "value": 1869
+          }
+        ],
+        "HA1": [
+          {
+            "month": "Aug",
+            "value": 8834
+          },
+          {
+            "month": "Sep",
+            "value": 9318
+          },
+          {
+            "month": "Oct",
+            "value": 14230
+          },
+          {
+            "month": "Nov",
+            "value": 13135
+          },
+          {
+            "month": "Dec",
+            "value": 10941
+          },
+          {
+            "month": "Jan",
+            "value": 3787
+          }
+        ],
+        "HA2": [
+          {
+            "month": "Aug",
+            "value": 276
+          },
+          {
+            "month": "Sep",
+            "value": 457
+          },
+          {
+            "month": "Oct",
+            "value": 1832
+          },
+          {
+            "month": "Nov",
+            "value": 2411
+          },
+          {
+            "month": "Dec",
+            "value": 1823
+          },
+          {
+            "month": "Jan",
+            "value": 851
+          }
+        ],
+        "HA3": [
+          {
+            "month": "Aug",
+            "value": 227
+          },
+          {
+            "month": "Sep",
+            "value": 253
+          },
+          {
+            "month": "Oct",
+            "value": 478
+          },
+          {
+            "month": "Nov",
+            "value": 359
+          },
+          {
+            "month": "Dec",
+            "value": 560
+          },
+          {
+            "month": "Jan",
+            "value": 108
+          }
+        ],
+        "HA4": [
+          {
+            "month": "Aug",
+            "value": 7
+          },
+          {
+            "month": "Sep",
+            "value": 16
+          },
+          {
+            "month": "Oct",
+            "value": 224
+          },
+          {
+            "month": "Nov",
+            "value": 6
+          },
+          {
+            "month": "Dec",
+            "value": 12
+          },
+          {
+            "month": "Jan",
+            "value": 1
+          }
+        ],
+        "HA1_CCC": [
+          {
+            "month": "Aug",
+            "value": 4670
+          },
+          {
+            "month": "Sep",
+            "value": 5354
+          },
+          {
+            "month": "Oct",
+            "value": 6922
+          },
+          {
+            "month": "Nov",
+            "value": 6286
+          },
+          {
+            "month": "Dec",
+            "value": 3096
+          },
+          {
+            "month": "Jan",
+            "value": 699
+          }
+        ],
+        "HA1_GAC": [
+          {
+            "month": "Aug",
+            "value": 1123
+          },
+          {
+            "month": "Sep",
+            "value": 1498
+          },
+          {
+            "month": "Oct",
+            "value": 3044
+          },
+          {
+            "month": "Nov",
+            "value": 2132
+          },
+          {
+            "month": "Dec",
+            "value": 2197
+          },
+          {
+            "month": "Jan",
+            "value": 926
+          }
+        ],
+        "HA1_MEDGULF": [
+          {
+            "month": "Aug",
+            "value": 404
+          },
+          {
+            "month": "Sep",
+            "value": 473
+          },
+          {
+            "month": "Oct",
+            "value": 591
+          },
+          {
+            "month": "Nov",
+            "value": 317
+          },
+          {
+            "month": "Dec",
+            "value": 442
+          },
+          {
+            "month": "Jan",
+            "value": 343
+          }
+        ],
+        "HA1_TEKFEN": [
+          {
+            "month": "Aug",
+            "value": 2637
+          },
+          {
+            "month": "Sep",
+            "value": 1993
+          },
+          {
+            "month": "Oct",
+            "value": 3673
+          },
+          {
+            "month": "Nov",
+            "value": 4400
+          },
+          {
+            "month": "Dec",
+            "value": 5206
+          },
+          {
+            "month": "Jan",
+            "value": 1819
+          }
+        ],
+        "HA1_Manual": [
+          {
+            "month": "Aug",
+            "value": 6432
+          },
+          {
+            "month": "Sep",
+            "value": 6689
+          },
+          {
+            "month": "Oct",
+            "value": 10001
+          },
+          {
+            "month": "Nov",
+            "value": 8996
+          },
+          {
+            "month": "Dec",
+            "value": 7490
+          },
+          {
+            "month": "Jan",
+            "value": 2582
+          }
+        ]
+      },
+      "ha1Progress": {
+        "All": {
+          "total": 156332,
+          "constn": 110667,
+          "pcc": 2167,
+          "remains": 44757
+        },
+        "CCC": {
+          "total": 58369,
+          "constn": 50634,
+          "pcc": 773,
+          "remains": 7417
+        },
+        "GAC": {
+          "total": 33515,
+          "constn": 22004,
+          "pcc": 1203,
+          "remains": 10850
+        },
+        "MEDGULF": {
+          "total": 8631,
+          "constn": 6384,
+          "pcc": 0,
+          "remains": 2247
+        },
+        "TEKFEN": {
+          "total": 55817,
+          "constn": 31645,
+          "pcc": 191,
+          "remains": 24243
+        },
+        "HA1": {
+          "total": 156332,
+          "constn": 110667,
+          "pcc": 2167,
+          "remains": 44757
+        },
+        "HA2": null,
+        "HA3": null,
+        "HA4": null,
+        "HA1_CCC": {
+          "total": 58369,
+          "constn": 50634,
+          "pcc": 773,
+          "remains": 7417
+        },
+        "HA1_GAC": {
+          "total": 33515,
+          "constn": 22004,
+          "pcc": 1203,
+          "remains": 10850
+        },
+        "HA1_MEDGULF": {
+          "total": 8631,
+          "constn": 6384,
+          "pcc": 0,
+          "remains": 2247
+        },
+        "HA1_TEKFEN": {
+          "total": 55817,
+          "constn": 31645,
+          "pcc": 191,
+          "remains": 24243
+        }
+      }
+    },
+    "palettes": {
+      "pastel": {
+        "colors": [
+          "#fcf09f",
+          "#b4fad9",
+          "#f4d4fc",
+          "#ffadd8",
+          "#abcbff",
+          "#ccf6ff",
+          "#ffa1aa",
+          "#ae9cff"
+        ],
+        "icon": "🎨",
+        "label": "Pastel"
+      },
+      "ocean": {
+        "colors": [
+          "#b8ffed",
+          "#adf7f0",
+          "#9ae9f5",
+          "#79bedb",
+          "#a1caff",
+          "#5e81d1",
+          "#a3c6e3",
+          "#6bbcff"
+        ],
+        "icon": "🌊",
+        "label": "Ocean"
+      },
+      "desert": {
+        "colors": [
+          "#fafab1",
+          "#ffed9c",
+          "#edcc6f",
+          "#ffe9c7",
+          "#ffe77d",
+          "#ffd061",
+          "#fad96b",
+          "#f0b860"
+        ],
+        "icon": "🏜️",
+        "label": "Desert"
+      },
+      "upsidedown": {
+        "colors": [
+          "#a80000",
+          "#d92b04",
+          "#c40202",
+          "#6e2b2b",
+          "#003e7d",
+          "#022f5c",
+          "#385b94",
+          "#41577a"
+        ],
+        "icon": "🔮",
+        "label": "Upside Down"
+      },
+      "powerbi": {
+        "colors": [
+          "#FFD966",
+          "#F4B183",
+          "#A9D18E",
+          "#ED7D31",
+          "#70AD47",
+          "#FFC000",
+          "#C6E0B4",
+          "#ff8a7d"
+        ],
+        "icon": "📊",
+        "label": "Power BI"
+      }
+    }
+  },
+  "logic": {
+    "resetFilters": {
+      "name": "resetFilters",
+      "parameters": [],
+      "source_line": 626,
+      "description": "Sets filters.{subco,ha,method} back to 'All', resets the three <select> elements to 'All', and calls applyFilters(). No formula (state reset only).",
+      "formulas": []
+    },
+    "getFilteredData": {
+      "name": "getFilteredData",
+      "parameters": [],
+      "source_line": 634,
+      "description": "The core aggregator. Given the current `filters` (subco/ha/method), sums rawData.ha[<HA>].subco[<Subco>] (or its .methods[<Method>] sub-object when a method filter is active) across the selected HA(s) and subcontractor(s) into result.{total,constn,pcc,inspected,leaked}, plus per-subco rows (subcoList), per-HA rows with per-method detail rows (haList), and per-method inspected totals for the donut (jointMethods). Also computes overall %, leaked % and (within jointMethods) each method's share of the joint-method total.",
+      "formulas": [
+        "subcoRow.pct = ((subcoRow.inspected / subcoRow.total) * 100).toFixed(2)",
+        "haRow.pct = ((haRow.inspected / haRow.total) * 100).toFixed(2)",
+        "detail.pct = md.total > 0 ? ((md.inspected / md.total) * 100).toFixed(2) : 0",
+        "jm.pct = jmTotal > 0 ? ((jm.value / jmTotal) * 100).toFixed(2) : 0",
+        "result.pct = result.total > 0 ? ((result.inspected / result.total) * 100).toFixed(2) : 0",
+        "result.leakedPct = result.inspected > 0 ? ((result.leaked / result.inspected) * 100).toFixed(2) : 0"
+      ]
+    },
+    "applyFilters": {
+      "name": "applyFilters",
+      "parameters": [],
+      "source_line": 731,
+      "description": "Orchestrator run on load, on any filter change, and on theme/mood switch. Calls getFilteredData(), writes the summary-card / bubble text nodes from the result, relabels the HA1 section title to the selected HA (or 'HA 1' when HA filter is 'All'), then calls rebuildCharts(d).",
+      "formulas": [
+        "pccPct = d.total > 0 ? ((d.pcc / d.total) * 100).toFixed(2) : 0"
+      ]
+    },
+    "rebuildCharts": {
+      "name": "rebuildCharts",
+      "parameters": [
+        "d"
+      ],
+      "source_line": 762,
+      "description": "Destroys every live Chart.js instance in `charts`, clears the registry, then re-renders all charts/tables after a 50ms setTimeout (renderAll(d)). No formula.",
+      "formulas": []
+    },
+    "renderAll": {
+      "name": "renderAll",
+      "parameters": [
+        "d"
+      ],
+      "source_line": 768,
+      "description": "Calls, in order: renderInspectionDonut, renderSubcoTable, renderHATable, renderHA1SubcoTable, renderHA1ProgressDonut, renderLeakedTimelineChart, renderRepairedDonut, renderMonthlyChart, renderSiteRepairChart, renderVendorRepairChart. No formula (dispatcher only).",
+      "formulas": []
+    },
+    "toggleTheme": {
+      "name": "toggleTheme",
+      "parameters": [],
+      "source_line": 781,
+      "description": "Flips currentTheme between 'dark'/'light', persists to localStorage, updates the sun/moon icon, and re-runs applyFilters() (so charts re-read CSS var colors). No formula.",
+      "formulas": []
+    },
+    "toggleMoodDropdown": {
+      "name": "toggleMoodDropdown",
+      "parameters": [],
+      "source_line": 789,
+      "description": "Toggles the .open class on the mood dropdown menu. No formula (UI only).",
+      "formulas": []
+    },
+    "selectMood": {
+      "name": "selectMood",
+      "parameters": [
+        "mood"
+      ],
+      "source_line": 791,
+      "description": "Sets currentMood, persists to localStorage, updates the mood icon/label/active option, restarts the Christmas-garland animation if mood is 'upsidedown', and re-runs applyFilters(). No formula.",
+      "formulas": []
+    },
+    "getColors": {
+      "name": "getColors",
+      "parameters": [],
+      "source_line": 808,
+      "description": "Returns palettes[currentMood].colors, the 8-color array charts pull backgroundColor/borderColor entries from by index. No formula.",
+      "formulas": []
+    },
+    "startGarland": {
+      "name": "startGarland",
+      "parameters": [],
+      "source_line": 810,
+      "description": "Every 800ms, lights a random 6-10 subset of .garland-bulb elements (cosmetic 'Upside Down' mood effect). Formula: n = Math.floor(Math.random() * 5) + 6 (random integer in [6,10]); not data-driven.",
+      "formulas": [
+        "n = Math.floor(Math.random() * 5) + 6"
+      ]
+    },
+    "renderInspectionDonut": {
+      "name": "renderInspectionDonut",
+      "parameters": [
+        "d"
+      ],
+      "source_line": 821,
+      "description": "Builds the 'Project Flange Inspected' doughnut from d.jointMethods (falls back to a single 'No Data' slice of value 1 when empty), sets #donutCenter to fmt(d.inspected), and rebuilds the outside legend with each slice's value and %. d.jointMethods itself is produced by getFilteredData().",
+      "formulas": [
+        "d.jointMethods.length > 0 ? d.jointMethods : [{ name: 'No Data', value: 1, pct: 100 }]"
+      ]
+    },
+    "renderHA1ProgressDonut": {
+      "name": "renderHA1ProgressDonut",
+      "parameters": [
+        "d"
+      ],
+      "source_line": 834,
+      "description": "Picks a lookup key into rawData.ha1Progress: '<HA>_<Subco>' if both HA and subco filters are set, else '<HA>' if only HA is set, else '<Subco>' if only subco is set, else 'All'. If that key maps to null/undefined (e.g. HA2-4 with no subco filter), shows '(Blank)'. Otherwise splits total into Inspected Const / Inspected PCC / Remains (dropping any zero-value slice) and renders the donut + legend.",
+      "formulas": [
+        "progressKey = filters.ha + '_' + filters.subco  (both set)",
+        "pct = total > 0 ? ((constn / total) * 100).toFixed(2) : 0   // Inspected Const slice",
+        "pct = total > 0 && pcc > 0 ? ((pcc / total) * 100).toFixed(2) : 0   // Inspected PCC slice",
+        "pct = total > 0 ? ((Math.max(0, remains) / total) * 100).toFixed(2) : 0   // Remains slice"
+      ]
+    },
+    "renderRepairedDonut": {
+      "name": "renderRepairedDonut",
+      "parameters": [],
+      "source_line": 874,
+      "description": "Picks a lookup key into rawData.repair using the same '<HA>_<Subco>' > '<Subco>' > '<HA>' > 'All' precedence as the timeline/monthly charts (falls back through rawData.repair[filters.subco]/[filters.ha]/.All if the combo key is absent). Renders a 2-slice donut (Repaired vs To be Repaired) with rounded percentages, or a single grey 'No Data' slice if total is 0.",
+      "formulas": [
+        "pct = total > 0 ? Math.round((repairData.repaired / total) * 100) : 0",
+        "pct = total > 0 ? Math.round((repairData.toRepair / total) * 100) : 0"
+      ]
+    },
+    "renderLeakedTimelineChart": {
+      "name": "renderLeakedTimelineChart",
+      "parameters": [],
+      "source_line": 911,
+      "description": "Same key-lookup precedence as renderRepairedDonut but against rawData.leakedTimeline, to get a list of {date, pct} points for the line chart (min 0 / max 0.06 y-axis, tooltip shows pct to 2dp with a '%' suffix). The #leakedBadge text uses `d.leaked` from a *fresh* getFilteredData() call, not the timeline series itself.",
+      "formulas": [
+        "ctx => `${ctx.parsed.y.toFixed(2)}%`  // tooltip label"
+      ]
+    },
+    "renderMonthlyChart": {
+      "name": "renderMonthlyChart",
+      "parameters": [],
+      "source_line": 942,
+      "description": "Key precedence: '<HA>_<Subco>' > '<HA>_<Method>' > '<Subco>' > '<HA>' > 'All' into rawData.monthly, to get an [{month, value}] series rendered as a single bar series labelled 'Inspected'. No percentage formula (raw counts only).",
+      "formulas": []
+    },
+    "renderSiteRepairChart": {
+      "name": "renderSiteRepairChart",
+      "parameters": [],
+      "source_line": 965,
+      "description": "Same '<HA>_<Subco>' > '<Subco>' > '<HA>' > 'All' precedence into rawData.repair, reading .site (grouped by month, split into CCC/GAC bar series). Badge = sum of ccc+gac across all months in the selected .site array.",
+      "formulas": [
+        "total = repairData.site.reduce((a, x) => a + (x.ccc || 0) + (x.gac || 0), 0)"
+      ]
+    },
+    "renderVendorRepairChart": {
+      "name": "renderVendorRepairChart",
+      "parameters": [],
+      "source_line": 993,
+      "description": "Identical to renderSiteRepairChart but reads .vendor instead of .site (Flange Repair - Vendor Issue chart).",
+      "formulas": [
+        "total = repairData.vendor.reduce((a, x) => a + (x.ccc || 0) + (x.gac || 0), 0)"
+      ]
+    },
+    "renderSubcoTable": {
+      "name": "renderSubcoTable",
+      "parameters": [
+        "d"
+      ],
+      "source_line": 1021,
+      "description": "Renders the 'Subcontractor Flange Status' table body from d.subcoList (the current filtered per-subco rows from getFilteredData), plus a totals row summed across subcoList.",
+      "formulas": [
+        "t.pct = t.total > 0 ? ((t.inspected / t.total) * 100).toFixed(2) : 0"
+      ]
+    },
+    "renderHA1SubcoTable": {
+      "name": "renderHA1SubcoTable",
+      "parameters": [
+        "d"
+      ],
+      "source_line": 1028,
+      "description": "Renders the 'HA1 Subcontractor Flange Status' table independently of getFilteredData: target HA = filters.ha, or 'HA1' when filters.ha is 'All'; for each subco in scope, reads rawData.ha[<target>].subco[<Subco>] directly (ignores the method filter entirely) and computes each row's % plus a totals row.",
+      "formulas": [
+        "pct = ((sd.inspected / sd.total) * 100).toFixed(2)   // per subco row, method filter ignored",
+        "t.pct = t.total > 0 ? ((t.inspected / t.total) * 100).toFixed(2) : 0"
+      ]
+    },
+    "toggleHADetails": {
+      "name": "toggleHADetails",
+      "parameters": [
+        "haName"
+      ],
+      "source_line": 1044,
+      "description": "Flips expandedHAs[haName] and re-runs applyFilters() to redraw the HA table with that HA's method detail rows shown/hidden. No formula.",
+      "formulas": []
+    },
+    "renderHATable": {
+      "name": "renderHATable",
+      "parameters": [
+        "d"
+      ],
+      "source_line": 1046,
+      "description": "Renders the 'HA Flange Status' table body from d.haList (rows), with each row's d.details sub-array rendered as extra (initially hidden) detail rows when that HA is expanded, plus a totals row summed across haList.",
+      "formulas": [
+        "t.pct = t.total > 0 ? ((t.inspected / t.total) * 100).toFixed(2) : 0"
+      ]
+    },
+    "fmt": {
+      "name": "fmt",
+      "parameters": [
+        "n"
+      ],
+      "source_line": 1066,
+      "description": "Number -> locale string formatter used everywhere a count is displayed: n ? n.toLocaleString() : '0' (so 0/undefined/null all render as the string '0').",
+      "formulas": [
+        "n ? n.toLocaleString() : '0'"
+      ]
+    },
+    "exportData": {
+      "name": "exportData",
+      "parameters": [],
+      "source_line": 1069,
+      "description": "Builds one big CSV string (10 sections: subco summary, HA-by-subco breakdown, HA methods summary, HA>subco>method detail, ha1Progress, monthly, repair summary, site repair by month, vendor repair by month, leaked timeline) by iterating Object.entries() over the *entire* rawData object (all filter-key combinations, not just the current filter selection), then triggers a client-side download via a Blob + <a download>. Only formula: the subcontractor-summary totals row's leaked %.",
+      "formulas": [
+        "subcoTotal.total > 0 ? ((subcoTotal.leaked / subcoTotal.inspected) * 100).toFixed(2) : 0"
+      ]
+    }
+  },
+  "global": {
+    "html_data_theme_default": "dark",
+    "html_data_mood_default": "pastel",
+    "external_scripts": [
+      "https://cdn.jsdelivr.net/npm/chart.js"
+    ],
+    "external_stylesheets": [
+      "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap",
+      "https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&display=swap"
+    ],
+    "css_variable_blocks": {
+      ":root": {
+        "--bg-primary": "#0c0c14",
+        "--bg-secondary": "#10101a",
+        "--bg-card": "#1a1a2e",
+        "--bg-card-hover": "#242440",
+        "--bg-elevated": "#22223a",
+        "--bg-input": "#1e1e32",
+        "--color-1": "#fcf09f",
+        "--color-2": "#b4fad9",
+        "--color-3": "#f4d4fc",
+        "--color-4": "#ffadd8",
+        "--color-5": "#abcbff",
+        "--color-6": "#ccf6ff",
+        "--color-7": "#ffa1aa",
+        "--color-8": "#ae9cff",
+        "--neon-color": "#f4d4fc",
+        "--neon-border": "rgba(244, 212, 252, 0.25)",
+        "--neon-border-hover": "rgba(244, 212, 252, 0.6)",
+        "--neon-glow": "0 0 15px rgba(244, 212, 252, 0.2)",
+        "--neon-glow-hover": "0 0 25px rgba(244, 212, 252, 0.4), 0 0 50px rgba(174, 156, 255, 0.3), 0 0 80px rgba(255, 173, 216, 0.2)",
+        "--accent-primary": "#ae9cff",
+        "--accent-secondary": "#ffadd8",
+        "--accent-gradient": "linear-gradient(135deg, #ae9cff 0%, #ffadd8 100%)",
+        "--text-primary": "#f4f4f8",
+        "--text-secondary": "#b0b0c8",
+        "--text-muted": "#7878a0",
+        "--indicator-up": "#b4fad9",
+        "--indicator-down": "#ffa1aa",
+        "--indicator-neutral": "#fcf09f",
+        "--border-color": "rgba(244, 212, 252, 0.12)",
+        "--shadow-card": "0 4px 20px rgba(0, 0, 0, 0.4)",
+        "--chart-grid": "rgba(174, 156, 255, 0.08)"
+      },
+      "[data-theme=\"light\"][data-mood=\"pastel\"]": {
+        "--bg-primary": "#f5f3fa",
+        "--bg-secondary": "#ffffff",
+        "--bg-card": "#ffffff",
+        "--bg-card-hover": "#f0eef8",
+        "--bg-elevated": "#e8e6f2",
+        "--bg-input": "#f0eef8",
+        "--color-1": "#fcf09f",
+        "--color-2": "#b4fad9",
+        "--color-3": "#f4d4fc",
+        "--color-4": "#ffadd8",
+        "--color-5": "#abcbff",
+        "--color-6": "#ccf6ff",
+        "--color-7": "#ffa1aa",
+        "--color-8": "#ae9cff",
+        "--neon-border": "rgba(192, 144, 216, 0.3)",
+        "--neon-border-hover": "rgba(192, 144, 216, 0.5)",
+        "--neon-glow": "0 0 10px rgba(192, 144, 216, 0.15)",
+        "--neon-glow-hover": "0 0 20px rgba(192, 144, 216, 0.3), 0 0 40px rgba(128, 112, 208, 0.2)",
+        "--accent-primary": "#ae9cff",
+        "--accent-secondary": "#ffadd8",
+        "--accent-gradient": "linear-gradient(135deg, #ae9cff 0%, #ffadd8 100%)",
+        "--text-primary": "#1a1a30",
+        "--text-secondary": "#505070",
+        "--text-muted": "#808098",
+        "--border-color": "rgba(192, 144, 216, 0.2)",
+        "--shadow-card": "0 2px 12px rgba(128, 112, 208, 0.1)",
+        "--chart-grid": "rgba(128, 112, 208, 0.12)"
+      },
+      "[data-mood=\"ocean\"]": {
+        "--bg-primary": "#0a0f14",
+        "--bg-secondary": "#0e1620",
+        "--bg-card": "#152030",
+        "--bg-card-hover": "#1e2d42",
+        "--bg-elevated": "#1a2838",
+        "--bg-input": "#182430",
+        "--color-1": "#b8ffed",
+        "--color-2": "#adf7f0",
+        "--color-3": "#9ae9f5",
+        "--color-4": "#79bedb",
+        "--color-5": "#a1caff",
+        "--color-6": "#5e81d1",
+        "--color-7": "#a3c6e3",
+        "--color-8": "#6bbcff",
+        "--neon-color": "#9ae9f5",
+        "--neon-border": "rgba(154, 233, 245, 0.25)",
+        "--neon-border-hover": "rgba(154, 233, 245, 0.6)",
+        "--neon-glow": "0 0 15px rgba(154, 233, 245, 0.2)",
+        "--neon-glow-hover": "0 0 25px rgba(154, 233, 245, 0.4), 0 0 50px rgba(107, 188, 255, 0.3), 0 0 80px rgba(94, 129, 209, 0.2)",
+        "--accent-primary": "#6bbcff",
+        "--accent-secondary": "#9ae9f5",
+        "--accent-gradient": "linear-gradient(135deg, #5e81d1 0%, #9ae9f5 100%)",
+        "--text-primary": "#e8f4f8",
+        "--text-secondary": "#a0c0d0",
+        "--text-muted": "#607890",
+        "--indicator-up": "#b8ffed",
+        "--indicator-down": "#ff9eaa",
+        "--indicator-neutral": "#a1caff",
+        "--border-color": "rgba(154, 233, 245, 0.12)",
+        "--shadow-card": "0 4px 20px rgba(0, 0, 0, 0.5)",
+        "--chart-grid": "rgba(107, 188, 255, 0.08)"
+      },
+      "[data-theme=\"light\"][data-mood=\"ocean\"]": {
+        "--bg-primary": "#f0f8fa",
+        "--bg-secondary": "#ffffff",
+        "--bg-card": "#ffffff",
+        "--bg-card-hover": "#e8f4f8",
+        "--bg-elevated": "#e0f0f4",
+        "--bg-input": "#e8f4f8",
+        "--color-1": "#b8ffed",
+        "--color-2": "#adf7f0",
+        "--color-3": "#9ae9f5",
+        "--color-4": "#79bedb",
+        "--color-5": "#a1caff",
+        "--color-6": "#5e81d1",
+        "--color-7": "#a3c6e3",
+        "--color-8": "#6bbcff",
+        "--neon-border": "rgba(64, 152, 208, 0.3)",
+        "--neon-border-hover": "rgba(64, 152, 208, 0.5)",
+        "--neon-glow": "0 0 10px rgba(64, 152, 208, 0.15)",
+        "--neon-glow-hover": "0 0 20px rgba(64, 152, 208, 0.3), 0 0 40px rgba(80, 168, 200, 0.2)",
+        "--accent-primary": "#6bbcff",
+        "--accent-secondary": "#9ae9f5",
+        "--accent-gradient": "linear-gradient(135deg, #5e81d1 0%, #9ae9f5 100%)",
+        "--text-primary": "#102030",
+        "--text-secondary": "#405060",
+        "--text-muted": "#708090",
+        "--border-color": "rgba(64, 152, 208, 0.2)",
+        "--shadow-card": "0 2px 12px rgba(64, 152, 208, 0.1)",
+        "--chart-grid": "rgba(64, 152, 208, 0.12)"
+      },
+      "[data-mood=\"desert\"]": {
+        "--bg-primary": "#12100a",
+        "--bg-secondary": "#1a1610",
+        "--bg-card": "#2a2418",
+        "--bg-card-hover": "#3a3020",
+        "--bg-elevated": "#322a1c",
+        "--bg-input": "#2e2618",
+        "--color-1": "#fafab1",
+        "--color-2": "#ffed9c",
+        "--color-3": "#edcc6f",
+        "--color-4": "#ffe9c7",
+        "--color-5": "#ffe77d",
+        "--color-6": "#ffd061",
+        "--color-7": "#fad96b",
+        "--color-8": "#f0b860",
+        "--neon-color": "#ffe77d",
+        "--neon-border": "rgba(255, 231, 125, 0.25)",
+        "--neon-border-hover": "rgba(255, 231, 125, 0.6)",
+        "--neon-glow": "0 0 15px rgba(255, 231, 125, 0.2)",
+        "--neon-glow-hover": "0 0 25px rgba(255, 231, 125, 0.4), 0 0 50px rgba(255, 208, 97, 0.3), 0 0 80px rgba(240, 184, 96, 0.2)",
+        "--accent-primary": "#ffd061",
+        "--accent-secondary": "#ffe77d",
+        "--accent-gradient": "linear-gradient(135deg, #f0b860 0%, #ffe77d 100%)",
+        "--text-primary": "#faf8f0",
+        "--text-secondary": "#d0c8b0",
+        "--text-muted": "#908870",
+        "--indicator-up": "#b8ffb8",
+        "--indicator-down": "#ffb0a0",
+        "--indicator-neutral": "#ffe77d",
+        "--border-color": "rgba(255, 231, 125, 0.12)",
+        "--shadow-card": "0 4px 20px rgba(0, 0, 0, 0.5)",
+        "--chart-grid": "rgba(255, 208, 97, 0.08)"
+      },
+      "[data-theme=\"light\"][data-mood=\"desert\"]": {
+        "--bg-primary": "#faf8f0",
+        "--bg-secondary": "#ffffff",
+        "--bg-card": "#ffffff",
+        "--bg-card-hover": "#f8f4e8",
+        "--bg-elevated": "#f0ece0",
+        "--bg-input": "#f8f4e8",
+        "--color-1": "#fafab1",
+        "--color-2": "#ffed9c",
+        "--color-3": "#edcc6f",
+        "--color-4": "#ffe9c7",
+        "--color-5": "#ffe77d",
+        "--color-6": "#ffd061",
+        "--color-7": "#fad96b",
+        "--color-8": "#f0b860",
+        "--neon-border": "rgba(200, 160, 32, 0.3)",
+        "--neon-border-hover": "rgba(200, 160, 32, 0.5)",
+        "--neon-glow": "0 0 10px rgba(200, 160, 32, 0.15)",
+        "--neon-glow-hover": "0 0 20px rgba(200, 160, 32, 0.3), 0 0 40px rgba(184, 144, 32, 0.2)",
+        "--accent-primary": "#ffd061",
+        "--accent-secondary": "#ffe77d",
+        "--accent-gradient": "linear-gradient(135deg, #f0b860 0%, #ffe77d 100%)",
+        "--text-primary": "#302810",
+        "--text-secondary": "#605040",
+        "--text-muted": "#908070",
+        "--border-color": "rgba(200, 160, 32, 0.2)",
+        "--shadow-card": "0 2px 12px rgba(200, 160, 32, 0.1)",
+        "--chart-grid": "rgba(200, 160, 32, 0.12)"
+      },
+      "[data-mood=\"upsidedown\"]": {
+        "--bg-primary": "#050508",
+        "--bg-secondary": "#0a0a12",
+        "--bg-card": "#0f1218",
+        "--bg-card-hover": "#181c24",
+        "--bg-elevated": "#14181f",
+        "--bg-input": "#12151c",
+        "--color-1": "#a80000",
+        "--color-2": "#d92b04",
+        "--color-3": "#c40202",
+        "--color-4": "#6e2b2b",
+        "--color-5": "#003e7d",
+        "--color-6": "#022f5c",
+        "--color-7": "#385b94",
+        "--color-8": "#41577a",
+        "--neon-color": "#a80000",
+        "--neon-border": "rgba(168, 0, 0, 0.25)",
+        "--neon-border-hover": "rgba(217, 43, 4, 0.8)",
+        "--neon-glow": "0 0 15px rgba(168, 0, 0, 0.2)",
+        "--neon-glow-hover": "0 0 25px rgba(217, 43, 4, 0.6), 0 0 50px rgba(168, 0, 0, 0.4), 0 0 80px rgba(196, 2, 2, 0.3)",
+        "--accent-primary": "#a80000",
+        "--accent-secondary": "#003e7d",
+        "--accent-gradient": "linear-gradient(135deg, #a80000 0%, #003e7d 100%)",
+        "--text-primary": "#e0dce8",
+        "--text-secondary": "#9a96a8",
+        "--text-muted": "#5a5668",
+        "--indicator-up": "#385b94",
+        "--indicator-down": "#d92b04",
+        "--indicator-neutral": "#41577a",
+        "--border-color": "rgba(168, 0, 0, 0.15)",
+        "--shadow-card": "0 4px 20px rgba(0, 0, 0, 0.6), 0 0 30px rgba(168, 0, 0, 0.08)",
+        "--chart-grid": "rgba(168, 0, 0, 0.1)"
+      },
+      "[data-theme=\"light\"][data-mood=\"upsidedown\"]": {
+        "--bg-primary": "#f0eef4",
+        "--bg-secondary": "#ffffff",
+        "--bg-card": "#ffffff",
+        "--bg-card-hover": "#f5f0f4",
+        "--bg-elevated": "#e8e4ec",
+        "--bg-input": "#f5f0f4",
+        "--color-1": "#a80000",
+        "--color-2": "#d92b04",
+        "--color-3": "#c40202",
+        "--color-4": "#6e2b2b",
+        "--color-5": "#003e7d",
+        "--color-6": "#022f5c",
+        "--color-7": "#385b94",
+        "--color-8": "#41577a",
+        "--neon-border": "rgba(138, 0, 0, 0.2)",
+        "--neon-border-hover": "rgba(184, 36, 4, 0.5)",
+        "--neon-glow": "0 0 10px rgba(138, 0, 0, 0.1)",
+        "--neon-glow-hover": "0 0 15px rgba(184, 36, 4, 0.3), 0 0 30px rgba(138, 0, 0, 0.2)",
+        "--accent-primary": "#a80000",
+        "--accent-secondary": "#003e7d",
+        "--accent-gradient": "linear-gradient(135deg, #a80000 0%, #003e7d 100%)",
+        "--text-primary": "#1a1018",
+        "--text-secondary": "#504050",
+        "--text-muted": "#807080",
+        "--border-color": "rgba(138, 0, 0, 0.12)",
+        "--shadow-card": "0 2px 12px rgba(138, 0, 0, 0.08)",
+        "--chart-grid": "rgba(138, 0, 0, 0.08)"
+      },
+      "[data-mood=\"powerbi\"]": {
+        "--bg-primary": "#1e1e1e",
+        "--bg-secondary": "#252526",
+        "--bg-card": "#2d2d30",
+        "--bg-card-hover": "#3e3e42",
+        "--bg-elevated": "#383838",
+        "--bg-input": "#333337",
+        "--color-1": "#FFD966",
+        "--color-2": "#F4B183",
+        "--color-3": "#A9D18E",
+        "--color-4": "#ED7D31",
+        "--color-5": "#70AD47",
+        "--color-6": "#a0a0a0",
+        "--color-7": "#c8c8c8",
+        "--color-8": "#ff8a7d",
+        "--neon-color": "#ED7D31",
+        "--neon-border": "rgba(237, 125, 49, 0.25)",
+        "--neon-border-hover": "rgba(237, 125, 49, 0.5)",
+        "--neon-glow": "0 0 15px rgba(237, 125, 49, 0.15)",
+        "--neon-glow-hover": "0 0 20px rgba(237, 125, 49, 0.3), 0 0 40px rgba(112, 173, 71, 0.2)",
+        "--accent-primary": "#ED7D31",
+        "--accent-secondary": "#70AD47",
+        "--accent-gradient": "linear-gradient(135deg, #ED7D31 0%, #70AD47 100%)",
+        "--text-primary": "#f5f5f5",
+        "--text-secondary": "#cccccc",
+        "--text-muted": "#888888",
+        "--border-color": "rgba(237, 125, 49, 0.15)",
+        "--shadow-card": "0 4px 16px rgba(0, 0, 0, 0.4)",
+        "--chart-grid": "rgba(255, 255, 255, 0.08)"
+      },
+      "[data-theme=\"light\"][data-mood=\"powerbi\"]": {
+        "--bg-primary": "#f3f2f1",
+        "--bg-secondary": "#ffffff",
+        "--bg-card": "#ffffff",
+        "--bg-card-hover": "#faf9f8",
+        "--bg-elevated": "#edebe9",
+        "--bg-input": "#f3f2f1",
+        "--color-1": "#FFD966",
+        "--color-2": "#F4B183",
+        "--color-3": "#A9D18E",
+        "--color-4": "#ED7D31",
+        "--color-5": "#70AD47",
+        "--color-6": "#606060",
+        "--color-7": "#808080",
+        "--color-8": "#ff8a7d",
+        "--neon-border": "rgba(237, 125, 49, 0.2)",
+        "--neon-border-hover": "rgba(237, 125, 49, 0.4)",
+        "--neon-glow": "0 0 10px rgba(237, 125, 49, 0.1)",
+        "--neon-glow-hover": "0 0 15px rgba(237, 125, 49, 0.2)",
+        "--accent-primary": "#ED7D31",
+        "--accent-secondary": "#70AD47",
+        "--accent-gradient": "linear-gradient(135deg, #ED7D31 0%, #70AD47 100%)",
+        "--text-primary": "#323130",
+        "--text-secondary": "#605e5c",
+        "--text-muted": "#a19f9d",
+        "--border-color": "rgba(237, 125, 49, 0.12)",
+        "--shadow-card": "0 2px 8px rgba(0, 0, 0, 0.1)",
+        "--chart-grid": "rgba(0, 0, 0, 0.06)"
+      }
+    }
+  },
+  "unresolved": [],
+  "_meta": {
+    "source_file": "mockups/flange-dashboard 1.html",
+    "data_literal_source_lines": {
+      "rawData": [
+        390,
+        596
+      ],
+      "palettes": [
+        598,
+        604
+      ]
+    }
+  }
+}

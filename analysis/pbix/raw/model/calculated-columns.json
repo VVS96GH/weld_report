@@ -1,0 +1,1457 @@
+[
+ {
+  "TableName":"Weld Dump",
+  "ColumnName":"Welded Dia",
+  "Expression":"\n     var weld = 'Weld Dump'[Joint ID]\n\n     var Outcome = CALCULATE(COUNT('Weld Dump'[Joint ID]),FILTER('Weld Dump','Weld Dump'[Joint ID]= weld))\n\nReturn\n\n'Weld Dump'[Dia inch]\/Outcome"
+ },
+ {
+  "TableName":"Weld Dump",
+  "ColumnName":"Total Welded Dia",
+  "Expression":"IF('Weld Dump'[Weld Date]<>0,'Weld Dump'[Dia inch],0)"
+ },
+ {
+  "TableName":"Weld Dump",
+  "ColumnName":"Repair & Reweld",
+  "Expression":"\nif(right('Weld Dump'[Weld No.],2)=\"R1\",\"Repair\",\nif(right('Weld Dump'[Weld No.],2)=\"R2\",\"Repair\",\nif(right('Weld Dump'[Weld No.],2)=\"RW\",\"Reweld\",\"\")))"
+ },
+ {
+  "TableName":"Weld Dump",
+  "ColumnName":"No of Days \"WD\"",
+  "Expression":"DATEDIFF([Weld Date], TODAY(), DAY)"
+ },
+ {
+  "TableName":"Weld Dump",
+  "ColumnName":"Fabricated Date",
+  "Expression":"LOOKUPVALUE('Spool Dump'[FABRICATED],\n'Spool Dump'[SPOOL ID],'Weld Dump'[Spool ID])"
+ },
+ {
+  "TableName":"Weld Dump",
+  "ColumnName":"Status FABRICATED",
+  "Expression":"IF('Weld Dump'[Fabricated Date]>0,\"Fabricated\",\"\")"
+ },
+ {
+  "TableName":"Weld Dump",
+  "ColumnName":"QC Release Date",
+  "Expression":"LOOKUPVALUE('Spool Dump'[QC RELEASE],\n'Spool Dump'[SPOOL ID],'Weld Dump'[Spool ID])"
+ },
+ {
+  "TableName":"Weld Dump",
+  "ColumnName":"Status QC Release",
+  "Expression":"IF('Weld Dump'[QC Release Date]>0,\"QC RELEASE\",\"\")"
+ },
+ {
+  "TableName":"Weld Dump",
+  "ColumnName":"PAINTED Date",
+  "Expression":"LOOKUPVALUE('Spool Dump'[PAINTED],\n'Spool Dump'[SPOOL ID],'Weld Dump'[Spool ID])"
+ },
+ {
+  "TableName":"Weld Dump",
+  "ColumnName":"Status PAINTED",
+  "Expression":"IF('Weld Dump'[PAINTED Date]>0,\"PAINTED\",\"\")"
+ },
+ {
+  "TableName":"Weld Dump",
+  "ColumnName":"Status Spool NDE",
+  "Expression":"LOOKUPVALUE('Spool Dump'[Spool Nde Status],\n'Spool Dump'[SPOOL ID],'Weld Dump'[Spool ID])"
+ },
+ {
+  "TableName":"Weld Dump",
+  "ColumnName":"To Site Date",
+  "Expression":"LOOKUPVALUE('Spool Dump'[TO SITE],\n'Spool Dump'[SPOOL ID],'Weld Dump'[Spool ID])"
+ },
+ {
+  "TableName":"Weld Dump",
+  "ColumnName":"Status To Site",
+  "Expression":"IF('Weld Dump'[ERECTED Date]>0,\"TO SITE\",\"\")"
+ },
+ {
+  "TableName":"Weld Dump",
+  "ColumnName":"ERECTED Date",
+  "Expression":"LOOKUPVALUE('Spool Dump'[ERECTED],\n'Spool Dump'[SPOOL ID],'Weld Dump'[Spool ID])"
+ },
+ {
+  "TableName":"Weld Dump",
+  "ColumnName":"Status ERECTED",
+  "Expression":"IF('Weld Dump'[ERECTED Date]>0,\"ERECTED\",\"\")"
+ },
+ {
+  "TableName":"Weld Dump",
+  "ColumnName":"Last Status",
+  "Expression":"\n    IF('Weld Dump'[Status ERECTED]<>\"\",\"ERECTED\",\nIF('Weld Dump'[Status To Site]<>\"\",\"TO SITE\",\nIF('Weld Dump'[Status PAINTED]<>\"\",\"PAINTED\",\nIF('Weld Dump'[Status Spool NDE]=\"Not Released\",\"NOT Released\",\nIF('Weld Dump'[Status Spool NDE]=\"Released\",\"RELEASED\",\nIF('Weld Dump'[Status QC Release]<>\"\",\"QC Release\",\nIF('Weld Dump'[Status FABRICATED]<>\"\",\"Fabricated\")))))))"
+ },
+ {
+  "TableName":"Weld Dump",
+  "ColumnName":"Last_Weld Date",
+  "Expression":"\nLASTDATE('Weld Dump'[Weld Date])"
+ },
+ {
+  "TableName":"Weld Dump",
+  "ColumnName":"Days Since Last Weld",
+  "Expression":"\nIF(ISBLANK([Last_Weld Date]),BLANK(),\nVALUE([Cur_Date]-[Last_Weld Date]))"
+ },
+ {
+  "TableName":"Weld Dump",
+  "ColumnName":"RT Film Ratio % \"WD\" For Welder",
+  "Expression":"\nDIVIDE(\n    CALCULATE(\n        SUM('Weld Dump'[Total No of films Rej]),\n        ALLEXCEPT('Weld Dump', 'Weld Dump'[Welder])\n    ),\n    CALCULATE(\n        SUM('Weld Dump'[Total No Films A+R]),'Weld Dump'[RT Acc\/Rej]<>\"RS\",\n        ALLEXCEPT('Weld Dump', 'Weld Dump'[Welder])\n    )\n) * 1"
+ },
+ {
+  "TableName":"Weld Dump",
+  "ColumnName":"Total No Films A+R",
+  "Expression":"'Weld Dump'[Total No of films Acc]+'Weld Dump'[Total No of films Rej]"
+ },
+ {
+  "TableName":"Weld Dump",
+  "ColumnName":"RT FILM Ratio % STATUS \"WD\"",
+  "Expression":"\n IF (\n    'Weld Dump'[RT Film Ratio % \"WD\" For Welder] >= 0 && 'Weld Dump'[RT Film Ratio % \"WD\" For Welder] < 0.05,\n    \"1. 0 to 5% - ok\",\n    IF (\n        'Weld Dump'[RT Film Ratio % \"WD\" For Welder] >= 0.05 && 'Weld Dump'[RT Film Ratio % \"WD\" For Welder] < 0.075,\n        \"2. 5 to 7.5%-monitor\",\n        IF (\n            'Weld Dump'[RT Film Ratio % \"WD\" For Welder] >= 0.075 && 'Weld Dump'[RT Film Ratio % \"WD\" For Welder] < 0.10,\n            \"3. 7.5 to 10%-Critical\",\n            IF (\n                'Weld Dump'[RT Film Ratio % \"WD\" For Welder] >= 0.10 && 'Weld Dump'[RT Film Ratio % \"WD\" For Welder] <= 1,\n                \"4. 10 to 100% - Disq.F\",\n                BLANK()\n            )\n        )\n    )\n)"
+ },
+ {
+  "TableName":"Weld Dump",
+  "ColumnName":"Service Class+Service Cat \"WD\"",
+  "Expression":"'Weld Dump'[Service class]&\" \"&'Weld Dump'[Service Cat]"
+ },
+ {
+  "TableName":"Weld Dump",
+  "ColumnName":"Last_RT Date \"EP\"",
+  "Expression":"\nLASTDATE('Weld Dump'[RT Date])"
+ },
+ {
+  "TableName":"Weld Dump",
+  "ColumnName":"Days Since Last RT \"EP\"",
+  "Expression":"\nIF(ISBLANK([Last_RT Date \"EP\"]),BLANK(),\nVALUE([Cur_Date]-[Last_RT Date \"EP\"]))"
+ },
+ {
+  "TableName":"Weld Dump",
+  "ColumnName":"TMCP Pipe",
+  "Expression":"\n    IF('Weld Dump'[Service class]=\"9C3AQN\" &&\n    'Weld Dump'[Dia inch]=46,\n    \"TMCP Pipe\")"
+ },
+ {
+  "TableName":"Calendar",
+  "ColumnName":"Month",
+  "Expression":"FORMAT('Calendar'[Date],\"MMM-yy\")"
+ },
+ {
+  "TableName":"Calendar",
+  "ColumnName":"Row Index Column",
+  "Expression":"\nCALCULATE(\n    COUNTROWS('Calendar'),\n    FILTER(All('Calendar'), 'Calendar'[Date] <= EARLIER('Calendar'[Date])))"
+ },
+ {
+  "TableName":"Calendar",
+  "ColumnName":"Name_of_the_Month",
+  "Expression":"FORMAT('Calendar'[Date],\"YYYYMM\")"
+ },
+ {
+  "TableName":"Calendar",
+  "ColumnName":"Week_Start_Date",
+  "Expression":"CALCULATE(MIN('Calendar'[Date]),FILTER('Calendar',[Weekday]=1&&[Weeknum]=EARLIER('Calendar'[Weeknum])))"
+ },
+ {
+  "TableName":"Calendar",
+  "ColumnName":"Weekday",
+  "Expression":"IF(WEEKDAY('Calendar'[Date])<=6,WEEKDAY('Calendar'[Date])+1,WEEKDAY('Calendar'[Date])-6)"
+ },
+ {
+  "TableName":"Calendar",
+  "ColumnName":"Weeknum",
+  "Expression":"CALCULATE(COUNT('Calendar'[Weekday]),FILTER('Calendar',[Weekday]=1&&[Date]<=EARLIER('Calendar'[Date])))"
+ },
+ {
+  "TableName":"Calendar",
+  "ColumnName":"Week_End_Date",
+  "Expression":"CALCULATE(MAX('Calendar'[Date]),FILTER('Calendar',[Weekday]=7&&[Weeknum]=EARLIER('Calendar'[Weeknum])))"
+ },
+ {
+  "TableName":"Spool Dump",
+  "ColumnName":"PAINTED SURFACE",
+  "Expression":"IF('Spool Dump'[PAINTED]<>0,'Spool Dump'[Surface Area],0)"
+ },
+ {
+  "TableName":"Spool Dump",
+  "ColumnName":"Spools Straight",
+  "Expression":"if('Spool Dump'[Shop Dia]=0,\"Straight Length\",\"Spool\")"
+ },
+ {
+  "TableName":"Spool Dump",
+  "ColumnName":"SPOOL ID",
+  "Expression":"'Spool Dump'[ISO Number]&\"-\"&'Spool Dump'[Spool No.]"
+ },
+ {
+  "TableName":"AllTrain_CSVExport_Joint Record",
+  "ColumnName":"Joint ID \"JR\"",
+  "Expression":"'AllTrain_CSVExport_Joint Record'[QC ISO DWG No]&\"-\"&'AllTrain_CSVExport_Joint Record'[Spool No.]&\"-\"&'AllTrain_CSVExport_Joint Record'[Joint No]&\"\"&'AllTrain_CSVExport_Joint Record'[Repair Suffix]"
+ },
+ {
+  "TableName":"CSVExport_Welder Record",
+  "ColumnName":"PWHT Y\/N CCC",
+  "Expression":"\nIF(\n    'CSVExport_Welder Record'[Sub-Contractor] <> \"CCC\",\n    BLANK(),\n    VAR PWHT_Value = \n        MAXX(\n            FILTER(\n                'AllTrain_CSVExport_Joint Record', \n                'AllTrain_CSVExport_Joint Record'[Joint ID \"JR\"] = 'CSVExport_Welder Record'[Joint ID] &&\n                'CSVExport_Welder Record'[Sub-Contractor] = \"CCC\"\n            ),\n            'AllTrain_CSVExport_Joint Record'[PWHT]\n        )\n    RETURN\n        IF(\n            ISBLANK(PWHT_Value),\n            \"N\",\n            PWHT_Value\n        )\n)"
+ },
+ {
+  "TableName":"CSVExport_Welder Record",
+  "ColumnName":"PWHT Report No CCC",
+  "Expression":"\nIF(\n    'CSVExport_Welder Record'[Sub-Contractor] <> \"CCC\",\n    BLANK(),\n    VAR PWHT_Report = \n        MAXX(\n            FILTER(\n                'AllTrain_CSVExport_Joint Record', \n                'AllTrain_CSVExport_Joint Record'[Joint ID \"JR\"] = 'CSVExport_Welder Record'[Joint ID]\n            ),\n            'AllTrain_CSVExport_Joint Record'[PWHT Report No]\n        )\n    RETURN\n        PWHT_Report\n)"
+ },
+ {
+  "TableName":"Project WD+WR",
+  "ColumnName":"No of Days \"PR\"",
+  "Expression":"DATEDIFF([Weld Date], TODAY(), DAY)"
+ },
+ {
+  "TableName":"Project WD+WR",
+  "ColumnName":"Last_Weld Date \"PR\"",
+  "Expression":"\nLASTDATE('Project WD+WR'[Weld Date])"
+ },
+ {
+  "TableName":"Project WD+WR",
+  "ColumnName":"Days Since Last Weld \"PR\"",
+  "Expression":"\nIF(ISBLANK([Last_Weld Date \"PR\"]),BLANK(),\nVALUE([Cur_Date \"PR\"]-[Last_Weld Date \"PR\"]))"
+ },
+ {
+  "TableName":"Project WD+WR",
+  "ColumnName":"RT Film Ratio % \"PR\" For Welder",
+  "Expression":"\nDIVIDE(\n    CALCULATE(\n        SUM('Project WD+WR'[Total No of films Rej]),\n        ALLEXCEPT('Project WD+WR', 'Project WD+WR'[Welder ID])\n    ),\n    CALCULATE(\n        SUM('Project WD+WR'[RT Film Total]),'Project WD+WR'[RT Acc\/Rej]<>\"RS\",\n        ALLEXCEPT('Project WD+WR', 'Project WD+WR'[Welder ID])\n    )\n) * 1"
+ },
+ {
+  "TableName":"Project WD+WR",
+  "ColumnName":"Repair & Reweld \"PR\"",
+  "Expression":"\nif(right('Project WD+WR'[Joint ID],2)=\"R1\",\"Repair\",\nif(right('Project WD+WR'[Joint ID],2)=\"R2\",\"Repair\",\nif(right('Project WD+WR'[Joint ID],2)=\"RW\",\"Reweld\",\nif('Project WD+WR'[Repair Suffix]=\"RW1\",\"Reweld\",\nif('Project WD+WR'[Repair Suffix]=\"RS1\",\"RS1\")))))"
+ },
+ {
+  "TableName":"Project WD+WR",
+  "ColumnName":"RT FILM Ratio % STATUS \"PR\"",
+  "Expression":"\n IF (\n    'Project WD+WR'[RT Film Ratio % \"PR\" For Welder] >= 0 && 'Project WD+WR'[RT Film Ratio % \"PR\" For Welder] < 0.05,\n    \"1. 0 to 5% - ok\",\n    IF (\n        'Project WD+WR'[RT Film Ratio % \"PR\" For Welder] >= 0.05 && 'Project WD+WR'[RT Film Ratio % \"PR\" For Welder] < 0.075,\n        \"2. 5 to 7.5%-monitor\",\n        IF (\n            'Project WD+WR'[RT Film Ratio % \"PR\" For Welder] >= 0.075 && 'Project WD+WR'[RT Film Ratio % \"PR\" For Welder] < 0.10,\n            \"3. 7.5 to 10%-Critical\",\n            IF (\n                'Project WD+WR'[RT Film Ratio % \"PR\" For Welder] >= 0.10 && 'Project WD+WR'[RT Film Ratio % \"PR\" For Welder] <= 1,\n                \"4. 10 to 100% - Disq.F\",\n                BLANK()\n            )\n        )\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR",
+  "ColumnName":"PWHT Y\/N CCC",
+  "Expression":"\nIF(\n    'Project WD+WR'[Sub-Contractor] <> \"CCC\",\n    BLANK(),\n    VAR PWHT_Value = \n        MAXX(\n            FILTER(\n                'AllTrain_CSVExport_Joint Record', \n                'AllTrain_CSVExport_Joint Record'[Joint ID \"JR\"] = 'Project WD+WR'[Joint ID] &&\n                'Project WD+WR'[Sub-Contractor] = \"CCC\"\n            ),\n            'AllTrain_CSVExport_Joint Record'[PWHT]\n        )\n    RETURN\n        IF(\n            ISBLANK(PWHT_Value),\n            \"N\",\n            PWHT_Value\n        )\n)"
+ },
+ {
+  "TableName":"Project WD+WR",
+  "ColumnName":"PWHT Report No CCC",
+  "Expression":"\nIF(\n    'Project WD+WR'[Sub-Contractor] <> \"CCC\",\n    BLANK(),\n    VAR PWHT_Report = \n        MAXX(\n            FILTER(\n                'AllTrain_CSVExport_Joint Record', \n                'AllTrain_CSVExport_Joint Record'[Joint ID \"JR\"] = 'Project WD+WR'[Joint ID]\n            ),\n            'AllTrain_CSVExport_Joint Record'[PWHT Report No]\n        )\n    RETURN\n        PWHT_Report\n)"
+ },
+ {
+  "TableName":"Project WD+WR",
+  "ColumnName":"PWHT Date No CCC",
+  "Expression":"\nCALCULATE(\n    MAXX(\n        FILTER(\n            'AllTrain_CSVExport_Joint Record',\n            'AllTrain_CSVExport_Joint Record'[Joint ID \"JR\"] = VALUES('Project WD+WR'[Joint ID])\n                && 'AllTrain_CSVExport_Joint Record'[PWHT] = \"Y\"\n        ),\n        'AllTrain_CSVExport_Joint Record'[PWHT Date]\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR",
+  "ColumnName":"Joint Uniq \"PR\" Total",
+  "Expression":"CALCULATE(DISTINCTCOUNT('Project WD+WR'[Joint ID]))"
+ },
+ {
+  "TableName":"Project WD+WR",
+  "ColumnName":"MT Report CCC",
+  "Expression":"\nCALCULATE(\n    MAXX(\n        FILTER(\n            'AllTrain_CSVExport_Joint Record',\n            'AllTrain_CSVExport_Joint Record'[Joint ID \"JR\"] = VALUES('Project WD+WR'[Joint ID])\n                && 'AllTrain_CSVExport_Joint Record'[Service Class] <>\"\"\n        ),\n        'AllTrain_CSVExport_Joint Record'[MT Root Report No]\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR",
+  "ColumnName":"MT Date CCC",
+  "Expression":"\nCALCULATE(\n    MAXX(\n        FILTER(\n            'AllTrain_CSVExport_Joint Record',\n            'AllTrain_CSVExport_Joint Record'[Joint ID \"JR\"] = VALUES('Project WD+WR'[Joint ID])\n                && 'AllTrain_CSVExport_Joint Record'[MT Root Report No] <>\"\"\n        ),\n        'AllTrain_CSVExport_Joint Record'[MT Root Date]\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR",
+  "ColumnName":"MT% CCC",
+  "Expression":"\nCALCULATE(\n    MAXX(\n        FILTER(\n            'AllTrain_CSVExport_Joint Record',\n            'AllTrain_CSVExport_Joint Record'[Joint ID \"JR\"] = VALUES('Project WD+WR'[Joint ID])\n                && 'AllTrain_CSVExport_Joint Record'[Service Class] <>\"\"\n        ),\n        'AllTrain_CSVExport_Joint Record'[MT Root(%)]\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR",
+  "ColumnName":"Total Welded Dia \"PR\" Table",
+  "Expression":"\nCALCULATE(SUM('Project WD+WR'[Dia inch]),\n'Project WD+WR'[Weld Date]>0)"
+ },
+ {
+  "TableName":"Project WD+WR",
+  "ColumnName":"% of Total Reject",
+  "Expression":"\nDIVIDE(\n    SUM('Project WD+WR'[Total No of films Rej]),\n    SUM('Project WD+WR'[RT Film Total]))"
+ },
+ {
+  "TableName":"Project WD+WR",
+  "ColumnName":"Last Spool Status \"WD\"",
+  "Expression":"\nLOOKUPVALUE('Weld Dump'[Last Status],\n'Weld Dump'[Joint ID],'Project WD+WR'[Joint ID])"
+ },
+ {
+  "TableName":"Project WD+WR",
+  "ColumnName":"LINE",
+  "Expression":"MID('Project WD+WR'[ISO Number], 9, LEN('Project WD+WR'[ISO Number]))"
+ },
+ {
+  "TableName":"Project WD+WR",
+  "ColumnName":"RT Film Ratio % \"PR\" For SERVICE Class",
+  "Expression":"\nDIVIDE(\n    CALCULATE(\n        SUM('Project WD+WR'[Total No of films Rej]),\n        ALLEXCEPT('Project WD+WR', 'Project WD+WR'[Service Class + Service Cat+NDT Remarks])\n    ),\n    CALCULATE(\n        SUM('Project WD+WR'[RT Film Total]),'Project WD+WR'[RT Acc\/Rej]<>\"RS\",\n        ALLEXCEPT('Project WD+WR', 'Project WD+WR'[Service Class + Service Cat+NDT Remarks])\n    )\n) * 1"
+ },
+ {
+  "TableName":"Project WD+WR",
+  "ColumnName":"RT FILM Ratio % STATUS for Service Class \"PR\"",
+  "Expression":"\n IF (\n    'Project WD+WR'[RT Film Ratio % \"PR\" For SERVICE Class] >= 0 && 'Project WD+WR'[RT Film Ratio % \"PR\" For SERVICE Class] < 0.02,\n    \"1. 0 to 2% - ok\",\n    IF (\n        'Project WD+WR'[RT Film Ratio % \"PR\" For SERVICE Class] >= 0.02 && 'Project WD+WR'[RT Film Ratio % \"PR\" For SERVICE Class] < 0.04,\n        \"2. 2 to 4%-monitor\",\n        IF (\n            'Project WD+WR'[RT Film Ratio % \"PR\" For SERVICE Class] >= 0.04 && 'Project WD+WR'[RT Film Ratio % \"PR\" For SERVICE Class] < 0.05,\n            \"3. 4 to 5%-Critical\",\n            IF (\n                'Project WD+WR'[RT Film Ratio % \"PR\" For SERVICE Class] >= 0.05 && 'Project WD+WR'[RT Film Ratio % \"PR\" For SERVICE Class] <= 1,\n                \"4. 5 to 100% - Action\",\n                BLANK()\n            )\n        )\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR",
+  "ColumnName":"RT Film Ratio % \"PR\" For SERVICE Class BY SUBCON \"PR\"",
+  "Expression":"\nDIVIDE(\n    CALCULATE(\n        SUM('Project WD+WR'[Total No of films Rej]),\n        ALLEXCEPT('Project WD+WR', 'Project WD+WR'[Service Class + Service Cat+NDT Remarks],'Project WD+WR'[Sub-Contractor])\n    ),\n    CALCULATE(\n        SUM('Project WD+WR'[RT Film Total]),'Project WD+WR'[RT Acc\/Rej]<>\"RS\",\n        ALLEXCEPT('Project WD+WR', 'Project WD+WR'[Service Class + Service Cat+NDT Remarks],'Project WD+WR'[Sub-Contractor])\n    )\n) * 1"
+ },
+ {
+  "TableName":"Project WD+WR",
+  "ColumnName":"RT FILM Ratio % STATUS for Service Class By SUBCON \"PR\"",
+  "Expression":"\n IF (\n    'Project WD+WR'[RT Film Ratio % \"PR\" For SERVICE Class BY SUBCON \"PR\"] >= 0 && 'Project WD+WR'[RT Film Ratio % \"PR\" For SERVICE Class BY SUBCON \"PR\"] < 0.02,\n    \"1. 0 to 2% - ok\",\n    IF (\n        'Project WD+WR'[RT Film Ratio % \"PR\" For SERVICE Class BY SUBCON \"PR\"] >= 0.02 && 'Project WD+WR'[RT Film Ratio % \"PR\" For SERVICE Class BY SUBCON \"PR\"] < 0.04,\n        \"2. 2 to 4%-monitor\",\n        IF (\n            'Project WD+WR'[RT Film Ratio % \"PR\" For SERVICE Class BY SUBCON \"PR\"] >= 0.04 && 'Project WD+WR'[RT Film Ratio % \"PR\" For SERVICE Class BY SUBCON \"PR\"] < 0.05,\n            \"3. 4 to 5%-Critical\",\n            IF (\n                'Project WD+WR'[RT Film Ratio % \"PR\" For SERVICE Class BY SUBCON \"PR\"] >= 0.05 && 'Project WD+WR'[RT Film Ratio % \"PR\" For SERVICE Class BY SUBCON \"PR\"] <= 1,\n                \"4. 5 to 100% - Action\",\n                BLANK()\n            )\n        )\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR",
+  "ColumnName":"RT Ratio % For Welder (<5% ; >5%) \"PR\"",
+  "Expression":"\nDIVIDE(\n    CALCULATE(\n        DISTINCTCOUNT('Project WD+WR'[Joint ID]),\n        'Project WD+WR'[RT Report] <> \"\",'Project WD+WR'[Weld Type]IN{\"BW\",\"GW\",\"CLET\",\"MW\"},\n        ALLEXCEPT('Project WD+WR', 'Project WD+WR'[Welder])\n    ),\n    CALCULATE(\n        DISTINCTCOUNT('Project WD+WR'[Joint ID]),\n        'Project WD+WR'[Weld Date] > 0,'Project WD+WR'[Weld Type]IN{\"BW\",\"GW\",\"CLET\",\"MW\"},\n        ALLEXCEPT('Project WD+WR', 'Project WD+WR'[Welder])\n    )\n) * 1"
+ },
+ {
+  "TableName":"Project WD+WR",
+  "ColumnName":"RT Ratio % STATUS for Welder Cover 5% \"PR\"",
+  "Expression":"\n IF (\n    'Project WD+WR'[RT Ratio % For Welder (<5% ; >5%) \"PR\"] >= 0.05,\n    \"1. > 5% - ok\",\n    IF (\n        'Project WD+WR'[RT Ratio % For Welder (<5% ; >5%) \"PR\"] < 0.05 && 'Project WD+WR'[RT Ratio % For Welder (<5% ; >5%) \"PR\"] > 0,\n        \"2. < 5% - Action\",\n        IF (\n            ISBLANK('Project WD+WR'[RT Ratio % For Welder (<5% ; >5%) \"PR\"]),\n            \"3. No RT\",\n            BLANK()\n        )\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR",
+  "ColumnName":"No of Days Fit-UP - TODAY \"PR\"",
+  "Expression":"\nIF(\n    ISBLANK('Project WD+WR'[Weld Date]),\n    DATEDIFF('Project WD+WR'[Fitup Date], TODAY(), DAY),\n    BLANK()\n)"
+ },
+ {
+  "TableName":"Project WD+WR",
+  "ColumnName":"No Of Days Fit-UP - Today STATUS \"PR\"",
+  "Expression":"\n IF (\n    'Project WD+WR'[No of Days Fit-UP - TODAY \"PR\"] >= 1 && 'Project WD+WR'[No of Days Fit-UP - TODAY \"PR\"] <= 7,\n    \"1. 7 Days\",\n    IF (\n        'Project WD+WR'[No of Days Fit-UP - TODAY \"PR\"] > 7 && 'Project WD+WR'[No of Days Fit-UP - TODAY \"PR\"] <= 30,\n        \"2. 7 to 30 Days\",\n        IF (\n            'Project WD+WR'[No of Days Fit-UP - TODAY \"PR\"] >30 && 'Project WD+WR'[No of Days Fit-UP - TODAY \"PR\"] <= 90,\n            \"3. 30 to 90 Days\",\n            IF (\n                'Project WD+WR'[No of Days Fit-UP - TODAY \"PR\"] > 90 && 'Project WD+WR'[No of Days Fit-UP - TODAY \"PR\"] <= 180,\n                \"4. 90 to 180 Days\",\n                IF (\n                'Project WD+WR'[No of Days Fit-UP - TODAY \"PR\"] > 180,\n                \"5. Above 180 Days\",\n                BLANK()\n            )\n        )\n    )\n))"
+ },
+ {
+  "TableName":"Project WD+WR",
+  "ColumnName":"No of Days Weld Date - TODAY \"PR\"",
+  "Expression":"\nIF(\n    ISBLANK('Project WD+WR'[RT Date]) && \n    'Project WD+WR'[Weld Type]IN{\"BW\",\"GW\",\"CLET\",\"MW\"} && \n    CONTAINSROW({\"H\",\"HS\",\"HS CCC\",\"SS\",\"T\",\"T1\",\"T1-1\",\"T1-1S\",\"T1-2S\",\"T1S\",\"T2\",\"T3\",\"T2-1\",\"T2-1S\",\"T2-2S\",\"T2S\"}, 'Project WD+WR'[RT Weld Status]),\n    DATEDIFF('Project WD+WR'[Weld Date], TODAY(), DAY),\n    BLANK()\n)"
+ },
+ {
+  "TableName":"Project WD+WR",
+  "ColumnName":"No Of Days Weld Date - Today RT STATUS \"PR\"",
+  "Expression":"\n IF (\n    'Project WD+WR'[No of Days Weld Date - TODAY \"PR\"] >= 1 && 'Project WD+WR'[No of Days Weld Date - TODAY \"PR\"] <= 7,\n    \"1. 7 Days\",\n    IF (\n        'Project WD+WR'[No of Days Weld Date - TODAY \"PR\"] > 7 && 'Project WD+WR'[No of Days Weld Date - TODAY \"PR\"] <= 30,\n        \"2. 7 to 30 Days\",\n        IF (\n            'Project WD+WR'[No of Days Weld Date - TODAY \"PR\"] >30 && 'Project WD+WR'[No of Days Weld Date - TODAY \"PR\"] <= 90,\n            \"3. 30 to 90 Days\",\n            IF (\n                'Project WD+WR'[No of Days Weld Date - TODAY \"PR\"] > 90 && 'Project WD+WR'[No of Days Weld Date - TODAY \"PR\"] <= 180,\n                \"4. 90 to 180 Days\",\n                IF (\n                'Project WD+WR'[No of Days Weld Date - TODAY \"PR\"] > 180,\n                \"5. Above 180 Days\",\n                BLANK()\n            )\n        )\n    )\n))"
+ },
+ {
+  "TableName":"Project WD+WR",
+  "ColumnName":"Service Class + Service Cat+NDT Remarks",
+  "Expression":"'Project WD+WR'[Service class]&\" \"&'Project WD+WR'[Service Cat]&\" \"&'Project WD+WR'[NDT Remarks]"
+ },
+ {
+  "TableName":"Project WD+WR",
+  "ColumnName":"Welder ID",
+  "Expression":"'Project WD+WR'[Welder]&\"-\"&'Project WD+WR'[Sub-Contractor]"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Repair & Reweld \"PR all\"",
+  "Expression":"\n  IF (\n    'Project WD+WR+INCO+Acciona'[Sub-Contractor] <> \"Inco\",\n    IF (\n        RIGHT ( 'Project WD+WR+INCO+Acciona'[Joint ID], 2 ) = \"R1\",\n        \"Repair\",\n        IF (\n            RIGHT ( 'Project WD+WR+INCO+Acciona'[Joint ID], 2 ) = \"R2\",\n            \"Repair\",\n            IF (\n                RIGHT ( 'Project WD+WR+INCO+Acciona'[Joint ID], 2 ) = \"RW\",\n                \"Reweld\",\n                IF (\n                    'Project WD+WR+INCO+Acciona'[Repair Suffix] = \"RW1\",\n                    \"Reweld\", \n                    IF (\n                        'Project WD+WR+INCO+Acciona'[Repair Suffix] = \"RS1\",\n                        \"RS1\",\n                \n                        \"\"\n                    )\n                )\n            )\n        )\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"No of Days \"PR all\"",
+  "Expression":"DATEDIFF([Weld Date], TODAY(), DAY)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Last_Weld Date \"PR all\"",
+  "Expression":"\nLASTDATE('Project WD+WR+INCO+Acciona'[Weld Date])"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Days Since Last Weld",
+  "Expression":"\nIF(ISBLANK([Last_Weld Date \"PR all\"]),BLANK(),\nVALUE([Cur_Date \"PR all\"]-[Last_Weld Date \"PR all\"]))"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"RT Film Ratio % \"PR all\" For Welder",
+  "Expression":"\nDIVIDE(\n    CALCULATE(\n        SUM('Project WD+WR+INCO+Acciona'[Total No of films Rej]),\n        ALLEXCEPT('Project WD+WR+INCO+Acciona', 'Project WD+WR+INCO+Acciona'[Welder ID])\n    ),\n    CALCULATE(\n        SUM('Project WD+WR+INCO+Acciona'[RT Film Total]),'Project WD+WR+INCO+Acciona'[RT Acc\/Rej]<>\"RS\",\n        ALLEXCEPT('Project WD+WR+INCO+Acciona', 'Project WD+WR+INCO+Acciona'[Welder ID])\n    )\n) * 1"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"RT FILM Ratio % STATUS \"PR all\"",
+  "Expression":"\nIF(\n    ISBLANK('Project WD+WR+INCO+Acciona'[RT Film Ratio % \"PR all\" For Welder]),\n    BLANK(),\n    IF (\n        'Project WD+WR+INCO+Acciona'[RT Film Ratio % \"PR all\" For Welder] >= 0 && 'Project WD+WR+INCO+Acciona'[RT Film Ratio % \"PR all\" For Welder] < 0.05,\n        \"1. 0 to 5% - ok\",\n        IF (\n            'Project WD+WR+INCO+Acciona'[RT Film Ratio % \"PR all\" For Welder] >= 0.05 && 'Project WD+WR+INCO+Acciona'[RT Film Ratio % \"PR all\" For Welder] < 0.075,\n            \"2. 5 to 7.5% - monitor\",\n            IF (\n                'Project WD+WR+INCO+Acciona'[RT Film Ratio % \"PR all\" For Welder] >= 0.075 && 'Project WD+WR+INCO+Acciona'[RT Film Ratio % \"PR all\" For Welder] < 0.10,\n                \"3. 7.5 to 10% - Critical\",\n                IF (\n                    'Project WD+WR+INCO+Acciona'[RT Film Ratio % \"PR all\" For Welder] >= 0.10 && 'Project WD+WR+INCO+Acciona'[RT Film Ratio % \"PR all\" For Welder] <= 1,\n                    \"4. 10 to 100% - Disq.F\",\n                    BLANK()\n                )\n            )\n        )\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"PWHT Y\/N CCC",
+  "Expression":"\nIF(\n    'Project WD+WR+INCO+Acciona'[Sub-Contractor] <> \"CCC\",\n    BLANK(),\n    VAR PWHT_Value = \n        MAXX(\n            FILTER(\n                'AllTrain_CSVExport_Joint Record', \n                'AllTrain_CSVExport_Joint Record'[Joint ID \"JR\"] = 'Project WD+WR+INCO+Acciona'[Joint ID] &&\n                'Project WD+WR+INCO+Acciona'[Sub-Contractor] = \"CCC\"\n            ),\n            'AllTrain_CSVExport_Joint Record'[PWHT]\n        )\n    RETURN\n        IF(\n            ISBLANK(PWHT_Value),\n            \"N\",\n            PWHT_Value\n        )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"PWHT Report No CCC",
+  "Expression":"\nIF(\n    'Project WD+WR+INCO+Acciona'[Sub-Contractor] <> \"CCC\",\n    BLANK(),\n    VAR PWHT_Report = \n        MAXX(\n            FILTER(\n                'AllTrain_CSVExport_Joint Record', \n                'AllTrain_CSVExport_Joint Record'[Joint ID \"JR\"] = 'Project WD+WR+INCO+Acciona'[Joint ID]\n            ),\n            'AllTrain_CSVExport_Joint Record'[PWHT Report No]\n        )\n    RETURN\n        PWHT_Report\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"PWHT Date No CCC",
+  "Expression":"\nCALCULATE(\n    MAXX(\n        FILTER(\n            'AllTrain_CSVExport_Joint Record',\n            'AllTrain_CSVExport_Joint Record'[Joint ID \"JR\"] = VALUES('Project WD+WR+INCO+Acciona'[Joint ID])\n        ),\n        'AllTrain_CSVExport_Joint Record'[PWHT Date]\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"MT Report CCC",
+  "Expression":"\nCALCULATE(\n    MAXX(\n        FILTER(\n            'AllTrain_CSVExport_Joint Record',\n            'AllTrain_CSVExport_Joint Record'[Joint ID \"JR\"] = VALUES('Project WD+WR+INCO+Acciona'[Joint ID])\n                && 'AllTrain_CSVExport_Joint Record'[MT Root Report No] <>\"\"\n        ),\n        'AllTrain_CSVExport_Joint Record'[MT Root Report No]\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"MT Date CCC",
+  "Expression":"\nCALCULATE(\n    MAXX(\n        FILTER(\n            'AllTrain_CSVExport_Joint Record',\n            'AllTrain_CSVExport_Joint Record'[Joint ID \"JR\"] = VALUES('Project WD+WR+INCO+Acciona'[Joint ID])\n                && 'AllTrain_CSVExport_Joint Record'[MT Root Report No] <>\"\"\n        ),\n        'AllTrain_CSVExport_Joint Record'[MT Root Date]\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"MT% CCC",
+  "Expression":"\nCALCULATE(\n    MAXX(\n        FILTER(\n            'AllTrain_CSVExport_Joint Record',\n            'AllTrain_CSVExport_Joint Record'[Joint ID \"JR\"] = VALUES('Project WD+WR+INCO+Acciona'[Joint ID])\n                && 'AllTrain_CSVExport_Joint Record'[Service Class] <>\"\"\n        ),\n        'AllTrain_CSVExport_Joint Record'[MT Root(%)]\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Total Welded Dia \"PR all\" Table",
+  "Expression":"\nCALCULATE(SUM('Project WD+WR+INCO+Acciona'[Dia inch]),\n'Project WD+WR+INCO+Acciona'[Weld Date]>0)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"% of Total Reject",
+  "Expression":"\nDIVIDE(\n    SUM('Project WD+WR+INCO+Acciona'[Total No of films Rej]),\n        SUM('Project WD+WR+INCO+Acciona'[RT Film Total]))"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Service Class + Service Cat+NDT Remarks",
+  "Expression":"\n'Project WD+WR+INCO+Acciona'[Service class]&\" \"&'Project WD+WR+INCO+Acciona'[Service Cat]&\" \"&'Project WD+WR+INCO+Acciona'[NDT Remarks]&\" \"&'Project WD+WR+INCO+Acciona'[RT%]"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"RT Film Ratio % \"PR\" For SERVICE Class BY SUBCON \"PR all\"",
+  "Expression":"\nDIVIDE(\n    CALCULATE(\n        SUM('Project WD+WR+INCO+Acciona'[Total No of films Rej]),\n        ALLEXCEPT('Project WD+WR+INCO+Acciona', 'Project WD+WR+INCO+Acciona'[Service Class + Service Cat+NDT Remarks],'Project WD+WR+INCO+Acciona'[Sub-Contractor])\n    ),\n    CALCULATE(\n        SUM('Project WD+WR+INCO+Acciona'[RT Film Total]),\n        ALLEXCEPT('Project WD+WR+INCO+Acciona', 'Project WD+WR+INCO+Acciona'[Service Class + Service Cat+NDT Remarks],'Project WD+WR+INCO+Acciona'[Sub-Contractor])\n    )\n) * 1"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"RT FILM Ratio % STATUS for Service Class By SUBCON \"PR all\"",
+  "Expression":"\nIF(\n    ISBLANK('Project WD+WR+INCO+Acciona'[RT Film Ratio % \"PR\" For SERVICE Class BY SUBCON \"PR all\"]),\n    BLANK(),\n    IF (\n        'Project WD+WR+INCO+Acciona'[RT Film Ratio % \"PR\" For SERVICE Class BY SUBCON \"PR all\"] >= 0 && 'Project WD+WR+INCO+Acciona'[RT Film Ratio % \"PR\" For SERVICE Class BY SUBCON \"PR all\"] < 0.02,\n        \"1. 0 to 2% - ok\",\n        IF (\n            'Project WD+WR+INCO+Acciona'[RT Film Ratio % \"PR\" For SERVICE Class BY SUBCON \"PR all\"] >= 0.02 && 'Project WD+WR+INCO+Acciona'[RT Film Ratio % \"PR\" For SERVICE Class BY SUBCON \"PR all\"] < 0.04,\n            \"2. 2 to 4% - monitor\",\n            IF (\n                'Project WD+WR+INCO+Acciona'[RT Film Ratio % \"PR\" For SERVICE Class BY SUBCON \"PR all\"] >= 0.04 && 'Project WD+WR+INCO+Acciona'[RT Film Ratio % \"PR\" For SERVICE Class BY SUBCON \"PR all\"] < 0.05,\n                \"3. 4 to 5% - Critical\",\n                IF (\n                    'Project WD+WR+INCO+Acciona'[RT Film Ratio % \"PR\" For SERVICE Class BY SUBCON \"PR all\"] >= 0.05 && 'Project WD+WR+INCO+Acciona'[RT Film Ratio % \"PR\" For SERVICE Class BY SUBCON \"PR all\"] <= 1,\n                    \"4. 5 to 100% - Action\",\n                    BLANK()\n                )\n            )\n        )\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"RT Ratio % For Welder (<5% ; >5%) \"PR all\"",
+  "Expression":"\nDIVIDE(\n    CALCULATE(\n        DISTINCTCOUNT('Project WD+WR+INCO+Acciona'[Joint ID]),\n        'Project WD+WR+INCO+Acciona'[RT Report] <> \"\",'Project WD+WR+INCO+Acciona'[RT Acc\/Rej] <> \"RS\",'Project WD+WR+INCO+Acciona'[Weld Type]IN{\"BW\",\"GW\",\"CLET\",\"MW\"},\n        ALLEXCEPT('Project WD+WR+INCO+Acciona', 'Project WD+WR+INCO+Acciona'[Welder ID])\n    ),\n    CALCULATE(\n        DISTINCTCOUNT('Project WD+WR+INCO+Acciona'[Joint ID]),\n        'Project WD+WR+INCO+Acciona'[Weld Date] > 0,'Project WD+WR+INCO+Acciona'[Weld Type]IN{\"BW\",\"GW\",\"CLET\",\"MW\"},\n        ALLEXCEPT('Project WD+WR+INCO+Acciona', 'Project WD+WR+INCO+Acciona'[Welder ID])\n    )\n) * 1"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"RT Ratio % STATUS for Welder Cover 5% \"PR all\"",
+  "Expression":"\nIF (\n    'Project WD+WR+INCO+Acciona'[RT Ratio % For Welder (<5% ; >5%) \"PR all\"] >= 0.05, \n    \"1. > 5% - ok\",\n    IF (\n        'Project WD+WR+INCO+Acciona'[RT Ratio % For Welder (<5% ; >5%) \"PR all\"] < 0.05 && \n        'Project WD+WR+INCO+Acciona'[RT Ratio % For Welder (<5% ; >5%) \"PR all\"] > 0, \n        \"2. < 5% - Action\",\n        IF (\n            ISBLANK('Project WD+WR+INCO+Acciona'[RT Ratio % For Welder (<5% ; >5%) \"PR all\"]) && \n            'Project WD+WR+INCO+Acciona'[Weld Type] IN {\"BW\",\"GW\",\"CLET\",\"MW\"} && \n            'Project WD+WR+INCO+Acciona'[Weld Date] > 0,\n            \"3. No RT\",\n            BLANK()\n        )\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"No of Days Fit-UP - TODAY \"PR all\"",
+  "Expression":"\nIF(\n    ISBLANK('Project WD+WR+INCO+Acciona'[Weld Date]),\n    DATEDIFF('Project WD+WR+INCO+Acciona'[Fitup Date], TODAY(), DAY),\n    BLANK()\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"No Of Days Fit-UP - Today STATUS \"PR all\"",
+  "Expression":"\n IF (\n    'Project WD+WR+INCO+Acciona'[No of Days Fit-UP - TODAY \"PR all\"] >= 1 && 'Project WD+WR+INCO+Acciona'[No of Days Fit-UP - TODAY \"PR all\"] <= 7,\n    \"1. 7 Days\",\n    IF (\n        'Project WD+WR+INCO+Acciona'[No of Days Fit-UP - TODAY \"PR all\"] > 7 && 'Project WD+WR+INCO+Acciona'[No of Days Fit-UP - TODAY \"PR all\"] <= 30,\n        \"2. 7 to 30 Days\",\n        IF (\n            'Project WD+WR+INCO+Acciona'[No of Days Fit-UP - TODAY \"PR all\"] >30 && 'Project WD+WR+INCO+Acciona'[No of Days Fit-UP - TODAY \"PR all\"] <= 90,\n            \"3. 30 to 90 Days\",\n            IF (\n                'Project WD+WR+INCO+Acciona'[No of Days Fit-UP - TODAY \"PR all\"] > 90 && 'Project WD+WR+INCO+Acciona'[No of Days Fit-UP - TODAY \"PR all\"] <= 180,\n                \"4. 90 to 180 Days\",\n                IF (\n                'Project WD+WR+INCO+Acciona'[No of Days Fit-UP - TODAY \"PR all\"] > 180,\n                \"5. Above 180 Days\",\n                BLANK()\n            )\n        )\n    )\n))"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"No of Days Weld Date - TODAY \"PR all\"",
+  "Expression":"\nIF(\n    ISBLANK('Project WD+WR+INCO+Acciona'[RT Date]) && \n    'Project WD+WR+INCO+Acciona'[Weld Type] IN {\"BW\",\"GW\",\"CLET\",\"MW\"} && \n    CONTAINSROW(\n        {\"H\",\"HS\",\"HS CCC\",\"SS\",\"T\",\"T1\",\"T1S\",\"T1-1\",\"T1-1S\",\"T1-2S\",\"T1S\",\"T2\",\"T3\",\"T2-1\",\"T2-1S\",\"T2-2S\",\"T2S\"}, \n        'Project WD+WR+INCO+Acciona'[RT Weld Status]\n    ),\n    DATEDIFF('Project WD+WR+INCO+Acciona'[Weld Date], TODAY(), DAY),\n    IF(\n        'Project WD+WR+INCO+Acciona'[Weld Type] IN {\"BW\",\"GW\",\"CLET\",\"MW\"} &&\n        'Project WD+WR+INCO+Acciona'[Weld Date] > 0 &&\n        'Project WD+WR+INCO+Acciona'[RT%] = 100 &&\n        'Project WD+WR+INCO+Acciona'[RT Report] = \"\" &&\n        'Project WD+WR+INCO+Acciona'[RT Weld Status] IN {\"?\", \"\"},\n        DATEDIFF('Project WD+WR+INCO+Acciona'[Weld Date], TODAY(), DAY),\n        BLANK()\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"No Of Days Weld Date - Today RT STATUS \"PR all\"",
+  "Expression":"\n IF (\n    'Project WD+WR+INCO+Acciona'[No of Days Weld Date - TODAY \"PR all\"] >= 1 && 'Project WD+WR+INCO+Acciona'[No of Days Weld Date - TODAY \"PR all\"] <= 7,\n    \"1. 7 Days\",\n    IF (\n        'Project WD+WR+INCO+Acciona'[No of Days Weld Date - TODAY \"PR all\"] > 7 && 'Project WD+WR+INCO+Acciona'[No of Days Weld Date - TODAY \"PR all\"] <= 30,\n        \"2. 7 to 30 Days\",\n        IF (\n            'Project WD+WR+INCO+Acciona'[No of Days Weld Date - TODAY \"PR all\"] >30 && 'Project WD+WR+INCO+Acciona'[No of Days Weld Date - TODAY \"PR all\"] <= 90,\n            \"3. 30 to 90 Days\",\n            IF (\n                'Project WD+WR+INCO+Acciona'[No of Days Weld Date - TODAY \"PR all\"] > 90 && 'Project WD+WR+INCO+Acciona'[No of Days Weld Date - TODAY \"PR all\"] <= 180,\n                \"4. 90 to 180 Days\",\n                IF (\n                'Project WD+WR+INCO+Acciona'[No of Days Weld Date - TODAY \"PR all\"] > 180,\n                \"5. Above 180 Days\",\n                BLANK()\n            )\n        )\n    )\n))"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Welder ID",
+  "Expression":"'Project WD+WR+INCO+Acciona'[Welder]&\"-\"&'Project WD+WR+INCO+Acciona'[Sub-Contractor]"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Joint Uniq \"PR all\" Column",
+  "Expression":"CALCULATE(DISTINCTCOUNT('Project WD+WR+INCO+Acciona'[Joint ID]))"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Last_RT Date \"PR all\"",
+  "Expression":"\nIF(\n    ISBLANK('Project WD+WR+INCO+Acciona'[Manual UT Date.]),\n    LASTDATE('Project WD+WR+INCO+Acciona'[RT Date]),\n    BLANK()\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Days Since Last RT",
+  "Expression":"\nIF(ISBLANK([Last_RT Date \"PR all\"]),BLANK(),\nVALUE([Cur_Date \"PR all\"]-[Last_RT Date \"PR all\"]))"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"RT Film Ratio % \"PR all\" For Welder LAST 2 WEEKS",
+  "Expression":"\nDIVIDE(\n    CALCULATE(\n        SUM('Project WD+WR+INCO+Acciona'[Total No of films Rej]),\n        'Project WD+WR+INCO+Acciona'[RT Acc\/Rej] <> \"RS\",\n        'Project WD+WR+INCO+Acciona'[RT Acc\/Rej] <> \"U\/Review\",\n        FILTER(\n            ALLEXCEPT('Project WD+WR+INCO+Acciona', 'Project WD+WR+INCO+Acciona'[Welder ID]),\n            'Project WD+WR+INCO+Acciona'[Days Since Last RT] IN {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15}\n        )\n    ),\n    CALCULATE(\n        SUM('Project WD+WR+INCO+Acciona'[RT Film Total]),\n        'Project WD+WR+INCO+Acciona'[RT Acc\/Rej] <> \"RS\",\n        'Project WD+WR+INCO+Acciona'[RT Acc\/Rej] <> \"U\/Review\",\n        FILTER(\n            ALLEXCEPT('Project WD+WR+INCO+Acciona', 'Project WD+WR+INCO+Acciona'[Welder ID]),\n            'Project WD+WR+INCO+Acciona'[Days Since Last RT] IN {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15}\n        )\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"RT FILM Ratio % STATUS LAST 2 WEEKS",
+  "Expression":"\nIF (\n    ISBLANK('Project WD+WR+INCO+Acciona'[RT Film Ratio % \"PR all\" For Welder LAST 2 WEEKS]),\n    BLANK(),\n    IF (\n        'Project WD+WR+INCO+Acciona'[RT Film Ratio % \"PR all\" For Welder LAST 2 WEEKS] >= 0 && 'Project WD+WR+INCO+Acciona'[RT Film Ratio % \"PR all\" For Welder LAST 2 WEEKS] < 0.05,\n        \"1. 0 to 5% - ok\",\n        IF (\n            'Project WD+WR+INCO+Acciona'[RT Film Ratio % \"PR all\" For Welder LAST 2 WEEKS] >= 0.05 && 'Project WD+WR+INCO+Acciona'[RT Film Ratio % \"PR all\" For Welder LAST 2 WEEKS] < 0.075,\n            \"2. 5 to 7.5% - monitor\",\n            IF (\n                'Project WD+WR+INCO+Acciona'[RT Film Ratio % \"PR all\" For Welder LAST 2 WEEKS] >= 0.075 && 'Project WD+WR+INCO+Acciona'[RT Film Ratio % \"PR all\" For Welder LAST 2 WEEKS] < 0.10,\n                \"3. 7.5 to 10% - Critical\",\n                IF (\n                    'Project WD+WR+INCO+Acciona'[RT Film Ratio % \"PR all\" For Welder LAST 2 WEEKS] >= 0.10 && 'Project WD+WR+INCO+Acciona'[RT Film Ratio % \"PR all\" For Welder LAST 2 WEEKS] <= 1,\n                    \"4. 10 to 100% - Disq.F\",\n                    BLANK()\n                )\n            )\n        )\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"2 weeks Period for RT",
+  "Expression":"\nIF (\n        AND(\n            'Project WD+WR+INCO+Acciona'[RT Date] >= date(2023, 07, 28), \n            'Project WD+WR+INCO+Acciona'[RT Date] < date(2023, 08, 11)\n        ),\n        \"1. 28-Jul-23 to 11-Aug-23\",\nIF (\n        AND(\n            'Project WD+WR+INCO+Acciona'[RT Date] >= date(2023, 08, 11), \n            'Project WD+WR+INCO+Acciona'[RT Date] < date(2023, 08, 25)\n        ),\n        \"2. 11-Aug-23 to 25-Aug-23\",\n  IF (\n        AND(\n            'Project WD+WR+INCO+Acciona'[RT Date] >= date(2023, 08, 25), \n            'Project WD+WR+INCO+Acciona'[RT Date] < date(2023, 09, 8)\n        ),\n        \"3. 25-Aug-23 to 8-Sep-23\",\n  IF (\n        AND(\n            'Project WD+WR+INCO+Acciona'[RT Date] >= date(2023, 09, 8), \n            'Project WD+WR+INCO+Acciona'[RT Date] < date(2023, 09, 22)\n        ),\n        \"4. 8-Sep-23 to 22-Sep-23\",\n  IF (\n        AND(\n            'Project WD+WR+INCO+Acciona'[RT Date] >= date(2023, 09, 22), \n            'Project WD+WR+INCO+Acciona'[RT Date] < date(2023, 10, 6)\n        ),\n        \"5. 22-Sep-23 to 6-Oct-23\",\n  IF (\n        AND(\n            'Project WD+WR+INCO+Acciona'[RT Date] >= date(2023, 10, 6), \n            'Project WD+WR+INCO+Acciona'[RT Date] < date(2023, 10, 20)\n        ),\n        \"6. 6-Oct-23 to 20-Oct-23\",\n  IF (\n        AND(\n            'Project WD+WR+INCO+Acciona'[RT Date] >= date(2023, 10, 20), \n            'Project WD+WR+INCO+Acciona'[RT Date] < date(2023, 11, 3)\n        ),\n        \"7. 20-Oct-23 to 3-Nov-23\",\n  IF (\n        AND(\n            'Project WD+WR+INCO+Acciona'[RT Date] >= date(2023, 11, 3), \n            'Project WD+WR+INCO+Acciona'[RT Date] < date(2023, 11, 17)\n        ),\n        \"8. 3-Nov-23 to 17-Nov-23\",\n  IF (\n        AND(\n            'Project WD+WR+INCO+Acciona'[RT Date] >= date(2023, 11, 17), \n            'Project WD+WR+INCO+Acciona'[RT Date] < date(2023, 12, 1)\n        ),\n        \"9. 17-Nov-23 to 1-Dec-23\",\n  IF (\n        AND(\n            'Project WD+WR+INCO+Acciona'[RT Date] >= date(2023, 12, 1), \n            'Project WD+WR+INCO+Acciona'[RT Date] < date(2023, 12, 15)\n        ),\n        \"10. 1-Dec-23 to 15-Dec-23\",\n  IF (\n        AND(\n            'Project WD+WR+INCO+Acciona'[RT Date] >= date(2023, 12, 15), \n            'Project WD+WR+INCO+Acciona'[RT Date] < date(2023, 12, 29)\n        ),\n        \"11. 15-Dec-23 to 29-Dec-23\",\n  IF (\n        AND(\n            'Project WD+WR+INCO+Acciona'[RT Date] >= date(2023, 12, 29), \n            'Project WD+WR+INCO+Acciona'[RT Date] < date(2024, 1, 12)\n        ),\n        \"12. 29-Dec-23 to 12-Jan-24\",\n    IF (\n        AND(\n            'Project WD+WR+INCO+Acciona'[RT Date] >= date(2024, 1, 12), \n            'Project WD+WR+INCO+Acciona'[RT Date] < date(2024, 1, 26)\n        ),\n        \"13. 12-Jan-24 to 26-Jan-24\",\n    IF (\n        AND(\n            'Project WD+WR+INCO+Acciona'[RT Date] >= date(2024, 1, 26), \n            'Project WD+WR+INCO+Acciona'[RT Date] < date(2024, 2, 9)\n        ),\n        \"14. 26-Jan-24 to 09-Feb-24\",\n    IF (\n        AND(\n            'Project WD+WR+INCO+Acciona'[RT Date] >= date(2024, 2, 9), \n            'Project WD+WR+INCO+Acciona'[RT Date] < date(2024, 2, 23)\n        ),\n        \"15. 09-Feb-24 to 23-Feb-24\",\n    IF (\n        AND(\n            'Project WD+WR+INCO+Acciona'[RT Date] >= date(2024, 2, 23), \n            'Project WD+WR+INCO+Acciona'[RT Date] < date(2024, 3, 8)\n        ),\n        \"16. 23-Feb-24 to 8-Mar-24\",\n    IF (\n        AND(\n            'Project WD+WR+INCO+Acciona'[RT Date] >= date(2024, 3, 8), \n            'Project WD+WR+INCO+Acciona'[RT Date] < date(2024, 3, 22)\n        ),\n        \"17. 8-Mar-24 to 22-Mar-24\",\n    IF (\n        AND(\n            'Project WD+WR+INCO+Acciona'[RT Date] >= date(2024, 3, 22), \n            'Project WD+WR+INCO+Acciona'[RT Date] < date(2024, 4, 5)\n        ),\n        \"18. 22-Mar-24 to 5-Apr-24\",\n    IF (\n        AND(\n            'Project WD+WR+INCO+Acciona'[RT Date] >= date(2024, 4, 5), \n            'Project WD+WR+INCO+Acciona'[RT Date] < date(2024, 4, 19)\n        ),\n        \"19. 5-Apr-24 to 19-Apr-24\",\n    IF (\n        AND(\n            'Project WD+WR+INCO+Acciona'[RT Date] >= date(2024, 4, 19), \n            'Project WD+WR+INCO+Acciona'[RT Date] < date(2024, 5, 3)\n        ),\n        \"20. 19-Apr-24 to 3-May-24\",\n    IF (\n        AND(\n            'Project WD+WR+INCO+Acciona'[RT Date] >= date(2024, 5, 3), \n            'Project WD+WR+INCO+Acciona'[RT Date] < date(2024, 5, 17)\n        ),\n        \"21. 3-May-24 to 17-May-24\",\n    IF (\n        AND(\n            'Project WD+WR+INCO+Acciona'[RT Date] >= date(2024, 5, 17), \n            'Project WD+WR+INCO+Acciona'[RT Date] < date(2024, 5, 31)\n        ),\n        \"22. 17-May-24 to 31-May-24\",\n     IF (\n            AND(\n                'Project WD+WR+INCO+Acciona'[RT Date] >= date(2024, 5, 31), \n                'Project WD+WR+INCO+Acciona'[RT Date] < date(2024, 6, 14)\n            ),\n            \"23. 31-May-24 to 14-Jun-24\",\n            IF (\n                AND(\n                    'Project WD+WR+INCO+Acciona'[RT Date] >= date(2024, 6, 14), \n                    'Project WD+WR+INCO+Acciona'[RT Date] < date(2024, 6, 28)\n                ),\n                \"24. 14-Jun-24 to 28-Jun-24\",\n                IF (\n                    AND(\n                        'Project WD+WR+INCO+Acciona'[RT Date] >= date(2024, 6, 28), \n                        'Project WD+WR+INCO+Acciona'[RT Date] < date(2024, 7, 12)\n                    ),\n                    \"25. 28-Jun-24 to 12-Jul-24\",\n                    IF (\n                        AND(\n                            'Project WD+WR+INCO+Acciona'[RT Date] >= date(2024, 7, 12), \n                            'Project WD+WR+INCO+Acciona'[RT Date] < date(2024, 7, 26)\n                        ),\n                        \"26. 12-Jul-24 to 26-Jul-24\",\n                        IF (\n                            AND(\n                                'Project WD+WR+INCO+Acciona'[RT Date] >= date(2024, 7, 26), \n                                'Project WD+WR+INCO+Acciona'[RT Date] < date(2024, 8, 9)\n                            ),\n                            \"27. 26-Jul-24 to 9-Aug-24\",\n                            IF (\n                                AND(\n                                    'Project WD+WR+INCO+Acciona'[RT Date] >= date(2024, 8, 9), \n                                    'Project WD+WR+INCO+Acciona'[RT Date] < date(2024, 8, 23)\n                                ),\n                                \"28. 9-Aug-24 to 23-Aug-24\",\n                                IF (\n                                    AND(\n                                        'Project WD+WR+INCO+Acciona'[RT Date] >= date(2024, 8, 23), \n                                        'Project WD+WR+INCO+Acciona'[RT Date] < date(2024, 9, 6)\n                                    ),\n                                    \"29. 23-Aug-24 to 6-Sep-24\",\n                                    IF (\n                                        AND(\n                                            'Project WD+WR+INCO+Acciona'[RT Date] >= date(2024, 9, 6), \n                                            'Project WD+WR+INCO+Acciona'[RT Date] < date(2024, 9, 20)\n                                        ),\n                                        \"30. 6-Sep-24 to 20-Sep-24\",\n                                        IF (\n                                            AND(\n                                                'Project WD+WR+INCO+Acciona'[RT Date] >= date(2024, 9, 20), \n                                                'Project WD+WR+INCO+Acciona'[RT Date] < date(2024, 10, 4)\n                                            ),\n                                            \"31. 20-Sep-24 to 4-Oct-24\",\n                                            IF (\n                                                AND(\n                                                    'Project WD+WR+INCO+Acciona'[RT Date] >= date(2024, 10, 4), \n                                                    'Project WD+WR+INCO+Acciona'[RT Date] < date(2024, 10, 18)\n                                                ),\n                                                \"32. 4-Oct-24 to 18-Oct-24\",\n                                                IF (\n                                                    AND(\n                                                        'Project WD+WR+INCO+Acciona'[RT Date] >= date(2024, 10, 18), \n                                                        'Project WD+WR+INCO+Acciona'[RT Date] < date(2024, 11, 1)\n                                                    ),\n                                                    \"33. 18-Oct-24 to 1-Nov-24\",\n                                                    IF (\n                                                        AND(\n                                                            'Project WD+WR+INCO+Acciona'[RT Date] >= date(2024, 11, 1), \n                                                            'Project WD+WR+INCO+Acciona'[RT Date] < date(2024, 11, 15)\n                                                        ),\n                                                        \"34. 1-Nov-24 to 15-Nov-24\",\n                                                        IF (\n                                                            AND(\n                                                                'Project WD+WR+INCO+Acciona'[RT Date] >= date(2024, 11, 15), \n                                                                'Project WD+WR+INCO+Acciona'[RT Date] < date(2024, 11, 29)\n                                                            ),\n                                                            \"35. 15-Nov-24 to 29-Nov-24\",\n                                                            IF (\n                                                                AND(\n                                                                    'Project WD+WR+INCO+Acciona'[RT Date] >= date(2024, 11, 29), \n                                                                    'Project WD+WR+INCO+Acciona'[RT Date] < date(2024, 12, 13)\n                                                                ),\n                                                                \"36. 29-Nov-24 to 13-Dec-24\",\n                                                                IF (\n                                                                    'Project WD+WR+INCO+Acciona'[RT Date] >= date(2024, 12, 13), \n                                                                    \"37. 13-Dec-24 to 27-Dec-24\")))))))))))))))))))))))))))))))))))))"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Report TYPE",
+  "Expression":"\nIF('Project WD+WR+INCO+Acciona'[RT Report] <> \"\" && 'Project WD+WR+INCO+Acciona'[RT\/UT] <> \"UT\", \"RT\",\nIF('Project WD+WR+INCO+Acciona'[UT Report]<>\"\",\"UT\",\nIF('Project WD+WR+INCO+Acciona'[RT\/UT]=\"UT\",\"UT\",\nIF('Project WD+WR+INCO+Acciona'[PT Report]<>\"\",\"PT\",\nIF('Project WD+WR+INCO+Acciona'[PMI Report]<>\"\",\"PMI\",\nIF('Project WD+WR+INCO+Acciona'[PWHT Report]<>\"\",\"PWHT\",\nIF('Project WD+WR+INCO+Acciona'[PWHT Report No CCC]<>\"\",\"PWHT\",\nIF('Project WD+WR+INCO+Acciona'[MT Report]<>\"\",\"MT\",\nIF('Project WD+WR+INCO+Acciona'[MT Report CCC]<>\"\",\"MT\")))))))))"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"TMCP Pipe",
+  "Expression":"\n    IF('Project WD+WR+INCO+Acciona'[Service class]=\"9C3AQN\" &&\n    'Project WD+WR+INCO+Acciona'[Dia inch]IN{30, 34, 46},\n    \"TMCP Pipe\")"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Weld Length \"PR all\"",
+  "Expression":"\nIF(\n    'Project WD+WR+INCO+Acciona'[Sub-Contractor] = \"Inco\" &&\n    'Project WD+WR+INCO+Acciona'[Manual UT Report No.] <> \"\",\n    'Project WD+WR+INCO+Acciona'[Weld Length] \/ 1000,\n    IF(\n        ISBLANK(\n            LOOKUPVALUE(\n                'Weld Length'[Weld Length],\n                'Weld Length'[Dia inch], \n                'Project WD+WR+INCO+Acciona'[Dia inch]\n            )\n        ),\n        BLANK(),\n        LOOKUPVALUE(\n            'Weld Length'[Weld Length],\n            'Weld Length'[Dia inch], \n            'Project WD+WR+INCO+Acciona'[Dia inch]\n        )\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"PWHT Status PR ALL",
+  "Expression":"\n    IF('Project WD+WR+INCO+Acciona'[PWHT Y\/N]=\"Y\",\"Y\",\nIF('Project WD+WR+INCO+Acciona'[PWHT Y\/N]=\"N\",\"N\",\nIF('Project WD+WR+INCO+Acciona'[PWHT Y\/N]=\"25.01\",\"25.01\",\nIF('Project WD+WR+INCO+Acciona'[PWHT Y\/N CCC]=\"Y\",\"Y\",\nIF('Project WD+WR+INCO+Acciona'[PWHT Y\/N CCC]=\"N\",\"N\")))))"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"TESTPACK No \"PR All\"",
+  "Expression":"\nVAR CurrentJointID = 'Project WD+WR+INCO+Acciona'[Joint ID]\nVAR TPCCCID = \n    IF(\n        'Project WD+WR+INCO+Acciona'[Sub-Contractor] = \"CCC\",\n        MAXX(\n            FILTER(\n                'AllTrain_CSVExport_Joint Record',\n                'AllTrain_CSVExport_Joint Record'[Joint ID \"JR\"] = CurrentJointID\n            ),\n            'AllTrain_CSVExport_Joint Record'[Test Package No]\n        )\n    )\n\nVAR MaxTestPackageNoOther = \n    MAXX(\n        FILTER(\n            'Project WD+WR+INCO+Acciona',\n            'Project WD+WR+INCO+Acciona'[Joint ID] = CurrentJointID\n        ),\n        'Project WD+WR+INCO+Acciona'[Testpack No]\n    )\n\nRETURN\n    IF(\n        'Project WD+WR+INCO+Acciona'[Sub-Contractor] = \"CCC\",\n        IF(\n            ISBLANK(TPCCCID),\n            BLANK(),\n            TPCCCID\n        ),\n        IF(\n            ISBLANK(MaxTestPackageNoOther),\n            BLANK(),\n            MaxTestPackageNoOther\n        )\n    )"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"TP Ratio % Complete \"PR all\"",
+  "Expression":"\nDIVIDE(\n    CALCULATE(\n        DISTINCTCOUNT('Project WD+WR+INCO+Acciona'[Joint ID]),\n        'Project WD+WR+INCO+Acciona'[Weld Date] > 0,\n        ALLEXCEPT('Project WD+WR+INCO+Acciona', 'Project WD+WR+INCO+Acciona'[TESTPACK No \"PR All\"])\n    ),\n    CALCULATE(\n        DISTINCTCOUNT('Project WD+WR+INCO+Acciona'[Joint ID]),\n        ALLEXCEPT('Project WD+WR+INCO+Acciona', 'Project WD+WR+INCO+Acciona'[TESTPACK No \"PR All\"])\n    )\n) * 1"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"TP Ratio % STATUS",
+  "Expression":"\nIF (\n    ISBLANK('Project WD+WR+INCO+Acciona'[TP Ratio % Complete \"PR all\"]),\n    BLANK(),\n    IF (\n        'Project WD+WR+INCO+Acciona'[TP Ratio % Complete \"PR all\"] >= 0 && 'Project WD+WR+INCO+Acciona'[TP Ratio % Complete \"PR all\"] < 0.5,\n        \"1. 0 to 50%\",\n        IF (\n            'Project WD+WR+INCO+Acciona'[TP Ratio % Complete \"PR all\"] >= 0.5 && 'Project WD+WR+INCO+Acciona'[TP Ratio % Complete \"PR all\"] < 0.8,\n            \"2. 50 to 80%\",\n            IF (\n                'Project WD+WR+INCO+Acciona'[TP Ratio % Complete \"PR all\"] >= 0.8 && 'Project WD+WR+INCO+Acciona'[TP Ratio % Complete \"PR all\"] < 0.99,\n                \"3. 80 to 99%\",\n                IF (\n                    'Project WD+WR+INCO+Acciona'[TP Ratio % Complete \"PR all\"] >= 0.99 && 'Project WD+WR+INCO+Acciona'[TP Ratio % Complete \"PR all\"] <= 1,\n                    \"4. 100%\",\n                    BLANK()\n                )\n            )\n        )\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"UT Report \"PR All\"",
+  "Expression":"\nIF(\n    'Project WD+WR+INCO+Acciona'[UT Report] <> \"\", \n    'Project WD+WR+INCO+Acciona'[UT Report], \n    IF(\n        'Project WD+WR+INCO+Acciona'[Sub-Contractor] = \"CCC\", \n        LOOKUPVALUE(\n            'UT TRACKER (CCC)_Talisman'[UT1 REP NO],\n            'UT TRACKER (CCC)_Talisman'[Joint ID], \n            'Project WD+WR+INCO+Acciona'[Joint ID]\n        ), \n        IF(\n            'Project WD+WR+INCO+Acciona'[RT\/UT] = \"UT\",\n            'Project WD+WR+INCO+Acciona'[RT Report],\n            BLANK()\n        )\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"UT Ratio % For Welder (<5% ; >5%) \"PR all\"",
+  "Expression":"\nDIVIDE(\n    CALCULATE(\n        DISTINCTCOUNT('Project WD+WR+INCO+Acciona'[Joint ID]),\n        'Project WD+WR+INCO+Acciona'[Manual UT Report No.] <> \"\",'Project WD+WR+INCO+Acciona'[Weld Type]IN{\"BW\",\"GW\",\"CLET\",\"MW\"},\n        ALLEXCEPT('Project WD+WR+INCO+Acciona', 'Project WD+WR+INCO+Acciona'[Welder ID])\n    ),\n    CALCULATE(\n        DISTINCTCOUNT('Project WD+WR+INCO+Acciona'[Joint ID]),\n        'Project WD+WR+INCO+Acciona'[Weld Date] > 0,'Project WD+WR+INCO+Acciona'[Weld Type]IN{\"BW\",\"GW\",\"CLET\",\"MW\"},\n        ALLEXCEPT('Project WD+WR+INCO+Acciona', 'Project WD+WR+INCO+Acciona'[Welder ID])\n    )\n) * 1"
+ },
+ {
+  "TableName":"WELDERS_Qualification",
+  "ColumnName":"Welder ID in System",
+  "Expression":"\nLOOKUPVALUE('Project WD+WR+INCO+Acciona'[Welder ID],\n'Project WD+WR+INCO+Acciona'[Welder ID],\nWELDERS_Qualification[Welder ID Code+Sub],\"Not found\")"
+ },
+ {
+  "TableName":"SCTR OVERALL APPLIED WELDERS",
+  "ColumnName":"Total Qualified Welders TXT",
+  "Expression":"\nCONCATENATEX(\n    {1},\n    \"Total Qualified Welders= \" &\n    SUM('SCTR OVERALL APPLIED WELDERS'[QUALIFIED  WELDERS]))"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"UT Operator ID.",
+  "Expression":"\nVAR CurrentJointID = 'Project WD+WR+INCO+Acciona'[Joint ID]\nVAR UTTrackerGACID = \n    IF(\n        'Project WD+WR+INCO+Acciona'[Sub-Contractor] = \"GAC\",\n        MAXX(\n            FILTER(\n                'Project WD+WR+INCO+Acciona',\n                'Project WD+WR+INCO+Acciona'[Joint ID] = CurrentJointID\n            ),\n            IF(\n                ISBLANK('Project WD+WR+INCO+Acciona'[UT Operator ID]),\n                'Project WD+WR+INCO+Acciona'[UT Operator ID],\n                'Project WD+WR+INCO+Acciona'[UT Operator ID]\n            )\n        )\n    )\nVAR UTTrackerTEKID = \n    IF(\n        'Project WD+WR+INCO+Acciona'[Sub-Contractor] = \"TEKFEN\",\n        MAXX(\n            FILTER(\n                'Project WD+WR+INCO+Acciona',\n                'Project WD+WR+INCO+Acciona'[Joint ID] = CurrentJointID\n            ),\n            IF(\n                ISBLANK('Project WD+WR+INCO+Acciona'[UT Operator ID]),\n                'Project WD+WR+INCO+Acciona'[UT Operator ID],\n                'Project WD+WR+INCO+Acciona'[UT Operator ID]\n            )\n        )\n    )\nVAR UTTrackerINCOID = \n    IF(\n        'Project WD+WR+INCO+Acciona'[Sub-Contractor] = \"Inco\",\n        MAXX(\n            FILTER(\n                'Project WD+WR+INCO+Acciona',\n                'Project WD+WR+INCO+Acciona'[Joint ID] = CurrentJointID\n            ),\n            IF(\n                ISBLANK('Project WD+WR+INCO+Acciona'[UT Operator ID]),\n                'Project WD+WR+INCO+Acciona'[UT Operator ID],\n                'Project WD+WR+INCO+Acciona'[UT Operator ID]\n            )\n        )\n    )\nVAR UTTrackerCCCID = \nCALCULATE(\n        LOOKUPVALUE('UT TRACKER (CCC)_Talisman'[UT Operator ID.], 'UT TRACKER (CCC)_Talisman'[Joint ID], CurrentJointID),\n        'Project WD+WR+INCO+Acciona'[Sub-Contractor] = \"CCC\",\n        'Project WD+WR+INCO+Acciona'[RT\/UT] = \"UT\"\n            )\nRETURN\n    IF(\n        NOT ISBLANK(UTTrackerGACID),\n        UTTrackerGACID,\n        IF(\n            NOT ISBLANK(UTTrackerTEKID),\n            UTTrackerTEKID,\n            IF(\n                NOT ISBLANK(UTTrackerINCOID),\n                UTTrackerINCOID,\n                IF(\n                    NOT ISBLANK(UTTrackerCCCID),\n                    UTTrackerCCCID,\n                    BLANK()\n                )\n            )\n        )\n    )"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Manual UT Date.",
+  "Expression":"\nVAR CurrentJointID = 'Project WD+WR+INCO+Acciona'[Joint ID]\nVAR UTTrackerGACID = \n    IF(\n        'Project WD+WR+INCO+Acciona'[Sub-Contractor] = \"GAC\",\n        MAXX(\n            FILTER(\n                'Project WD+WR+INCO+Acciona',\n                'Project WD+WR+INCO+Acciona'[Joint ID] = CurrentJointID\n            ),\n            IF(\n                ISBLANK('Project WD+WR+INCO+Acciona'[UT Date \"PR All\"]),\n                'Project WD+WR+INCO+Acciona'[Manual UT Date],\n                'Project WD+WR+INCO+Acciona'[UT Date \"PR All\"]\n            )\n        )\n    )\nVAR UTTrackerTEKID = \n    IF(\n        'Project WD+WR+INCO+Acciona'[Sub-Contractor] = \"TEKFEN\",\n        MAXX(\n            FILTER(\n                'Project WD+WR+INCO+Acciona',\n                'Project WD+WR+INCO+Acciona'[Joint ID] = CurrentJointID\n            ),\n            IF(\n                ISBLANK('Project WD+WR+INCO+Acciona'[UT Date \"PR All\"]),\n                'Project WD+WR+INCO+Acciona'[Manual UT Date],\n                'Project WD+WR+INCO+Acciona'[UT Date \"PR All\"]\n            )\n        )\n    )\nVAR UTTrackerINCOID = \n    IF(\n        'Project WD+WR+INCO+Acciona'[Sub-Contractor] = \"Inco\",\n        MAXX(\n            FILTER(\n                'Project WD+WR+INCO+Acciona',\n                'Project WD+WR+INCO+Acciona'[Joint ID] = CurrentJointID\n            ),\n            IF(\n                ISBLANK('Project WD+WR+INCO+Acciona'[UT Date \"PR All\"]),\n                'Project WD+WR+INCO+Acciona'[UT Date],\n                'Project WD+WR+INCO+Acciona'[UT Date \"PR All\"]\n            )\n        )\n    )\nVAR UTTrackerCCCID = \n    IF(\n        'Project WD+WR+INCO+Acciona'[Sub-Contractor] = \"CCC\",\n        MAXX(\n            FILTER(\n                'Project WD+WR+INCO+Acciona',\n                'Project WD+WR+INCO+Acciona'[Joint ID] = CurrentJointID\n            ),\n            IF(\n                ISBLANK('Project WD+WR+INCO+Acciona'[UT Date \"PR All\"]),\n                'Project WD+WR+INCO+Acciona'[UT Date \"PR All\"],\n                'Project WD+WR+INCO+Acciona'[UT Date \"PR All\"]\n            )\n        )\n    )\n\nRETURN\n    IF(\n        NOT ISBLANK(UTTrackerGACID),\n        UTTrackerGACID,\n        IF(\n            NOT ISBLANK(UTTrackerTEKID),\n            UTTrackerTEKID,\n            IF(\n                NOT ISBLANK(UTTrackerINCOID),\n                UTTrackerINCOID,\n                IF(\n                    NOT ISBLANK(UTTrackerCCCID),\n                    UTTrackerCCCID,\n                    BLANK()\n                )\n            )\n        )\n    )"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Manual UT Report No.",
+  "Expression":"\nVAR CurrentJointID = 'Project WD+WR+INCO+Acciona'[Joint ID]\nVAR UTTrackerGACID = \n    IF(\n        'Project WD+WR+INCO+Acciona'[Sub-Contractor] = \"GAC\",\n        MAXX(\n            FILTER(\n                'Project WD+WR+INCO+Acciona',\n                'Project WD+WR+INCO+Acciona'[Joint ID] = CurrentJointID\n            ),\n            IF(\n                ISBLANK('Project WD+WR+INCO+Acciona'[UT Report \"PR All\"]),\n                'Project WD+WR+INCO+Acciona'[Manual UT Report No],\n                'Project WD+WR+INCO+Acciona'[UT Report \"PR All\"]\n            )\n        )\n    )\n\nVAR UTTrackerTEKID = \n    IF(\n        'Project WD+WR+INCO+Acciona'[Sub-Contractor] = \"TEKFEN\",\n        MAXX(\n            FILTER(\n                'Project WD+WR+INCO+Acciona',\n                'Project WD+WR+INCO+Acciona'[Joint ID] = CurrentJointID\n            ),\n            IF(\n                ISBLANK('Project WD+WR+INCO+Acciona'[UT Report \"PR All\"]),\n                'Project WD+WR+INCO+Acciona'[Manual UT Report No],\n                'Project WD+WR+INCO+Acciona'[UT Report \"PR All\"]\n            )\n        )\n    )\n\nVAR UTTrackerINCOID = \n    IF(\n        'Project WD+WR+INCO+Acciona'[Sub-Contractor] = \"Inco\",\n        MAXX(\n            FILTER(\n                'Project WD+WR+INCO+Acciona',\n                'Project WD+WR+INCO+Acciona'[Joint ID] = CurrentJointID\n            ),\n            IF(\n                ISBLANK('Project WD+WR+INCO+Acciona'[UT Report \"PR All\"]),\n                'Project WD+WR+INCO+Acciona'[UT Report],\n                'Project WD+WR+INCO+Acciona'[UT Report \"PR All\"]\n            )\n        )\n    )\n\nVAR UTTrackerCCCID = \n    IF(\n        'Project WD+WR+INCO+Acciona'[Sub-Contractor] = \"CCC\",\n        MAXX(\n            FILTER(\n                'Project WD+WR+INCO+Acciona',\n                'Project WD+WR+INCO+Acciona'[Joint ID] = CurrentJointID\n            ),\n            IF(\n                ISBLANK('Project WD+WR+INCO+Acciona'[UT Report \"PR All\"]),\n                'Project WD+WR+INCO+Acciona'[UT Report \"PR All\"],\n                'Project WD+WR+INCO+Acciona'[UT Report \"PR All\"]\n            )\n        )\n    )\n\nRETURN\n    IF(\n        NOT ISBLANK(UTTrackerGACID),\n        UTTrackerGACID,\n        IF(\n            NOT ISBLANK(UTTrackerTEKID),\n            UTTrackerTEKID,\n                    IF(\n            NOT ISBLANK(UTTrackerINCOID),\n            UTTrackerINCOID,\n            IF(\n                NOT ISBLANK(UTTrackerCCCID),\n                UTTrackerCCCID,\n                BLANK()\n            )\n        )\n    )\n    )"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Manual UT Status.",
+  "Expression":"\nVAR CurrentJointID = 'Project WD+WR+INCO+Acciona'[Joint ID]\nVAR CurrentWelderID = 'Project WD+WR+INCO+Acciona'[Welder ID]\n\nVAR UTTrackerGACID = \n    IF(\n        'Project WD+WR+INCO+Acciona'[Sub-Contractor] = \"GAC\",\n        IF(\n            ISBLANK(LOOKUPVALUE('Project WD+WR+INCO+Acciona'[UT Acc\/Rej], 'Project WD+WR+INCO+Acciona'[Joint ID], CurrentJointID, 'Project WD+WR+INCO+Acciona'[Welder ID], CurrentWelderID)),\n            LOOKUPVALUE('Project WD+WR+INCO+Acciona'[Manual UT Status], 'Project WD+WR+INCO+Acciona'[Joint ID], CurrentJointID, 'Project WD+WR+INCO+Acciona'[Welder ID], CurrentWelderID),\n            LOOKUPVALUE('Project WD+WR+INCO+Acciona'[UT Acc\/Rej], 'Project WD+WR+INCO+Acciona'[Joint ID], CurrentJointID, 'Project WD+WR+INCO+Acciona'[Welder ID], CurrentWelderID)\n        )\n    )\n\nVAR UTTrackerTEKID = \n    IF(\n        'Project WD+WR+INCO+Acciona'[Sub-Contractor] = \"TEKFEN\",\n        IF(\n            ISBLANK(LOOKUPVALUE('Project WD+WR+INCO+Acciona'[UT Acc\/Rej], 'Project WD+WR+INCO+Acciona'[Joint ID], CurrentJointID, 'Project WD+WR+INCO+Acciona'[Welder ID], CurrentWelderID)),\n            LOOKUPVALUE('Project WD+WR+INCO+Acciona'[Manual UT Status], 'Project WD+WR+INCO+Acciona'[Joint ID], CurrentJointID, 'Project WD+WR+INCO+Acciona'[Welder ID], CurrentWelderID),\n            LOOKUPVALUE('Project WD+WR+INCO+Acciona'[UT Acc\/Rej], 'Project WD+WR+INCO+Acciona'[Joint ID], CurrentJointID, 'Project WD+WR+INCO+Acciona'[Welder ID], CurrentWelderID)\n        )\n    )\n\nVAR UTTrackerINCOID = \n    IF(\n        'Project WD+WR+INCO+Acciona'[Sub-Contractor] = \"Inco\",\n        IF(\n            ISBLANK(LOOKUPVALUE('Project WD+WR+INCO+Acciona'[UT Acc\/Rej], 'Project WD+WR+INCO+Acciona'[Joint ID], CurrentJointID, 'Project WD+WR+INCO+Acciona'[Welder ID], CurrentWelderID)),\n            LOOKUPVALUE('Project WD+WR+INCO+Acciona'[UT Acc\/Rej], 'Project WD+WR+INCO+Acciona'[Joint ID], CurrentJointID, 'Project WD+WR+INCO+Acciona'[Welder ID], CurrentWelderID),\n            LOOKUPVALUE('Project WD+WR+INCO+Acciona'[UT Acc\/Rej], 'Project WD+WR+INCO+Acciona'[Joint ID], CurrentJointID, 'Project WD+WR+INCO+Acciona'[Welder ID], CurrentWelderID)\n        )\n    )\n\nVAR UTTrackerCCCID =\n    IF(\n        'Project WD+WR+INCO+Acciona'[Sub-Contractor] = \"CCC\" && \n        'Project WD+WR+INCO+Acciona'[RT\/UT] = \"UT\",\n        VAR RTAccRej = \n            LOOKUPVALUE(\n                'Project WD+WR+INCO+Acciona'[RT Acc\/Rej], \n                'Project WD+WR+INCO+Acciona'[Joint ID], CurrentJointID,\n                'Project WD+WR+INCO+Acciona'[Welder ID], CurrentWelderID,\n                'Project WD+WR+INCO+Acciona'[Sub-Contractor], \"CCC\",\n                'Project WD+WR+INCO+Acciona'[RT\/UT], \"UT\"\n            )\n        RETURN\n            IF(\n                NOT ISBLANK(RTAccRej),\n                RTAccRej,\n                IF(\n                    'Project WD+WR+INCO+Acciona'[Sub-Contractor] = \"CCC\" && 'Project WD+WR+INCO+Acciona'[RT Acc\/Rej] = \"\",\n                    LOOKUPVALUE(\n                        'UT TRACKER (CCC)_Talisman'[UT1 RESULT], \n                        'UT TRACKER (CCC)_Talisman'[Joint ID], 'Project WD+WR+INCO+Acciona'[Joint ID], CurrentJointID\n                    ),\n                    BLANK()\n                )\n            )\n    )\n\nRETURN\n    IF(\n        NOT ISBLANK(UTTrackerGACID),\n        UTTrackerGACID,\n        IF(\n            NOT ISBLANK(UTTrackerTEKID),\n            UTTrackerTEKID,\n            IF(\n                NOT ISBLANK(UTTrackerINCOID),\n                UTTrackerINCOID,\n                IF(\n                    'Project WD+WR+INCO+Acciona'[Sub-Contractor] = \"CCC\", \n                    LOOKUPVALUE(\n                        'UT TRACKER (CCC)_Talisman'[UT1 RESULT],\n                        'UT TRACKER (CCC)_Talisman'[Joint ID], \n                        'Project WD+WR+INCO+Acciona'[Joint ID]\n                    ),\n                    BLANK()\n                )\n            )\n        )\n    )"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Inspected Length(MM).",
+  "Expression":"\nVAR CurrentJointID = 'Project WD+WR+INCO+Acciona'[Joint ID]\nVAR MaxInspectedLengthFromGAC = \n    IF(\n        'Project WD+WR+INCO+Acciona'[Sub-Contractor] = \"GAC\" && 'Project WD+WR+INCO+Acciona'[Manual UT Report No.] <> \"\",\n        'Project WD+WR+INCO+Acciona'[Weld Length \"PR all\"],\n        BLANK()\n    )\nVAR MaxInspectedLengthFromTEK = \n    IF(\n        'Project WD+WR+INCO+Acciona'[Sub-Contractor] = \"TEKFEN\" && 'Project WD+WR+INCO+Acciona'[Manual UT Report No.] <> \"\",\n        'Project WD+WR+INCO+Acciona'[Weld Length \"PR all\"],\n        BLANK()\n    )\nVAR MaxInspectedLengthFromCCC = \n    IF(\n        'Project WD+WR+INCO+Acciona'[Sub-Contractor] = \"CCC\" && 'Project WD+WR+INCO+Acciona'[Manual UT Report No.] <> \"\",\n        'Project WD+WR+INCO+Acciona'[Weld Length \"PR all\"],\n        BLANK()\n    )\nVAR MaxInspectedLengthFromOthers = \n    IF(\n        'Project WD+WR+INCO+Acciona'[Manual UT Report No.] <> \"\",\n        CALCULATE(\n            MAX('Project WD+WR+INCO+Acciona'[Weld Length \"PR all\"]),\n            FILTER(\n                'Project WD+WR+INCO+Acciona',\n                'Project WD+WR+INCO+Acciona'[Sub-Contractor] <> \"GAC\" &&\n                'Project WD+WR+INCO+Acciona'[Sub-Contractor] <> \"TEKFEN\" &&\n                'Project WD+WR+INCO+Acciona'[Sub-Contractor] <> \"CCC\" &&\n                'Project WD+WR+INCO+Acciona'[Joint ID] = CurrentJointID\n            )\n        ),\n        BLANK()\n    )\nRETURN\n    IF(\n        NOT ISBLANK(MaxInspectedLengthFromGAC),\n        MaxInspectedLengthFromGAC,\n        IF(\n            NOT ISBLANK(MaxInspectedLengthFromTEK),\n            MaxInspectedLengthFromTEK,\n            IF(\n                NOT ISBLANK(MaxInspectedLengthFromCCC),\n                MaxInspectedLengthFromCCC,\n                MaxInspectedLengthFromOthers\n            )\n        )\n    )"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Defect Length(MM).",
+  "Expression":"\nVAR CurrentJointID = 'Project WD+WR+INCO+Acciona'[Joint ID]\nVAR UTTrackerCCCID = \n    CALCULATE(\n        LOOKUPVALUE('UT TRACKER (CCC)_Talisman'[Defect Lenght(MM).],'UT TRACKER (CCC)_Talisman'[Joint ID], CurrentJointID),\n        'Project WD+WR+INCO+Acciona'[Sub-Contractor] = \"CCC\",\n        'Project WD+WR+INCO+Acciona'[RT\/UT] = \"UT\"\n    )\nRETURN\n    IF(\n        'Project WD+WR+INCO+Acciona'[Sub-Contractor] = \"Inco\" && \n        'Project WD+WR+INCO+Acciona'[Manual UT Report No.] <> \"\",\n        'Project WD+WR+INCO+Acciona'[Repair Length (mm)]\/1000,\n        IF(\n            'Project WD+WR+INCO+Acciona'[Manual UT Report No.] <> \"\" && \n            'Project WD+WR+INCO+Acciona'[By UT] = \"Y\",\n            'Project WD+WR+INCO+Acciona'[Rej Length],\n            IF(\n                'Project WD+WR+INCO+Acciona'[Manual UT Status.] = \"R\" &&\n                'Project WD+WR+INCO+Acciona'[Sub-Contractor] = \"CCC\",\n                UTTrackerCCCID,\n                0\n            )\n        )\n    )"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Cross Verification-by CTJV (TPI).",
+  "Expression":"\nVAR CurrentJointID = 'Project WD+WR+INCO+Acciona'[Joint ID]\nVAR UTTrackerGACID = \n    CALCULATE(\n        MAXX(\n            FILTER(\n                'UT TRACKER (GAC)',\n                'UT TRACKER (GAC)'[Joint ID] = CurrentJointID\n            ),\n            'UT TRACKER (GAC)'[Cross Verification-by  CTJV (TPI) ]\n        ),\n        'UT TRACKER (GAC)'[Cross Verification-by  CTJV (TPI) ] <> BLANK()\n    )\nVAR UTTrackerTEKID = \n    CALCULATE(\n        MAXX(\n            FILTER(\n                'UT TRACKER (TEK)',\n                'UT TRACKER (TEK)'[Joint ID] = CurrentJointID\n            ),\n            'UT TRACKER (TEK)'[Cross Verification-by  CTJV (TPI) ]\n        ),\n        'UT TRACKER (TEK)'[Cross Verification-by  CTJV (TPI) ] <> BLANK()\n    )\nRETURN\n    IF(\n        NOT ISBLANK(UTTrackerGACID),\n        UTTrackerGACID,\n        IF(\n            NOT ISBLANK(UTTrackerTEKID),\n            UTTrackerTEKID,\n            BLANK()\n        )\n    )"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"CTJV VERIFICATION Date.",
+  "Expression":"\nCALCULATE(\n    MAXX(\n        FILTER(\n            'UT TRACKER (GAC)',\n            'UT TRACKER (GAC)'[Joint ID] = VALUES('Project WD+WR+INCO+Acciona'[Joint ID])\n        ),\n        'UT TRACKER (GAC)'[CTJV VERIFICATIONDATE]\n    )+\n    CALCULATE(\n    MAXX(\n        FILTER(\n            'UT TRACKER (TEK)',\n            'UT TRACKER (TEK)'[Joint ID] = VALUES('Project WD+WR+INCO+Acciona'[Joint ID])\n        ),\n        'UT TRACKER (TEK)'[CTJV VERIFICATIONDATE]\n)))"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"CTJV VERIFICATION BY.",
+  "Expression":"\nVAR CurrentJointID = 'Project WD+WR+INCO+Acciona'[Joint ID]\nVAR UTTrackerGACID = \n    CALCULATE(\n        MAXX(\n            FILTER(\n                'UT TRACKER (GAC)',\n                'UT TRACKER (GAC)'[Joint ID] = CurrentJointID\n            ),\n            'UT TRACKER (GAC)'[CTJV VERIFICATIONBY]\n        ),\n        'UT TRACKER (GAC)'[CTJV VERIFICATIONBY] <> BLANK()\n    )\nVAR UTTrackerTEKID = \n    CALCULATE(\n        MAXX(\n            FILTER(\n                'UT TRACKER (TEK)',\n                'UT TRACKER (TEK)'[Joint ID] = CurrentJointID\n            ),\n            'UT TRACKER (TEK)'[CTJV VERIFICATIONBY]\n        ),\n        'UT TRACKER (TEK)'[CTJV VERIFICATIONBY] <> BLANK()\n    )\nRETURN\n    IF(\n        NOT ISBLANK(UTTrackerGACID),\n        UTTrackerGACID,\n        IF(\n            NOT ISBLANK(UTTrackerTEKID),\n            UTTrackerTEKID,\n            BLANK()\n        )\n    )"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"UT Rej Length Rate % \"PR all\" For Welder",
+  "Expression":"\nIF (\n    NOT ISBLANK('Project WD+WR+INCO+Acciona'[Manual UT Date.]),\n    DIVIDE(\n        CALCULATE(\n            SUM('Project WD+WR+INCO+Acciona'[Defect Length(MM).]),\n            ALLEXCEPT('Project WD+WR+INCO+Acciona', 'Project WD+WR+INCO+Acciona'[Welder ID])\n        ),\n        CALCULATE(\n            SUM('Project WD+WR+INCO+Acciona'[Inspected Length(MM).]),\n            ALLEXCEPT('Project WD+WR+INCO+Acciona', 'Project WD+WR+INCO+Acciona'[Welder ID])\n        )\n    ) * 1,\n    BLANK()\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"UT Rej Rate % STATUS for Welder by Length",
+  "Expression":"\nIF (\n    ISBLANK('Project WD+WR+INCO+Acciona'[UT Rej Length Rate % \"PR all\" For Welder]),\n    BLANK(),\n    IF (\n        'Project WD+WR+INCO+Acciona'[UT Rej Length Rate % \"PR all\" For Welder] >= 0 && 'Project WD+WR+INCO+Acciona'[UT Rej Length Rate % \"PR all\" For Welder] < 0.015,\n        \"1. Ok: 0 to 1.5%\",\n        IF (\n            'Project WD+WR+INCO+Acciona'[UT Rej Length Rate % \"PR all\" For Welder] >= 0.015 && 'Project WD+WR+INCO+Acciona'[UT Rej Length Rate % \"PR all\" For Welder] < 0.02,\n            \"2. Monitor: 1.5% to 2%\",\n            IF (\n                'Project WD+WR+INCO+Acciona'[UT Rej Length Rate % \"PR all\" For Welder] >= 0.02 && 'Project WD+WR+INCO+Acciona'[UT Rej Length Rate % \"PR all\" For Welder] <= 1,\n                \"3. Action: 2% to 100%\",\n                BLANK()\n            )\n        )\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"UT Rej Rate % \"PR all\" For Welder by Joint",
+  "Expression":"\nDIVIDE(\n    CALCULATE(\n        DISTINCTCOUNT('Project WD+WR+INCO+Acciona'[Joint ID]),\n        'Project WD+WR+INCO+Acciona'[Manual UT Report No.] <>\"\",'Project WD+WR+INCO+Acciona'[Manual UT Status.]= \"R\",\n        ALLEXCEPT('Project WD+WR+INCO+Acciona','Project WD+WR+INCO+Acciona'[Welder ID])\n    ),\n    CALCULATE(\n        DISTINCTCOUNT('Project WD+WR+INCO+Acciona'[Joint ID]),\n        'Project WD+WR+INCO+Acciona'[Manual UT Report No.] <>\"\",\n        ALLEXCEPT('Project WD+WR+INCO+Acciona','Project WD+WR+INCO+Acciona'[Welder ID])\n    )\n) * 1"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"UT Rej Rate % STATUS for Welder by Joint",
+  "Expression":"\nIF (\n    ISBLANK('Project WD+WR+INCO+Acciona'[UT Rej Rate % \"PR all\" For Welder by Joint]),\n    BLANK(),\n    IF (\n        'Project WD+WR+INCO+Acciona'[UT Rej Rate % \"PR all\" For Welder by Joint] >= 0 && 'Project WD+WR+INCO+Acciona'[UT Rej Rate % \"PR all\" For Welder by Joint] < 0.1,\n        \"1. 0 to 10%\",\n        IF (\n            'Project WD+WR+INCO+Acciona'[UT Rej Rate % \"PR all\" For Welder by Joint] >= 0.1 && 'Project WD+WR+INCO+Acciona'[UT Rej Rate % \"PR all\" For Welder by Joint] <= 1,\n            \"2. 10 to 100%\",\n            BLANK()\n        )\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"UT Rej Rate % by joint \"PR all\" For Sub-Con",
+  "Expression":"\nDIVIDE(\n    CALCULATE(\n        DISTINCTCOUNT('Project WD+WR+INCO+Acciona'[Joint ID]),\n        'Project WD+WR+INCO+Acciona'[Manual UT Report No.] <>\"\",'Project WD+WR+INCO+Acciona'[Manual UT Status.]= \"R\",\n        ALLEXCEPT('Project WD+WR+INCO+Acciona','Project WD+WR+INCO+Acciona'[Sub-Contractor])\n    ),\n    CALCULATE(\n        DISTINCTCOUNT('Project WD+WR+INCO+Acciona'[Joint ID]),\n        'Project WD+WR+INCO+Acciona'[Manual UT Report No.] <>\"\",\n        ALLEXCEPT('Project WD+WR+INCO+Acciona','Project WD+WR+INCO+Acciona'[Sub-Contractor])\n    )\n) * 1"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"UT Rej Rate % STATUS for Sub-Con by Joint",
+  "Expression":"\nIF (\n    ISBLANK('Project WD+WR+INCO+Acciona'[UT Rej Rate % by joint \"PR all\" For Sub-Con]),\n    BLANK(),\n    IF (\n        'Project WD+WR+INCO+Acciona'[UT Rej Rate % by joint \"PR all\" For Sub-Con] >= 0 && 'Project WD+WR+INCO+Acciona'[UT Rej Rate % by joint \"PR all\" For Sub-Con] < 0.03,\n        \"1. ok-0 to 3%\",\n        IF (\n            'Project WD+WR+INCO+Acciona'[UT Rej Rate % by joint \"PR all\" For Sub-Con] >= 0.03 && 'Project WD+WR+INCO+Acciona'[UT Rej Rate % by joint \"PR all\" For Sub-Con] < 0.05,\n            \"2. Monitor-3% to 5%\",\n            IF (\n                'Project WD+WR+INCO+Acciona'[UT Rej Rate % by joint \"PR all\" For Sub-Con] >= 0.05 && 'Project WD+WR+INCO+Acciona'[UT Rej Rate % by joint \"PR all\" For Sub-Con] <= 1,\n                \"3. Not Accept-5% to 100%\",\n                BLANK()\n            )\n        )\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"RT\/UT Ratio % For Service Class + Service Cat+NDT Remarks Cover \"PR all\"",
+  "Expression":"\nCOALESCE(\n    DIVIDE(\n        CALCULATE(\n            DISTINCTCOUNT('Project WD+WR+INCO+Acciona'[Joint ID]),\n            'Project WD+WR+INCO+Acciona'[RT Report] <> \"\",\n            'Project WD+WR+INCO+Acciona'[RT Acc\/Rej] <> \"RS\",\n            'Project WD+WR+INCO+Acciona'[Weld Type] IN {\"BW\", \"GW\", \"CLET\", \"MW\"},\n            ALLEXCEPT('Project WD+WR+INCO+Acciona', 'Project WD+WR+INCO+Acciona'[Service Class + Service Cat+NDT Remarks])\n        ),\n        CALCULATE(\n            DISTINCTCOUNT('Project WD+WR+INCO+Acciona'[Joint ID]),\n            'Project WD+WR+INCO+Acciona'[Weld Date] > 0,\n            'Project WD+WR+INCO+Acciona'[Weld Type] IN {\"BW\", \"GW\", \"CLET\", \"MW\"},\n            ALLEXCEPT('Project WD+WR+INCO+Acciona', 'Project WD+WR+INCO+Acciona'[Service Class + Service Cat+NDT Remarks])\n        )\n    ),\n    0\n)"
+ },
+ {
+  "TableName":"l2_ndt_list",
+  "ColumnName":"REPORTS All DataBase",
+  "Expression":"\nVAR JointID = 'l2_ndt_list'[Joint_ID]\nVAR ReportType = 'l2_ndt_list'[Report_Type]\nRETURN\n    SWITCH (\n        TRUE (),\n        ReportType = \"RT\", CALCULATE ( MAX ( 'Project WD+WR+INCO+Acciona'[RT Report] ), 'Project WD+WR+INCO+Acciona'[Joint ID] = JointID ),\n        ReportType = \"PWHT\", CALCULATE ( MAX ( 'Project WD+WR+INCO+Acciona'[PWHT Report \"PR All\"] ), 'Project WD+WR+INCO+Acciona'[Joint ID] = JointID ),\n        ReportType = \"MT\", CALCULATE ( MAX ( 'Project WD+WR+INCO+Acciona'[MT Report \"PR All\"] ), 'Project WD+WR+INCO+Acciona'[Joint ID] = JointID ),\n        ReportType = \"UT\", CALCULATE ( MAX ( 'Project WD+WR+INCO+Acciona'[Manual UT Report No.] ), 'Project WD+WR+INCO+Acciona'[Joint ID] = JointID ),\n        ReportType = \"PMI\", CALCULATE ( MAX ( 'Project WD+WR+INCO+Acciona'[PMI Report \"PR All\"] ), 'Project WD+WR+INCO+Acciona'[Joint ID] = JointID ),\n        ReportType = \"HT\", CALCULATE ( MAX ( 'Project WD+WR+INCO+Acciona'[HT Report \"PR All\"] ), 'Project WD+WR+INCO+Acciona'[Joint ID] = JointID ),\n        ReportType = \"PT\", CALCULATE ( MAX ( 'Project WD+WR+INCO+Acciona'[PT Report \"PR All\"] ), 'Project WD+WR+INCO+Acciona'[Joint ID] = JointID ),\n        ReportType = \"ORIF\", CALCULATE ( MAX ( 'Project WD+WR+INCO+Acciona'[ORIF Report] ), 'Project WD+WR+INCO+Acciona'[Joint ID] = JointID ),\n        ReportType = \"PADLT\", CALCULATE ( MAX ( 'Project WD+WR+INCO+Acciona'[PADLT Report] ), 'Project WD+WR+INCO+Acciona'[Joint ID] = JointID ),\n        ReportType = \"VI\", CALCULATE ( MAX ( 'Project WD+WR+INCO+Acciona'[DWIR Report \"PR All\"] ), 'Project WD+WR+INCO+Acciona'[Joint ID] = JointID ),\n        ReportType = \"VBT\", CALCULATE ( MAX ( 'Project WD+WR+INCO+Acciona'[VBT Report] ), 'Project WD+WR+INCO+Acciona'[Joint ID] = JointID ),\n        ReportType = \"OPT\", CALCULATE ( MAX ( 'Project WD+WR+INCO+Acciona'[OPT Report] ), 'Project WD+WR+INCO+Acciona'[Joint ID] = JointID ),\n        BLANK ()\n    )"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"PWHT Report \"PR All\"",
+  "Expression":"\nIF(\n    'Project WD+WR+INCO+Acciona'[PWHT Report] <> \"\", \n    'Project WD+WR+INCO+Acciona'[PWHT Report], \n    IF(\n        'Project WD+WR+INCO+Acciona'[PWHT Report No CCC] <>\"\", \n        'Project WD+WR+INCO+Acciona'[PWHT Report No CCC], \n        BLANK()\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"PWHT Date \"PR All\"",
+  "Expression":"\nIF(\n    'Project WD+WR+INCO+Acciona'[PWHT Date]>0, \n    'Project WD+WR+INCO+Acciona'[PWHT Date], \n    IF(\n        'Project WD+WR+INCO+Acciona'[PWHT Date No CCC]>0, \n        'Project WD+WR+INCO+Acciona'[PWHT Date No CCC], \n        BLANK()\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"UT Date \"PR All\"",
+  "Expression":"\nIF(\n    'Project WD+WR+INCO+Acciona'[UT Date]>0, \n    'Project WD+WR+INCO+Acciona'[UT Date], \n    IF(\n        'Project WD+WR+INCO+Acciona'[Sub-Contractor] = \"CCC\", \n        LOOKUPVALUE(\n            'UT TRACKER (CCC)_Talisman'[UT1 DATE],\n            'UT TRACKER (CCC)_Talisman'[Joint ID], \n            'Project WD+WR+INCO+Acciona'[Joint ID]\n        ), \n        IF(\n            'Project WD+WR+INCO+Acciona'[RT\/UT] = \"UT\",\n            'Project WD+WR+INCO+Acciona'[RT Date],\n            BLANK()\n        )\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"MT Report \"PR All\"",
+  "Expression":"\nIF(\n    'Project WD+WR+INCO+Acciona'[MT Report] <> \"\", \n    'Project WD+WR+INCO+Acciona'[MT Report], \n    IF(\n        'Project WD+WR+INCO+Acciona'[MT Report CCC] <>\"\", \n        'Project WD+WR+INCO+Acciona'[MT Report CCC], \n        BLANK()\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"MT Date \"PR All\"",
+  "Expression":"\nIF(\n    'Project WD+WR+INCO+Acciona'[MT Date]>0, \n    'Project WD+WR+INCO+Acciona'[MT Date], \n    IF(\n        'Project WD+WR+INCO+Acciona'[MT Date CCC]>0, \n        'Project WD+WR+INCO+Acciona'[MT Date CCC], \n        BLANK()\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"MT % \"PR All\"",
+  "Expression":"\nIF(\n    'Project WD+WR+INCO+Acciona'[Sub-Contractor] <> \"CCC\",\n    IF(\n        'Project WD+WR+INCO+Acciona'[MT%] >= 0, \n        'Project WD+WR+INCO+Acciona'[MT%], \n        BLANK()\n    ),\n    IF(\n        'Project WD+WR+INCO+Acciona'[MT% CCC] >= 0, \n        'Project WD+WR+INCO+Acciona'[MT% CCC], \n        BLANK()\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"PMI Report CCC",
+  "Expression":"\nCALCULATE(\n    MAXX(\n        FILTER(\n            'AllTrain_CSVExport_Joint Record',\n            'AllTrain_CSVExport_Joint Record'[Joint ID \"JR\"] = VALUES('Project WD+WR+INCO+Acciona'[Joint ID])\n                && 'AllTrain_CSVExport_Joint Record'[PMI Report No] <>\"\"\n        ),\n        'AllTrain_CSVExport_Joint Record'[PMI Report No]\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"PMI Date CCC",
+  "Expression":"\nCALCULATE(\n    MAXX(\n        FILTER(\n            'AllTrain_CSVExport_Joint Record',\n            'AllTrain_CSVExport_Joint Record'[Joint ID \"JR\"] = VALUES('Project WD+WR+INCO+Acciona'[Joint ID])\n                && 'AllTrain_CSVExport_Joint Record'[PMI Date]>0\n        ),\n        'AllTrain_CSVExport_Joint Record'[PMI Date]\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"PMI% CCC",
+  "Expression":"\nCALCULATE(\n    MAXX(\n        FILTER(\n            'AllTrain_CSVExport_Joint Record',\n            'AllTrain_CSVExport_Joint Record'[Joint ID \"JR\"] = VALUES('Project WD+WR+INCO+Acciona'[Joint ID])\n                && 'AllTrain_CSVExport_Joint Record'[Service Class] <>\"\"\n        ),\n        'AllTrain_CSVExport_Joint Record'[PMI(%)]\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"PMI % \"PR All\"",
+  "Expression":"\nIF(\n    'Project WD+WR+INCO+Acciona'[Sub-Contractor] <> \"CCC\",\n    IF(\n        'Project WD+WR+INCO+Acciona'[PMI%] >= 0, \n        'Project WD+WR+INCO+Acciona'[PMI%], \n        BLANK()\n    ),\n    IF(\n        'Project WD+WR+INCO+Acciona'[PMI% CCC] >= 0, \n        'Project WD+WR+INCO+Acciona'[PMI% CCC], \n        BLANK()\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"PMI Report \"PR All\"",
+  "Expression":"\nIF(\n    'Project WD+WR+INCO+Acciona'[PMI Report] <> \"\", \n    'Project WD+WR+INCO+Acciona'[PMI Report], \n    IF(\n        'Project WD+WR+INCO+Acciona'[PMI Report CCC] <>\"\", \n        'Project WD+WR+INCO+Acciona'[PMI Report CCC], \n        BLANK()\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"PMI Date \"PR All\"",
+  "Expression":"\nIF(\n    'Project WD+WR+INCO+Acciona'[PMI Date]>0, \n    'Project WD+WR+INCO+Acciona'[PMI Date], \n    IF(\n        'Project WD+WR+INCO+Acciona'[PMI Date CCC]>0, \n        'Project WD+WR+INCO+Acciona'[PMI Date CCC], \n        BLANK()\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"PT% CCC",
+  "Expression":"\nCALCULATE(\n    MAXX(\n        FILTER(\n            'AllTrain_CSVExport_Joint Record',\n            'AllTrain_CSVExport_Joint Record'[Joint ID \"JR\"] = VALUES('Project WD+WR+INCO+Acciona'[Joint ID])\n                && 'AllTrain_CSVExport_Joint Record'[Service Class] <>\"\"\n        ),\n        'AllTrain_CSVExport_Joint Record'[PT Root(%)]\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"PT Report CCC",
+  "Expression":"\nCALCULATE(\n    MAXX(\n        FILTER(\n            'AllTrain_CSVExport_Joint Record',\n            'AllTrain_CSVExport_Joint Record'[Joint ID \"JR\"] = VALUES('Project WD+WR+INCO+Acciona'[Joint ID])\n                && 'AllTrain_CSVExport_Joint Record'[PT Root Report No] <>\"\"\n        ),\n        'AllTrain_CSVExport_Joint Record'[PT Root Report No]\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"PT Date CCC",
+  "Expression":"\nCALCULATE(\n    MAXX(\n        FILTER(\n            'AllTrain_CSVExport_Joint Record',\n            'AllTrain_CSVExport_Joint Record'[Joint ID \"JR\"] = VALUES('Project WD+WR+INCO+Acciona'[Joint ID])\n                && 'AllTrain_CSVExport_Joint Record'[PT Root Date]>0\n        ),\n        'AllTrain_CSVExport_Joint Record'[PT Root Date]\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"PT % \"PR All\"",
+  "Expression":"\nIF(\n    'Project WD+WR+INCO+Acciona'[Sub-Contractor] <> \"CCC\",\n    IF(\n        'Project WD+WR+INCO+Acciona'[PT%]>=0, \n        'Project WD+WR+INCO+Acciona'[PT%], \n        BLANK()\n    ),\n    IF(\n        'Project WD+WR+INCO+Acciona'[PT% CCC]>=0, \n        'Project WD+WR+INCO+Acciona'[PT% CCC], \n        BLANK()\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"PT Report \"PR All\"",
+  "Expression":"\nIF(\n    'Project WD+WR+INCO+Acciona'[PT Report] <> \"\", \n    'Project WD+WR+INCO+Acciona'[PT Report], \n    IF(\n        'Project WD+WR+INCO+Acciona'[PT Report CCC] <>\"\", \n        'Project WD+WR+INCO+Acciona'[PT Report CCC], \n        BLANK()\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"PT Date \"PR All\"",
+  "Expression":"\nIF(\n    'Project WD+WR+INCO+Acciona'[PT Date]>0, \n    'Project WD+WR+INCO+Acciona'[PT Date], \n    IF(\n        'Project WD+WR+INCO+Acciona'[PT Date CCC]>0, \n        'Project WD+WR+INCO+Acciona'[PT Date CCC], \n        BLANK()\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"HT Report CCC",
+  "Expression":"\nCALCULATE(\n    MAXX(\n        FILTER(\n            'AllTrain_CSVExport_Joint Record',\n            'AllTrain_CSVExport_Joint Record'[Joint ID \"JR\"] = VALUES('Project WD+WR+INCO+Acciona'[Joint ID])\n                && 'AllTrain_CSVExport_Joint Record'[HT Report No] <>\"\"\n        ),\n        'AllTrain_CSVExport_Joint Record'[HT Report No]\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"HT Date CCC",
+  "Expression":"\nCALCULATE(\n    MAXX(\n        FILTER(\n            'AllTrain_CSVExport_Joint Record',\n            'AllTrain_CSVExport_Joint Record'[Joint ID \"JR\"] = VALUES('Project WD+WR+INCO+Acciona'[Joint ID])\n                && 'AllTrain_CSVExport_Joint Record'[HT Date]>0\n        ),\n        'AllTrain_CSVExport_Joint Record'[HT Date]\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"HT% CCC",
+  "Expression":"\nCALCULATE(\n    MAXX(\n        FILTER(\n            'AllTrain_CSVExport_Joint Record',\n            'AllTrain_CSVExport_Joint Record'[Joint ID \"JR\"] = VALUES('Project WD+WR+INCO+Acciona'[Joint ID])\n                && 'AllTrain_CSVExport_Joint Record'[Service Class] <>\"\"\n        ),\n        'AllTrain_CSVExport_Joint Record'[HT(%)]\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"HT % \"PR All\"",
+  "Expression":"\nIF(\n    'Project WD+WR+INCO+Acciona'[Sub-Contractor] <> \"CCC\",\n    IF(\n        'Project WD+WR+INCO+Acciona'[HT%]>=0, \n        'Project WD+WR+INCO+Acciona'[HT%], \n        BLANK()\n    ),\n    IF(\n        'Project WD+WR+INCO+Acciona'[HT% CCC]>=0, \n        'Project WD+WR+INCO+Acciona'[HT% CCC], \n        BLANK()\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"HT Report \"PR All\"",
+  "Expression":"\nIF(\n    'Project WD+WR+INCO+Acciona'[HT Report] <> \"\", \n    'Project WD+WR+INCO+Acciona'[HT Report], \n    IF(\n        'Project WD+WR+INCO+Acciona'[HT Report CCC] <>\"\", \n        'Project WD+WR+INCO+Acciona'[HT Report CCC], \n        BLANK()\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"HT Date \"PR All\"",
+  "Expression":"\nIF(\n    'Project WD+WR+INCO+Acciona'[HT Date]>0, \n    'Project WD+WR+INCO+Acciona'[HT Date], \n    IF(\n        'Project WD+WR+INCO+Acciona'[HT Date CCC]>0, \n        'Project WD+WR+INCO+Acciona'[HT Date CCC], \n        BLANK()\n    )\n)"
+ },
+ {
+  "TableName":"l2_ndt_list",
+  "ColumnName":"Joint ID AllData \"Pr all\"",
+  "Expression":"\nCALCULATE(\n    MAXX(\n        FILTER(\n            'Project WD+WR+INCO+Acciona',\n            'Project WD+WR+INCO+Acciona'[Joint ID] = VALUES('l2_ndt_list'[Joint_ID])\n                && 'Project WD+WR+INCO+Acciona'[Joint ID] <>\"\"\n        ),\n        'Project WD+WR+INCO+Acciona'[Joint ID]\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"UT Rej Rate % by Length \"PR all\" For Sub-Con",
+  "Expression":"\nDIVIDE(\n    CALCULATE(\n        SUM('Project WD+WR+INCO+Acciona'[Defect Length(MM).]),\n        ALLEXCEPT('Project WD+WR+INCO+Acciona', 'Project WD+WR+INCO+Acciona'[Sub-Contractor])\n    ),\n    CALCULATE(\n        SUM('Project WD+WR+INCO+Acciona'[Inspected Length(MM).]),\n        ALLEXCEPT('Project WD+WR+INCO+Acciona', 'Project WD+WR+INCO+Acciona'[Sub-Contractor])\n    )\n) * 1"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"UT Rej Rate % STATUS for Sub-Con by Length",
+  "Expression":"\nIF (\n    ISBLANK('Project WD+WR+INCO+Acciona'[UT Rej Rate % by Length \"PR all\" For Sub-Con]),\n    BLANK(),\n    IF (\n        'Project WD+WR+INCO+Acciona'[UT Rej Rate % by Length \"PR all\" For Sub-Con] >= 0 && 'Project WD+WR+INCO+Acciona'[UT Rej Rate % by Length \"PR all\" For Sub-Con] < 0.01,\n        \"1.ok: 0 to 1%\",\n        IF (\n            'Project WD+WR+INCO+Acciona'[UT Rej Rate % by Length \"PR all\" For Sub-Con] >= 0.01 && 'Project WD+WR+INCO+Acciona'[UT Rej Rate % by Length \"PR all\" For Sub-Con] < 0.015,\n            \"2.Monitor: 1% to 1.5%\",\n            IF (\n                'Project WD+WR+INCO+Acciona'[UT Rej Rate % by Length \"PR all\" For Sub-Con] >= 0.015 && 'Project WD+WR+INCO+Acciona'[UT Rej Rate % by Length \"PR all\" For Sub-Con] <= 1,\n                \"3.Not Accept: 1.5% to 100%\",\n                BLANK()\n            )\n        )\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"RT Film Ratio % \"PR all\" For Welder LAST 1 MONTH",
+  "Expression":"\nDIVIDE(\n    CALCULATE(\n        SUM('Project WD+WR+INCO+Acciona'[Total No of films Rej]),\n        'Project WD+WR+INCO+Acciona'[RT Acc\/Rej] <> \"RS\",\n        'Project WD+WR+INCO+Acciona'[RT Acc\/Rej] <> \"U\/Review\",\n        FILTER(\n            ALLEXCEPT('Project WD+WR+INCO+Acciona', 'Project WD+WR+INCO+Acciona'[Welder ID]),\n            'Project WD+WR+INCO+Acciona'[Days Since Last RT] IN {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30}\n        )\n    ),\n    CALCULATE(\n        SUM('Project WD+WR+INCO+Acciona'[RT Film Total]),\n        'Project WD+WR+INCO+Acciona'[RT Acc\/Rej] <> \"RS\",\n        'Project WD+WR+INCO+Acciona'[RT Acc\/Rej] <> \"U\/Review\",\n        FILTER(\n            ALLEXCEPT('Project WD+WR+INCO+Acciona', 'Project WD+WR+INCO+Acciona'[Welder ID]),\n            'Project WD+WR+INCO+Acciona'[Days Since Last RT] IN {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30}\n        )\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"RT FILM Ratio % STATUS LAST 1 Month",
+  "Expression":"\nIF (\n    ISBLANK('Project WD+WR+INCO+Acciona'[RT Film Ratio % \"PR all\" For Welder LAST 1 MONTH]),\n    BLANK(),\n    IF (\n        'Project WD+WR+INCO+Acciona'[RT Film Ratio % \"PR all\" For Welder LAST 1 MONTH] >= 0 && 'Project WD+WR+INCO+Acciona'[RT Film Ratio % \"PR all\" For Welder LAST 1 MONTH] < 0.05,\n        \"1. 0 to 5% - ok\",\n        IF (\n            'Project WD+WR+INCO+Acciona'[RT Film Ratio % \"PR all\" For Welder LAST 1 MONTH] >= 0.05 && 'Project WD+WR+INCO+Acciona'[RT Film Ratio % \"PR all\" For Welder LAST 1 MONTH] < 0.075,\n            \"2. 5 to 7.5%-monitor\",\n            IF (\n                'Project WD+WR+INCO+Acciona'[RT Film Ratio % \"PR all\" For Welder LAST 1 MONTH] >= 0.075 && 'Project WD+WR+INCO+Acciona'[RT Film Ratio % \"PR all\" For Welder LAST 1 MONTH] < 0.10,\n                \"3. 7.5 to 10%-Critical\",\n                IF (\n                    'Project WD+WR+INCO+Acciona'[RT Film Ratio % \"PR all\" For Welder LAST 1 MONTH] >= 0.10 && 'Project WD+WR+INCO+Acciona'[RT Film Ratio % \"PR all\" For Welder LAST 1 MONTH] <= 1,\n                    \"4. 10 to 100% - Disq.F\",\n                    BLANK()\n                )\n            )\n        )\n    )\n)"
+ },
+ {
+  "TableName":"TALISMAN DATA",
+  "ColumnName":"CROSS CHECK DATA JOINT ID",
+  "Expression":"\nVAR CheckJointID = LOOKUPVALUE(\n    'Project WD+WR+INCO+Acciona'[Joint ID],\n    'Project WD+WR+INCO+Acciona'[Joint ID],\n    'TALISMAN DATA'[Joint ID]\n)\nRETURN\nIF(ISBLANK(CheckJointID), \"NO\", CheckJointID)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"CROSS CHECK DATA & Talisman JOINT ID",
+  "Expression":"\nVAR TalismanJointID = \n    IF(\n        'Project WD+WR+INCO+Acciona'[Sub-contractor] = \"CCC\",\n        LOOKUPVALUE(\n            'TALISMAN DATA'[Joint ID],\n            'TALISMAN DATA'[Joint ID],\n            'Project WD+WR+INCO+Acciona'[Joint ID]\n        ),\n        BLANK()\n    )\nRETURN\nIF(\n    'Project WD+WR+INCO+Acciona'[Sub-contractor] = \"CCC\",\n    IF(\n        ISBLANK(TalismanJointID),\n        \"NO\",\n        TalismanJointID\n    ),\n    BLANK()\n)"
+ },
+ {
+  "TableName":"l2_ndt_list",
+  "ColumnName":"CROSS CHECK FRB DATA REPORTS & PRJ",
+  "Expression":"\nVAR RTReport = 'l2_ndt_list'[Origin_Report_No]\nVAR ReportType = 'l2_ndt_list'[Report_Type]\nRETURN\n    IF (\n        ReportType = \"RT\",\n        IF (\n            ISEMPTY (\n                FILTER (\n                    'Project WD+WR+INCO+Acciona',\n                    'Project WD+WR+INCO+Acciona'[RT Report] = RTReport\n                )\n            ),\n            \"Not Found\",\n            MAXX(\n                FILTER(\n                    'Project WD+WR+INCO+Acciona',\n                    'Project WD+WR+INCO+Acciona'[RT Report] = RTReport\n                ),\n                'Project WD+WR+INCO+Acciona'[RT Report]\n            )\n        ),\nVAR MTReport = 'l2_ndt_list'[Origin_Report_No]\nVAR ReportType = 'l2_ndt_list'[Report_Type]\nRETURN\n    IF (\n        ReportType = \"MT\",\n        IF (\n            ISEMPTY (\n                FILTER (\n                    'Project WD+WR+INCO+Acciona',\n                    'Project WD+WR+INCO+Acciona'[MT Report \"PR All\"] = MTReport\n                )\n            ),\n            \"Not Found\",\n            MAXX(\n                FILTER(\n                    'Project WD+WR+INCO+Acciona',\n                    'Project WD+WR+INCO+Acciona'[MT Report \"PR All\"] = MTReport\n                ),\n                'Project WD+WR+INCO+Acciona'[MT Report \"PR All\"]\n            )\n        ),\nVAR PWHTReport = 'l2_ndt_list'[Origin_Report_No]\nVAR ReportType = 'l2_ndt_list'[Report_Type]\nRETURN\n    IF (\n        ReportType = \"PWHT\",\n        IF (\n            ISEMPTY (\n                FILTER (\n                    'Project WD+WR+INCO+Acciona',\n                    'Project WD+WR+INCO+Acciona'[PWHT Report \"PR All\"] = PWHTReport\n                )\n            ),\n            \"Not Found\",\n            MAXX(\n                FILTER(\n                    'Project WD+WR+INCO+Acciona',\n                    'Project WD+WR+INCO+Acciona'[PWHT Report \"PR All\"] = PWHTReport\n                ),\n                'Project WD+WR+INCO+Acciona'[PWHT Report \"PR All\"]\n            )\n        ),\nVAR UTReport = 'l2_ndt_list'[Origin_Report_No]\nVAR ReportType = 'l2_ndt_list'[Report_Type]\nRETURN\n    IF (\n        ReportType = \"UT\",\n        IF (\n            ISEMPTY (\n                FILTER (\n                    'Project WD+WR+INCO+Acciona',\n                    'Project WD+WR+INCO+Acciona'[Manual UT Report No.] = UTReport\n                )\n            ),\n            \"Not Found\",\n            MAXX(\n                FILTER(\n                    'Project WD+WR+INCO+Acciona',\n                    'Project WD+WR+INCO+Acciona'[Manual UT Report No.] = UTReport\n                ),\n                'Project WD+WR+INCO+Acciona'[Manual UT Report No.]\n            )\n        ),\nVAR PMIReport = 'l2_ndt_list'[Origin_Report_No]\nVAR ReportType = 'l2_ndt_list'[Report_Type]\nRETURN\n    IF (\n        ReportType = \"PMI\",\n        IF (\n            ISEMPTY (\n                FILTER (\n                    'Project WD+WR+INCO+Acciona',\n                    'Project WD+WR+INCO+Acciona'[PMI Report \"PR All\"] = PMIReport\n                )\n            ),\n            \"Not Found\",\n            MAXX(\n                FILTER(\n                    'Project WD+WR+INCO+Acciona',\n                    'Project WD+WR+INCO+Acciona'[PMI Report \"PR All\"] = PMIReport\n                ),\n                'Project WD+WR+INCO+Acciona'[PMI Report \"PR All\"]\n            )\n        ),\nVAR PTReport = 'l2_ndt_list'[Origin_Report_No]\nVAR ReportType = 'l2_ndt_list'[Report_Type]\nRETURN\n    IF (\n        ReportType = \"PT\",\n        IF (\n            ISEMPTY (\n                FILTER (\n                    'Project WD+WR+INCO+Acciona',\n                    'Project WD+WR+INCO+Acciona'[PT Report \"PR All\"] = PTReport\n                )\n            ),\n            \"Not Found\",\n            MAXX(\n                FILTER(\n                    'Project WD+WR+INCO+Acciona',\n                    'Project WD+WR+INCO+Acciona'[PT Report \"PR All\"] = PTReport\n                ),\n                'Project WD+WR+INCO+Acciona'[PT Report \"PR All\"]\n            )\n        ),\nVAR HTReport = 'l2_ndt_list'[Origin_Report_No]\nVAR ReportType = 'l2_ndt_list'[Report_Type]\nRETURN\n    IF (\n        ReportType = \"HT\",\n        IF (\n            ISEMPTY (\n                FILTER (\n                    'Project WD+WR+INCO+Acciona',\n                    'Project WD+WR+INCO+Acciona'[HT Report \"PR All\"] = HTReport\n                )\n            ),\n            \"Not Found\",\n            MAXX(\n                FILTER(\n                    'Project WD+WR+INCO+Acciona',\n                    'Project WD+WR+INCO+Acciona'[HT Report \"PR All\"] = HTReport\n                ),\n                'Project WD+WR+INCO+Acciona'[HT Report \"PR All\"]\n            )\n        ),\nVAR ORIFReport = 'l2_ndt_list'[Origin_Report_No]\nVAR ReportType = 'l2_ndt_list'[Report_Type]\nRETURN\n    IF (\n        ReportType = \"ORIF\",\n        IF (\n            ISEMPTY (\n                FILTER (\n                    'Project WD+WR+INCO+Acciona',\n                    'Project WD+WR+INCO+Acciona'[ORIF Report] = ORIFReport\n                )\n            ),\n            \"Not Found\",\n            MAXX(\n                FILTER(\n                    'Project WD+WR+INCO+Acciona',\n                    'Project WD+WR+INCO+Acciona'[ORIF Report] = ORIFReport\n                ),\n                'Project WD+WR+INCO+Acciona'[ORIF Report]\n            )\n        ),\nVAR PADLTReport = 'l2_ndt_list'[Origin_Report_No]\nVAR ReportType = 'l2_ndt_list'[Report_Type]\nRETURN\n    IF (\n        ReportType = \"PADLT\",\n        IF (\n            ISEMPTY (\n                FILTER (\n                    'Project WD+WR+INCO+Acciona',\n                    'Project WD+WR+INCO+Acciona'[PADLT Report] = PADLTReport\n                )\n            ),\n            \"Not Found\",\n            MAXX(\n                FILTER(\n                    'Project WD+WR+INCO+Acciona',\n                    'Project WD+WR+INCO+Acciona'[PADLT Report] = PADLTReport\n                ),\n                'Project WD+WR+INCO+Acciona'[PADLT Report]\n            )\n        ),\nVAR DWIRReport = 'l2_ndt_list'[Origin_Report_No]\nVAR ReportType = 'l2_ndt_list'[Report_Type]\nRETURN\n    IF (\n        ReportType = \"VI\",\n        IF (\n            ISEMPTY (\n                FILTER (\n                    'Project WD+WR+INCO+Acciona',\n                    'Project WD+WR+INCO+Acciona'[DWIR Report \"PR All\"] = DWIRReport\n                )\n            ),\n            \"Not Found\",\n            MAXX(\n                FILTER(\n                    'Project WD+WR+INCO+Acciona',\n                    'Project WD+WR+INCO+Acciona'[DWIR Report \"PR All\"] = DWIRReport\n                ),\n                'Project WD+WR+INCO+Acciona'[DWIR Report \"PR All\"]\n            )\n        ),\nVAR VBTReport = 'l2_ndt_list'[Origin_Report_No]\nVAR ReportType = 'l2_ndt_list'[Report_Type]\nRETURN\n    IF (\n        ReportType = \"VBT\",\n        IF (\n            ISEMPTY (\n                FILTER (\n                    'Project WD+WR+INCO+Acciona',\n                    'Project WD+WR+INCO+Acciona'[VBT Report] = VBTReport\n                )\n            ),\n            \"Not Found\",\n            MAXX(\n                FILTER(\n                    'Project WD+WR+INCO+Acciona',\n                    'Project WD+WR+INCO+Acciona'[VBT Report] = VBTReport\n                ),\n                'Project WD+WR+INCO+Acciona'[VBT Report]\n            )\n        ),\nVAR OPTReport = 'l2_ndt_list'[Origin_Report_No]\nVAR ReportType = 'l2_ndt_list'[Report_Type]\nRETURN\n    IF (\n        ReportType = \"OPT\",\n        IF (\n            ISEMPTY (\n                FILTER (\n                    'Project WD+WR+INCO+Acciona',\n                    'Project WD+WR+INCO+Acciona'[OPT Report] = OPTReport\n                )\n            ),\n            \"Not Found\",\n            MAXX(\n                FILTER(\n                    'Project WD+WR+INCO+Acciona',\n                    'Project WD+WR+INCO+Acciona'[OPT Report] = OPTReport\n                ),\n                'Project WD+WR+INCO+Acciona'[OPT Report]\n            )\n        ),\n        BLANK()\n    ))))))))))))"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"RT CROSS CHECK PRJ Data & FRB",
+  "Expression":"\nVAR RTReport = 'Project WD+WR+INCO+Acciona'[RT Report]\nRETURN\n    IF (\n        'Project WD+WR+INCO+Acciona'[RT\/UT] <> \"UT\" && 'Project WD+WR+INCO+Acciona'[Manual UT Report No.] = \"\" &&\n        RTReport <> \"\",\n        VAR FilteredReportList = \n            FILTER(\n                'l2_ndt_list',\n                'l2_ndt_list'[Origin_Report_No] = RTReport &&\n                'l2_ndt_list'[Report_Type] = \"RT\"\n            )\n        RETURN\n            IF (\n                ISEMPTY(FilteredReportList),\n                \"NOT Found\",\n                MAXX(\n                    FilteredReportList,\n                    'l2_ndt_list'[Origin_Report_No]\n                )\n            ),\n        BLANK()\n    )"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"MT CROSS CHECK PRJ Data & FRB",
+  "Expression":"\nVAR MTReport = 'Project WD+WR+INCO+Acciona'[MT Report \"PR All\"]\nRETURN\n    IF (\n        MTReport <> \"\",\n        VAR FilteredReportList = \n            FILTER(\n                'l2_ndt_list',\n                'l2_ndt_list'[Origin_Report_No] = MTReport &&\n                'l2_ndt_list'[Report_Type] = \"MT\"\n            )\n        RETURN\n            IF(\n                ISEMPTY(FilteredReportList),\n                \"NOT Found\",\n                MAXX(\n                    FilteredReportList,\n                    'l2_ndt_list'[Origin_Report_No]\n                )\n            ),\n        BLANK()\n    )"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"PWHT CROSS CHECK PRJ Data & FRB",
+  "Expression":"\nVAR PWHTReport = 'Project WD+WR+INCO+Acciona'[PWHT Report \"PR All\"]\nRETURN\n    IF (\n        PWHTReport <> \"\",\n        VAR FilteredReportList = \n            FILTER(\n                'l2_ndt_list',\n                'l2_ndt_list'[Origin_Report_No] = PWHTReport &&\n                'l2_ndt_list'[Report_Type] = \"PWHT\"\n            )\n        RETURN\n            IF(\n                ISEMPTY(FilteredReportList),\n                \"NOT Found\",\n                MAXX(\n                    FilteredReportList,\n                    'l2_ndt_list'[Origin_Report_No]\n                )\n            ), \n        BLANK()\n    )"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"UT CROSS CHECK PRJ Data & FRB",
+  "Expression":"\nVAR UTReport = 'Project WD+WR+INCO+Acciona'[Manual UT Report No.]\nRETURN\n    IF (\n        UTReport <> \"\",\n        VAR FilteredReportList = \n            FILTER(\n                'l2_ndt_list',\n                'l2_ndt_list'[Origin_Report_No] = UTReport &&\n                'l2_ndt_list'[Report_Type] = \"UT\"\n            )\n        RETURN\n            IF(\n                ISEMPTY(FilteredReportList),\n                \"NOT Found\",\n                MAXX(\n                    FilteredReportList,\n                    'l2_ndt_list'[Origin_Report_No]\n                )\n            ), \n        BLANK()\n    )"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"PMI CROSS CHECK PRJ Data & FRB",
+  "Expression":"\nVAR PMIReport = 'Project WD+WR+INCO+Acciona'[PMI Report \"PR All\"]\nRETURN\n    IF (\n        PMIReport <> \"\",\n        VAR FilteredReportList = \n            FILTER(\n                'l2_ndt_list',\n                'l2_ndt_list'[Origin_Report_No] = PMIReport &&\n                'l2_ndt_list'[Report_Type] = \"PMI\"\n            )\n        RETURN\n            IF(\n                ISEMPTY(FilteredReportList),\n                \"NOT Found\",\n                MAXX(\n                    FilteredReportList,\n                    'l2_ndt_list'[Origin_Report_No]\n                )\n            ), \n        BLANK()\n    )"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"PT CROSS CHECK PRJ Data & FRB",
+  "Expression":"\nVAR PTReport = 'Project WD+WR+INCO+Acciona'[PT Report \"PR All\"]\nRETURN\n    IF (\n        PTReport <> \"\",\n        VAR FilteredReportList = \n            FILTER(\n                'l2_ndt_list',\n                'l2_ndt_list'[Origin_Report_No] = PTReport &&\n                'l2_ndt_list'[Report_Type] = \"PT\"\n            )\n        RETURN\n            IF(\n                ISEMPTY(FilteredReportList),\n                \"NOT Found\",\n                MAXX(\n                    FilteredReportList,\n                    'l2_ndt_list'[Origin_Report_No]\n                )\n            ), \n        BLANK()\n    )"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"HT CROSS CHECK PRJ Data & FRB",
+  "Expression":"\nVAR HTReport = 'Project WD+WR+INCO+Acciona'[HT Report \"PR All\"]\nRETURN\n    IF (\n        HTReport <> \"\",\n        VAR FilteredReportList = \n            FILTER(\n                'l2_ndt_list',\n                'l2_ndt_list'[Origin_Report_No] = HTReport &&\n                'l2_ndt_list'[Report_Type] = \"HT\"\n            )\n        RETURN\n            IF(\n                ISEMPTY(FilteredReportList),\n                \"NOT Found\",\n                MAXX(\n                    FilteredReportList,\n                    'l2_ndt_list'[Origin_Report_No]\n                )\n            ), \n        BLANK()\n    )"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"ORIF CROSS CHECK PRJ Data & FRB",
+  "Expression":"\nVAR ORIFReport = 'Project WD+WR+INCO+Acciona'[ORIF Report]\nRETURN\n    IF (\n        ORIFReport <> \"\",\n        VAR FilteredReportList = \n            FILTER(\n                'l2_ndt_list',\n                'l2_ndt_list'[Origin_Report_No] = ORIFReport &&\n                'l2_ndt_list'[Report_Type] = \"ORIF\"\n            )\n        RETURN\n            IF(\n                ISEMPTY(FilteredReportList),\n                \"NOT Found\",\n                MAXX(\n                    FilteredReportList,\n                    'l2_ndt_list'[Origin_Report_No]\n                )\n            ), \n        BLANK()\n    )"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"PADLT CROSS CHECK PRJ Data & FRB",
+  "Expression":"\nVAR PADLTReport = 'Project WD+WR+INCO+Acciona'[PADLT Report]\nRETURN\n    IF (\n        PADLTReport <> \"\",\n        VAR FilteredReportList = \n            FILTER(\n                'l2_ndt_list',\n                'l2_ndt_list'[Origin_Report_No] = PADLTReport &&\n                'l2_ndt_list'[Report_Type] = \"PADLT\"\n            )\n        RETURN\n            IF(\n                ISEMPTY(FilteredReportList),\n                \"NOT Found\",\n                MAXX(\n                    FilteredReportList,\n                    'l2_ndt_list'[Origin_Report_No]\n                )\n            ), \n        BLANK()\n    )"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"UT Status TR\/FL",
+  "Expression":"\nIF(\n    'Project WD+WR+INCO+Acciona'[UT Acc\/Rej] = 'Project WD+WR+INCO+Acciona'[Manual UT Status],\n    \"TRUE\",\n    \"FALSE\"\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Spool ID Status",
+  "Expression":"\nVAR CurrentSpoolID = 'Project WD+WR+INCO+Acciona'[Spool ID]\nVAR SubContractor = 'Project WD+WR+INCO+Acciona'[Sub-Contractor]\n\nRETURN\n    IF(\n        SubContractor = \"CCC\",\n        MAXX(\n            FILTER(\n                'Talisman Spool Dump',\n                'Talisman Spool Dump'[Spool ID] = CurrentSpoolID\n            ),\n            'Talisman Spool Dump'[Status Released]\n        ),\n        MAXX(\n            FILTER(\n                'Weld Dump',\n                'Weld Dump'[Spool ID] = CurrentSpoolID &&\n                (\n                    SubContractor <> \"CCC\" || 'Weld Dump'[Sub-Contractor] <> \"CCC\"\n                )\n            ),\n            'Weld Dump'[Status FABRICATED]\n        )\n    )"
+ },
+ {
+  "TableName":"Talisman Spool Dump",
+  "ColumnName":"Status Released",
+  "Expression":"IF(\n    'Talisman Spool Dump'[QC SPOOL RELEASED TO NDT\/PWHT]>0,\"Fabricated\",\"\")"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"UT Rej Length Ratio % \"PR all\" For Welder LAST 2 WEEKS",
+  "Expression":"\nDIVIDE(\n    CALCULATE(\n        SUM('Project WD+WR+INCO+Acciona'[Defect Length(MM).]),\n        FILTER(\n            ALLEXCEPT('Project WD+WR+INCO+Acciona', 'Project WD+WR+INCO+Acciona'[Welder ID]),\n            'Project WD+WR+INCO+Acciona'[Days Since Last UT] IN {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15}\n        )\n    ),\n    CALCULATE(\n        SUM('Project WD+WR+INCO+Acciona'[Inspected Length(MM).]),'Project WD+WR+INCO+Acciona'[Manual UT Report No.] <> \"\",\n        FILTER(\n            ALLEXCEPT('Project WD+WR+INCO+Acciona', 'Project WD+WR+INCO+Acciona'[Welder ID]),\n            'Project WD+WR+INCO+Acciona'[Days Since Last UT] IN {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15}\n        )\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"UT Rej Rate % STATUS for Welder by Length Last 2 Weeks",
+  "Expression":"\nIF (\n    ISBLANK('Project WD+WR+INCO+Acciona'[UT Rej Length Ratio % \"PR all\" For Welder LAST 2 WEEKS]),\n    BLANK(),\n    IF (\n        'Project WD+WR+INCO+Acciona'[UT Rej Length Ratio % \"PR all\" For Welder LAST 2 WEEKS] >= 0 && 'Project WD+WR+INCO+Acciona'[UT Rej Length Ratio % \"PR all\" For Welder LAST 2 WEEKS] < 0.015,\n        \"1.Ok: 0 to 1.5%\",\n        IF (\n            'Project WD+WR+INCO+Acciona'[UT Rej Length Ratio % \"PR all\" For Welder LAST 2 WEEKS] >= 0.015 && 'Project WD+WR+INCO+Acciona'[UT Rej Length Ratio % \"PR all\" For Welder LAST 2 WEEKS] < 0.02,\n            \"2.Monitor: 1.5% to 2%\",\n            IF (\n                'Project WD+WR+INCO+Acciona'[UT Rej Length Ratio % \"PR all\" For Welder LAST 2 WEEKS] >= 0.02 && 'Project WD+WR+INCO+Acciona'[UT Rej Length Ratio % \"PR all\" For Welder LAST 2 WEEKS] <= 1,\n                \"3.Action: 2% to 100%\",\n                BLANK()\n            )\n        )\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Last_UT Date \"PR all\"",
+  "Expression":"\n    LASTDATE('Project WD+WR+INCO+Acciona'[Manual UT Date.])"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Days Since Last UT",
+  "Expression":"\nIF(ISBLANK([Last_UT Date \"PR all\"]),BLANK(),\nVALUE([Cur_Date \"PR all\"]-[Last_UT Date \"PR all\"]))"
+ },
+ {
+  "TableName":"Talisman Spool Dump",
+  "ColumnName":"Sub-Contractor",
+  "Expression":"\"CCC\""
+ },
+ {
+  "TableName":"WELDERS_Qualification",
+  "ColumnName":"Dublicate Welders",
+  "Expression":"\nVAR CurrentWelderNo = 'WELDERS_Qualification'[Welder No.]\nVAR DistinctSubContractorsCount = \n    CALCULATE(\n        DISTINCTCOUNT('WELDERS_Qualification'[Sub-Contractor]),\n        ALLEXCEPT('WELDERS_Qualification', 'WELDERS_Qualification'[Welder No.])\n    )\nRETURN\n    IF(\n        DistinctSubContractorsCount > 1,\n        CurrentWelderNo,\n        BLANK()\n    )"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"VI CROSS CHECK PRJ Data & FRB",
+  "Expression":"\nVAR VIReport = 'Project WD+WR+INCO+Acciona'[DWIR Report \"PR All\"]\nRETURN\n    IF (\n        VIReport <> \"\",\n        VAR FilteredReportList = \n            FILTER(\n                'l2_ndt_list',\n                'l2_ndt_list'[Origin_Report_No] = VIReport &&\n                'l2_ndt_list'[Report_Type] = \"VI\"\n            )\n        RETURN\n            IF(\n                ISEMPTY(FilteredReportList),\n                \"NOT Found\",\n                MAXX(\n                    FilteredReportList,\n                    'l2_ndt_list'[Origin_Report_No]\n                )\n            ), \n        BLANK()\n    )"
+ },
+ {
+  "TableName":"l2_ndt_list",
+  "ColumnName":"Uniq Report",
+  "Expression":"\nl2_ndt_list[Origin_Report_No] & \"-\" & l2_ndt_list[SCTR] & \"-\" & l2_ndt_list[Report_Type]"
+ },
+ {
+  "TableName":"Talisman Spool Dump",
+  "ColumnName":"Status PWHT Spool Date",
+  "Expression":"IF(\n    'Talisman Spool Dump'[PWHT Date Spool]>0,\"Spool PWHT\",\"\")"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Spool ID CCC PWHT Status",
+  "Expression":"\nVAR CurrentSpoolID = 'Project WD+WR+INCO+Acciona'[Spool ID]\nVAR SubContractor = 'Project WD+WR+INCO+Acciona'[Sub-Contractor]\nRETURN\n    IF(\n        SubContractor = \"CCC\",\n        MAXX(\n            FILTER(\n                'Talisman Spool Dump',\n                'Talisman Spool Dump'[Spool ID] = CurrentSpoolID\n            ),\n            'Talisman Spool Dump'[Status PWHT Spool Date]\n        ))"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"VBT CROSS CHECK PRJ Data & FRB",
+  "Expression":"\nVAR VBTReport = 'Project WD+WR+INCO+Acciona'[VBT Report]\nRETURN\n    IF (\n        VBTReport <> \"\",\n        VAR FilteredReportList = \n            FILTER(\n                'l2_ndt_list',\n                'l2_ndt_list'[Origin_Report_No] = VBTReport &&\n                'l2_ndt_list'[Report_Type] = \"VBT\"\n            )\n        RETURN\n            IF(\n                ISEMPTY(FilteredReportList),\n                \"NOT Found\",\n                MAXX(\n                    FilteredReportList,\n                    'l2_ndt_list'[Origin_Report_No]\n                )\n            ), \n        BLANK()\n    )"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"LINE",
+  "Expression":"\nMID('Project WD+WR+INCO+Acciona'[ISO Number], 9, LEN('Project WD+WR+INCO+Acciona'[ISO Number]))"
+ },
+ {
+  "TableName":"TALISMAN DATA",
+  "ColumnName":"Area Classification",
+  "Expression":"\nVAR CurrentJoint = 'TALISMAN DATA'[Joint ID]\nVAR Result = \n    CALCULATE(\n        MAX('Project WD+WR+INCO+Acciona'[Area Classification]),\n        REMOVEFILTERS('Project WD+WR+INCO+Acciona'),\n        'Project WD+WR+INCO+Acciona'[Joint ID] = CurrentJoint\n    )\nRETURN \n    Result"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"First_Weld Date \"PR all\"",
+  "Expression":"\nFIRSTDATE('Project WD+WR+INCO+Acciona'[Weld Date])"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Days Since First Weld",
+  "Expression":"\nIF(ISBLANK([First_Weld Date \"PR all\"]),BLANK(),\nVALUE([Cur_Date \"PR all\"]-[First_Weld Date \"PR all\"]))"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Dia Inch >20<",
+  "Expression":"\nIF(\n    'Project WD+WR+INCO+Acciona'[Dia inch] <= 20, \n    \"0-20\",\n    IF(\n        'Project WD+WR+INCO+Acciona'[Dia inch] > 20 && 'Project WD+WR+INCO+Acciona'[Dia inch] <= 200, \n        \"20-199\",\n        \"Greater than 199\"\n    )\n)"
+ },
+ {
+  "TableName":"Calendar",
+  "ColumnName":"YEAR",
+  "Expression":"FORMAT('Calendar'[Date],\"yyyy\")"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"WeldPoint No.1 WP1",
+  "Expression":"\nVAR CurrentWP = 'Project WD+WR+INCO+Acciona'[Index]\nVAR CurrentJointID = 'Project WD+WR+INCO+Acciona'[Joint ID]\nRETURN\n    COUNTROWS(\n        FILTER(\n            'Project WD+WR+INCO+Acciona',\n            'Project WD+WR+INCO+Acciona'[Joint ID] = CurrentJointID &&\n            'Project WD+WR+INCO+Acciona'[Index] < CurrentWP\n        )\n    ) + 1"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Duplicate Weld Date",
+  "Expression":"\nCALCULATE(\n    DISTINCTCOUNT('Project WD+WR+INCO+Acciona'[Weld Date]),\n    ALLEXCEPT('Project WD+WR+INCO+Acciona', 'Project WD+WR+INCO+Acciona'[Joint ID])\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Duplicate RT Date",
+  "Expression":"\nCALCULATE(\n    DISTINCTCOUNT('Project WD+WR+INCO+Acciona'[RT Date]),\n    ALLEXCEPT('Project WD+WR+INCO+Acciona', 'Project WD+WR+INCO+Acciona'[Joint ID])\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"TP Complete %",
+  "Expression":"\nDIVIDE(\n    CALCULATE(\n        DISTINCTCOUNT('Project WD+WR+INCO+Acciona'[Joint ID]),\n        'Project WD+WR+INCO+Acciona'[Repair & Reweld \"PR all\"]=\"\",'Project WD+WR+INCO+Acciona'[Weld Date]>0,\n        ALLEXCEPT('Project WD+WR+INCO+Acciona','Project WD+WR+INCO+Acciona'[TESTPACK No \"PR All\"])\n    ),\n    CALCULATE(\n        DISTINCTCOUNT('Project WD+WR+INCO+Acciona'[Joint ID]),\n        'Project WD+WR+INCO+Acciona'[Repair & Reweld \"PR all\"]=\"\",\n        ALLEXCEPT('Project WD+WR+INCO+Acciona','Project WD+WR+INCO+Acciona'[TESTPACK No \"PR All\"])\n    )\n) * 1"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"RT\/UT Ratio % For Service Class + Service Cat+NDT Remarks Cover \"PR all\" STATUS",
+  "Expression":"\nIF (\n    'Project WD+WR+INCO+Acciona'[RT\/UT Ratio % For Service Class + Service Cat+NDT Remarks Cover \"PR all\"] < 0.05, \n    \"1. < 5% - CHECK\", \n    IF (\n        'Project WD+WR+INCO+Acciona'[RT\/UT Ratio % For Service Class + Service Cat+NDT Remarks Cover \"PR all\"] >= 0.05 && \n        'Project WD+WR+INCO+Acciona'[RT\/UT Ratio % For Service Class + Service Cat+NDT Remarks Cover \"PR all\"] < 0.1, \n        \"2. 5% > 10%\",\n        BLANK() \n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"BATCH QTY Joints",
+  "Expression":"\n    CALCULATE(\n        DISTINCTCOUNT('Project WD+WR+INCO+Acciona'[Joint ID]),\n        'Project WD+WR+INCO+Acciona'[Repair & Reweld \"PR all\"]=\"\",\n        'Project WD+WR+INCO+Acciona'[Weld Date]>0,\n        ALLEXCEPT('Project WD+WR+INCO+Acciona','Project WD+WR+INCO+Acciona'[RT Batch No])\n    )"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"QTY Welder ID & No RT by Service Class + Service Cat+NDT Remarks",
+  "Expression":"\n        CALCULATE(\n            DISTINCTCOUNT('Project WD+WR+INCO+Acciona'[Welder ID]),\n            'Project WD+WR+INCO+Acciona'[Weld Date]>0,\n            'Project WD+WR+INCO+Acciona'[RT Report] = \"\",\n            'Project WD+WR+INCO+Acciona'[RT Acc\/Rej] <> \"RS\",\n            'Project WD+WR+INCO+Acciona'[Weld Type] IN {\"BW\", \"GW\", \"CLET\", \"MW\"},\n            ALLEXCEPT('Project WD+WR+INCO+Acciona', 'Project WD+WR+INCO+Acciona'[Service Class + Service Cat+NDT Remarks],'Project WD+WR+INCO+Acciona'[Sub-Contractor]))"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Has_RT_Report",
+  "Expression":"\nCALCULATE(\n    COUNTROWS('Project WD+WR+INCO+Acciona'),\n    'Project WD+WR+INCO+Acciona'[RT Report] <> \"\",\n    ALLEXCEPT('Project WD+WR+INCO+Acciona', 'Project WD+WR+INCO+Acciona'[Welder ID], 'Project WD+WR+INCO+Acciona'[Service Class + Service Cat+NDT Remarks])\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Service Class + Service Cat+NDT Remarks+Welder ID",
+  "Expression":"\n'Project WD+WR+INCO+Acciona'[Service class]&\" \"&'Project WD+WR+INCO+Acciona'[Service Cat]&\" \"&'Project WD+WR+INCO+Acciona'[NDT Remarks]&\" \"&'Project WD+WR+INCO+Acciona'[RT%]&\" \"&'Project WD+WR+INCO+Acciona'[Welder ID]"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Inco Length Ratio % \"PR all\" For Welder LAST 2 WEEKS",
+  "Expression":"\nIF(\n    NOT ISBLANK('Project WD+WR+INCO+Acciona'[Last_RT Date \"PR all\"]),\n    \n    VAR RepairLength = \n        CALCULATE(\n            SUM('Project WD+WR+INCO+Acciona'[Repair Length (mm)]),\n            'Project WD+WR+INCO+Acciona'[RT Acc\/Rej] <> \"RS\",\n            'Project WD+WR+INCO+Acciona'[RT Acc\/Rej] <> \"U\/Review\",\n            'Project WD+WR+INCO+Acciona'[Sub-Contractor]=\"Inco\",\n            FILTER(\n                ALLEXCEPT('Project WD+WR+INCO+Acciona', 'Project WD+WR+INCO+Acciona'[Welder ID]),\n                'Project WD+WR+INCO+Acciona'[Days Since Last RT] IN {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}\n            )\n        )\n\n    VAR WeldLength = \n        CALCULATE(\n            SUM('Project WD+WR+INCO+Acciona'[Rej Length]), --Все верно это RT Length Column\n            'Project WD+WR+INCO+Acciona'[RT Acc\/Rej] <> \"RS\",\n            'Project WD+WR+INCO+Acciona'[RT Acc\/Rej] <> \"U\/Review\",\n            'Project WD+WR+INCO+Acciona'[Sub-Contractor]=\"Inco\",\n            FILTER(\n                ALLEXCEPT('Project WD+WR+INCO+Acciona', 'Project WD+WR+INCO+Acciona'[Welder ID]),\n                'Project WD+WR+INCO+Acciona'[Days Since Last RT] IN {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}\n            )\n        )\n\n    RETURN\n        DIVIDE(RepairLength, WeldLength),\n\n    BLANK()  -- Возвращает пустое значение, если Last_RT Date \"PR all\" пустое\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Inco Rej Rate % STATUS for Welder by Length Last 2 Weeks",
+  "Expression":"\nIF (\n    ISBLANK('Project WD+WR+INCO+Acciona'[Inco Length Ratio % \"PR all\" For Welder LAST 2 WEEKS]),\n    BLANK(),\n    IF (\n        'Project WD+WR+INCO+Acciona'[Inco Length Ratio % \"PR all\" For Welder LAST 2 WEEKS] >= 0 && 'Project WD+WR+INCO+Acciona'[Inco Length Ratio % \"PR all\" For Welder LAST 2 WEEKS] < 0.015,\n        \"1. 0 to 1.5% - ok\",\n        IF (\n            'Project WD+WR+INCO+Acciona'[Inco Length Ratio % \"PR all\" For Welder LAST 2 WEEKS] >= 0.015 && 'Project WD+WR+INCO+Acciona'[Inco Length Ratio % \"PR all\" For Welder LAST 2 WEEKS] < 0.02,\n            \"2.Monitor: 1.5% to 2%\",\n            IF (\n                'Project WD+WR+INCO+Acciona'[Inco Length Ratio % \"PR all\" For Welder LAST 2 WEEKS] >= 0.02 && 'Project WD+WR+INCO+Acciona'[Inco Length Ratio % \"PR all\" For Welder LAST 2 WEEKS] <= 1,\n                \"3.Action: 2% to 100%\",\n                BLANK()\n            )\n        )\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Inco Length Ratio % \"PR all\" For Welder LAST 1 Month",
+  "Expression":"\nIF(\n    NOT ISBLANK('Project WD+WR+INCO+Acciona'[Last_RT Date \"PR all\"]),\n    \n    VAR RepairLength = \n        CALCULATE(\n            SUM('Project WD+WR+INCO+Acciona'[Repair Length (mm)]),\n            'Project WD+WR+INCO+Acciona'[RT Acc\/Rej] <> \"RS\",\n            'Project WD+WR+INCO+Acciona'[RT Acc\/Rej] <> \"U\/Review\",\n            'Project WD+WR+INCO+Acciona'[Sub-Contractor]=\"Inco\",\n            FILTER(\n                ALLEXCEPT('Project WD+WR+INCO+Acciona', 'Project WD+WR+INCO+Acciona'[Welder ID]),\n                'Project WD+WR+INCO+Acciona'[Days Since Last RT] IN {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30}\n            )\n        )\n\n    VAR WeldLength = \n        CALCULATE(\n            SUM('Project WD+WR+INCO+Acciona'[Rej Length]), --Все верно это RT Length Column\n            'Project WD+WR+INCO+Acciona'[RT Acc\/Rej] <> \"RS\",\n            'Project WD+WR+INCO+Acciona'[RT Acc\/Rej] <> \"U\/Review\",\n            'Project WD+WR+INCO+Acciona'[Sub-Contractor]=\"Inco\",\n            FILTER(\n                ALLEXCEPT('Project WD+WR+INCO+Acciona', 'Project WD+WR+INCO+Acciona'[Welder ID]),\n                'Project WD+WR+INCO+Acciona'[Days Since Last RT] IN {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30}\n            )\n        )\n\n    RETURN\n        DIVIDE(RepairLength, WeldLength),\n\n    BLANK()  -- Возвращает пустое значение, если Last_RT Date \"PR all\" пустое\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Inco Rej Rate % STATUS for Welder by Length Last 1 Month",
+  "Expression":"\nIF (\n    ISBLANK('Project WD+WR+INCO+Acciona'[Inco Length Ratio % \"PR all\" For Welder LAST 1 Month]),\n    BLANK(),\n    IF (\n        'Project WD+WR+INCO+Acciona'[Inco Length Ratio % \"PR all\" For Welder LAST 1 Month] >= 0 && 'Project WD+WR+INCO+Acciona'[Inco Length Ratio % \"PR all\" For Welder LAST 1 Month] < 0.015,\n        \"1. 0 to 1.5% - ok\",\n        IF (\n            'Project WD+WR+INCO+Acciona'[Inco Length Ratio % \"PR all\" For Welder LAST 1 Month] >= 0.015 && 'Project WD+WR+INCO+Acciona'[Inco Length Ratio % \"PR all\" For Welder LAST 1 Month] < 0.02,\n            \"2.Monitor: 1.5% to 2%\",\n            IF (\n                'Project WD+WR+INCO+Acciona'[Inco Length Ratio % \"PR all\" For Welder LAST 1 Month] >= 0.02 && 'Project WD+WR+INCO+Acciona'[Inco Length Ratio % \"PR all\" For Welder LAST 1 Month] <= 1,\n                \"3.Action: 2% to 100%\",\n                BLANK()\n            )\n        )\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Status Fabricated from \"WD\"",
+  "Expression":"\nMAXX(\n    FILTER(\n        ALL('Weld Dump'),\n        'Weld Dump'[Joint ID] = 'Project WD+WR+INCO+Acciona'[Joint ID]\n    ),\n    'Weld Dump'[Status FABRICATED]\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Status Spool NDE from \"WD\"",
+  "Expression":"\nMAXX(\n    FILTER(\n        ALL('Weld Dump'),\n        'Weld Dump'[Joint ID] = 'Project WD+WR+INCO+Acciona'[Joint ID]\n    ),\n    'Weld Dump'[Status Spool NDE]\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Last Spool Status from \"WD\"",
+  "Expression":"\nMAXX(\n    FILTER(\n        ALL('Weld Dump'),\n        'Weld Dump'[Joint ID] = 'Project WD+WR+INCO+Acciona'[Joint ID]\n    ),\n    'Weld Dump'[Last Status]\n)"
+ },
+ {
+  "TableName":"TALISMAN DATA",
+  "ColumnName":"Weld Date from Welder Record",
+  "Expression":"\nMAXX(\n    FILTER(\n        'CSVExport_Welder Record', \n        'CSVExport_Welder Record'[Joint ID] = 'TALISMAN DATA'[Joint ID]\n    ),\n    'CSVExport_Welder Record'[Weld Date]\n)"
+ },
+ {
+  "TableName":"TALISMAN DATA",
+  "ColumnName":"Weld Date TR\/F Talisman & Welder Record",
+  "Expression":"\nIF(\n    'TALISMAN DATA'[WELD DATE] = 'TALISMAN DATA'[Weld Date from Welder Record], \n    TRUE(), \n    FALSE()\n)"
+ },
+ {
+  "TableName":"TALISMAN DATA",
+  "ColumnName":"Weld Date from Joint Record",
+  "Expression":"\nMAXX(\n    FILTER(\n        'AllTrain_CSVExport_Joint Record', \n        'AllTrain_CSVExport_Joint Record'[Joint ID] = 'TALISMAN DATA'[Joint ID]\n    ),\n    'AllTrain_CSVExport_Joint Record'[Weld Date]\n)"
+ },
+ {
+  "TableName":"TALISMAN DATA",
+  "ColumnName":"Weld date TR\/F Talisman & Joint Record",
+  "Expression":"\nIF(\n    'TALISMAN DATA'[WELD DATE] = 'TALISMAN DATA'[Weld Date from Joint Record], \n    TRUE(), \n    FALSE()\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Weld CAT (NEW)",
+  "Expression":"\nIF(\n    'Project WD+WR+INCO+Acciona'[Weld Type] = \"SW\" && 'Project WD+WR+INCO+Acciona'[Weld Cat] = \"F\", \n    \"S\", \n    'Project WD+WR+INCO+Acciona'[Weld Cat]\n)"
+ },
+ {
+  "TableName":"TALISMAN DATA",
+  "ColumnName":"RT Date from Welder Record",
+  "Expression":"\nMAXX(\n    FILTER(\n        'CSVExport_Welder Record', \n        'CSVExport_Welder Record'[Joint ID] = 'TALISMAN DATA'[Joint ID]\n    ),\n    'CSVExport_Welder Record'[RT Date]\n)"
+ },
+ {
+  "TableName":"TALISMAN DATA",
+  "ColumnName":"RT Date TR\/F Talisman & Welder Record",
+  "Expression":"\nIF(\n    'TALISMAN DATA'[RT1 DATE] = 'TALISMAN DATA'[RT Date from Welder Record], \n    TRUE(), \n    FALSE()\n)"
+ },
+ {
+  "TableName":"TALISMAN DATA",
+  "ColumnName":"RT Date from Joint Record",
+  "Expression":"\nMAXX(\n    FILTER(\n        'AllTrain_CSVExport_Joint Record', \n        'AllTrain_CSVExport_Joint Record'[Joint ID] = 'TALISMAN DATA'[Joint ID]\n    ),\n    'AllTrain_CSVExport_Joint Record'[RT\/UT Date]\n)"
+ },
+ {
+  "TableName":"TALISMAN DATA",
+  "ColumnName":"RT date TR\/F Talisman & Joint Record",
+  "Expression":"\nIF( \n    'TALISMAN DATA'[RT1 DATE] = 'TALISMAN DATA'[RT Date from Joint Record], \n    TRUE(), \n    FALSE() \n) \n"
+ },
+ {
+  "TableName":"TALISMAN DATA",
+  "ColumnName":"RT Report from Welder Record",
+  "Expression":"\nMAXX(\n    FILTER(\n        'CSVExport_Welder Record', \n        'CSVExport_Welder Record'[Joint ID] = 'TALISMAN DATA'[Joint ID]\n    ),\n    'CSVExport_Welder Record'[RT Report]\n)"
+ },
+ {
+  "TableName":"TALISMAN DATA",
+  "ColumnName":"RT Report TR\/F Talisman & Welder Record",
+  "Expression":"\nIF(\n    'TALISMAN DATA'[RT1 REP NO] = 'TALISMAN DATA'[RT Report from Welder Record], \n    TRUE(), \n    FALSE()\n)"
+ },
+ {
+  "TableName":"TALISMAN DATA",
+  "ColumnName":"RT Report from Joint Record",
+  "Expression":"\nMAXX(\n    FILTER(\n        'AllTrain_CSVExport_Joint Record', \n        'AllTrain_CSVExport_Joint Record'[Joint ID] = 'TALISMAN DATA'[Joint ID]\n    ),\n    'AllTrain_CSVExport_Joint Record'[RT\/UT Report No]\n)"
+ },
+ {
+  "TableName":"TALISMAN DATA",
+  "ColumnName":"RT Report TR\/F Talisman & Joint Record",
+  "Expression":"\nIF( \n    'TALISMAN DATA'[RT1 REP NO] = 'TALISMAN DATA'[RT Report from Joint Record], \n    TRUE(), \n    FALSE() \n) \n"
+ },
+ {
+  "TableName":"CSVExport_Welder Record",
+  "ColumnName":"Joint ID+Welder ID",
+  "Expression":"\n'CSVExport_Welder Record'[Joint ID]&\"-\"&'CSVExport_Welder Record'[welder]"
+ },
+ {
+  "TableName":"TALISMAN DATA",
+  "ColumnName":"Joint ID+Welder ID from Welder Record",
+  "Expression":"\nMAXX(\n    FILTER(\n        'CSVExport_Welder Record', \n        'CSVExport_Welder Record'[Joint ID+Welder ID] = 'TALISMAN DATA'[Joint ID+Welder ID]\n    ),\n    'CSVExport_Welder Record'[Joint ID+Welder ID]\n)"
+ },
+ {
+  "TableName":"TALISMAN DATA",
+  "ColumnName":"Joint ID+Welder ID TR\/F Talisman & Welder Record",
+  "Expression":"\nIF( \n    'TALISMAN DATA'[WELDER ID ALL] <> \"\",  -- Проверка на заполненность Welder ID All\n    IF( \n        'TALISMAN DATA'[Joint ID+Welder ID] = 'TALISMAN DATA'[Joint ID+Welder ID from Welder Record],\n        \"TRUE\",  -- Если Joint ID+Welder ID равны, возвращаем строку \"TRUE\"\n        \"FALSE\"  -- Если не равны, возвращаем строку \"FALSE\"\n    ),\n    \"No Welder\"  -- Если Welder ID All пустое, возвращаем строку \"BLANK\"\n)"
+ },
+ {
+  "TableName":"TALISMAN DATA",
+  "ColumnName":"RT% from Project WD+WR",
+  "Expression":"\nMAXX(\n    FILTER(\n        'Project WD+WR+INCO+Acciona', \n        'Project WD+WR+INCO+Acciona'[Joint ID] = 'TALISMAN DATA'[Joint ID]\n    ),\n    'Project WD+WR+INCO+Acciona'[RT%]\n)"
+ },
+ {
+  "TableName":"TALISMAN DATA",
+  "ColumnName":"Service Class from Project WD+WR.",
+  "Expression":"\nMAXX(\n    FILTER(\n        'Project WD+WR+INCO+Acciona', \n        'Project WD+WR+INCO+Acciona'[Joint ID] = 'TALISMAN DATA'[Joint ID]\n    ),\n    'Project WD+WR+INCO+Acciona'[Service class]\n)"
+ },
+ {
+  "TableName":"TALISMAN DATA",
+  "ColumnName":"NDT Remarks from Project WD+WR",
+  "Expression":"\nMAXX(\n    FILTER(\n        'Project WD+WR+INCO+Acciona', \n        'Project WD+WR+INCO+Acciona'[Joint ID] = 'TALISMAN DATA'[Joint ID]\n    ),\n    'Project WD+WR+INCO+Acciona'[NDT Remarks]\n)"
+ },
+ {
+  "TableName":"TALISMAN DATA",
+  "ColumnName":"Service Class + Service Cat+NDT Remarks from Project WD+WR",
+  "Expression":"\nMAXX(\n    FILTER(\n        'Project WD+WR+INCO+Acciona', \n        'Project WD+WR+INCO+Acciona'[Joint ID] = 'TALISMAN DATA'[Joint ID]\n    ),\n    'Project WD+WR+INCO+Acciona'[Service Class + Service Cat+NDT Remarks]\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Duplicate RT Report",
+  "Expression":"\nCALCULATE(\n    DISTINCTCOUNT('Project WD+WR+INCO+Acciona'[RT Report]),\n    ALLEXCEPT('Project WD+WR+INCO+Acciona', 'Project WD+WR+INCO+Acciona'[Joint ID])\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"By UT All",
+  "Expression":"\nIF(\n    'Project WD+WR+INCO+Acciona'[By UT] = \"Y\", \n    \"BY UT\", \n    IF(\n        'Project WD+WR+INCO+Acciona'[RT\/UT] = \"UT\", \n        \"BY UT\",     \n    IF(\n        'Project WD+WR+INCO+Acciona'[HT Remarks] = \"PAUT\", \n        \"BY UT\",    \n    IF(\n        'Project WD+WR+INCO+Acciona'[Manual UT Report No.] <>\"\", \n        \"BY UT\",\n        BLANK()  -- Это значение по умолчанию, если оба условия ложны\n    )\n)))"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"PWHT Y\/N CCC (NEW)",
+  "Expression":"\nIF (\n    'Project WD+WR+INCO+Acciona'[Sub-Contractor] = \"CCC\",\n    IF (\n        'Project WD+WR+INCO+Acciona'[Joint ID] IN { \n            \"11090A1-SV6209181-SP4-12RS1\", \n            \"11040A1-HHS6292141-SP30-258RS1\", \n            \"11020P5-NG6202001-SP5-12\",\n            \"11020P5-NG6202001-SP6-16\",\n            \"11040A1-HHS6292143-SP1A-3RS1\",\n            \"11090A1-SV6209066-SP3-10\",\n            \"11090A1-N6209106A-SP2-7\",\n            \"11010P4-SF6284102-SP6-11\",\n            \"11020P5-SV6202157-SP1-5\",\n            \"11020A1-SV6202193A-SP1-4\",\n            \"11020A1-AG6202007-SP10-701\", \n            \"11020A1-SV6202064B-SP4-701\",\n            \"11060A3-NR6206006-SP2-3\"\n        },\n        \"N\", -- АБСОЛЮТНЫЙ ПРИОРИТЕТ\n        IF (\n            'Project WD+WR+INCO+Acciona'[Weld Type] IN { \"THD\" },\n            \"N\",\n            IF (\n                'Project WD+WR+INCO+Acciona'[WPS No.] IN { \"CS\/LTCS-015\", \"CS\/LTCS-017\" } && \n                'Project WD+WR+INCO+Acciona'[Weld Type] IN { \"SP\" },\n                \"N\",\n                IF (\n                    'Project WD+WR+INCO+Acciona'[Weld Type] IN { \"SP\" } &&\n                    'Project WD+WR+INCO+Acciona'[Service class] IN { \"3R1B3\", \"6P1A\", \"6P1AB\", \"6R1B\", \"9P1A\", \"9S1A\" },\n                    \"N\",\n                    IF (\n                        'Project WD+WR+INCO+Acciona'[Weld Type] IN { \"LET\" } && \n                        'Project WD+WR+INCO+Acciona'[PWHT Report No CCC] <> \"\",\n                        \"Y\",\n                        IF (\n                            'Project WD+WR+INCO+Acciona'[Weld Type] IN { \"RPD\" } && \n                            'Project WD+WR+INCO+Acciona'[PWHT Report No CCC] <> \"\",\n                            \"Y\",\n                            IF (\n                                'Project WD+WR+INCO+Acciona'[WPS No.] IN { \"CS\/LTCS-015\", \"CS\/LTCS-AUT-011\", \"CS\/LTCS-017\" } &&\n                                'Project WD+WR+INCO+Acciona'[Service class] IN {\n                                    \"1A1A\", \"1P1A\", \"1P1AR\", \"1P1AW\", \"1P3A\", \"1R1B\", \"1R1B7\", \"1S1A\", \"1T3AJ\", \"1T3AO\", \"1T6ASO\", \"1W0WG\",\n                                    \"3P1A\", \"3P1AB\", \"3P3A\", \"3R1B1\", \"3R1B2\", \"3R1B3\", \"3S1A\", \"3S1A4\", \"3S1AU\", \"3T3AJ\", \"6P1A\", \"6P1AB\", \"6P3A\", \"6R1B\", \"6S1A\", \"6S1AU\",\n                                    \"9P1A\", \"9S1A\", \"9S1AU\", \"9R1B\", \"1P1A7\", \"1R1B7\", \"3R1B7\", \"3P1A7\", \"1G3A\", \"1M1A\", \"1N1A\", \"6G3A\", \"1H3AJ6M1A\", \"1T3AZ\", \"3T3AZ\", \"1H3AZ\", \"3L1B2\"\n                                } &&\n                                'Project WD+WR+INCO+Acciona'[Thickness] > 25 &&\n                                'Project WD+WR+INCO+Acciona'[Thickness] <= 38,\n                                \"N\",\n                                -- ПРИОРИТЕТНОЕ ИСКЛЮЧЕНИЕ: Сначала проверяем DS-04 для SS\n                                IF (\n                                    'Project WD+WR+INCO+Acciona'[Material Type] IN { \"SS\" } && 'Project WD+WR+INCO+Acciona'[WPS No.] IN { \"DS-04\" },\n                                    \"Y\",\n                                    -- Если это не DS-04, проверяем общую группу SS\/DSS\n                                    IF (\n                                        'Project WD+WR+INCO+Acciona'[Material Type] IN { \"SS\", \"SS304L\", \"SS304\", \"SS304\/304L\", \"SS 316L\", \"DSS\", \"SDSS\" },\n                                        \"N\",                                \n                                        IF (\n                                            'Project WD+WR+INCO+Acciona'[WPS No.] IN {\n                                                \"CS\/LTCS-001\", \"CS\/LTCS-003\", \"CS\/LTCS-005\", \"CS\/LTCS-007\", \"CS\/LTCS-010\", \n                                                \"CS\/LTCS-012\", \"CS\/LTCS-014\", \"CS\/LTCS-AUT-001\", \"CS\/LTCS-AUT-003\", \n                                                \"CS\/LTCS-AUT-005\", \"CS\/LTCS-AUT-007\", \"CS\/LTCS-AUT-009\",\n                                                \"CS\/LTCS-002\", \"CS\/LTCS-004\", \"CS\/LTCS-006\", \"CS\/LTCS-008\", \n                                                \"CS\/LTCS-009\", \"CS\/LTCS-011\", \"CS\/LTCS-013\", \"CS\/LTCS-AUT-002\", \n                                                \"CS\/LTCS-AUT-006\", \"CS\/LTCS-AUT-008\", \"CS\/LTCS-AUT-010\", \n                                                \"DEW-CS\/LTCS-002\", \"DEW-CS\/LTCS-004\", \"DEW-CS\/LTCS-008\"\n                                            } &&\n                                            'Project WD+WR+INCO+Acciona'[Thickness] > 25,\n                                            \"Y\",\n                                            IF (\n                                                'Project WD+WR+INCO+Acciona'[Service class] IN { \"1P3A\", \"1R1B\", \"1R1B7\", \"1W3AX\", \"3R1B2\", \"3R1B3\", \"6PIA\", \"6P1AB\", \"6R1B\" } &&\n                                                'Project WD+WR+INCO+Acciona'[Thickness] > 25,\n                                                \"Y\",\n                                                IF (\n                                                    'Project WD+WR+INCO+Acciona'[Service class] IN {\n                                                        \"6C3AS\", \"1B6AS\", \"3B6AS\", \"1C3AS\", \"1C4AS\", \"1C3ASR\", \"3D3AS\", \"1C6AS\", \"1C3AS7\",\n                                                        \"1D3AS\", \"6D3AS\", \"3C3AS\", \"3E3AS\", \"1E3AS\", \"1B3AS\", \"9D3AS\", \"6C3ASB\", \"6C6AS\", \"1C4AS7\", \n                                                        \"9C3AS\", \"6C4AS\", \"3C6AS\", \"9C3AS0\", \"9C3ASW\", \"6C3ASN\", \"3C3ASN\", \"1C3ASW\", \"3C6ASN\", \n                                                        \"3C3ASW\", \"3C4AS\", \"6C6ASN\", \"9C3ASM\", \"3C4ASW\", \"1C4ASW\", \n                                                        \"1H3AZS\", \"1L3BS\", \"1R3BS\", \"1R3BS7\", \"1R3BSR\", \"1T3AJS\", \"1T3AZS\", \"3L3BS\", \"3R3BS\", \"6K3BS\", \"6R3BS\"\n                                                    },\n                                                    \"Y\",\n                                                    IF (\n                                                        'Project WD+WR+INCO+Acciona'[WPS No.] IN {\n                                                            \"304-SS-01\", \"304-SS-04\", \"304-SS-03\", \"304-SS-02\", \"304-SS-06\", \"304-SS-06A\",\n                                                            \"304-SS-AUT-001\", \"304-SS-AUT-003\", \"316-SS-01\", \"304-SS-09\", \"304-SS-AUT-001A\",\n                                                            \"304-SS-AUT-002\", \"304-SS-AUT-004\", \"304-SS-010\", \"DEW-304-SS-002\", \"304-SS-04A\",\n                                                            \"304-SS-02A\", \"316-SS-03\", \"316-SS-02\"\n                                                        },\n                                                        \"N\",\n                                                        IF (\n                                                            'Project WD+WR+INCO+Acciona'[WPS No.] IN { \"LA-01\", \"LA-02\", \"LA-05\", \"DS-03\", \"DS-04\" },\n                                                            \"Y\",\n                                                            IF (\n                                                                'Project WD+WR+INCO+Acciona'[Thickness] > 25,\n                                                                \"Y\",\n                                                                \"N\" \n                                                            )\n                                                        )\n                                                    )\n                                                )\n                                            )\n                                        )\n                                    )\n                                )\n                            )\n                        )\n                    )\n                )\n            )\n        )\n    ),\n    BLANK()\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"PWHT Y\/N CCC True\/False Status",
+  "Expression":"\nIF(\n    ISBLANK('Project WD+WR+INCO+Acciona'[PWHT Y\/N CCC (NEW)]),\n    \"\",  -- Если ' пустое, возвращаем строку \"\"\n    IF(\n        'Project WD+WR+INCO+Acciona'[PWHT Y\/N CCC (NEW)] = 'Project WD+WR+INCO+Acciona'[PWHT Y\/N CCC],\n        \"TRUE\",  -- Если равны, возвращаем строку \"TRUE\"\n        \"FALSE\"  -- Если не равны, возвращаем строку \"FALSE\"\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Thickness From \"JR\"",
+  "Expression":"\nIF(\n    'Project WD+WR+INCO+Acciona'[Sub-Contractor] <> \"CCC\",\n    BLANK(),\n    VAR ThiknessFromJR = \n        MAXX(\n            FILTER(\n                'AllTrain_CSVExport_Joint Record', \n                'AllTrain_CSVExport_Joint Record'[Joint ID] = 'Project WD+WR+INCO+Acciona'[Joint ID]\n            ),\n            'AllTrain_CSVExport_Joint Record'[Wall Thickness]\n        )\n    RETURN ThiknessFromJR\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Thickness from \"JR\" True\/False Status",
+  "Expression":"\nIF(\n    ISBLANK('Project WD+WR+INCO+Acciona'[Thickness From \"JR\"]),\n    \"\",  -- Если ' пустое, возвращаем строку \"\"\n    IF(\n        'Project WD+WR+INCO+Acciona'[Thickness From \"JR\"] = 'Project WD+WR+INCO+Acciona'[Thickness],\n        \"TRUE\",  -- Если равны, возвращаем строку \"TRUE\"\n        \"FALSE\"  -- Если не равны, возвращаем строку \"FALSE\"\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"WPS From \"Talisman\"",
+  "Expression":"\nIF(\n    'Project WD+WR+INCO+Acciona'[Sub-Contractor] <> \"CCC\",\n    BLANK(),\n    VAR WPSFromTalisman = \n        MAXX(\n            FILTER(\n                'TALISMAN DATA', \n                'TALISMAN DATA'[Joint ID] = 'Project WD+WR+INCO+Acciona'[Joint ID]\n            ),\n            'TALISMAN DATA'[WPS CODE]\n        )\n    RETURN WPSFromTalisman\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"WPS from \"Talisman\" True\/False Status",
+  "Expression":"\nIF(\n    ISBLANK('Project WD+WR+INCO+Acciona'[WPS From \"Talisman\"]),\n    \"\",  -- Если ' пустое, возвращаем строку \"\"\n    IF(\n        'Project WD+WR+INCO+Acciona'[WPS From \"Talisman\"] = 'Project WD+WR+INCO+Acciona'[WPS No.],\n        \"TRUE\",  -- Если равны, возвращаем строку \"TRUE\"\n        \"FALSE\"  -- Если не равны, возвращаем строку \"FALSE\"\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"DWIR CCC From \"JR\"",
+  "Expression":"\nIF(\n    'Project WD+WR+INCO+Acciona'[Sub-Contractor] <> \"CCC\",\n    BLANK(),\n    VAR DWIRFromJR = \n        MAXX(\n            FILTER(\n                'AllTrain_CSVExport_Joint Record', \n                'AllTrain_CSVExport_Joint Record'[Joint ID] = 'Project WD+WR+INCO+Acciona'[Joint ID]\n            ),\n            'AllTrain_CSVExport_Joint Record'[Weld Report No]\n        )\n    RETURN DWIRFromJR\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"DWIR Report \"PR All\"",
+  "Expression":"\nIF(\n    'Project WD+WR+INCO+Acciona'[DWIR No.] <> \"\", \n    'Project WD+WR+INCO+Acciona'[DWIR No.], \n    IF(\n        'Project WD+WR+INCO+Acciona'[DWIR CCC From \"JR\"] <>\"\", \n        'Project WD+WR+INCO+Acciona'[DWIR CCC From \"JR\"], \n        BLANK()\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"HA",
+  "Expression":"\nVAR SubsystemVal = 'Project WD+WR+INCO+Acciona'[Subsystem Code]\nVAR SystemVal = 'Project WD+WR+INCO+Acciona'[System No]\n\n-- Извлекаем вторые цифры для обоих столбцов\nVAR DigitSub = MID(SubsystemVal, 2, 1)\nVAR DigitSys = MID(SystemVal, 2, 1)\n\n-- Условие \"невалидности\" (пусто, NA или NON)\nVAR SubIsInvalid = ISBLANK(SubsystemVal) || SubsystemVal = \"System-NA - Not Applicable\" || CONTAINSSTRING(SubsystemVal, \"NON\")\nVAR SysIsInvalid = ISBLANK(SystemVal) || SystemVal = \"System-NA - Not Applicable\" || CONTAINSSTRING(SystemVal, \"NON\")\n\nRETURN\nIF (\n    -- 1. Сначала проверяем Subsystem Code\n    NOT(SubIsInvalid) && DigitSub IN {\"1\", \"2\", \"3\", \"4\"},\n    \"HA\" & DigitSub,\n    \n    IF (\n        -- 2. Если Subsystem не подошел, проверяем System No\n        NOT(SysIsInvalid) && DigitSys IN {\"1\", \"2\", \"3\", \"4\"},\n        \"HA\" & DigitSys,\n        \n        -- 3. Если оба столбца пустые\/NON\/NA, выполняем поиск по справочнику\n        LOOKUPVALUE(\n            'HA l0_abs_guide'[Handover Area], \n            'HA l0_abs_guide'[Location Number], 'Project WD+WR+INCO+Acciona'[PDS Area]\n        )\n    )\n)"
+ },
+ {
+  "TableName":"Flange Progress",
+  "ColumnName":"PDS Area \"VPR\"",
+  "Expression":"\n    VAR PDSAreaVPR = \n        MAXX(\n            FILTER(\n                'Project WD+WR+INCO+Acciona', \n                'Project WD+WR+INCO+Acciona'[ISO Number] = 'Flange Progress'[Iso Number]\n            ),\n            'Project WD+WR+INCO+Acciona'[PDS Area]\n        )\n    RETURN PDSAreaVPR"
+ },
+ {
+  "TableName":"Flange Progress",
+  "ColumnName":"PDS Area Final",
+  "Expression":"\nIF(\n    ISBLANK('Flange Progress'[PDS Area \"VPR\"]),\n    'Flange Progress'[PDS Area],  \n    'Flange Progress'[PDS Area \"VPR\"]\n)"
+ },
+ {
+  "TableName":"Flange Progress",
+  "ColumnName":"HA",
+  "Expression":"\nVAR SystemVal = 'Flange Progress'[System]\nVAR SecondDigit = MID(SystemVal, 2, 1)\n\nRETURN\nIF (\n    ISBLANK(SystemVal) || SystemVal = \"System-NA - Not Applicable\",\n    -- Если пусто или NA, выполняем поиск\n    LOOKUPVALUE(\n        'HA l0_abs_guide'[Handover Area], \n        'HA l0_abs_guide'[Location Number], 'Flange Progress'[PDS Area Final]\n    ),\n    -- Если System заполнена, проверяем вторую цифру\n    SWITCH (\n        SecondDigit,\n        \"1\", \"HA1\",\n        \"2\", \"HA2\",\n        \"3\", \"HA3\",\n        \"4\", \"HA4\",\n        -- Результат, если вторая цифра не 1-4 (опционально)\n        LOOKUPVALUE(\n            'HA l0_abs_guide'[Handover Area], \n            'HA l0_abs_guide'[Location Number], 'Flange Progress'[PDS Area Final]\n        )\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Days Between RT Selected and RT Date",
+  "Expression":"\nDATEDIFF(\n    'Project WD+WR+INCO+Acciona'[RT Selected Date], \n    'Project WD+WR+INCO+Acciona'[RT Date], \n    DAY\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Duplicate RT Report by Joint",
+  "Expression":"\nCALCULATE(\n    DISTINCTCOUNT('Project WD+WR+INCO+Acciona'[Joint ID]),\n    ALLEXCEPT('Project WD+WR+INCO+Acciona', 'Project WD+WR+INCO+Acciona'[RT Report]))"
+ },
+ {
+  "TableName":"Calendar",
+  "ColumnName":"Date2",
+  "Expression":"'Calendar'[Date]"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Week_End_Date from Calendar",
+  "Expression":"\nMAXX(\n    FILTER(\n        'Calendar', \n        'Calendar'[Date] = 'Project WD+WR+INCO+Acciona'[RT Date]\n    ),\n    'Calendar'[Week_End_Date]\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"MonthRT",
+  "Expression":"\n'Project WD+WR+INCO+Acciona'[RT Date]"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"YearRT",
+  "Expression":"\nFORMAT('Project WD+WR+INCO+Acciona'[RT Date],\"YYYY\")"
+ },
+ {
+  "TableName":"Flange Progress",
+  "ColumnName":"Sub-Contractor From WD+WR",
+  "Expression":"\n    VAR SubContractor = \n        MAXX(\n            FILTER(\n                'Project WD+WR+INCO+Acciona', \n                'Project WD+WR+INCO+Acciona'[PDS Area] = 'Flange Progress'[PDS Area Final]\n            ),\n            'Project WD+WR+INCO+Acciona'[Sub-Contractor]\n        )\n    RETURN SubContractor"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Exlude Full Cut & Debris",
+  "Expression":"\nIF (\n    'Project WD+WR+INCO+Acciona'[RT Re-Shoot Status] = \"Full Cut\" && \n    CONTAINSSTRING('Project WD+WR+INCO+Acciona'[RT Re-Shoot Reason], \"Debris\") &&\n    'Project WD+WR+INCO+Acciona'[Defect Code] = \"XX\",\n    \"Exclude Films:Debris\",\n    BLANK()\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Service Class + Service Cat+NDT Remarks+Sub-Contractor",
+  "Expression":"\n'Project WD+WR+INCO+Acciona'[Service class]&\" \"&'Project WD+WR+INCO+Acciona'[Service Cat]&\" \"&'Project WD+WR+INCO+Acciona'[NDT Remarks]&\" \"&'Project WD+WR+INCO+Acciona'[RT%]&\" \"&'Project WD+WR+INCO+Acciona'[Sub-Contractor]"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Rework Code \"PR All\"",
+  "Expression":"\nVAR ReworkFromAllTrain = \n    CALCULATE(\n        MAXX(\n            FILTER(\n                'AllTrain_CSVExport_Joint Record',\n                'AllTrain_CSVExport_Joint Record'[Joint ID \"JR\"] = VALUES('Project WD+WR+INCO+Acciona'[Joint ID])\n            ),\n            'AllTrain_CSVExport_Joint Record'[Rework Code]\n        )\n    )\n\nRETURN \n    IF(\n        ISBLANK(ReworkFromAllTrain),\n        'Project WD+WR+INCO+Acciona'[Rework Code],\n        ReworkFromAllTrain\n    )"
+ },
+ {
+  "TableName":"Flange Progress",
+  "ColumnName":"Dia Inch >60<",
+  "Expression":"\nIF(\n    'Flange Progress'[Diam] < 60, \n    \"0-60\",\n    IF(\n        'Flange Progress'[Diam] >= 60 && 'Flange Progress'[Diam] <= 200, \n        \"60-199\",\n        \"Greater than 199\"\n    )\n)"
+ },
+ {
+  "TableName":"Flange Progress",
+  "ColumnName":"Task_Status PIP-018-A \"VPR\"",
+  "Expression":"\nVAR Task_Status = \n    MAXX(\n        FILTER(\n            'SCDB Data l0_scdb_task', \n            'SCDB Data l0_scdb_task'[TAG] = 'Flange Progress'[Test Pack]\n        ),\n        \/\/ Возвращаем \"Closed\" (1), только если статус действительно \"closed\"\n        IF('SCDB Data l0_scdb_task'[Task_Status] = \"Closed\", 1, 0)\n    )\n\nRETURN \n    \/\/ Если MAXX нашла хотя бы одно \"closed\" (т.е. вернула 1), \n    \/\/ возвращаем текст \"Closed\", иначе BLANK()\n    IF(Task_Status = 1, \"Closed\", BLANK())"
+ },
+ {
+  "TableName":"Flange Progress",
+  "ColumnName":"Loose Bolts Description",
+  "Expression":"\nVAR CurrentTestPack = 'Flange Progress'[Test Pack] \/\/ Получаем текущий Test Pack\nVAR MatchingPunch =\n    CALCULATE(\n        \/\/ Нам нужен MAX, чтобы вернуть любую найденную строку-описание\n        MAX('Testpack-wise Details Report'[Punch Description]),\n        FILTER(\n            ALL('Testpack-wise Details Report'), \/\/ Игнорируем внешние фильтры, кроме явно заданных\n            'Testpack-wise Details Report'[TEST PACK] = CurrentTestPack\n            && (\n                \/\/ УСЛОВИЕ 1: ТОЧНОЕ СОВПАДЕНИЕ\n                'Testpack-wise Details Report'[Punch Description] = \"LOOSE BOLTS FLANGE\"\n                ||\n                \/\/ УСЛОВИЕ 2: ЧАСТИЧНОЕ СОВПАДЕНИЕ\n                CONTAINSSTRING('Testpack-wise Details Report'[Punch Description], \"LOOSE BOLTS\")\n            )\n        )\n    )\nRETURN\n    \/\/ Возвращаем найденное описание, если оно не BLANK\n    IF(\n        NOT ISBLANK(MatchingPunch),\n        MatchingPunch,\n        BLANK()\n    )"
+ },
+ {
+  "TableName":"Flange Progress",
+  "ColumnName":"Test Completed Date",
+  "Expression":"\n    VAR TestDate = \n        MAXX(\n            FILTER(\n                'Testpack-wise Details Report', \n                'Testpack-wise Details Report'[TEST PACK] = 'Flange Progress'[Test Pack]\n            ),\n            'Testpack-wise Details Report'[Test Completed Date]\n        )\n    RETURN TestDate"
+ },
+ {
+  "TableName":"Flange Progress",
+  "ColumnName":"Reinstatement Completed Date",
+  "Expression":"\n    VAR ReinstatementDate = \n        MAXX(\n            FILTER(\n                'Testpack-wise Details Report', \n                'Testpack-wise Details Report'[TEST PACK] = 'Flange Progress'[Test Pack]\n            ),\n            'Testpack-wise Details Report'[Reinstatement Completed Date]\n        )\n    RETURN ReinstatementDate"
+ },
+ {
+  "TableName":"Flange Progress",
+  "ColumnName":"Test Status",
+  "Expression":"\nIF(NOT(ISBLANK('Flange Progress'[Test Completed Date])), \"Tested\", BLANK())"
+ },
+ {
+  "TableName":"Flange Progress",
+  "ColumnName":"Reinstatement Status",
+  "Expression":"\nIF(NOT(ISBLANK('Flange Progress'[Reinstatement Completed Date])), \"Reinstatement\", BLANK())"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Temporary Lines",
+  "Expression":"\nIF (\n    RIGHT('Project WD+WR+INCO+Acciona'[ISO Number], 4) = \"-PCC\",\n    \"Temporary Lines\",\n    BLANK()\n)"
+ },
+ {
+  "TableName":"Weld Dump",
+  "ColumnName":"Temporary Lines \"WD\"",
+  "Expression":"\nIF (\n    RIGHT('Weld Dump'[ISO Number], 4) = \"-PCC\",\n    \"Temporary Lines\",\n    BLANK()\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Train SG",
+  "Expression":"\nIF(\n    'Project WD+WR+INCO+Acciona'[Service Cat] IN{ \"SG\",\"SGCS\"},\n    MID('Project WD+WR+INCO+Acciona'[Joint ID], 4, 3),\n    BLANK() \/\/ Вернет пусто, если условие не выполнено\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Open_Punch_\"X\"",
+  "Expression":"\n    VAR Open_Punch_X = \n        MAXX(\n            FILTER(\n                'Testpack-wise Details Report', \n                'Testpack-wise Details Report'[TEST PACK] = 'Project WD+WR+INCO+Acciona'[TESTPACK No \"PR All\"]\n            ),\n            'Testpack-wise Details Report'[Open_Punch \"X\"]\n        )\n    RETURN Open_Punch_X"
+ },
+ {
+  "TableName":"Testpack-wise Details Report",
+  "ColumnName":"Open_Punch \"X\"",
+  "Expression":"\nCALCULATE (\n    COUNTROWS ( 'Testpack-wise Details Report' ), \/\/ Считаем строки\n    ALLEXCEPT ( 'Testpack-wise Details Report', 'Testpack-wise Details Report'[TEST PACK] ), \/\/ Учитываем только текущий TestPack\n    'Testpack-wise Details Report'[Punch CAT] = \"X\", \/\/ Фильтр по категории \"X\"\n    ISBLANK ( 'Testpack-wise Details Report'[Punch Clearance Date] ) \/\/ Фильтр по пустой дате\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Reinstatement_Date",
+  "Expression":"\n    VAR Reinstatement_Date = \n        MAXX(\n            FILTER(\n                'Testpack-wise Details Report', \n                'Testpack-wise Details Report'[TEST PACK] = 'Project WD+WR+INCO+Acciona'[TESTPACK No \"PR All\"]\n            ),\n            'Testpack-wise Details Report'[Reinstatement Completed Date]\n        )\n    RETURN Reinstatement_Date"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Open_Punch_\"Y\"",
+  "Expression":"\n    VAR Open_Punch_Y = \n        MAXX(\n            FILTER(\n                'Testpack-wise Details Report', \n                'Testpack-wise Details Report'[TEST PACK] = 'Project WD+WR+INCO+Acciona'[TESTPACK No \"PR All\"]\n            ),\n            'Testpack-wise Details Report'[Open_Punch \"Y\"]\n        )\n    RETURN Open_Punch_Y"
+ },
+ {
+  "TableName":"Testpack-wise Details Report",
+  "ColumnName":"Open_Punch \"Y\"",
+  "Expression":"\nCALCULATE (\n    COUNTROWS ( 'Testpack-wise Details Report' ), \/\/ Считаем строки\n    ALLEXCEPT ( 'Testpack-wise Details Report', 'Testpack-wise Details Report'[TEST PACK] ), \/\/ Учитываем только текущий TestPack\n    'Testpack-wise Details Report'[Punch CAT] = \"Y\", \/\/ Фильтр по категории \"Y\"\n    ISBLANK ( 'Testpack-wise Details Report'[Punch Clearance Date] ) \/\/ Фильтр по пустой дате\n)"
+ },
+ {
+  "TableName":"Testpack-wise Details Report",
+  "ColumnName":"Open_Punch \"Z\"",
+  "Expression":"\nCALCULATE (\n    COUNTROWS ( 'Testpack-wise Details Report' ), \/\/ Считаем строки\n    ALLEXCEPT ( 'Testpack-wise Details Report', 'Testpack-wise Details Report'[TEST PACK] ), \/\/ Учитываем только текущий TestPack\n    'Testpack-wise Details Report'[Punch CAT] = \"Z\", \/\/ Фильтр по категории \"Y\"\n    ISBLANK ( 'Testpack-wise Details Report'[Punch Clearance Date] ) \/\/ Фильтр по пустой дате\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Open_Punch_\"Z\"",
+  "Expression":"\n    VAR Open_Punch_Z = \n        MAXX(\n            FILTER(\n                'Testpack-wise Details Report', \n                'Testpack-wise Details Report'[TEST PACK] = 'Project WD+WR+INCO+Acciona'[TESTPACK No \"PR All\"]\n            ),\n            'Testpack-wise Details Report'[Open_Punch \"Z\"]\n        )\n    RETURN Open_Punch_Z"
+ },
+ {
+  "TableName":"Testpack-wise Details Report",
+  "ColumnName":"Stasus in Punch Description",
+  "Expression":"\nSWITCH (\n    TRUE (),\n    CONTAINSSTRING ( 'Testpack-wise Details Report'[Punch Description], \"Heat\" ), \"Heat\",\n    CONTAINSSTRING ( 'Testpack-wise Details Report'[Punch Description], \"material\" ), \"material\",\n    CONTAINSSTRING ( 'Testpack-wise Details Report'[Punch Description], \"batch\" ), \"batch\",\n    CONTAINSSTRING ( 'Testpack-wise Details Report'[Punch Description], \"traceability\" ), \"traceability\",\n    BLANK ()\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"RT Ratio % For WPS \"PR all\"",
+  "Expression":"\nDIVIDE(\n    CALCULATE(\n        SUM('Project WD+WR+INCO+Acciona'[Total No of films Rej]),\n        ALLEXCEPT('Project WD+WR+INCO+Acciona', 'Project WD+WR+INCO+Acciona'[WPS No.])\n    ),\n    CALCULATE(\n        SUM('Project WD+WR+INCO+Acciona'[RT Film Total]),'Project WD+WR+INCO+Acciona'[RT Acc\/Rej]<>\"RS\",\n        ALLEXCEPT('Project WD+WR+INCO+Acciona', 'Project WD+WR+INCO+Acciona'[WPS No.])\n    )\n) * 1"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"RT Ratio % STATUS for WPS",
+  "Expression":"\nSWITCH(TRUE(),\n    'Project WD+WR+INCO+Acciona'[RT Ratio % For WPS \"PR all\"] = 0, \"0%\",\n    'Project WD+WR+INCO+Acciona'[RT Ratio % For WPS \"PR all\"] > 0 && 'Project WD+WR+INCO+Acciona'[RT Ratio % For WPS \"PR all\"] <= 0.01, \"1. <1% \",\n    'Project WD+WR+INCO+Acciona'[RT Ratio % For WPS \"PR all\"] > 0.01 && 'Project WD+WR+INCO+Acciona'[RT Ratio % For WPS \"PR all\"] <= 0.02, \"2. 1% - 2% \",\n    'Project WD+WR+INCO+Acciona'[RT Ratio % For WPS \"PR all\"] > 0.02 && 'Project WD+WR+INCO+Acciona'[RT Ratio % For WPS \"PR all\"] <= 0.05, \"3. 2% - 5% \",\n    'Project WD+WR+INCO+Acciona'[RT Ratio % For WPS \"PR all\"] > 0.05 && 'Project WD+WR+INCO+Acciona'[RT Ratio % For WPS \"PR all\"] <= 0.10, \"4. 5% - 10% \",\n    'Project WD+WR+INCO+Acciona'[RT Ratio % For WPS \"PR all\"] > 0.10, \"5. > 10% \",\n    ISBLANK('Project WD+WR+INCO+Acciona'[RT Ratio % For WPS \"PR all\"]) &&\n    'Project WD+WR+INCO+Acciona'[Weld Type] IN {\"BW\", \"GW\", \"CLET\", \"MW\"} &&\n    'Project WD+WR+INCO+Acciona'[Weld Date] > 0, \"6. No RT\",\n    BLANK()\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"RT Ratio % For Material Type \"PR all\"",
+  "Expression":"\nDIVIDE(\n    CALCULATE(\n        SUM('Project WD+WR+INCO+Acciona'[Total No of films Rej]),\n        ALLEXCEPT('Project WD+WR+INCO+Acciona', 'Project WD+WR+INCO+Acciona'[Material Type])\n    ),\n    CALCULATE(\n        SUM('Project WD+WR+INCO+Acciona'[RT Film Total]),'Project WD+WR+INCO+Acciona'[RT Acc\/Rej]<>\"RS\",\n        ALLEXCEPT('Project WD+WR+INCO+Acciona', 'Project WD+WR+INCO+Acciona'[Material Type])\n    )\n) * 1"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"RT Ratio % STATUS for Material Type",
+  "Expression":"\nSWITCH(TRUE(),\n    'Project WD+WR+INCO+Acciona'[RT Ratio % For Material Type \"PR all\"] = 0, \"0%\",\n    'Project WD+WR+INCO+Acciona'[RT Ratio % For Material Type \"PR all\"] > 0 && 'Project WD+WR+INCO+Acciona'[RT Ratio % For Material Type \"PR all\"] <= 0.01, \"1. <1% \",\n    'Project WD+WR+INCO+Acciona'[RT Ratio % For Material Type \"PR all\"] > 0.01 && 'Project WD+WR+INCO+Acciona'[RT Ratio % For Material Type \"PR all\"] <= 0.02, \"2. 1% - 2% \",\n    'Project WD+WR+INCO+Acciona'[RT Ratio % For Material Type \"PR all\"] > 0.02 && 'Project WD+WR+INCO+Acciona'[RT Ratio % For Material Type \"PR all\"] <= 0.05, \"3. 2% - 5% \",\n    'Project WD+WR+INCO+Acciona'[RT Ratio % For Material Type \"PR all\"] > 0.05 && 'Project WD+WR+INCO+Acciona'[RT Ratio % For Material Type \"PR all\"] <= 0.10, \"4. 5% - 10% \",\n    'Project WD+WR+INCO+Acciona'[RT Ratio % For Material Type \"PR all\"] > 0.10, \"5. > 10% \",\n    ISBLANK('Project WD+WR+INCO+Acciona'[RT Ratio % For Material Type \"PR all\"]) &&\n    'Project WD+WR+INCO+Acciona'[Weld Type] IN {\"BW\", \"GW\", \"CLET\", \"MW\"} &&\n    'Project WD+WR+INCO+Acciona'[Weld Date] > 0, \"6. No RT\",\n    BLANK()\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Status WPQ Welding Process",
+  "Expression":"\nMAXX(\n    FILTER(\n        ALL('WPQ WELDING PROCESS'),\n        'WPQ WELDING PROCESS'[WPS No.] = 'Project WD+WR+INCO+Acciona'[WPS No.]\n    ),\n    'WPQ WELDING PROCESS'[Welding process]\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Status WPQ Type of Welding Machine",
+  "Expression":"\nMAXX(\n    FILTER(\n        ALL('WPQ WELDING PROCESS'),\n        'WPQ WELDING PROCESS'[WPS No.] = 'Project WD+WR+INCO+Acciona'[WPS No.]\n    ),\n    'WPQ WELDING PROCESS'[Type of Welding Machine]\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Bracing",
+  "Expression":"\n    VAR Bracing = \n        MAXX(\n            FILTER(\n                'Bracing FE_Analysis', \n                'Bracing FE_Analysis'[ISO\/SPOOL] = 'Project WD+WR+INCO+Acciona'[Spool ID]\n            ),\n            'Bracing FE_Analysis'[ISO\/SPOOL]\n        )\n    RETURN Bracing"
+ },
+ {
+  "TableName":"Flange Progress",
+  "ColumnName":"WeldPoint No.1 WP1",
+  "Expression":"\nVAR CurrentWP = 'Flange Progress'[Index]\nVAR CurrentJointID = 'Flange Progress'[Joint ID]\nRETURN\n    COUNTROWS(\n        FILTER(\n            'Flange Progress',\n            'Flange Progress'[Joint ID] = CurrentJointID &&\n            'Flange Progress'[Index] < CurrentWP\n        )\n    ) + 1"
+ },
+ {
+  "TableName":"Flange Progress",
+  "ColumnName":"Joint ID Max Joint_Date",
+  "Expression":"\nVAR CurrentID = 'Flange Progress'[Joint ID]\nVAR CurrentDate = 'Flange Progress'[Joint Date]\n\n-- 1. Находим максимальную дату для текущего Joint ID\nVAR MaxDate =\n    CALCULATE(\n        MAX('Flange Progress'[Joint Date]),\n        ALLEXCEPT('Flange Progress', 'Flange Progress'[Joint ID])\n    )\n\n-- 2. Проверяем, есть ли дубликаты (для Условия 3)\nVAR IsDuplicate =\n    CALCULATE(\n        COUNTROWS('Flange Progress'),\n        ALLEXCEPT('Flange Progress', 'Flange Progress'[Joint ID])\n    ) > 1\n\n-- 3. Проверяем, есть ли среди дубликатов запись с пустой датой (для Условия 2)\nVAR HasBlankDate =\n    CALCULATE(\n        COUNTROWS('Flange Progress'),\n        ALLEXCEPT('Flange Progress', 'Flange Progress'[Joint Date]),\n        'Flange Progress'[Joint ID] = CurrentID,\n        ISBLANK('Flange Progress'[Joint Date])\n    ) > 0\n\n-- 4. Определяем, является ли текущая строка ПРИОРИТЕТНОЙ (Условия 1 и 2)\nVAR IsPriorityRow =\n    IF(\n        -- Если найдена BLANK (Условие 2), приоритет у строки, у которой BLANK\n        HasBlankDate,\n        ISBLANK(CurrentDate),\n\n        -- Иначе (нет BLANK или нет дубликатов), приоритет у строки с MAX датой (Условие 1)\n        CurrentDate = MaxDate\n    )\n\n-- 5. Возвращаем результат\nRETURN\n    IF(\n        NOT IsDuplicate,\n        CurrentID, -- Условие 3: Не дубликат, возвращаем Joint ID.\n        IF(\n            IsPriorityRow,\n            CurrentID, -- Если дубликат И это приоритетная строка, возвращаем Joint ID.\n            BLANK()    -- Если дубликат И это НЕ приоритетная строка, возвращаем BLANK.\n        )\n    )"
+ },
+ {
+  "TableName":"Flange Progress",
+  "ColumnName":"Duplicate Joint ID",
+  "Expression":"\nCALCULATE(\n    DISTINCTCOUNT('Flange Progress'[WeldPoint No.1 WP1]),\n    ALLEXCEPT('Flange Progress', 'Flange Progress'[Joint ID])\n)"
+ },
+ {
+  "TableName":"TALISMAN DATA",
+  "ColumnName":"Area Classification from WD+WR",
+  "Expression":"\nMAXX(\n    FILTER(\n        'Project WD+WR+INCO+Acciona', \n        'Project WD+WR+INCO+Acciona'[PDS Area] = 'TALISMAN DATA'[AREA]\n    ),\n    'Project WD+WR+INCO+Acciona'[Area Classification]\n)"
+ },
+ {
+  "TableName":"Flg Onepager_data",
+  "ColumnName":"Week_End_Date from Calendar",
+  "Expression":"\nMAXX(\n    FILTER(\n        'Calendar', \n        'Calendar'[Date] = 'Flg Onepager_data'[Date]\n    ),\n    'Calendar'[Week_End_Date]\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Task_Status PIP-018-A \"VPR\"",
+  "Expression":"\nVAR Task_Status = \n    MAXX(\n        FILTER(\n            'SCDB Data l0_scdb_task', \n            'SCDB Data l0_scdb_task'[TAG] = 'Project WD+WR+INCO+Acciona'[TESTPACK No \"PR All\"]\n        ),\n        \/\/ Возвращаем \"Closed\" (1), только если статус действительно \"closed\"\n        IF('SCDB Data l0_scdb_task'[Task_Status] = \"Closed\", 1, 0)\n    )\n\nRETURN \n    \/\/ Если MAXX нашла хотя бы одно \"closed\" (т.е. вернула 1), \n    \/\/ возвращаем текст \"Closed\", иначе BLANK()\n    IF(Task_Status = 1, \"Closed\", BLANK())"
+ },
+ {
+  "TableName":"Flange ovAssets_1510",
+  "ColumnName":"Flange ID from EP VPR",
+  "Expression":"\nVAR ResultID = \n    MAXX(\n        FILTER(\n            'Flange Progress', \n            'Flange Progress'[Joint ID] = 'Flange ovAssets_1510'[Joint ID]\n        ),\n        'Flange Progress'[Joint ID]\n    )\n\nRETURN\n    IF(\n        ISBLANK(ResultID),\n        \"Not Found\",\n        ResultID\n    )"
+ },
+ {
+  "TableName":"Flange Progress",
+  "ColumnName":"Flange ID from SCDB 1510 VPR",
+  "Expression":"\nVAR CurrentFlangeSubcontractor = 'Flange Progress'[Flange Subcontractor]\n\nVAR SearchResultID = \n    IF(\n        CurrentFlangeSubcontractor <> \"CCC\", -- Если субподрядчик НЕ \"CCC\", выполняем поиск\n        MAXX(\n            FILTER(\n                'Flange ovAssets_1510', \n                'Flange ovAssets_1510'[Joint ID] = 'Flange Progress'[Joint ID]\n            ),\n            'Flange ovAssets_1510'[Joint ID]\n        )\n    ) -- Если субподрядчик = \"CCC\", IF возвращает BLANK() (неявное значение else)\n\nRETURN\n    IF(\n        CurrentFlangeSubcontractor = \"CCC\",\n        BLANK(), -- ЕСЛИ \"CCC\", то возвращаем BLANK() (как вы и просили)\n        IF(\n            ISBLANK(SearchResultID),\n            \"Not Found\", -- Если не \"CCC\", но поиск не дал результата, то \"Not Found\"\n            SearchResultID -- Если не \"CCC\" и результат найден\n        )\n    )"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Stainless steel",
+  "Expression":"\nIF (\n    CONTAINSSTRING('Project WD+WR+INCO+Acciona'[Material Type], \"SS\") ||\n    CONTAINSSTRING('Project WD+WR+INCO+Acciona'[Material Type], \"DSS\") ||\n    CONTAINSSTRING('Project WD+WR+INCO+Acciona'[Material Type], \"SDSS\"),\n    \"Stainless Steel\",\n    BLANK()\n)"
+ },
+ {
+  "TableName":"Flange ovAssets_1510",
+  "ColumnName":"HA",
+  "Expression":"\nVAR SystemVal = 'Flange ovAssets_1510'[System]\nVAR SecondDigit = MID(SystemVal, 2, 1)\n\nRETURN\nIF (\n    ISBLANK(SystemVal) || SystemVal = \"System-NA - Not Applicable\",\n    -- Если пусто или NA, выполняем поиск\n    LOOKUPVALUE(\n        'HA l0_abs_guide'[Handover Area], \n        'HA l0_abs_guide'[Location Number], 'Flange ovAssets_1510'[PDS Area]\n    ),\n    -- Если System заполнена, проверяем вторую цифру\n    SWITCH (\n        SecondDigit,\n        \"1\", \"HA1\",\n        \"2\", \"HA2\",\n        \"3\", \"HA3\",\n        \"4\", \"HA4\",\n        -- Результат, если вторая цифра не 1-4 (опционально)\n        LOOKUPVALUE(\n            'HA l0_abs_guide'[Handover Area], \n            'HA l0_abs_guide'[Location Number], 'Flange ovAssets_1510'[PDS Area]\n        )\n    )\n)"
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "ColumnName":"Exlude RT Films from UT",
+  "Expression":"\nIF (\n    \/\/ 1. Общие условия (должны выполняться всегда)\n    'Project WD+WR+INCO+Acciona'[By UT] = \"Y\" && \n    'Project WD+WR+INCO+Acciona'[Sub-Contractor] <> \"Inco\" &&\n    CONTAINSSTRING('Project WD+WR+INCO+Acciona'[RT Report], \"UT\") &&\n    \n    \/\/ 2. Условие \"ИЛИ\" (скобки обязательны!)\n    (\n        'Project WD+WR+INCO+Acciona'[Total No of films Rej] > 0 || \n        'Project WD+WR+INCO+Acciona'[RT Film Total] > 0\n    ),\n    \n    \"Exclude UT Films\",\n    BLANK()\n)"
+ },
+ {
+  "TableName":"PIC_vs_Talisman_2026_02_16",
+  "ColumnName":"Joint ID QC Data Project WD+WR+INCO+Acciona",
+  "Expression":"\nVAR Result = \n    CALCULATE(\n        MAXX(\n            FILTER(\n                'Project WD+WR+INCO+Acciona',\n                'Project WD+WR+INCO+Acciona'[Joint ID] = SELECTEDVALUE('PIC_vs_Talisman_2026_02_16'[Joint_ID])\n                    && 'Project WD+WR+INCO+Acciona'[Joint ID] <> \"\"\n            ),\n            'Project WD+WR+INCO+Acciona'[Joint ID]\n        )\n    )\nRETURN \n    IF(ISBLANK(Result), \"Not Found\", Result)"
+ },
+ {
+  "TableName":"PIC_vs_Talisman_2026_02_16",
+  "ColumnName":"RT Report QC Data Project WD+WR+INCO+Acciona",
+  "Expression":"\nCALCULATE(\n    MAXX(\n        FILTER(\n            'Project WD+WR+INCO+Acciona',\n            'Project WD+WR+INCO+Acciona'[RT Report] = VALUES('PIC_vs_Talisman_2026_02_16'[Report_No])\n                && 'Project WD+WR+INCO+Acciona'[RT Report] <>\"\"\n        ),\n        'Project WD+WR+INCO+Acciona'[RT Report]\n    )\n)"
+ },
+ {
+  "TableName":"TALISMAN DATA",
+  "ColumnName":"WeldPoint No.1 WP1",
+  "Expression":"\nVAR CurrentWP = 'TALISMAN DATA'[Index]\nVAR CurrentJointID = 'TALISMAN DATA'[Joint ID]\nRETURN\n    COUNTROWS(\n        FILTER(\n            'TALISMAN DATA',\n            'TALISMAN DATA'[Joint ID] = CurrentJointID &&\n            'TALISMAN DATA'[Index] < CurrentWP\n        )\n    ) + 1"
+ },
+ {
+  "TableName":"RT Films Att RT_MI Master Register",
+  "ColumnName":"Report Match",
+  "Expression":"\nVAR CurrentReport = 'RT Films Att RT_MI Master Register'[RT Report No]\nVAR FoundCount = \n    CALCULATE(\n        COUNTROWS('Project WD+WR+INCO+Acciona'),\n        REMOVEFILTERS('Project WD+WR+INCO+Acciona'),\n        'Project WD+WR+INCO+Acciona'[RT Report] = CurrentReport || \n        'Project WD+WR+INCO+Acciona'[RT Re-Shoot Rep] = CurrentReport\n    )\nRETURN \n    IF(FoundCount > 0, CurrentReport, \"Not Found\")"
+ },
+ {
+  "TableName":"RT Films Att RT_MI Master Register",
+  "ColumnName":"Report Match 2",
+  "Expression":"\nVAR CurrentReport = 'RT Films Att RT_MI Master Register'[RT Report No]\nVAR FoundCount = \n    CALCULATE(\n        COUNTROWS('RT Films For PBI WD+WR'),\n        REMOVEFILTERS('RT Films For PBI WD+WR'),\n        'RT Films For PBI WD+WR'[RT Report] = CurrentReport\n    )\nRETURN \n    IF(FoundCount > 0, CurrentReport, \"Not Found\")"
+ },
+ {
+  "TableName":"RT Films Att RT_MI Master Register",
+  "ColumnName":"VPR RT Films",
+  "Expression":"\nVAR CurrentReport = 'RT Films Att RT_MI Master Register'[RT Report No]\nVAR ResultValue = \n    CALCULATE(\n        MAX('RT Films For PBI WD+WR'[RT Total Films +\"CCC RS\"]),\n        REMOVEFILTERS('RT Films For PBI WD+WR'),\n        'RT Films For PBI WD+WR'[RT Report] = CurrentReport\n    )\nRETURN \n    ResultValue"
+ },
+ {
+  "TableName":"RT Films Att RT_MI Master Register",
+  "ColumnName":"RT Films Difference",
+  "Expression":"\nVAR Quantity = 'RT Films Att RT_MI Master Register'[Quantity of RT Films]\nVAR VPR = 'RT Films Att RT_MI Master Register'[VPR RT Films]\nVAR Result = COALESCE(Quantity, 0) - COALESCE(VPR, 0)\nRETURN \n    ROUND(Result, 2)"
+ },
+ {
+  "TableName":"RT Films Att RT_MI Master Register",
+  "ColumnName":"RT Films Diff <1>",
+  "Expression":"\nVAR Diff = ABS('RT Films Att RT_MI Master Register'[RT Films Difference])\nRETURN \n    SWITCH(\n        TRUE(),\n        ISBLANK(Diff), BLANK(),\n        Diff = 0, \"0\",\n        Diff < 1, \"<1\",\n        Diff > 1, \">1\",\n        \"1\" \n    )"
+ },
+ {
+  "TableName":"Flange Progress",
+  "ColumnName":"HA CWA",
+  "Expression":"\n    LOOKUPVALUE(\n        'HA l0_abs_guide'[Handover Area], \n        'HA l0_abs_guide'[Location Number], 'Flange Progress'[PDS Area Final]\n    )"
+ }
+]

@@ -1,0 +1,6 @@
+[
+ {
+  "TableName":"Calendar",
+  "Expression":"CALENDAR(\"5\/8\/2021\",\"31\/12\/2026\")"
+ }
+]

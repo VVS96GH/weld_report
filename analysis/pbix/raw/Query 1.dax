@@ -1,0 +1,9 @@
+// Learn more about DAX queries at https://aka.ms/dax-queries
+// Here is a sample DAX query from your model, click 'Run'
+// Try other DAX queries by right clicking a table, column, or measure in the data pane and choosing one from 'Quick queries'
+EVALUATE
+FILTER (
+    'Project WD+WR+INCO+Acciona',
+    'Project WD+WR+INCO+Acciona'[Sub-Contractor] ="TEKFEN"
+        && 'Project WD+WR+INCO+Acciona'[RT Report] <> "" && 'Project WD+WR+INCO+Acciona'[Exlude Full Cut & Debris]<>"Exclude Films:Debris"
+)

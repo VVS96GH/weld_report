@@ -1,0 +1,254 @@
+[
+ {
+  "TableName":"Acciona Joint Summary",
+  "RowCount":29
+ },
+ {
+  "TableName":"Acciona_Query",
+  "RowCount":13313
+ },
+ {
+  "TableName":"AllTrain_CSVExport_Joint Record",
+  "RowCount":1560273
+ },
+ {
+  "TableName":"AllTrain_CSVExport_Joint Record NOT WELDED",
+  "RowCount":130994
+ },
+ {
+  "TableName":"Bracing FE_Analysis",
+  "RowCount":1
+ },
+ {
+  "TableName":"CSVExport_Welder Record",
+  "RowCount":5433009
+ },
+ {
+  "TableName":"CSVExport_Welder Record - (ACC  REJ )",
+  "RowCount":641575
+ },
+ {
+  "TableName":"CUM FILE UT Welders Performance 2 Weeks",
+  "RowCount":20026
+ },
+ {
+  "TableName":"CUM FILE Welders Performance 1 Month",
+  "RowCount":103331
+ },
+ {
+  "TableName":"CUM FILE Welders Performance 2 Weeks",
+  "RowCount":100723
+ },
+ {
+  "TableName":"CUM MPI Done",
+  "RowCount":124
+ },
+ {
+  "TableName":"CUM WEEK # Status",
+  "RowCount":1016
+ },
+ {
+  "TableName":"Calendar",
+  "RowCount":1975
+ },
+ {
+  "TableName":"Flange BreakDown",
+  "RowCount":288
+ },
+ {
+  "TableName":"Flange Progress",
+  "RowCount":363245
+ },
+ {
+  "TableName":"Flange ovAssets_1381",
+  "RowCount":1
+ },
+ {
+  "TableName":"Flange ovAssets_1510",
+  "RowCount":134943
+ },
+ {
+  "TableName":"Flange ovAssets_1619",
+  "RowCount":226504
+ },
+ {
+  "TableName":"Flg CCC_Flange Repair",
+  "RowCount":2346
+ },
+ {
+  "TableName":"Flg Enova Flange Repair_W10",
+  "RowCount":223
+ },
+ {
+  "TableName":"Flg Enova Flange Repair_W17",
+  "RowCount":201
+ },
+ {
+  "TableName":"Flg GAC_Flange Repair",
+  "RowCount":255
+ },
+ {
+  "TableName":"Flg Medgulf_Flange Repair",
+  "RowCount":6
+ },
+ {
+  "TableName":"Flg Onepager_data",
+  "RowCount":2946
+ },
+ {
+  "TableName":"Flg TFN_Flange Repair",
+  "RowCount":116
+ },
+ {
+  "TableName":"Flg tekfen repair log main log",
+  "RowCount":116
+ },
+ {
+  "TableName":"HA l0_abs_guide",
+  "RowCount":912
+ },
+ {
+  "TableName":"Inco NDT Tracking",
+  "RowCount":179
+ },
+ {
+  "TableName":"Inco Weld Log",
+  "RowCount":10327
+ },
+ {
+  "TableName":"Inco of NDE Summary",
+  "RowCount":84
+ },
+ {
+  "TableName":"Man_Power",
+  "RowCount":4417
+ },
+ {
+  "TableName":"PIC_vs_Talisman_2026_02_16",
+  "RowCount":44950
+ },
+ {
+  "TableName":"PWHT Status",
+  "RowCount":34
+ },
+ {
+  "TableName":"Project WD+WR",
+  "RowCount":1
+ },
+ {
+  "TableName":"Project WD+WR+INCO+Acciona",
+  "RowCount":6546261
+ },
+ {
+  "TableName":"RT Films Att RT_MI Master Register",
+  "RowCount":177148
+ },
+ {
+  "TableName":"RT Films For PBI WD+WR",
+  "RowCount":186258
+ },
+ {
+  "TableName":"SCDB Data l0_scdb_task",
+  "RowCount":33526
+ },
+ {
+  "TableName":"SCTR OVERALL APPLIED WELDERS",
+  "RowCount":16
+ },
+ {
+  "TableName":"Spool Dump",
+  "RowCount":198647
+ },
+ {
+  "TableName":"TALISMAN DATA",
+  "RowCount":3098341
+ },
+ {
+  "TableName":"TREND RT UT",
+  "RowCount":976
+ },
+ {
+  "TableName":"TREND Report",
+  "RowCount":943
+ },
+ {
+  "TableName":"Talisman Spool Dump",
+  "RowCount":331979
+ },
+ {
+  "TableName":"Temporary",
+  "RowCount":24
+ },
+ {
+  "TableName":"Testpack-wise Details Report",
+  "RowCount":247528
+ },
+ {
+  "TableName":"Trend Active Welders",
+  "RowCount":576
+ },
+ {
+  "TableName":"UT TRACKER (CCC)_Talisman",
+  "RowCount":9419
+ },
+ {
+  "TableName":"UT TRACKER (GAC)",
+  "RowCount":155
+ },
+ {
+  "TableName":"UT TRACKER (TEK)",
+  "RowCount":10
+ },
+ {
+  "TableName":"WEEK #   STATUS",
+  "RowCount":8
+ },
+ {
+  "TableName":"WELDERS_Qualification",
+  "RowCount":5484
+ },
+ {
+  "TableName":"WPQ RECORD REGISTER",
+  "RowCount":318
+ },
+ {
+  "TableName":"WPQ WELDING PROCESS",
+  "RowCount":266
+ },
+ {
+  "TableName":"WPS Reg#",
+  "RowCount":71
+ },
+ {
+  "TableName":"WPS Status CUM",
+  "RowCount":127
+ },
+ {
+  "TableName":"Weld Dump",
+  "RowCount":958634
+ },
+ {
+  "TableName":"Weld Length",
+  "RowCount":728550
+ },
+ {
+  "TableName":"Welding Progress (Project) Nov 2024 - Nov 2025",
+  "RowCount":116
+ },
+ {
+  "TableName":"l2_ndt_list",
+  "RowCount":202
+ },
+ {
+  "TableName":"l3_ndt_spo_summary",
+  "RowCount":9638
+ },
+ {
+  "TableName":"l3_ndt_spo_summary (2)",
+  "RowCount":17
+ },
+ {
+  "TableName":"t_QOB_Log_SP",
+  "RowCount":16532
+ }
+]
