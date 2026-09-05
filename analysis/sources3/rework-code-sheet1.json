@@ -1,0 +1,69 @@
+{
+ "file": "Weld Length/Rework code.xlsx",
+ "object": "Sheet1",
+ "header": [
+  "BT:Burn Through "
+ ],
+ "rows": [
+  [
+   "C "
+  ],
+  [
+   "C:Crack "
+  ],
+  [
+   "CR "
+  ],
+  [
+   "CR:Concave Root "
+  ],
+  [
+   "EP "
+  ],
+  [
+   "ER:Excess Root "
+  ],
+  [
+   "IP "
+  ],
+  [
+   "IP:Incomplete Penetration "
+  ],
+  [
+   "LF:Lack of Fusion "
+  ],
+  [
+   "LI "
+  ],
+  [
+   "P:Porosity "
+  ],
+  [
+   "R/I "
+  ],
+  [
+   "RI "
+  ],
+  [
+   "SC:Surface Concavity "
+  ],
+  [
+   "SL:Slag Inclusion or Elongation "
+  ],
+  [
+   "SLAG "
+  ],
+  [
+   "SLG"
+  ],
+  [
+   "TI:Tungsten Inclusion "
+  ],
+  [
+   "UC:Undercutting "
+  ],
+  [
+   "XX:Others "
+  ]
+ ]
+}

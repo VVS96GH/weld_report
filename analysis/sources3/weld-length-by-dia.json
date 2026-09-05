@@ -1,0 +1,497 @@
+{
+ "source": "Weld Length/Weld Length.xlsx",
+ "sheet": "Sheet1",
+ "functional_dependency_dia_to_length": true,
+ "rows": [
+  {
+   "dia_inch": 0.01,
+   "weld_length": 0.000797814,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 0.1,
+   "weld_length": 0.00797814,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 0.2,
+   "weld_length": 0.01595628,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 0.4,
+   "weld_length": 0.03191256,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 0.5,
+   "weld_length": 0.0669,
+   "sheet1_rows": 36321
+  },
+  {
+   "dia_inch": 0.52,
+   "weld_length": 0.041486328,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 0.65,
+   "weld_length": 0.05185791,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 0.7,
+   "weld_length": 0.05584698,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 0.74,
+   "weld_length": 0.059038236,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 0.75,
+   "weld_length": 0.0838,
+   "sheet1_rows": 94230
+  },
+  {
+   "dia_inch": 0.78,
+   "weld_length": 0.062229492000000004,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 0.8,
+   "weld_length": 0.06382512,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 0.85,
+   "weld_length": 0.06781419,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 0.88,
+   "weld_length": 0.070207632,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 1.0,
+   "weld_length": 0.1049,
+   "sheet1_rows": 219264
+  },
+  {
+   "dia_inch": 1.5,
+   "weld_length": 0.1517,
+   "sheet1_rows": 25082
+  },
+  {
+   "dia_inch": 2.0,
+   "weld_length": 0.1893,
+   "sheet1_rows": 94059
+  },
+  {
+   "dia_inch": 2.25,
+   "weld_length": 0.17950815,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 3.0,
+   "weld_length": 0.2791,
+   "sheet1_rows": 37643
+  },
+  {
+   "dia_inch": 4.0,
+   "weld_length": 0.3589,
+   "sheet1_rows": 36128
+  },
+  {
+   "dia_inch": 4.5,
+   "weld_length": 0.3590163,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 5.0,
+   "weld_length": 0.4437,
+   "sheet1_rows": 2
+  },
+  {
+   "dia_inch": 5.54,
+   "weld_length": 0.441988956,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 6.0,
+   "weld_length": 0.5285,
+   "sheet1_rows": 36990
+  },
+  {
+   "dia_inch": 6.35,
+   "weld_length": 0.50661189,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 7.0,
+   "weld_length": 0.5584698,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 7.62,
+   "weld_length": 0.6079,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 8.0,
+   "weld_length": 0.688,
+   "sheet1_rows": 21652
+  },
+  {
+   "dia_inch": 8.74,
+   "weld_length": 0.697289436,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 9.0,
+   "weld_length": 0.7180326,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 9.53,
+   "weld_length": 0.760316742,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 10.0,
+   "weld_length": 0.8575,
+   "sheet1_rows": 24516
+  },
+  {
+   "dia_inch": 10.5,
+   "weld_length": 0.8377047,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 12.0,
+   "weld_length": 1.017,
+   "sheet1_rows": 21466
+  },
+  {
+   "dia_inch": 13.0,
+   "weld_length": 1.0371582,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 14.0,
+   "weld_length": 1.1166,
+   "sheet1_rows": 10519
+  },
+  {
+   "dia_inch": 16.0,
+   "weld_length": 1.2761,
+   "sheet1_rows": 8984
+  },
+  {
+   "dia_inch": 17.0,
+   "weld_length": 1.3562838,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 18.0,
+   "weld_length": 1.4356,
+   "sheet1_rows": 10019
+  },
+  {
+   "dia_inch": 20.0,
+   "weld_length": 1.5951,
+   "sheet1_rows": 10210
+  },
+  {
+   "dia_inch": 22.0,
+   "weld_length": 1.7546,
+   "sheet1_rows": 123
+  },
+  {
+   "dia_inch": 24.0,
+   "weld_length": 1.9141,
+   "sheet1_rows": 10683
+  },
+  {
+   "dia_inch": 25.0,
+   "weld_length": 1.994535,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 26.0,
+   "weld_length": 2.0737,
+   "sheet1_rows": 2060
+  },
+  {
+   "dia_inch": 28.0,
+   "weld_length": 2.2332,
+   "sheet1_rows": 1421
+  },
+  {
+   "dia_inch": 30.0,
+   "weld_length": 2.3927,
+   "sheet1_rows": 2531
+  },
+  {
+   "dia_inch": 31.0,
+   "weld_length": 2.4732234,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 32.0,
+   "weld_length": 2.5522,
+   "sheet1_rows": 3445
+  },
+  {
+   "dia_inch": 34.0,
+   "weld_length": 2.7117,
+   "sheet1_rows": 965
+  },
+  {
+   "dia_inch": 35.0,
+   "weld_length": 2.792349,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 36.0,
+   "weld_length": 2.8712,
+   "sheet1_rows": 1568
+  },
+  {
+   "dia_inch": 38.0,
+   "weld_length": 3.0307,
+   "sheet1_rows": 1492
+  },
+  {
+   "dia_inch": 38.5,
+   "weld_length": 3.0715839000000003,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 40.0,
+   "weld_length": 3.1902,
+   "sheet1_rows": 878
+  },
+  {
+   "dia_inch": 42.0,
+   "weld_length": 3.3498,
+   "sheet1_rows": 390
+  },
+  {
+   "dia_inch": 44.0,
+   "weld_length": 3.5099,
+   "sheet1_rows": 1556
+  },
+  {
+   "dia_inch": 46.0,
+   "weld_length": 3.6688,
+   "sheet1_rows": 2848
+  },
+  {
+   "dia_inch": 48.0,
+   "weld_length": 3.8283,
+   "sheet1_rows": 5106
+  },
+  {
+   "dia_inch": 50.0,
+   "weld_length": 3.9878,
+   "sheet1_rows": 1487
+  },
+  {
+   "dia_inch": 52.0,
+   "weld_length": 4.1473,
+   "sheet1_rows": 1653
+  },
+  {
+   "dia_inch": 54.0,
+   "weld_length": 4.3068,
+   "sheet1_rows": 10
+  },
+  {
+   "dia_inch": 56.0,
+   "weld_length": 4.4677584,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 58.0,
+   "weld_length": 4.6258,
+   "sheet1_rows": 6
+  },
+  {
+   "dia_inch": 60.0,
+   "weld_length": 4.7854,
+   "sheet1_rows": 538
+  },
+  {
+   "dia_inch": 62.0,
+   "weld_length": 4.9464468,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 64.0,
+   "weld_length": 5.1060096,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 66.0,
+   "weld_length": 5.2639,
+   "sheet1_rows": 1080
+  },
+  {
+   "dia_inch": 68.0,
+   "weld_length": 5.4234,
+   "sheet1_rows": 6
+  },
+  {
+   "dia_inch": 70.0,
+   "weld_length": 5.5829,
+   "sheet1_rows": 479
+  },
+  {
+   "dia_inch": 72.0,
+   "weld_length": 5.7442608,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 74.0,
+   "weld_length": 5.9038236,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 75.0,
+   "weld_length": 5.983605,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 76.0,
+   "weld_length": 6.063386400000001,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 78.0,
+   "weld_length": 6.2229492,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 80.0,
+   "weld_length": 6.382512,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 82.0,
+   "weld_length": 6.5420748,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 84.0,
+   "weld_length": 6.7016376,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 90.0,
+   "weld_length": 7.180326,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 92.0,
+   "weld_length": 7.339888800000001,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 96.0,
+   "weld_length": 7.6590144,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 102.0,
+   "weld_length": 8.1377028,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 104.0,
+   "weld_length": 8.2972656,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 105.0,
+   "weld_length": 8.377047000000001,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 108.0,
+   "weld_length": 8.6163912,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 112.0,
+   "weld_length": 8.9355168,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 114.0,
+   "weld_length": 9.0950796,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 120.0,
+   "weld_length": 9.573768000000001,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 122.0,
+   "weld_length": 9.733330800000001,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 123.0,
+   "weld_length": 9.8131122,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 126.0,
+   "weld_length": 10.0524564,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 128.0,
+   "weld_length": 10.2120192,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 132.0,
+   "weld_length": 10.5311448,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 136.0,
+   "weld_length": 10.8502704,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 144.0,
+   "weld_length": 11.4885216,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 152.0,
+   "weld_length": 12.126772800000001,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 168.0,
+   "weld_length": 13.4032752,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 184.0,
+   "weld_length": 14.679777600000001,
+   "sheet1_rows": 19
+  },
+  {
+   "dia_inch": 192.0,
+   "weld_length": 15.3180288,
+   "sheet1_rows": 19
+  }
+ ]
+}

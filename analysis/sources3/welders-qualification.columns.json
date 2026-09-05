@@ -1,0 +1,1886 @@
+{
+ "file": "Welders/Welders Power Q for PBI .xlsx",
+ "object": "WELDERS_Qualification",
+ "rows": 5484,
+ "header": [
+  "SL No.",
+  "PIP -PIPING                                 STR- STRUCTURAL WELDERS",
+  "Welder Name",
+  "WQT NO #",
+  "Welder No.",
+  "WPS No",
+  "Date of Test",
+  "Welding Process",
+  "Filler Materials",
+  "Base Material",
+  "Type of Joint",
+  "WORKING LOCATION",
+  "VT RESULT",
+  "RT RESULT",
+  "STATUS",
+  "REMARKS",
+  "Sub-Contractor",
+  "WELDER ID",
+  "Welder ID Code+Sub"
+ ],
+ "columns": [
+  {
+   "name": "SL No.",
+   "nonempty": 5484,
+   "blank": 0,
+   "distinct": 1999,
+   "maxlen": 4,
+   "type": "number",
+   "top": [
+    [
+     "52",
+     44
+    ],
+    [
+     "53",
+     36
+    ],
+    [
+     "1",
+     18
+    ],
+    [
+     "2",
+     18
+    ],
+    [
+     "4",
+     18
+    ],
+    [
+     "34",
+     18
+    ],
+    [
+     "14",
+     17
+    ],
+    [
+     "5",
+     16
+    ],
+    [
+     "6",
+     16
+    ],
+    [
+     "15",
+     16
+    ],
+    [
+     "16",
+     16
+    ],
+    [
+     "26",
+     16
+    ],
+    [
+     "3",
+     15
+    ],
+    [
+     "18",
+     15
+    ],
+    [
+     "35",
+     15
+    ],
+    [
+     "7",
+     14
+    ],
+    [
+     "8",
+     14
+    ],
+    [
+     "9",
+     14
+    ],
+    [
+     "17",
+     14
+    ],
+    [
+     "21",
+     14
+    ],
+    [
+     "22",
+     14
+    ],
+    [
+     "11",
+     13
+    ],
+    [
+     "13",
+     13
+    ],
+    [
+     "20",
+     13
+    ],
+    [
+     "50",
+     13
+    ],
+    [
+     "10",
+     12
+    ],
+    [
+     "12",
+     12
+    ],
+    [
+     "19",
+     12
+    ],
+    [
+     "23",
+     12
+    ],
+    [
+     "24",
+     12
+    ]
+   ]
+  },
+  {
+   "name": "PIP -PIPING                                 STR- STRUCTURAL WELDERS",
+   "nonempty": 5484,
+   "blank": 0,
+   "distinct": 4,
+   "maxlen": 11,
+   "type": "text",
+   "top": [
+    [
+     "PIP",
+     5021
+    ],
+    [
+     "STR",
+     301
+    ],
+    [
+     "PIPE / TANK",
+     155
+    ],
+    [
+     "PIP+STR",
+     7
+    ]
+   ]
+  },
+  {
+   "name": "Welder Name",
+   "nonempty": 5484,
+   "blank": 0,
+   "distinct": 3607,
+   "maxlen": 35,
+   "type": "text",
+   "top": [
+    [
+     "MOHAMMED SAJAL MIAH",
+     32
+    ],
+    [
+     "MEHMET CAT",
+     9
+    ],
+    [
+     "CHANDRA RAO MANYAL",
+     9
+    ],
+    [
+     "SHAFEEQUE AHMAD",
+     9
+    ],
+    [
+     "MUKESH KUMAR",
+     8
+    ],
+    [
+     "HASAN GUR",
+     8
+    ],
+    [
+     "GURHAN OZTURK",
+     8
+    ],
+    [
+     "KAMIL PISKIN",
+     8
+    ],
+    [
+     "SUNIL KUMAR",
+     8
+    ],
+    [
+     "MARKANDY K MISHRA",
+     8
+    ],
+    [
+     "BRAJESH KUMAR",
+     8
+    ],
+    [
+     "ANIL KUMAR",
+     7
+    ],
+    [
+     "VIJAY KUMAR",
+     7
+    ],
+    [
+     "HASAN YILDIRIM",
+     7
+    ],
+    [
+     "SAHIN BOLUKBASI",
+     7
+    ],
+    [
+     "OMER HENTES",
+     7
+    ],
+    [
+     "EMRE BOLAT",
+     7
+    ],
+    [
+     "ETHEM YUCEL",
+     7
+    ],
+    [
+     "CUNEYT GENC",
+     7
+    ],
+    [
+     "NOOR HASAN DILJAN",
+     7
+    ],
+    [
+     "MANIKANDAN NARAYANAN",
+     7
+    ],
+    [
+     "JAI SAI SANDEEP",
+     7
+    ],
+    [
+     "ARUN RAJ  RAJAN",
+     6
+    ],
+    [
+     "ANISH SOMAN",
+     6
+    ],
+    [
+     "BIJOY JOY",
+     6
+    ],
+    [
+     "MUKESH KUMAR YADAV",
+     6
+    ],
+    [
+     "VIKASH KUMAR",
+     6
+    ],
+    [
+     "SEZER ISIK",
+     6
+    ],
+    [
+     "MURAT KAPAN",
+     6
+    ],
+    [
+     "GOKHAN GULBAZFIDAN",
+     6
+    ]
+   ]
+  },
+  {
+   "name": "WQT NO #",
+   "nonempty": 5440,
+   "blank": 44,
+   "distinct": 3631,
+   "maxlen": 22,
+   "type": "text",
+   "top": [
+    [
+     "_",
+     208
+    ],
+    [
+     "SPLY0092",
+     31
+    ],
+    [
+     "N/A",
+     13
+    ],
+    [
+     "DEB-WS-WPQT-22-024",
+     12
+    ],
+    [
+     "TEK-015",
+     9
+    ],
+    [
+     "186022",
+     9
+    ],
+    [
+     "TEK-T.D-045",
+     8
+    ],
+    [
+     "TEK-T.C-124",
+     8
+    ],
+    [
+     "TEK-010",
+     8
+    ],
+    [
+     "189477",
+     8
+    ],
+    [
+     "110341",
+     8
+    ],
+    [
+     "203003",
+     7
+    ],
+    [
+     "TEK-T.C-083",
+     7
+    ],
+    [
+     "TEK-T.C-111",
+     7
+    ],
+    [
+     "TEK-T.C-135",
+     7
+    ],
+    [
+     "TEK-T.C-174",
+     7
+    ],
+    [
+     "TEK-024",
+     7
+    ],
+    [
+     "TEK-029",
+     7
+    ],
+    [
+     "TEK-060",
+     7
+    ],
+    [
+     "TEK-096",
+     7
+    ],
+    [
+     "TEK-104",
+     7
+    ],
+    [
+     "DEB-WS-WPQT-23-003",
+     7
+    ],
+    [
+     "201464",
+     6
+    ],
+    [
+     "204398",
+     6
+    ],
+    [
+     "204680",
+     6
+    ],
+    [
+     "TEK-T.D-032",
+     6
+    ],
+    [
+     "TEK-T.D-041",
+     6
+    ],
+    [
+     "TEK-T.C-061",
+     6
+    ],
+    [
+     "TEK-T.C-082",
+     6
+    ],
+    [
+     "TEK-T.C-086",
+     6
+    ]
+   ]
+  },
+  {
+   "name": "Welder No.",
+   "nonempty": 5442,
+   "blank": 42,
+   "distinct": 3200,
+   "maxlen": 14,
+   "type": "text",
+   "top": [
+    [
+     "N/A",
+     200
+    ],
+    [
+     "-",
+     156
+    ],
+    [
+     "DW-044",
+     31
+    ],
+    [
+     "W-034",
+     10
+    ],
+    [
+     "TEK-015",
+     9
+    ],
+    [
+     "TEK-T.D-045",
+     8
+    ],
+    [
+     "TEK-T.C-124",
+     8
+    ],
+    [
+     "TEK-010",
+     8
+    ],
+    [
+     "W-078",
+     8
+    ],
+    [
+     "W-112",
+     8
+    ],
+    [
+     "GAC-PW-018",
+     7
+    ],
+    [
+     "TEK-T.C-083",
+     7
+    ],
+    [
+     "TEK-T.C-111",
+     7
+    ],
+    [
+     "TEK-T.C-135",
+     7
+    ],
+    [
+     "TEK-T.C-174",
+     7
+    ],
+    [
+     "TEK-024",
+     7
+    ],
+    [
+     "TEK-029",
+     7
+    ],
+    [
+     "TEK-060",
+     7
+    ],
+    [
+     "TEK-096",
+     7
+    ],
+    [
+     "TEK-104",
+     7
+    ],
+    [
+     "W-073",
+     7
+    ],
+    [
+     "W-262",
+     7
+    ],
+    [
+     "W-1421",
+     7
+    ],
+    [
+     "GAC-PW-010",
+     6
+    ],
+    [
+     "GAC-PW-077",
+     6
+    ],
+    [
+     "GAC-PW-086",
+     6
+    ],
+    [
+     "TEK-T.D-032",
+     6
+    ],
+    [
+     "TEK-T.D-041",
+     6
+    ],
+    [
+     "TEK-T.C-061",
+     6
+    ],
+    [
+     "TEK-T.C-082",
+     6
+    ]
+   ]
+  },
+  {
+   "name": "WPS No",
+   "nonempty": 5453,
+   "blank": 31,
+   "distinct": 116,
+   "maxlen": 74,
+   "type": "text",
+   "top": [
+    [
+     "383-TEK-WPS-CS-LTCS-002",
+     1002
+    ],
+    [
+     "383-TEK-WPS-CS-LTCS-004",
+     656
+    ],
+    [
+     "CS/LTCS-005",
+     583
+    ],
+    [
+     "GAC-WPS-P-CS-001",
+     360
+    ],
+    [
+     "CS/LTCS-05",
+     214
+    ],
+    [
+     "CS/LTCS-001",
+     184
+    ],
+    [
+     "CS-05 (6\")",
+     180
+    ],
+    [
+     "GAC-WPS-S-001",
+     127
+    ],
+    [
+     "CS/LTCS-01",
+     112
+    ],
+    [
+     "383-TEK-WPS-SS-003",
+     101
+    ],
+    [
+     "INQ-420-WPS-027",
+     99
+    ],
+    [
+     "316-SS-01",
+     93
+    ],
+    [
+     "GAC-WPS-P-CS/LTC002",
+     77
+    ],
+    [
+     "N/A",
+     72
+    ],
+    [
+     "316-SS-001",
+     72
+    ],
+    [
+     "CS/LTCS05",
+     68
+    ],
+    [
+     "CS-02",
+     65
+    ],
+    [
+     "CS/LTCS-AUT-007",
+     56
+    ],
+    [
+     "ST-03 AWS D1.1",
+     51
+    ],
+    [
+     "WPS-638-02",
+     49
+    ],
+    [
+     "316-SS-02",
+     49
+    ],
+    [
+     "383-TEK-WPS-SS-005",
+     45
+    ],
+    [
+     "CS-01",
+     45
+    ],
+    [
+     "WPS-638-01",
+     44
+    ],
+    [
+     "383-TEK-WPS-LAS-001",
+     43
+    ],
+    [
+     "383-TEK-WPS-LAS-002",
+     42
+    ],
+    [
+     "BC 324G",
+     42
+    ],
+    [
+     "CS-04",
+     41
+    ],
+    [
+     "CS-01\n(2\")",
+     41
+    ],
+    [
+     "SS-01\n(2\")",
+     41
+    ]
+   ]
+  },
+  {
+   "name": "Date of Test",
+   "nonempty": 5377,
+   "blank": 107,
+   "distinct": 482,
+   "maxlen": 10,
+   "type": "date",
+   "top": [
+    [
+     "2023-04-04",
+     216
+    ],
+    [
+     "2023-04-26",
+     143
+    ],
+    [
+     "2023-04-27",
+     118
+    ],
+    [
+     "2023-04-25",
+     107
+    ],
+    [
+     "2023-04-28",
+     96
+    ],
+    [
+     "2023-05-02",
+     94
+    ],
+    [
+     "2023-05-03",
+     90
+    ],
+    [
+     "2023-05-01",
+     89
+    ],
+    [
+     "2023-04-24",
+     88
+    ],
+    [
+     "2023-05-06",
+     84
+    ],
+    [
+     "2024-08-22",
+     84
+    ],
+    [
+     "2023-03-17",
+     78
+    ],
+    [
+     "2023-04-29",
+     70
+    ],
+    [
+     "2023-01-24",
+     67
+    ],
+    [
+     "2023-01-23",
+     63
+    ],
+    [
+     "2024-08-27",
+     54
+    ],
+    [
+     "2023-01-22",
+     50
+    ],
+    [
+     "2023-01-21",
+     48
+    ],
+    [
+     "2023-01-25",
+     47
+    ],
+    [
+     "2024-08-23",
+     44
+    ],
+    [
+     "2023-05-05",
+     41
+    ],
+    [
+     "2013-05-24",
+     40
+    ],
+    [
+     "2024-08-14",
+     38
+    ],
+    [
+     "2023-11-23",
+     35
+    ],
+    [
+     "2023-09-06",
+     34
+    ],
+    [
+     "2023-09-10",
+     32
+    ],
+    [
+     "2023-09-17",
+     32
+    ],
+    [
+     "2023-09-07",
+     30
+    ],
+    [
+     "2023-04-03",
+     29
+    ],
+    [
+     "2023-09-04",
+     28
+    ]
+   ]
+  },
+  {
+   "name": "Welding Process",
+   "nonempty": 5452,
+   "blank": 32,
+   "distinct": 24,
+   "maxlen": 26,
+   "type": "text",
+   "top": [
+    [
+     "GTAW",
+     2141
+    ],
+    [
+     "GTAW/SMAW",
+     1070
+    ],
+    [
+     "GTAW+\nSMAW",
+     785
+    ],
+    [
+     "GTAW+SMAW",
+     646
+    ],
+    [
+     "SMAW",
+     481
+    ],
+    [
+     "N/A",
+     72
+    ],
+    [
+     "GMAW/SAW",
+     55
+    ],
+    [
+     "GTAW\nSMAW",
+     49
+    ],
+    [
+     "SAW",
+     36
+    ],
+    [
+     "FCAW",
+     29
+    ],
+    [
+     "GMAW",
+     19
+    ],
+    [
+     "GTAW\n+\nSMAW",
+     17
+    ],
+    [
+     "GMAW(STT)/FCAW",
+     16
+    ],
+    [
+     "STT+SAW",
+     11
+    ],
+    [
+     "SMAW (With Backing)",
+     5
+    ],
+    [
+     "\nSMAW",
+     4
+    ],
+    [
+     "GTAW/SAW",
+     4
+    ],
+    [
+     "GMAW(RMD)",
+     2
+    ],
+    [
+     "GMAW(RMD)/SMAW BACK WELDED",
+     2
+    ],
+    [
+     "GMAW(RMD)/GMAW-P",
+     2
+    ],
+    [
+     "GMAW/SMAW",
+     2
+    ],
+    [
+     "GMAW+SAW",
+     2
+    ],
+    [
+     "SMAW+SAW",
+     1
+    ],
+    [
+     "SMAW / FCAW",
+     1
+    ]
+   ]
+  },
+  {
+   "name": "Filler Materials",
+   "nonempty": 5452,
+   "blank": 32,
+   "distinct": 70,
+   "maxlen": 30,
+   "type": "text",
+   "top": [
+    [
+     "ER70S-6 ",
+     1047
+    ],
+    [
+     "ER70S-6 E7018-1",
+     674
+    ],
+    [
+     "ER70S-6 / E7018-1H4R",
+     657
+    ],
+    [
+     "ER70S-6",
+     504
+    ],
+    [
+     "ER70S-6/E7018-1 H4R",
+     360
+    ],
+    [
+     "ER 70S-6 / E7018-1",
+     238
+    ],
+    [
+     "ER316L",
+     232
+    ],
+    [
+     "ER70S-6\nE7018-1",
+     221
+    ],
+    [
+     "E7018-1",
+     218
+    ],
+    [
+     "E7018-1H4R",
+     141
+    ],
+    [
+     "ER308L",
+     128
+    ],
+    [
+     "ER 70S-6",
+     123
+    ],
+    [
+     "E7018",
+     122
+    ],
+    [
+     "ER70S-6/E7018-1",
+     81
+    ],
+    [
+     "ER 316L",
+     79
+    ],
+    [
+     "N/A",
+     72
+    ],
+    [
+     "ER316L / E316L-15",
+     45
+    ],
+    [
+     "ER70S-6 + E7018-1H4R",
+     45
+    ],
+    [
+     "ER80S-B2 / E8018-B2H4",
+     43
+    ],
+    [
+     "ER80S-B2",
+     42
+    ],
+    [
+     "ER316L/E316L-17",
+     36
+    ],
+    [
+     "ER70S-6/EH12K",
+     35
+    ],
+    [
+     "ER 80S-B2 / E8018-1 H4R",
+     30
+    ],
+    [
+     "ER 316L / E316L-17",
+     21
+    ],
+    [
+     "ER80SB2/E8018B2",
+     20
+    ],
+    [
+     "ER 308L",
+     18
+    ],
+    [
+     "ER70S-6/ E7018-1",
+     18
+    ],
+    [
+     "ER 2594",
+     17
+    ],
+    [
+     "ER 308L+E 308L - 15",
+     14
+    ],
+    [
+     "ER70S-6+F7A8 - EH12K",
+     11
+    ]
+   ]
+  },
+  {
+   "name": "Base Material",
+   "nonempty": 5452,
+   "blank": 32,
+   "distinct": 75,
+   "maxlen": 36,
+   "type": "text",
+   "top": [
+    [
+     "ASTM A106 Gr.B",
+     1620
+    ],
+    [
+     "A106 GR-B",
+     709
+    ],
+    [
+     "A333 GR6 ",
+     390
+    ],
+    [
+     "A106",
+     285
+    ],
+    [
+     "API5L, X52Q",
+     247
+    ],
+    [
+     "A106 -B",
+     210
+    ],
+    [
+     "A312TP316L",
+     186
+    ],
+    [
+     "ASTM A573",
+     155
+    ],
+    [
+     "S275 JR",
+     150
+    ],
+    [
+     "ASTM A312 Gr.TP316L",
+     146
+    ],
+    [
+     "A106 GR.B",
+     93
+    ],
+    [
+     "ASTM A335 Gr.P11",
+     87
+    ],
+    [
+     "A358 TP316L",
+     85
+    ],
+    [
+     "N/A",
+     72
+    ],
+    [
+     "S355 J2",
+     61
+    ],
+    [
+     "S275JR",
+     58
+    ],
+    [
+     "A312TP304L",
+     56
+    ],
+    [
+     "API5L, PSL2, L360Q/X52Q",
+     45
+    ],
+    [
+     "ASTM A333 Gr.6",
+     44
+    ],
+    [
+     " ASTM A333 Gr.6",
+     44
+    ],
+    [
+     " ASTM A106 Gr.B",
+     43
+    ],
+    [
+     "P275NH",
+     42
+    ],
+    [
+     "API5L, X42N ",
+     40
+    ],
+    [
+     "BS EN 100025 S275JR",
+     36
+    ],
+    [
+     "A106 Gr.B",
+     36
+    ],
+    [
+     "API5L, PSL2, L360Q/X52",
+     35
+    ],
+    [
+     "API5L, X60Q ",
+     33
+    ],
+    [
+     "ASTM A312 Gr.TP304L",
+     31
+    ],
+    [
+     "A335-P11  ",
+     29
+    ],
+    [
+     "A333 GR6 / A350 LF2",
+     26
+    ]
+   ]
+  },
+  {
+   "name": "Type of Joint",
+   "nonempty": 5452,
+   "blank": 32,
+   "distinct": 3,
+   "maxlen": 11,
+   "type": "text",
+   "top": [
+    [
+     "BW",
+     5387
+    ],
+    [
+     "N/A",
+     64
+    ],
+    [
+     "A358 TP316L",
+     1
+    ]
+   ]
+  },
+  {
+   "name": "WORKING LOCATION",
+   "nonempty": 5454,
+   "blank": 30,
+   "distinct": 56,
+   "maxlen": 49,
+   "type": "text",
+   "top": [
+    [
+     "W10",
+     1358
+    ],
+    [
+     "NOT MOBILIZED",
+     772
+    ],
+    [
+     "_",
+     433
+    ],
+    [
+     "W10 FABSHOP",
+     314
+    ],
+    [
+     "W2/W3",
+     312
+    ],
+    [
+     "Qualified in India ",
+     226
+    ],
+    [
+     "NOT MOBIIZED (FAILED IN INDIA)",
+     200
+    ],
+    [
+     "To be Mobilized",
+     198
+    ],
+    [
+     "Qualified in India - 5th Campaign To be\nmobilized",
+     168
+    ],
+    [
+     "Disqualified in India ",
+     157
+    ],
+    [
+     "Qualified in India - 4th Campaign To be mobilized",
+     151
+    ],
+    [
+     "MED GULF W/P",
+     143
+    ],
+    [
+     "EMKAN-DOHA",
+     143
+    ],
+    [
+     "Disqualifed in India",
+     135
+    ],
+    [
+     "BLACK CAT W/P",
+     94
+    ],
+    [
+     "W2/W3 & W1A",
+     78
+    ],
+    [
+     "DANEM W/P",
+     61
+    ],
+    [
+     "W2/W3 ",
+     59
+    ],
+    [
+     "SLUG CATCHER",
+     50
+    ],
+    [
+     "W10 AREA",
+     45
+    ],
+    [
+     "WELDERS ID AND QUALIFICATION DETAILS NOT AVAILBLE",
+     42
+    ],
+    [
+     "DEBAJ WORK SHOP",
+     41
+    ],
+    [
+     "W10 FCW",
+     38
+    ],
+    [
+     "W10 FAB SHOP",
+     33
+    ],
+    [
+     "N/A",
+     24
+    ],
+    [
+     "QUALIFICATION DETAILS NOT AVAILBLE",
+     22
+    ],
+    [
+     "FORMAN//CHAREHAND",
+     18
+    ],
+    [
+     "FOREMAN / CHARGE HAND",
+     17
+    ],
+    [
+     "W2/W3 SITE",
+     15
+    ],
+    [
+     "CAMP",
+     13
+    ]
+   ]
+  },
+  {
+   "name": "VT RESULT",
+   "nonempty": 5453,
+   "blank": 31,
+   "distinct": 2,
+   "maxlen": 8,
+   "type": "text",
+   "top": [
+    [
+     "ACCEPTED",
+     4726
+    ],
+    [
+     "REJECTED",
+     727
+    ]
+   ]
+  },
+  {
+   "name": "RT RESULT",
+   "nonempty": 5453,
+   "blank": 31,
+   "distinct": 4,
+   "maxlen": 8,
+   "type": "text",
+   "top": [
+    [
+     "ACCEPTED",
+     4657
+    ],
+    [
+     "REJECTED",
+     480
+    ],
+    [
+     "N/A",
+     303
+    ],
+    [
+     "-",
+     13
+    ]
+   ]
+  },
+  {
+   "name": "STATUS",
+   "nonempty": 5453,
+   "blank": 31,
+   "distinct": 14,
+   "maxlen": 65,
+   "type": "text",
+   "top": [
+    [
+     "QUALIFIED FOR PIPING",
+     2986
+    ],
+    [
+     "DISQUALIFIED FOR PIPING",
+     1412
+    ],
+    [
+     "QUALIFIED FOR PIPING IN INDIA ( SEP 2023)",
+     243
+    ],
+    [
+     "QUALIFIED FOR STR",
+     225
+    ],
+    [
+     "QUALIFIED FOR PIPING IN INDIA",
+     180
+    ],
+    [
+     "DISQUALIFIED IN INDIA ( JAN 2023)",
+     141
+    ],
+    [
+     "QUALIFIED FOR TANK",
+     140
+    ],
+    [
+     "PROMOTED AS FORMEN",
+     44
+    ],
+    [
+     "QUALIFIED FOR STR (AWSD1.1)",
+     44
+    ],
+    [
+     "DISQUALIFIED",
+     27
+    ],
+    [
+     "QUALIFIED FOR PIPING IN INDIA\nTo be Mobilized to project",
+     6
+    ],
+    [
+     "DISQUALIFIED FOR STR",
+     2
+    ],
+    [
+     "QUALIFIED FOR STRUTURAL",
+     2
+    ],
+    [
+     "NOT MOBILIZED                               (QUALIFIED IN TURKEY)",
+     1
+    ]
+   ]
+  },
+  {
+   "name": "REMARKS",
+   "nonempty": 2444,
+   "blank": 3040,
+   "distinct": 54,
+   "maxlen": 110,
+   "type": "text",
+   "top": [
+    [
+     "NOT MOBILIZED                               (QUALIFIED IN INDIA -REMOVED FROM PROJECT WQT LIST ON 09-12-2023)",
+     674
+    ],
+    [
+     "Qualified in India - 6th Campaign To be\nmobilized",
+     238
+    ],
+    [
+     "DISQUALIIFED DUE TO FAILED IN VT",
+     208
+    ],
+    [
+     "Qualified in India - 3rd Campaign  To be mobilized",
+     178
+    ],
+    [
+     "Qualified in India - 5th Campaign To be\nmobilized",
+     168
+    ],
+    [
+     "Disqualified in India - 6th Campaign To be\nmobilized",
+     157
+    ],
+    [
+     "Qualified in India - 4th Campaign To be mobilized",
+     151
+    ],
+    [
+     "Disqualified in India - 4th Campaign ",
+     135
+    ],
+    [
+     "NOT MOBILIZED                               (QUALIFIED IN TURKEY -REMOVED FROM PROJECT WQT LIST ON 09-12-2023)",
+     96
+    ],
+    [
+     "DISQUALIFIED DUE TO FAILED IN VISUAL",
+     91
+    ],
+    [
+     "TERMINATED",
+     70
+    ],
+    [
+     "DISQUALIFIED FORM PROJECT",
+     64
+    ],
+    [
+     "DISQUALIFIED DUE TO FAILED IN RT",
+     56
+    ],
+    [
+     "EMKAN",
+     29
+    ],
+    [
+     "HIRED",
+     15
+    ],
+    [
+     "DISQUALIFIED DUE TO FAILED IN VT",
+     14
+    ],
+    [
+     "FOR SUPPORT WELDING",
+     12
+    ],
+    [
+     "ADDED ON 19/11/2023",
+     10
+    ],
+    [
+     "RESIGNED",
+     9
+    ],
+    [
+     "ADDED ON 06/11/2023",
+     9
+    ],
+    [
+     "Disqualified on 22-07-2023\nDue to No RT /6 Month  ",
+     7
+    ],
+    [
+     "W2/W3",
+     6
+    ],
+    [
+     "Gate Pass Issue",
+     4
+    ],
+    [
+     "Termination on 19/09/2022\nBAD BEHAVIOUR",
+     3
+    ],
+    [
+     "W10 WELDING SCHOOL",
+     3
+    ],
+    [
+     "MOVED TO STRUCTIURAL",
+     2
+    ],
+    [
+     "Disqualified on 11-06-2022 (Applied welders)",
+     2
+    ],
+    [
+     "Termination on 17/03/2022 (Applied welders)",
+     2
+    ],
+    [
+     "Terminated .Disqualified on 23-04-2023 Due to No RT /6 Month ",
+     2
+    ],
+    [
+     "QUALIFIED FOR STRUCTURAL",
+     2
+    ]
+   ]
+  },
+  {
+   "name": "Sub-Contractor",
+   "nonempty": 5484,
+   "blank": 0,
+   "distinct": 6,
+   "maxlen": 7,
+   "type": "text",
+   "top": [
+    [
+     "CCC",
+     2372
+    ],
+    [
+     "TEKFEN",
+     2033
+    ],
+    [
+     "GAC",
+     732
+    ],
+    [
+     "Inco",
+     155
+    ],
+    [
+     "MEDGULF",
+     143
+    ],
+    [
+     "Acciona",
+     49
+    ]
+   ]
+  },
+  {
+   "name": "WELDER ID",
+   "nonempty": 5442,
+   "blank": 42,
+   "distinct": 3803,
+   "maxlen": 50,
+   "type": "text",
+   "top": [
+    [
+     "MOHAMMED SAJAL MIAH-DW-044-CCC",
+     31
+    ],
+    [
+     "MEHMET CAT-TEK-015-TEKFEN",
+     9
+    ],
+    [
+     "SHAFEEQUE AHMAD-W-034-CCC",
+     9
+    ],
+    [
+     "HASAN GUR-TEK-T.D-045-TEKFEN",
+     8
+    ],
+    [
+     "GURHAN OZTURK-TEK-T.C-124-TEKFEN",
+     8
+    ],
+    [
+     "KAMIL PISKIN-TEK-010-TEKFEN",
+     8
+    ],
+    [
+     "MARKANDY K MISHRA-W-078-CCC",
+     8
+    ],
+    [
+     "BRAJESH KUMAR-W-112-CCC",
+     8
+    ],
+    [
+     "HASAN YILDIRIM-TEK-T.C-083-TEKFEN",
+     7
+    ],
+    [
+     "SAHIN BOLUKBASI-TEK-T.C-111-TEKFEN",
+     7
+    ],
+    [
+     "OMER HENTES-TEK-T.C-135-TEKFEN",
+     7
+    ],
+    [
+     "EMRE BOLAT-TEK-T.C-174-TEKFEN",
+     7
+    ],
+    [
+     "ETHEM YUCEL-TEK-024-TEKFEN",
+     7
+    ],
+    [
+     "CUNEYT GENC-TEK-029-TEKFEN",
+     7
+    ],
+    [
+     "NOOR HASAN DILJAN-TEK-060-TEKFEN",
+     7
+    ],
+    [
+     "MANIKANDAN NARAYANAN-TEK-096-TEKFEN",
+     7
+    ],
+    [
+     "JAI SAI SANDEEP-TEK-104-TEKFEN",
+     7
+    ],
+    [
+     "ARUN RAJ  RAJAN-GAC-PW-010-GAC",
+     6
+    ],
+    [
+     "ANISH SOMAN-GAC-PW-077-GAC",
+     6
+    ],
+    [
+     "BIJOY JOY-GAC-PW-086-GAC",
+     6
+    ],
+    [
+     "SEZER ISIK-TEK-T.D-032-TEKFEN",
+     6
+    ],
+    [
+     "MURAT KAPAN-TEK-T.D-041-TEKFEN",
+     6
+    ],
+    [
+     "GOKHAN GULBAZFIDAN-TEK-T.C-061-TEKFEN",
+     6
+    ],
+    [
+     "FIRAT YILMAZ-TEK-T.C-082-TEKFEN",
+     6
+    ],
+    [
+     "KAMIL DOMURCUK-TEK-T.C-086-TEKFEN",
+     6
+    ],
+    [
+     "AYKUT YILDIRIM-TEK-T.C-088-TEKFEN",
+     6
+    ],
+    [
+     "RECEP ESGI-TEK-T.C-125-TEKFEN",
+     6
+    ],
+    [
+     "MAHSUM OZMEN-TEK-T.C-149-TEKFEN",
+     6
+    ],
+    [
+     "MEHMET CICEK -TEK-006-TEKFEN",
+     6
+    ],
+    [
+     "BURAK SONMEZ-TEK-007-TEKFEN",
+     6
+    ]
+   ]
+  },
+  {
+   "name": "Welder ID Code+Sub",
+   "nonempty": 5442,
+   "blank": 42,
+   "distinct": 3268,
+   "maxlen": 22,
+   "type": "text",
+   "top": [
+    [
+     "N/A-TEKFEN",
+     200
+    ],
+    [
+     "--CCC",
+     143
+    ],
+    [
+     "DW-044-CCC",
+     31
+    ],
+    [
+     "--Inco",
+     13
+    ],
+    [
+     "W-034-CCC",
+     10
+    ],
+    [
+     "TEK-015-TEKFEN",
+     9
+    ],
+    [
+     "TEK-T.D-045-TEKFEN",
+     8
+    ],
+    [
+     "TEK-T.C-124-TEKFEN",
+     8
+    ],
+    [
+     "TEK-010-TEKFEN",
+     8
+    ],
+    [
+     "W-078-CCC",
+     8
+    ],
+    [
+     "W-112-CCC",
+     8
+    ],
+    [
+     "GAC-PW-018-GAC",
+     7
+    ],
+    [
+     "TEK-T.C-083-TEKFEN",
+     7
+    ],
+    [
+     "TEK-T.C-111-TEKFEN",
+     7
+    ],
+    [
+     "TEK-T.C-135-TEKFEN",
+     7
+    ],
+    [
+     "TEK-T.C-174-TEKFEN",
+     7
+    ],
+    [
+     "TEK-024-TEKFEN",
+     7
+    ],
+    [
+     "TEK-029-TEKFEN",
+     7
+    ],
+    [
+     "TEK-060-TEKFEN",
+     7
+    ],
+    [
+     "TEK-096-TEKFEN",
+     7
+    ],
+    [
+     "TEK-104-TEKFEN",
+     7
+    ],
+    [
+     "W-073-CCC",
+     7
+    ],
+    [
+     "W-1421-CCC",
+     7
+    ],
+    [
+     "GAC-PW-010-GAC",
+     6
+    ],
+    [
+     "GAC-PW-077-GAC",
+     6
+    ],
+    [
+     "GAC-PW-086-GAC",
+     6
+    ],
+    [
+     "TEK-T.D-032-TEKFEN",
+     6
+    ],
+    [
+     "TEK-T.D-041-TEKFEN",
+     6
+    ],
+    [
+     "TEK-T.C-061-TEKFEN",
+     6
+    ],
+    [
+     "TEK-T.C-082-TEKFEN",
+     6
+    ]
+   ]
+  }
+ ]
+}

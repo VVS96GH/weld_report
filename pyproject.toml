@@ -5,6 +5,7 @@ description = "Stdlib-only analysis scripts for the weld report (profiling, mock
 requires-python = ">=3.12"
 dependencies = [
     "openpyxl>=3.1.5",
+    "xlrd>=2.0.2",
 ]
 
 [tool.uv]

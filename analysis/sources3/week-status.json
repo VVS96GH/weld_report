@@ -1,0 +1,114 @@
+{
+ "file": "Welders/Welders Power Q for PBI .xlsx",
+ "object": "WEEK #   STATUS",
+ "header": [
+  "",
+  "S.No",
+  "Welders Qualification Status Summary Report",
+  "GAC",
+  "MEDGULF",
+  "TEKFEN",
+  "CCC",
+  "ACCIONA",
+  "INCO",
+  "TOTAL"
+ ],
+ "rows": [
+  [
+   "",
+   "1",
+   "Under Qualification ",
+   "0",
+   "0",
+   "0",
+   "0",
+   "0",
+   "0",
+   "0"
+  ],
+  [
+   "",
+   "2",
+   "Qualification Failed (Overall)",
+   "0",
+   "0",
+   "290",
+   "528",
+   "0",
+   "0",
+   "818"
+  ],
+  [
+   "",
+   "3",
+   "Qualified , Production Performance Test (First 3 joints) to be Done ",
+   "17",
+   "0",
+   "0",
+   "1179",
+   "0",
+   "0",
+   "1196"
+  ],
+  [
+   "",
+   "4",
+   "Qualified , including first 3 production joints passed) ",
+   "443",
+   "35",
+   "161",
+   "736",
+   "0",
+   "0",
+   "1375"
+  ],
+  [
+   "",
+   "5",
+   "Re-Qualified 1st time",
+   "0",
+   "0",
+   "18",
+   "0",
+   "0",
+   "0",
+   "18"
+  ],
+  [
+   "",
+   "6",
+   "Disqualified due to poor quality ",
+   "0",
+   "0",
+   "22",
+   "0",
+   "0",
+   "0",
+   "22"
+  ],
+  [
+   "",
+   "7",
+   "Disqualified due to qualification expiration (more than 6 month) ",
+   "0",
+   "70",
+   "361",
+   "11",
+   "0",
+   "0",
+   "442"
+  ],
+  [
+   "",
+   "8",
+   "Resignation & Termination",
+   "115",
+   "0",
+   "533",
+   "13",
+   "0",
+   "0",
+   "661"
+  ]
+ ]
+}
