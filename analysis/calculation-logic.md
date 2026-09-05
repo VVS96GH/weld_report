@@ -1304,7 +1304,7 @@ frozen copy, not a refreshable source, and the whole point of the rebuild is a l
 Evidence for (b) being safe: pages 19–40 and the GAC/TEK/MED half of 4–11, 42–44 are 100 %
 `Weld Dump`-bound (§1.2) and §4 shows they reproduce.
 
-*File-presence table above superseded by §7 C-12.*
+*File-presence table above superseded by §7 C-12 and C-18.*
 
 **R-02 — Are cancelled welds in or out?**
 **Out. Confirmed, not inferred.** The `Weld Dump` M query has
@@ -2132,3 +2132,267 @@ a `source`/`spool_source` discriminator (per R2-06) before CCC's `FABRICATED` me
 buildable. `Joint.csv` stays unloaded — not a missing-file gap, a deliberate exclusion.
 
 **Ruling:** R2-06, R2-07.
+
+### Batch-3 additions (2026-09-05)
+
+### C-14 — `SCTR NFE WELDERS APPLIED.xls`'s M is stale and would error on refresh; our loader is positional; M90 recomputes to 3,816, not the frozen 3,783
+
+**§2 says** (`analysis/calculation-logic.md:885-888`):
+> ### M90 — Project_Welder (page-1 KPI, 3,783)
+> * No fact-table measure. `Sum(SCTR OVERALL APPLIED WELDERS[QUALIFIED  WELDERS])` — a 16-row
+>   table loaded from `WORK FILES\Welders\SCTR NFE WELDERS APPLIED.xls`.
+
+**What is actually true.** The stored M (`analysis/pbix/model.md:4605-4607`) is:
+
+```m
+#"Removed Bottom Rows" = Table.RemoveLastN(#"Promoted Headers",4),
+#"Removed Columns"  = Table.RemoveColumns(#"Removed Bottom Rows",{"SUB CONTRACTOR"}),
+#"Renamed Columns"  = Table.RenameColumns(#"Removed Columns",{{"Column2", "SUB CONTRACTOR"}}),
+```
+
+The delivered file has drifted from this query on two independent axes:
+
+1. **A column has been inserted at the left since the M was written.** Sub-contractor
+   names now sit in column 3 of the promoted-header table, not column 2; the literal
+   column named `SUB CONTRACTOR` (column 2) is **empty on every data row**. The M removes
+   that empty column and then renames `Column2` — a name `Table.RemoveColumns` has already
+   made not exist. `Table.RenameColumns` raises on a missing column, so **the query as
+   stored fails against this file.**
+2. `RemoveLastN(4)` + a second `RemoveLastN(1)` later in the chain would drop 5 of the
+   file's 17 data rows, leaving **12, not 16** — those two footer-trims were written for a
+   vintage with 5 footer rows; today's file has none. The pbix's stored **16** is reproduced
+   by the final `[STRUCTURAL / PIPING] <> "TOTAL"` filter alone (17 − 1 = 16).
+
+Per ruling R3-09, our loader is built **positionally against the file, not against the
+stored M**: take the sub-contractor name from the first non-empty of columns 2/3 with
+fill-down, and drop the `TOTAL` row. Reproducing the stored query literally is not possible
+— it errors.
+
+Recomputed this way, **M90 project total = 3,816** (Σ `QUALIFIED  WELDERS` over the 16 kept
+rows, matching the sheet's own `TOTAL` row exactly), by party: **CCC 2,045** (1,990 + 55),
+**TEKFEN 773** (723 + 50), **GAC 611**, **INCO 239**, **MEDGULF 121**, **ACCIONA 27** — not
+the **3,783** this file's §2 records as the KPI's frozen pbix-visual value
+(`analysis/mockups/welding-spec.md:25`, `mockups/welding-dashboard 1.html:744`). The 33-row
+delta is expected drift between the frozen mockup snapshot and today's source file, not a
+loader bug.
+
+Evidence: `analysis/sources3/welders.md` §1.1-§1.3; `analysis/pbix/model.md:4598-4613` (the
+full stored M); `analysis/sources3/sctr-applied-welders.json` (the measured 16-row extract);
+`analysis/sources3/rulings.md` R3-09.
+
+**Consequence for the build.** `scripts/load-qualified-welders.ts` must not attempt to port
+`Table.RemoveColumns`/`Table.RenameColumns`/the two `RemoveLastN` steps literally — doing so
+reproduces a query that errors on the current file. Build positionally per R3-09 and record,
+in `db/README.md` and the widget provenance, that M90's validation target is now 3,816 (live
+recompute) rather than the 3,783 captured in the pbix snapshot this file's §2 quotes.
+
+**Ruling:** R3-09, R3-11 (the BIFF read path).
+
+### C-15 — `Weld Length` is a 98-row dia→length lookup exploded to 728,550 rows, not a per-joint fact table; the functional dependency holds with zero collisions; `numeric(8,3)` truncates real values
+
+**§1 says** (`analysis/calculation-logic.md:246-248`):
+> CCC rows carry **no** `Weld Length` — that is why the calc column `Weld Length "PR all"`
+> falls back to `LOOKUPVALUE('Weld Length'[Weld Length], 'Weld Length'[Dia inch], [Dia inch])`
+> against the `Weld Length` dimension, loaded from
+
+...continuing on line 249-250, `WORK FILES\Weld Length\Weld Length.xlsx` (columns `Weld
+Type`, `Dia inch`, `Weld Length`; 728,550 rows in the pbix) — correct as a row count, but it
+describes `Weld Length` only as a "dimension" of 728,550 rows without saying what those rows
+actually are: a per-joint fact table would need a fresh row per weld; this one does not.
+
+**What is actually true.** Measured directly off `Weld Length.xlsx` `Sheet1`
+(`A1:C728551`, 3 columns, no filter/skip/rename in the M): only **98** distinct `Dia inch`
+values exist, and they map to exactly **98** distinct `Weld Length` values — **zero** `Dia
+inch` values map to more than one `Weld Length` (0 functional-dependency violations across
+all 728,550 rows). `Weld Type` carries no information at all (1,516 distinct
+`(Weld Type, Dia inch)` pairs collapse to the same 98 lengths; e.g. every row with
+`Dia inch = 1` has `Weld Length = 0.1049`, all 219,264 of them). The 728,550 rows are an
+**exploded copy of the 98-row lookup** — a 19-weld-type × 98-dia grid pasted underneath a
+larger population, min 1 / max 166,349 rows per (type, dia) pair — not a per-joint table; the
+pbix's own `LOOKUPVALUE('Weld Length'[Weld Length], 'Weld Length'[Dia inch], [Dia inch])`
+keys on `Dia inch` alone and only works *because* that dependency holds. Loading the 98-row
+collapse is behaviourally identical and 7,400× smaller (ruling R3-07).
+
+The migration's declared precision also truncates real values: `weld_length_by_dia.weld_length
+numeric(8,3)` turns `0.000797814` into `0.001` and `0.0669` into `0.067` — real, measured
+lookup values (`dia_inch = 0.01` and `0.5`), not rounding noise. Over the 728,550-row
+population this is a real drift in any length total that uses the small-diameter rows.
+
+Evidence: `analysis/sources3/weld-length.md` §1-§2 (M quote, 98-row measurement, DAX
+`LOOKUPVALUE`); `analysis/sources3/workbooks.md:869-897` ("`Dia inch` values mapping to more
+than one `Weld Length`: **0**"; the 98-row table with `0.01 → 0.000797814` and `168 → 13.4032752`);
+`analysis/sources3/weld-length-by-dia.json` (the 98 rows, ready to seed).
+
+**Consequence for the build.** `load-weld-length.ts` must collapse to the 98 distinct
+`(dia_inch, weld_length)` pairs, not load 728,550 rows, and must assert the functional
+dependency still holds (0 violations today) before collapsing, aborting the load rather than
+silently picking one length if a future refresh breaks it. `weld_length_by_dia.weld_length`
+must widen to `numeric(12,9)` before that load, or every small-diameter length (and any
+metric summing across many of them) silently rounds to the nearest millimetre-scale unit.
+
+**Ruling:** R3-07.
+
+### C-16 — Inco's `Weld Length "PR all"` is BLANK for all 10,327 rows: the DAX guard never fires for Inco, and the fallback needs `Dia inch`, which Inco never populates
+
+**§2 says** (`analysis/calculation-logic.md:567-568`):
+> `[Inspected Length(MM).]` resolves to `[Weld Length "PR all"]` for GAC/TEKFEN/CCC and to a
+> `MAX` over the joint for anyone else.
+
+— stated as if the "anyone else" branch (which covers Inco) resolves to *some* value; it
+does not say that value is always empty for Inco.
+
+**What is actually true.** The calc column is:
+
+```dax
+Project WD+WR+INCO+Acciona[Weld Length "PR all"] =
+IF( [Sub-Contractor] = "Inco" && [Manual UT Report No.] <> "",
+    [Weld Length] / 1000,
+    IF( ISBLANK( LOOKUPVALUE('Weld Length'[Weld Length], 'Weld Length'[Dia inch], [Dia inch]) ),
+        BLANK(),
+        LOOKUPVALUE('Weld Length'[Weld Length], 'Weld Length'[Dia inch], [Dia inch]) ) )
+```
+
+`Manual UT Report No.` is a `Weld Dump`-sourced column; the Inco M never populates it (it is
+blank on all 10,327 Inco rows), so the Inco-specific first branch **never fires**. Execution
+therefore always falls to the `LOOKUPVALUE` branch, which keys on `Dia inch` — and Inco's `Dia
+inch` is added as the literal empty string `""` for every row (Inco welds tanks, not pipe; it
+has no diameter at all). `LOOKUPVALUE` against `""` resolves to nothing, `ISBLANK(...)` is
+true, and the column evaluates to `BLANK()` for **all 10,327 Inco rows**, not just some.
+Reproduced literally, this also means the `MAX`-over-joint fallback that
+`analysis/calculation-logic.md:567-568` describes for `[Inspected Length(MM).]` (M35) is a
+`MAX` over nothing but blanks for Inco — M35 is honest-empty for Inco specifically, on top of
+the GAC/TEKFEN-tracker gap M35 already carries.
+
+Evidence: `analysis/sources3/inco-column-map.md` §6 (the DAX quote, `dia_inch` added as `""`,
+"Read literally, the Inco branch never fires... `Weld Length "PR all"` is BLANK for every Inco
+row"); `analysis/sources3/weld-length.md` §3b ("`INCO` | `''` → NULL for all 10,327 rows...
+BLANK for every Inco row. See `inco-column-map.md` §6 and ruling R3-06"); `analysis/sources3/rulings.md`
+R3-06.
+
+**Consequence for the build.** `weld.weld_length_m` must reproduce this literally — NULL for
+every `source='INCO'` row, never a silent substitution such as using `weld_length` (the raw
+mm column, which *is* populated for 10,268 of the 10,327 Inco rows) as a fallback. Per R3-06
+this is flagged to the report owner as a likely DAX guard bug (the guard should plausibly be
+`[Weld Length] <> 0`, not `[Manual UT Report No.] <> ""`), but the loader and every downstream
+length metric (M33/M35/M36 at Inco scope) must reproduce the blank, not fix it.
+
+**Ruling:** R3-06.
+
+### C-17 — The INCO exclusion lives in the filter layer (69 visual/page filters), not in DAX; base measures like `[Total Scope Dia "BW" "PR all"]` include Inco; Acciona is excluded only on 7 internal pages; 441 Inco rows are counted as both RT and UT
+
+**§5 R-03 says** (`analysis/calculation-logic.md:1328-1330`):
+> **Recommendation: include ACCIONA, exclude INCO by default.** Model INCO as a `source`
+> value so it can be switched on, but keep the default `sub_contractor <> 'Inco'` filter,
+> which is what every project visual does.
+
+That recommendation is directionally right but understates two things it states as settled:
+that the exclusion is uniform ("every project visual") and that it needs no per-measure care.
+
+**What is actually true, measured from `analysis/pbix/report-inventory.md`.** The `NOT
+(...[Sub-Contractor] IN {Inco})` predicate appears on **69** visual/page filters (61
+visual-level, 8 page-level) — a large majority of project-scope visuals, but not literally
+every one, and critically **the exclusion is implemented entirely in the filter layer, never
+inside a DAX measure body.** Base measures such as `[Total Scope Joints Uniq "BW" "PR all"]`
+and `[Total Scope Dia "BW" "PR all"]` explicitly list Inco in their own `IN {...}` filter
+(`measures.md` 2844/2858/3881: `[Sub-Contractor] IN {"GAC","TEKFEN","MEDGULF","Acciona","Inco"}`)
+— so a reimplementation that only excludes Inco via a global `sub_contractor <> 'INCO'`
+predicate at query scope is correct for the 69 filtered visuals, but the same predicate
+applied inside those two specific totals would **over-count relative to the pbix** if
+applied backwards, and omitting it at query scope entirely would under-filter every other
+project visual. Separately, **7** filters (5 visual, 2 page) exclude Acciona *and* Inco
+together, but only on internal/error-audit pages 13, 76, 82, 87, 113, 114 — "include Acciona"
+is the default for the two report pages behind the mockup, not a global invariant, contrary
+to the flat "every project visual" framing above.
+
+Grain, also measured: Acciona is **13,313 rows = 13,313 joints** (one row per joint, R3-02);
+Inco is **10,327 rows / 7,238 distinct joints** (joint × RT-fragment grain — `Sl No` has
+8,315 distinct values over 10,327 rows, exploded by `CountDelimiter`/`Count Rows.Count`).
+Within that Inco explosion, **441 rows carry `HT Remarks = "PAUT"`**, and the M's UT-synthesis
+(`By UT`, `UT Report`, `UT Date`, `UT Acc/Rej` all gated on that flag) copies the RT columns
+into the UT columns without ever clearing the RT ones — so those 441 rows are **counted as
+both an RT and a UT** row by any measure summing `rt_report IS NOT NULL` plus
+`ut_report IS NOT NULL`. Reproduce this literally; it is a real double-count in the pbix, not
+a loader artefact to fix.
+
+Evidence: `analysis/sources3/inco-column-map.md` §7 (PAUT double-count), §11 (the 69/7/2/1
+filter-predicate table, the mockup page-2 Acciona-row/no-Inco-row artefact); `analysis/sources3/plan.md`
+Rulings R3-01, R3-02; `analysis/sources3/acciona-column-map.md:27` (13,313 rows = pbix
+`Acciona_Query` exactly).
+
+**Consequence for the build.** `lib/metrics` must add `sub_contractor <> 'INCO'` as a
+switchable default project-scope predicate applied at query scope (per R3-01), never baked
+into a measure body, and must leave it **off** for the handful of measures that are
+Inco-inclusive by design (`[Total Scope Dia "BW" "PR all"]` and its siblings) or Inco-specific
+(`[RT BACKLOG INCO]`, `[Qualified Welders Inco]`, `[No Weld Done Inco]`, the six
+`Inco RT/UT * Length` measures). Every Inco-scoped metric must be `count(DISTINCT joint_id)`
+(7,238, not 10,327), matching the same DISTINCT-safety rule R2-01 already imposed on CCC
+(C-5), and any RT/UT tally over Inco must accept the 441-row double-count as pbix-faithful
+rather than dedupe it away.
+
+**Ruling:** R3-01, R3-02.
+
+### C-18 — R-01's file-presence status is now 12 of 15 (3 still missing); `Acciona Joint Summary` and `Rework code.xlsx` are not fact sources; `TO BE EXLUDE FROM DATA.xlsx` re-copied with no delta at 161 keys, not 159
+
+**§7 C-12 says** (`analysis/calculation-logic.md:2068-2069`):
+> By direct count of the table above: **8 present, 7 still missing** (rows 1-4, 7, 9, 12, 13 =
+> yes; rows 5, 6, 8, 10, 11, 14, 15 = no).
+
+That was batch-2's count, written before the batch-3 delivery.
+
+**What is actually true — R-01 status.** Batch 3 adds four of the seven files C-12 still
+listed as missing: row 5 `Acciona_Latest Add to Query.xlsx`, row 6 `Master Weld_Latest.xlsx`,
+row 8 `Weld Length.xlsx`, row 14 `SCTR NFE WELDERS APPLIED.xls` — each confirmed present by
+reproducing its pbix row count exactly (13,313 / 10,327 / 728,550 / 16). R-01's status is now
+**12 of 15 present**: batch-2's 8 (rows 1-4, 7, 9, 12, 13) plus these 4. **3 remain missing**,
+each confirmed absent by recursive basename search of `sources/`: row 10
+`UT TRACKER (GAC)_Master.xlsx`, row 11 `UT TRACKER (TEK).xlsx`, and row 15
+`WPQ RECORD REGISTER.xlsx` — the last of which blocks **two** pbix tables, not one:
+`WPQ RECORD REGISTER` (318 rows, feeds M91) and `WPQ WELDING PROCESS` (266 rows, which itself
+carries three active relationships into `CSVExport_Welder Record`, `PWHT Status` and
+`Flg CCC_Flange Repair`).
+
+**`Acciona Joint Summary` is not a fact source.** It is the second query on the Acciona
+workbook (sheet `Joint Summary`), hand-typed: its header reads "Metallic Piping Joint Summary
+**as on 22-02-2024**" while `Acciona_Query`'s own weld dates run to 2025-02, and
+`Total No. of Joints` is **0** on all 34 non-blank rows. It does not reconcile with
+`Acciona_Query` and must not be loaded as a metric source (ruling R3-05); at most a
+provenance table.
+
+**`Rework code.xlsx` is referenced by no query or measure.** A search of every one of
+`analysis/pbix/model.md`'s 62 Power Query definitions and all of `analysis/pbix/measures.md`
+for `Rework code.xlsx` returns zero hits; the model's `Rework Code` fields all come from
+`Weld Dump`/`AllTrain_CSVExport_Joint Record`/the union, not this workbook. It is a 43+20-row
+code dictionary the analyst keeps beside the data — display-only labels for
+`weld.rework_code`/`defect_code`/`weld_type` if loaded (ruling R3-08), never a join key.
+
+**`TO BE EXLUDE FROM DATA.xlsx` was re-copied with no delta, and the correct distinct-key
+count is 161, not 159.** Re-measured against `analysis/sources2/workbooks.md`: identical
+308,491 bytes, 596 rows, 124 fields, **161** distinct `RT Report + Welder` keys, 124 distinct
+`Joint ID`, `Sheet1` 20 rows — every figure unchanged from batch 2, sha256
+`291386b94b28ad59ecfdbaed3f749754a207d873c353537a1ac7db35ee4b1a11` recorded as the new
+baseline. Checking `analysis/sources2/gap-check.md:44` (the batch-2 source of this figure)
+directly: it already records **161** distinct `RT Report + Welder` keys, matching the batch-3
+remeasurement and `analysis/sources2/plan.md`'s own 161 — a search of `gap-check.md` for
+`159` finds no occurrence anywhere near this file. **161 is the figure supported by every
+source that measured it; no "159" miscount exists in `gap-check.md` to reconcile.** Per the
+honesty rule this section follows (C-12 above flags a genuine gap-check.md discrepancy where
+one existed; this is not one), stated plainly rather than invented.
+
+Evidence: `analysis/sources3/plan.md` (load order §, "R-01 now 12 of 15 present", the
+`TO BE EXLUDE FROM DATA.xlsx` section with the sha256 and 161-key figure);
+`analysis/sources3/welders.md` §4 (`WPQ RECORD REGISTER.xlsx` still absent, feeds two tables);
+`analysis/sources3/acciona-column-map.md` §6 (`Acciona Joint Summary` M steps, the two-filter
+29-row reconciliation, the stale header date, `Total No. of Joints` = 0);
+`analysis/sources3/weld-length.md` §5 (`Rework code.xlsx` zero-hits search, sheet contents);
+`analysis/sources2/gap-check.md:44` (161 distinct keys, recorded at batch 2);
+`analysis/sources3/rulings.md` R3-05, R3-08.
+
+**Consequence for the build.** The R-01 shopping list now has a 3-file remainder, all tiny —
+worth a final owner ask before treating any GAC/TEKFEN UT-tracker or M91 gap as permanent.
+`Acciona Joint Summary` and `Rework code.xlsx` are excluded from the load plan by ruling, not
+by omission — record both as deliberate. `ref_exclusion_list` loads `TO BE EXLUDE FROM
+DATA.xlsx`'s 596 rows unapplied, keyed on the 161-distinct `RT Report + Welder` figure (R2-02
+stands); do not carry forward a 159 figure into the loader or its assertions — it has no
+supporting measurement.
+
+**Ruling:** R3-05, R3-08; R2-02 (unapplied exclusion list stands).
