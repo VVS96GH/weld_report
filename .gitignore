@@ -47,3 +47,4 @@ next-env.d.ts
 
 # python (uv)
 /.venv/
+!.env.example

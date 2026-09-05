@@ -1,0 +1,69 @@
+# Postgres for the weld-report rebuild.
+#
+# Sized for a single-box analytics load: ~1M-row COPY + a 958k-row typed INSERT
+# on a 31 GB / 16-core machine.  Nothing here is production-grade security; it is
+# a local dev database with a throwaway password.
+#
+#   npm run db:up      docker compose up -d db
+#   npm run db:down    docker compose down          (keeps the volume)
+#   npm run db:reset   docker compose down -v && up (drops the volume)
+
+services:
+  db:
+    image: postgres:17.6-bookworm
+    container_name: weld_report_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: weld
+      POSTGRES_PASSWORD: weld
+      POSTGRES_DB: weld_report
+      # Deterministic collation/encoding: the dump is UTF-8 and the loader
+      # relies on btrim()/upper() behaving the same everywhere.
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C.UTF-8"
+    ports:
+      - "5432:5432"
+    volumes:
+      - weld_pgdata:/var/lib/postgresql/data
+    # Parallel workers + hash aggregates over 1M rows need real shared memory;
+    # the docker default of 64 MB makes /dev/shm the bottleneck.
+    shm_size: 1g
+    command:
+      - postgres
+      - -c
+      - shared_buffers=2GB               # ~25% of the 8GB we let PG assume
+      - -c
+      - work_mem=256MB                   # per sort/hash node: the DISTINCT joint_id counts
+      - -c
+      - maintenance_work_mem=1GB         # index builds after the load
+      - -c
+      - max_wal_size=4GB                 # keep the 958k-row INSERT from checkpoint-thrashing
+      - -c
+      - min_wal_size=1GB
+      - -c
+      - effective_cache_size=8GB
+      - -c
+      - max_parallel_workers=16
+      - -c
+      - max_parallel_workers_per_gather=4
+      - -c
+      - max_worker_processes=16
+      - -c
+      - random_page_cost=1.1             # NVMe/SSD, not spinning rust
+      - -c
+      - effective_io_concurrency=200
+      - -c
+      - synchronous_commit=off           # dev box: a crash means re-running db:load
+      - -c
+      - jit=off                          # JIT costs more than it saves on these plans
+      - -c
+      - timezone=UTC
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U weld -d weld_report"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+volumes:
+  weld_pgdata:
+    name: weld_pgdata
