@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { getPage } from "@/lib/page-source";
-import { WELDING_REPORT_SUBTITLE, WELDING_TOTAL_PAGES } from "@/lib/welding-pages";
+import { WELDING_PAGE_TITLES, WELDING_REPORT_SUBTITLE, WELDING_TOTAL_PAGES } from "@/lib/welding-pages";
 import { PageView } from "@/components/PageView";
 
 // Data is loaded per-request (fixture file today, a live DB once METRICS-LANE lands),
@@ -20,8 +20,9 @@ export async function generateMetadata(props: PageProps<"/welding/[page]">): Pro
   const { page } = await props.params;
   const n = parsePageNumber(page);
   if (n === null) return { title: "Welding Statistics Dashboard" };
-  const model = await getPage(n);
-  return { title: `${model.title} — Welding Statistics Dashboard` };
+  // Titles come from the static list, not from getPage(): the page body already
+  // loads the model, and a second getPage() here would double every DB query.
+  return { title: `${WELDING_PAGE_TITLES[n - 1]} — Welding Statistics Dashboard` };
 }
 
 export default async function WeldingReportPage(props: PageProps<"/welding/[page]">) {
