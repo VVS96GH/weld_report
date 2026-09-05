@@ -1,0 +1,242 @@
+/* ============================================================================
+   T.EN design tokens — docs/ten-design-system.md §2.1, shipped verbatim but
+   SCOPED to the `ten` mood (`<html data-mood="ten">`). The spec's `data-scheme`
+   axis is this app's existing `data-theme` (dark | light); its `data-theme="ten"`
+   is our `data-mood="ten"`. Density and print rules stay global.
+
+   Layer 1 (`--ten-*`) = the brand hexes. Layer 2 = semantic tokens. Components
+   never carry a hex; the block at the end maps layer 2 onto the variables the
+   mockup-era components already consume (`--bg-card`, `--accent-primary`, …).
+   ============================================================================ */
+
+:root[data-mood="ten"] {
+  /* ---- Layer 1 — brand (operator-supplied) ---- */
+  --ten-accent: #0070ef;
+  --ten-navy: #004c84;
+  --ten-teal: #3d98b7;
+  --ten-lime: #a2c61c;
+  --ten-sage: #80c7a0;
+  --ten-coral: #ee7766;
+  --ten-amber: #fdc300;
+  --ten-red: #e84242;
+  --ten-grey: #878787;
+  --ten-light-grey: #dedede;
+
+  /* ---- Layer 2 — brand/structure (scheme-independent) ---- */
+  --accent: var(--ten-accent);
+  --brand-dark: var(--ten-navy);
+  --brand-2: var(--ten-teal);
+  --info: var(--ten-teal);
+
+  /* ---- Layer 2 — status (meaning fixed; always paired with icon + text) ---- */
+  --ok: var(--ten-lime);
+  --ok-soft: var(--ten-sage);
+  --attention: var(--ten-coral);
+  --warn: var(--ten-amber);
+  --bad: var(--ten-red);
+  --danger: var(--ten-red);
+  /* dark ink placed ON each status fill */
+  --on-ok: #2b3707;
+  --on-ok-soft: #1e3d2c;
+  --on-attention: #3a140f;
+  --on-warn: #4a3900;
+  --on-bad: #ffffff;
+  --on-none: #4b5560;
+  /* filled FAIL badge: white on the brand red is 3.97:1 (sub-AA), so filled badges
+     use a deeper red; --bad stays the brand red for icons, meter overflow, borders */
+  --bad-fill: #c62f2f;
+  --on-bad-fill: #ffffff;
+
+  /* ---- Type ---- */
+  --font-sans: var(--font-inter), "Inter", system-ui, -apple-system, sans-serif;
+  --font-display: var(--font-poppins), "Poppins", var(--font-inter), "Inter", sans-serif;
+  --font-mono: var(--font-plex-mono), "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+
+  /* ---- Form / elevation ---- */
+  --r: 14px;
+  --r-lg: 22px;
+  --pill: 999px;
+  --focus-ring-color: rgba(0, 112, 239, 0.4);
+  --accent-a08: rgba(0, 112, 239, 0.08);
+  --accent-a15: rgba(0, 112, 239, 0.15);
+  --attention-a20: rgba(238, 119, 102, 0.2);
+  --scrim: rgba(2, 10, 20, 0.6); /* every dialog backdrop */
+  --mark-bg: var(--heading); /* search/citation <mark> */
+  --mark-fg: var(--brand-dark);
+
+  /* ============ DARK scheme = the DEFAULT. Luminous navy. ============ */
+  color-scheme: dark;
+  --bg: #06192c;
+  --bg-gradient:
+    radial-gradient(75% 60% at 40% -10%, rgba(56, 148, 240, 0.42) 0%, rgba(18, 81, 140, 0.18) 42%, rgba(6, 25, 44, 0) 70%),
+    radial-gradient(45% 40% at 6% 100%, rgba(48, 175, 142, 0.16) 0%, rgba(6, 25, 44, 0) 62%),
+    radial-gradient(130% 140% at 95% 40%, rgba(2, 8, 16, 0) 45%, rgba(2, 8, 16, 0.5) 82%),
+    linear-gradient(150deg, #0a2c4e 0%, #081f3a 55%, #06192c 100%);
+  --surface: #102d49;
+  --surface-2: #0c2540;
+  --border: #274863;
+  --fg: #eaf2fa;
+  --muted: #a8c0d6;
+  --faint: #7c97ae;
+  --heading: #bcd3e8; /* card/section heading — navy would vanish on a dark card */
+  --bad-text: #ff9d9d; /* red AS TEXT (errors, required marks), AA-tuned per scheme */
+  /* magnitude / risk bands (5×5 threat × probability chart), lightened for navy */
+  --mag-green: var(--ok);
+  --on-mag-green: var(--on-ok);
+  --mag-yellow: var(--warn);
+  --on-mag-yellow: var(--on-warn);
+  --mag-orange: #ff9d4d;
+  --on-mag-orange: #3a1a05;
+  --mag-crimson: #ff7a9c;
+  --on-mag-crimson: #3d0a19;
+  --mag-red: #ff6b6b;
+  --on-mag-red: #3a0b0b;
+  --mag-dark-red: #e05252;
+  --on-mag-dark-red: #2a0505;
+  --shadow-card: 0 18px 46px -22px rgba(2, 10, 20, 0.7);
+  /* chrome (header/nav) stays navy in BOTH schemes — the brand anchor */
+  --chrome-bg: var(--brand-dark);
+  --chrome-fg: #eaf2fa;
+
+  /* ---- Chart palette (dark surface #102d49) — brand hues re-stepped in OKLCH and
+     validated with the dataviz six-check validator (lightness band, chroma floor,
+     CVD ΔE 9.6 adjacent, normal-vision ΔE 19.5, contrast ≥ 3:1). Slot order is
+     fixed: accent → sage → amber → teal → coral → lime → navy → red — coral sits in
+     slot 5 so it stays the highlighter (spec §1.4); rejection/backlog series take
+     --chart-attention regardless of slot. The raw brand hexes are fill colours for
+     chips, not chart series (spec §2.2). ---- */
+  --chart-1: #3d8af7;
+  --chart-2: #048756;
+  --chart-3: #b98e0a;
+  --chart-4: #0087aa;
+  --chart-5: #b65c4f;
+  --chart-6: #87a232;
+  --chart-7: #3a7ebe;
+  --chart-8: #b75b55;
+  --chart-attention: #e24131; /* coral re-stepped for the navy surface: rejections / backlog ("look here") */
+  --chart-grid-line: rgba(188, 211, 232, 0.12);
+}
+
+/* ---- Density (rem base; overridden by data-density) — GLOBAL, every mood ---- */
+:root {
+  --density-rem-base: 16px;
+}
+:root[data-density="compact"] {
+  --density-rem-base: 14px;
+}
+:root[data-density="board"] {
+  --density-rem-base: 18px;
+}
+
+/* ============ LIGHT scheme — opt-in (our `data-theme="light"`) ============ */
+:root[data-mood="ten"][data-theme="light"] {
+  color-scheme: light;
+  --bg: #eef1f4;
+  --bg-gradient: var(--bg);
+  --surface: #ffffff;
+  --surface-2: #f7f9fb;
+  --border: #e4e9ee;
+  --fg: #0a1c2e;
+  --muted: #52606b; /* grey #878787 fails AA at small size — never use it as text */
+  --faint: #78848c;
+  --heading: var(--brand-dark);
+  --bad-text: #c62f2f;
+  --mag-orange: var(--attention);
+  --on-mag-orange: var(--on-attention);
+  --mag-crimson: #f4728f;
+  --on-mag-crimson: #37091a;
+  --mag-red: var(--bad-fill);
+  --on-mag-red: var(--on-bad-fill);
+  --mag-dark-red: #8c1b1b;
+  --on-mag-dark-red: #ffffff;
+  --shadow-card: 0 12px 34px -26px rgba(3, 20, 40, 0.5);
+  --chrome-bg: var(--brand-dark);
+  --chrome-fg: #ffffff;
+  --mark-bg: var(--brand-dark);
+  --mark-fg: #ffffff;
+
+  /* chart palette on white, same slot order (validated: CVD ΔE 9.5, normal-vision 18.1, all ≥ 3:1) */
+  --chart-1: #207bf4;
+  --chart-2: #007046;
+  --chart-3: #9f7a0b;
+  --chart-4: #0181a2;
+  --chart-5: #883228;
+  --chart-6: #697f22;
+  --chart-7: #045591;
+  --chart-8: #89312e;
+  --chart-attention: #c21b0f;
+  --chart-grid-line: rgba(10, 28, 46, 0.08);
+}
+
+/* ============ PRINT — ink-saving light palette, chrome dropped (global) ============ */
+@media print {
+  :root {
+    --bg: #fff;
+    --bg-gradient: #fff;
+    --surface: #fff;
+    --surface-2: #f4f6f8;
+    --border: #c7ced6;
+    --fg: #10202e;
+    --muted: #33414d;
+    --faint: #55616c;
+    --heading: #10202e;
+  }
+  .no-print {
+    display: none !important;
+  }
+  [class*="shadow-card"] {
+    box-shadow: none !important;
+  }
+  @page {
+    margin: 14mm;
+  }
+}
+
+/* ============================================================================
+   Bridge: the mockup-era variables every component reads, expressed in T.EN
+   semantic tokens. Nothing below is a hex — that is what keeps the components
+   hex-free and lets a rebrand happen in layer 1 alone.
+   ============================================================================ */
+:root[data-mood="ten"] {
+  --bg-primary: var(--bg);
+  --bg-secondary: var(--surface-2);
+  --bg-card: var(--surface);
+  --bg-card-hover: var(--surface);
+  --bg-elevated: var(--surface-2);
+  --bg-input: var(--surface-2);
+
+  --color-1: var(--chart-1);
+  --color-2: var(--chart-2);
+  --color-3: var(--chart-3);
+  --color-4: var(--chart-4);
+  --color-5: var(--chart-5);
+  --color-6: var(--chart-6);
+  --color-7: var(--chart-7);
+  --color-8: var(--chart-8);
+  --color-9: initial;
+  --color-10: initial;
+  --color-11: initial;
+  --color-12: initial;
+
+  --neon-color: var(--accent);
+  --neon-border: var(--border);
+  --neon-border-hover: var(--accent);
+  --neon-glow: none;
+  --neon-glow-hover: none;
+
+  --accent-primary: var(--accent);
+  --accent-secondary: var(--brand-2);
+  --accent-gradient: linear-gradient(90deg, var(--accent), var(--brand-2));
+  --header-bg: var(--brand-dark);
+
+  --text-primary: var(--fg);
+  --text-secondary: var(--muted);
+  --text-muted: var(--faint);
+
+  --indicator-up: var(--ok-soft);
+  --indicator-down: var(--bad-text);
+  --indicator-neutral: var(--warn);
+
+  --border-color: var(--border);
+  --chart-grid: var(--chart-grid-line);
+}

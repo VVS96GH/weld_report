@@ -2,117 +2,122 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
-const MOODS = [
+import {
+  DEFAULT_DENSITY,
+  DEFAULT_MOOD,
+  DEFAULT_THEME,
+  DENSITY_IDS,
+  DENSITY_KEY,
+  MOOD_IDS,
+  MOOD_KEY,
+  THEME_KEY,
+  type DensityId,
+  type MoodId,
+  type ThemeId,
+} from "@/lib/theme/axes";
+
+// Swatch dots are the mood's own brand colours (presentation only — the three dots
+// preview the palette the way the mockup's dropdown did). The T.EN dots are its
+// layer-1 brand hexes: accent, coral, sage.
+const MOODS: readonly { id: MoodId; icon: string; label: string; dots: readonly string[] }[] = [
+  { id: "ten", icon: "\u{1F310}", label: "T.EN", dots: ["#0070ef", "#ee7766", "#80c7a0"] },
   { id: "pastel", icon: "\u{1F3A8}", label: "Pastel", dots: ["#ffadd8", "#ae9cff", "#b4fad9"] },
   { id: "ocean", icon: "\u{1F30A}", label: "Ocean", dots: ["#9ae9f5", "#6bbcff", "#5e81d1"] },
   { id: "desert", icon: "\u{1F3DC}\u{FE0F}", label: "Desert", dots: ["#ffe77d", "#ffd061", "#f0b860"] },
   { id: "upsidedown", icon: "\u{1F52E}", label: "Upside Down", dots: ["#a80000", "#003e7d", "#385b94"] },
   { id: "powerbi", icon: "\u{1F4CA}", label: "Power BI", dots: ["#ED7D31", "#70AD47", "#FFD966"] },
-] as const;
+];
 
-type MoodId = (typeof MOODS)[number]["id"];
+const DENSITIES: readonly { id: DensityId; label: string; hint: string }[] = [
+  { id: "normal", label: "Normal", hint: "16 px" },
+  { id: "compact", label: "Compact", hint: "14 px" },
+  { id: "board", label: "Board", hint: "18 px — wall screens" },
+];
 
-// The mockup's `<html data-mood>` ships as "pastel" and its `currentMood` JS
-// fallback (`|| 'powerbi'`) never actually fires because that attribute is always
-// present — so "pastel" is the mockup's real default, not "powerbi". See the
-// CHECKPOINT deviations note in the final report.
-const DEFAULT_MOOD: MoodId = "pastel";
-const DEFAULT_THEME: "dark" | "light" = "dark";
+// The <html> element's data-theme/data-mood/data-density attributes are the single
+// source of truth: app/layout.tsx sets the defaults on the server, the pre-paint
+// script in <head> applies the persisted values before hydration, this component
+// and ChartCard read/write the same attributes. useSyncExternalStore subscribes to
+// that external system directly, so nothing here ever needs setState in an effect.
+const AXIS_ATTRS = ["data-theme", "data-mood", "data-density"];
 
-const THEME_KEY = "weld-report-theme";
-const MOOD_KEY = "weld-report-mood";
-
-// The <html> element's data-theme/data-mood attributes are the single source of
-// truth (app/layout.tsx sets the defaults on the server; applyTheme/applyMood below
-// and ChartCard both read/write the same attributes). useSyncExternalStore subscribes
-// to that external system directly, so the effect that applies a stored localStorage
-// preference on mount only ever mutates the DOM — it never calls setState itself,
-// which keeps the react-hooks/set-state-in-effect rule happy (and stays correct: the
-// subscription below re-renders whenever the attribute actually changes).
 function subscribeToHtmlAttrs(callback: () => void) {
   const observer = new MutationObserver((mutations) => {
-    if (mutations.some((m) => m.attributeName === "data-theme" || m.attributeName === "data-mood")) {
-      callback();
-    }
+    if (mutations.some((m) => m.attributeName && AXIS_ATTRS.includes(m.attributeName))) callback();
   });
-  observer.observe(document.documentElement, {
-    attributes: true,
-    attributeFilter: ["data-theme", "data-mood"],
-  });
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: AXIS_ATTRS });
   return () => observer.disconnect();
 }
 
-function getThemeSnapshot(): "dark" | "light" {
+function getThemeSnapshot(): ThemeId {
   return document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
 }
 function getMoodSnapshot(): MoodId {
   const v = document.documentElement.getAttribute("data-mood");
-  return MOODS.some((m) => m.id === v) ? (v as MoodId) : DEFAULT_MOOD;
+  return (MOOD_IDS as readonly string[]).includes(v ?? "") ? (v as MoodId) : DEFAULT_MOOD;
 }
-function getServerTheme(): "dark" | "light" {
-  return DEFAULT_THEME;
+function getDensitySnapshot(): DensityId {
+  const v = document.documentElement.getAttribute("data-density");
+  return (DENSITY_IDS as readonly string[]).includes(v ?? "") ? (v as DensityId) : DEFAULT_DENSITY;
 }
-function getServerMood(): MoodId {
-  return DEFAULT_MOOD;
+const getServerTheme = (): ThemeId => DEFAULT_THEME;
+const getServerMood = (): MoodId => DEFAULT_MOOD;
+const getServerDensity = (): DensityId => DEFAULT_DENSITY;
+
+function persist(key: string, value: string) {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    // ignore: preference just won't persist across reloads
+  }
 }
 
-/** Theme toggle + mood dropdown, persisted to localStorage, applied to <html>. */
+/** Theme toggle + mood/density menu, persisted to localStorage, applied to <html>. */
 export function ThemeMoodControls() {
   const theme = useSyncExternalStore(subscribeToHtmlAttrs, getThemeSnapshot, getServerTheme);
   const mood = useSyncExternalStore(subscribeToHtmlAttrs, getMoodSnapshot, getServerMood);
+  const density = useSyncExternalStore(subscribeToHtmlAttrs, getDensitySnapshot, getServerDensity);
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
-
-  // Apply any stored preference once, on mount only (guarded: localStorage can throw
-  // or be unavailable in private-browsing / restricted contexts). The <html> element
-  // already carries the same defaults from app/layout.tsx, so skipping this on the
-  // server render (and only running it after mount) never causes a hydration mismatch.
-  useEffect(() => {
-    try {
-      const storedTheme = window.localStorage.getItem(THEME_KEY);
-      if (storedTheme === "dark" || storedTheme === "light") {
-        document.documentElement.setAttribute("data-theme", storedTheme);
-      }
-      const storedMood = window.localStorage.getItem(MOOD_KEY);
-      if (storedMood && MOODS.some((m) => m.id === storedMood)) {
-        document.documentElement.setAttribute("data-mood", storedMood);
-      }
-    } catch {
-      // localStorage unavailable: keep the server-rendered defaults.
-    }
-  }, []);
 
   useEffect(() => {
     if (!open) return;
     function onClick(e: MouseEvent) {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
     }
     document.addEventListener("click", onClick);
-    return () => document.removeEventListener("click", onClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("click", onClick);
+      document.removeEventListener("keydown", onKey);
+    };
   }, [open]);
 
-  function applyTheme(next: "dark" | "light") {
+  function applyTheme(next: ThemeId) {
     document.documentElement.setAttribute("data-theme", next);
-    try {
-      window.localStorage.setItem(THEME_KEY, next);
-    } catch {
-      // ignore: preference just won't persist across reloads
-    }
+    persist(THEME_KEY, next);
   }
-
   function applyMood(next: MoodId) {
     document.documentElement.setAttribute("data-mood", next);
-    try {
-      window.localStorage.setItem(MOOD_KEY, next);
-    } catch {
-      // ignore: preference just won't persist across reloads
-    }
+    persist(MOOD_KEY, next);
     setOpen(false);
+  }
+  function applyDensity(next: DensityId) {
+    document.documentElement.setAttribute("data-density", next);
+    persist(DENSITY_KEY, next);
   }
 
   const activeMood = MOODS.find((m) => m.id === mood) ?? MOODS[0];
+
+  const onRadioKey = (fn: () => void) => (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      fn();
+    }
+  };
 
   return (
     <>
@@ -120,14 +125,17 @@ export function ThemeMoodControls() {
         <button
           type="button"
           className="header-btn"
-          aria-label="Change color mood"
+          aria-label="Theme and density menu"
           aria-haspopup="menu"
           aria-expanded={open}
           onClick={() => setOpen((o) => !o)}
         >
           <span aria-hidden="true">{activeMood.icon}</span>
         </button>
-        <div className={`mood-dropdown${open ? " open" : ""}`} role="menu">
+        <div className={`mood-dropdown${open ? " open" : ""}`} role="menu" aria-label="Theme and density">
+          <div className="mood-section-label" aria-hidden="true">
+            Theme
+          </div>
           {MOODS.map((m) => (
             <div
               key={m.id}
@@ -136,12 +144,7 @@ export function ThemeMoodControls() {
               tabIndex={0}
               className={`mood-option${m.id === mood ? " active" : ""}`}
               onClick={() => applyMood(m.id)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  applyMood(m.id);
-                }
-              }}
+              onKeyDown={onRadioKey(() => applyMood(m.id))}
             >
               <span className="mood-option-icon" aria-hidden="true">
                 {m.icon}
@@ -154,12 +157,32 @@ export function ThemeMoodControls() {
               </span>
             </div>
           ))}
+          <div className="mood-section-label" aria-hidden="true">
+            Density
+          </div>
+          {DENSITIES.map((d) => (
+            <div
+              key={d.id}
+              role="menuitemradio"
+              aria-checked={d.id === density}
+              tabIndex={0}
+              className={`mood-option${d.id === density ? " active" : ""}`}
+              onClick={() => applyDensity(d.id)}
+              onKeyDown={onRadioKey(() => applyDensity(d.id))}
+              title={d.hint}
+            >
+              <span className="mood-option-label">{d.label}</span>
+              <span className="mood-option-hint num" aria-hidden="true">
+                {d.hint.split(" ")[0]}
+              </span>
+            </div>
+          ))}
         </div>
       </div>
       <button
         type="button"
         className="header-btn"
-        aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+        aria-label={theme === "dark" ? "Switch to light scheme" : "Switch to dark scheme"}
         onClick={() => applyTheme(theme === "dark" ? "light" : "dark")}
       >
         <span aria-hidden="true">{theme === "dark" ? "\u{1F319}" : "\u{2600}\u{FE0F}"}</span>

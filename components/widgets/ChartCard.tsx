@@ -37,6 +37,10 @@ type Palette = {
   primary: string;
   grid: string;
   text: string;
+  /** Reserved "look here" colour for rejection/backlog series (T.EN `--chart-attention`); unset in legacy moods. */
+  attention: string | null;
+  /** Tick/legend font family; the T.EN mood sets `--font-mono` for tabular numerics. */
+  font: string | undefined;
 };
 
 const FALLBACK_PALETTE: Palette = {
@@ -44,6 +48,8 @@ const FALLBACK_PALETTE: Palette = {
   primary: "#ED7D31",
   grid: "rgba(255,255,255,0.08)",
   text: "#cccccc",
+  attention: null,
+  font: undefined,
 };
 
 function readPalette(): Palette {
@@ -55,7 +61,19 @@ function readPalette(): Palette {
     primary: styles.getPropertyValue("--accent-primary").trim() || FALLBACK_PALETTE.primary,
     grid: styles.getPropertyValue("--chart-grid").trim() || FALLBACK_PALETTE.grid,
     text: styles.getPropertyValue("--text-secondary").trim() || FALLBACK_PALETTE.text,
+    attention: styles.getPropertyValue("--chart-attention").trim() || null,
+    font: styles.getPropertyValue("--font-mono").trim() || undefined,
   };
+}
+
+// Coral is the highlighter (T.EN spec §1.4): rejection and backlog series take the
+// reserved attention colour so the eye lands on them; everything else keeps its
+// fixed palette slot (colour follows the entity, never its rank).
+const ATTENTION_SERIES = /\b(rej|reject|rejected|backlog|b\.log|not done)\b|"R"/i;
+
+function seriesColor(label: string, index: number, palette: Palette): string {
+  if (palette.attention && ATTENTION_SERIES.test(label)) return palette.attention;
+  return palette.colors[index % palette.colors.length] ?? palette.primary;
 }
 
 function toNum(v: number | string | null): number | null {
@@ -131,7 +149,7 @@ export function ChartCard({ widget }: { widget: ChartWidget }) {
     return {
       labels: widget.labels,
       datasets: widget.datasets.map((ds, i) => {
-        const color = palette.colors[i % palette.colors.length] ?? palette.primary;
+        const color = seriesColor(ds.label, i, palette);
         const base = { label: ds.label, data: ds.data.map(toNum), stack: ds.stack };
         if (widget.chart_type === "line") {
           return { ...base, borderColor: color, backgroundColor: color, tension: 0.3, pointRadius: 2 };
@@ -148,7 +166,7 @@ export function ChartCard({ widget }: { widget: ChartWidget }) {
       maintainAspectRatio: false,
       indexAxis: horizontal ? "y" : "x",
       plugins: {
-        legend: { display: true, labels: { color: palette.text, boxWidth: 12, font: { size: 10 } } },
+        legend: { display: true, labels: { color: palette.text, boxWidth: 12, font: { size: 10, family: palette.font } } },
         tooltip: { enabled: true },
       },
       scales: circular
@@ -156,7 +174,7 @@ export function ChartCard({ widget }: { widget: ChartWidget }) {
         : {
             x: {
               stacked: stackedX,
-              ticks: { color: palette.text, font: { size: 10 } },
+              ticks: { color: palette.text, font: { size: 10, family: palette.font } },
               grid: { color: palette.grid },
             },
             y: {
@@ -164,7 +182,7 @@ export function ChartCard({ widget }: { widget: ChartWidget }) {
               beginAtZero: true,
               ticks: {
                 color: palette.text,
-                font: { size: 10 },
+                font: { size: 10, family: palette.font },
                 callback: percentAxis ? (value: number | string) => `${value}%` : undefined,
               },
               grid: { color: palette.grid },

@@ -4,6 +4,14 @@ function rowsEqual(a: string[], b: string[]): boolean {
   return a.length === b.length && a.every((cell, i) => cell === b[i]);
 }
 
+// "375,152", "1.58%", "-", "0.40 %", "(12)" — anything a reader would call a number.
+// Numeric cells get `.num` (mono, tabular figures — T.EN spec §3) so digits align.
+const NUMERIC_CELL = /^[\s(+-]*[\d.,]+\s*%?\)?\s*$/;
+
+function cellClass(cell: string): string | undefined {
+  return NUMERIC_CELL.test(cell) ? "num" : undefined;
+}
+
 /**
  * Renders a `.data-table`, matching the mockup's plain HTML tables.
  *
@@ -23,6 +31,19 @@ export function DataTable({ widget }: { widget: TableWidget }) {
   // absent from `rows`; otherwise style that last row in place instead of duplicating it.
   const totalIsLastRow = widget.total_row !== undefined && lastRow !== undefined && rowsEqual(widget.total_row, lastRow);
 
+  const renderCells = (row: string[]) =>
+    row.map((cell, ci) =>
+      ci === 0 ? (
+        <th key={ci} scope="row">
+          {cell}
+        </th>
+      ) : (
+        <td key={ci} className={cellClass(cell)}>
+          {cell}
+        </td>
+      ),
+    );
+
   return (
     <table className="data-table">
       <thead>
@@ -37,30 +58,10 @@ export function DataTable({ widget }: { widget: TableWidget }) {
       <tbody>
         {widget.rows.map((row, ri) => (
           <tr key={ri} className={totalIsLastRow && ri === widget.rows.length - 1 ? "row-header" : undefined}>
-            {row.map((cell, ci) =>
-              ci === 0 ? (
-                <th key={ci} scope="row">
-                  {cell}
-                </th>
-              ) : (
-                <td key={ci}>{cell}</td>
-              ),
-            )}
+            {renderCells(row)}
           </tr>
         ))}
-        {widget.total_row && !totalIsLastRow ? (
-          <tr className="row-header">
-            {widget.total_row.map((cell, ci) =>
-              ci === 0 ? (
-                <th key={ci} scope="row">
-                  {cell}
-                </th>
-              ) : (
-                <td key={ci}>{cell}</td>
-              ),
-            )}
-          </tr>
-        ) : null}
+        {widget.total_row && !totalIsLastRow ? <tr className="row-header">{renderCells(widget.total_row)}</tr> : null}
       </tbody>
     </table>
   );

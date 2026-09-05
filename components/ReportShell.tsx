@@ -57,6 +57,7 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
 
   return (
     <SubtitleContext.Provider value={{ setSubtitle }}>
+      <div className="app-shell">
       <header className="header">
         <div className="header-left">
           <div className="logo">NFE</div>
@@ -113,6 +114,7 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
       </nav>
 
       <main className="main-content">{children}</main>
+      </div>
     </SubtitleContext.Provider>
   );
 }
