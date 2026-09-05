@@ -1,5 +1,9 @@
 import type { TableWidget } from "@/lib/page-model";
 
+function rowsEqual(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((cell, i) => cell === b[i]);
+}
+
 /**
  * Renders a `.data-table`, matching the mockup's plain HTML tables.
  *
@@ -12,6 +16,13 @@ import type { TableWidget } from "@/lib/page-model";
  * it looking like an ordinary left-aligned cell instead of a header cell.
  */
 export function DataTable({ widget }: { widget: TableWidget }) {
+  const lastRow = widget.rows[widget.rows.length - 1];
+  // `total_row` marks WHICH row gets the mockup's `.row-header` styling — it isn't a
+  // separate row. The extractor (and both the fixture and DB assemblers) already
+  // include the mockup's Total row in `rows`, so append it only when it's genuinely
+  // absent from `rows`; otherwise style that last row in place instead of duplicating it.
+  const totalIsLastRow = widget.total_row !== undefined && lastRow !== undefined && rowsEqual(widget.total_row, lastRow);
+
   return (
     <table className="data-table">
       <thead>
@@ -25,7 +36,7 @@ export function DataTable({ widget }: { widget: TableWidget }) {
       </thead>
       <tbody>
         {widget.rows.map((row, ri) => (
-          <tr key={ri}>
+          <tr key={ri} className={totalIsLastRow && ri === widget.rows.length - 1 ? "row-header" : undefined}>
             {row.map((cell, ci) =>
               ci === 0 ? (
                 <th key={ci} scope="row">
@@ -37,7 +48,7 @@ export function DataTable({ widget }: { widget: TableWidget }) {
             )}
           </tr>
         ))}
-        {widget.total_row ? (
+        {widget.total_row && !totalIsLastRow ? (
           <tr className="row-header">
             {widget.total_row.map((cell, ci) =>
               ci === 0 ? (

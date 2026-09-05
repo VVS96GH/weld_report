@@ -174,6 +174,22 @@ export function ChartCard({ widget }: { widget: ChartWidget }) {
     [palette, stackedX, stackedY, percentAxis, horizontal, circular],
   );
 
+  // Trend charts fed by the not-yet-seeded weld_weekly_snapshot table (e.g. page 1's
+  // RT/UT and PWHT backlog and rejection-rate charts) come back with every dataset
+  // all-null. Mounting Chart.js on that draws a bare, misleading 0-1 axis, so render a
+  // placeholder instead (same card/chart-container height, so the grid doesn't jump).
+  const hasData = widget.datasets.some((ds) => ds.data.some((v) => toNum(v) !== null));
+  if (!hasData) {
+    // A second, smaller "source: ..." line was asked for only if the model carries a
+    // hint for which source is empty — it doesn't today (that field isn't on
+    // ChartWidget in lib/page-model.ts, out of scope for this fix), so just the one line.
+    return (
+      <div className="chart-empty">
+        <span>No data loaded for this chart</span>
+      </div>
+    );
+  }
+
   switch (widget.chart_type) {
     case "line":
       return <Chart key={version} type="line" data={data} options={options} />;

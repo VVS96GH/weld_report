@@ -38,9 +38,11 @@
   --accent-gradient: linear-gradient(135deg, #ed7d31 0%, #70ad47 100%);
 
   /* Not in the mockup: `.data-table th` reads `var(--header-bg)`, which the mockup
-     never defines anywhere (a bug in the source file — the header row renders with
-     no background there). Defined once here, resolved per-mood via --accent-primary. */
-  --header-bg: var(--accent-primary);
+     never defines anywhere (a bug in the source file). An undefined custom property
+     with no fallback resolves the `background` declaration to its initial value —
+     i.e. transparent — so the mockup's real rendered header row has no background,
+     just its (verified against the mockup source: `color: white`) white th text. */
+  --header-bg: transparent;
 
   --text-primary: #f5f5f5;
   --text-secondary: #cccccc;
@@ -973,6 +975,17 @@ body {
 }
 .chart-small {
   height: 180px;
+}
+.chart-empty {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 12px;
+  color: var(--text-muted);
+  font-size: 0.75rem;
 }
 
 .table-scroll {
