@@ -51,10 +51,34 @@ rules are right; the pbix stores 958,634 for its own (19 days older) snapshot.
 | `0005_calendar.sql` | populates `calendar` for 2021-05-08 … 2026-12-31 (2,064 rows) |
 | `0006_views.sql` | the `nde_result` long view and `mv_weekly_progress` |
 | `0007_literal_null_tokens.sql` | supersedes `weld_text()` from 0001 and `mv_weekly_progress` from 0006 — see "Null tokens" below |
+| `0008_page_scope_indexes.sql` | `weld_svcclass_wd` — see "Indexes on `weld`" below |
 
 `0002` and `0003` are produced by `scripts/gen-schema-columns.ts` from
 `analysis/dump/columns.json` and **are committed**. Never hand-edit them; edit
 `scripts/weld-sql.ts` and regenerate. `check-sql-columns.ts` fails on drift.
+
+## Indexes on `weld`
+
+Twelve, eleven from `0003` and one from `0008`.
+
+| index | shape | what it serves |
+|---|---|---|
+| `weld_load` | `(load_id)` | the ledger join; `DELETE … WHERE source=…` |
+| `weld_source_idx` | `(source)` | the "EP" / "PR all" scope predicate (§0.3) |
+| `weld_sub_date` | `(sub_contractor, weld_date)` | every weekly/trend query |
+| `weld_joint` | `(joint_id)` | joint lookups, repair chains |
+| `weld_spool` | `(spool_id)` | the `spool` join (R-01, once Spool Dump lands) |
+| `weld_rtpct_sub` | `(rt_pct, sub_contractor)` INCLUDE `(weld_cat, weld_type)` | the NDE-by-RT% page split |
+| `weld_svcclass` | `(service_class_cat_ndt)` | the "PR all" service-class key |
+| `weld_svcclass_wd` | `(service_class_cat_wd)` | **0008** — the "WD" service-class key the per-subcontractor pages group on (`EQP-SLG-01 SG`); previously unindexed |
+| `weld_wps` | `(wps_no)` | the per-WPS rejection pages (41-44) |
+| `weld_weld_date` | `(weld_date)` | the `calendar` join in `mv_weekly_progress` |
+| `weld_rt_backlog` | partial `(sub_contractor, rt_pct)` | M40-M52 |
+| `weld_pwht_backlog` | partial `(sub_contractor)` | M60-M66 |
+
+A covering index for the 8 slow pivot pages (`weld_page_scope`) was measured and dropped —
+see the comment in `0008`. The loader runs `VACUUM (ANALYZE) weld` after each load so index-only
+scans have a visibility map.
 
 ## The column-name contract
 

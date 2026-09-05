@@ -1,0 +1,18 @@
+-- 0008 — index for the "WD" service-class key.
+--
+-- Companion to weld_svcclass (which covers service_class_cat_ndt).  The
+-- per-subcontractor pages group and filter on the "WD" flavour of the same key
+-- — mockup row labels like `EQP-SLG-01 SG` — and had no index at all.
+--
+-- Plain CREATE INDEX, not CONCURRENTLY: scripts/migrate.ts wraps every file in a
+-- transaction, and CONCURRENTLY cannot run inside one.
+--
+-- A covering index `(sub_contractor, rt_pct, service_cat, temporary_lines)
+-- INCLUDE (weld_cat, weld_type, service_class_cat_wd, joint_id)` was tried here
+-- for the 8 slow pages (1, 2, 4, 5, 8, 10, 42, 43 — count(DISTINCT joint_id)
+-- weld-type pivots over 400k-958k rows) and measured after VACUUM (ANALYZE):
+-- p1 1.42→1.39 s, p2 2.60→2.50 s, p4 1.33→1.14 s — within noise for 83 MB and
+-- per-row insert cost, so it was dropped.  The cost is the DISTINCT itself; the
+-- lever, if those pages ever need <500 ms, is a materialised weld-type pivot
+-- refreshed after each load, not another index.
+CREATE INDEX IF NOT EXISTS weld_svcclass_wd ON weld (service_class_cat_wd);

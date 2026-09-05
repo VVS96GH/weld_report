@@ -426,9 +426,11 @@ async function liveLoad(opts: Options): Promise<void> {
     await client.query("COMMIT");
 
     const tPost = Date.now();
-    await client.query("ANALYZE weld");
+    // VACUUM (not just ANALYZE): TRUNCATE + INSERT leaves the visibility map empty,
+    // so index-only scans would fall back to heap fetches until the next vacuum. ~1 s.
+    await client.query("VACUUM (ANALYZE) weld");
     await client.query("REFRESH MATERIALIZED VIEW mv_weekly_progress");
-    console.log(`post    ANALYZE + REFRESH MATERIALIZED VIEW in ${((Date.now() - tPost) / 1000).toFixed(1)} s`);
+    console.log(`post    VACUUM (ANALYZE) + REFRESH MATERIALIZED VIEW in ${((Date.now() - tPost) / 1000).toFixed(1)} s`);
 
     await client.query(
       `UPDATE load SET finished_at = now(), records_read = $2, records_loaded = $3,
