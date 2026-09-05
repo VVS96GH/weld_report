@@ -27,16 +27,22 @@ directly or hand-build venvs; a dependency is added with `uv add`. `uv` is at `~
 ## What this project is
 
 A Next.js rebuild of a Power BI weld-progress report for a pipeline/plant construction
-project. The repo currently holds three things:
+project (subcontractors CCC / GAC / Tekfen / Medgulf). The repo holds:
 
-- `app/` — an unmodified `create-next-app` scaffold (still the starter `page.tsx`, still
-  `title: "Create Next App"` in `layout.tsx`). Nothing domain-specific has been built yet.
-- `mockups/` — the **design + content target**: two large static HTML dashboards exported
-  from earlier work. These define what the app must reproduce.
-- `sources/` — the **data**: the raw weld dump and the original `.pbix`.
+- `analysis/` — the recon that drives everything: `pbix/` (448 DAX measures, 62 Power Query
+  scripts, 145 report pages → visuals, extracted from the .pbix), `dump/` (profile of every
+  column of the weld dump), `mockups/` (machine-readable spec of every widget in the HTML
+  mockups), and **`calculation-logic.md`** — 172 mockup metrics traced to their DAX and
+  translated to SQL, a 44-page build sheet, and the rulings R-01…R-12. Read it before
+  changing any formula.
+- `mockups/` — the two static HTML dashboards that define what the app must reproduce.
+- `sources/` — the raw weld dump and the original `.pbix` (git-ignored).
+- `db/`, `scripts/`, `lib/`, `app/`, `components/`, `tests/` — the working app (see
+  "Backend architecture" below).
 
-So most work here is: read a mockup page → find the corresponding columns in the weld dump →
-build the equivalent computation + screen in the App Router.
+Current scope (user ruling 2026-09-05): GAC / TEKFEN / MEDGULF from `Weld Dump.txt`. CCC,
+Acciona/Inco, the flange dashboard and the weekly trend workbooks need source files that are
+not in `sources/` yet; the schema carries a `source` discriminator so they plug in later.
 
 ## The mockups (design contract)
 
