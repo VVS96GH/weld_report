@@ -238,35 +238,72 @@ export async function utTrackerCccLoaded(): Promise<boolean> {
 }
 
 /**
- * `true` when the UT-tracker OVERLAY has actually been materialised onto the
- * fact rows for this scope.
+ * Per-source COVERAGE of the UT measures within a scope.
  *
- * This is the gate the KPIs need, not {@link utTrackerCccLoaded}: the tracker
- * workbook can be loaded (9,419 rows in `ref_ut_tracker_ccc`) while
- * `manual_ut_report_no_all` is still NULL on every `weld` row, because the
- * overlay is written by the CCC loader. Asking the wrong question turns
- * "not loaded yet" into a fabricated `0` on the page-1 UT cards.
+ * An existence check is not enough and produced a fabricated zero twice. The
+ * first version asked "is `ref_ut_tracker_ccc` loaded?" — the workbook can hold
+ * its 9,419 rows while the overlay is still NULL on every `weld` row. The
+ * second asked "does any in-scope row have the overlay?" — which went true the
+ * moment INCO's 441 rows landed, and INCO is excluded from project scope
+ * (R3-01), so the KPIs computed over nothing and rendered `0`.
+ *
+ * The honest question is per source: which of the sources actually IN this
+ * scope contribute to the measure? None → the KPI is unknown (`—`). Some → show
+ * the partial total and name what it does and does not cover, the same policy
+ * page 1 already uses for the source union itself.
  */
-export async function utOverlayLoaded(scope: Scope): Promise<boolean> {
+export type UtCoverage = {
+  /** In-scope sources with at least one joint feeding the UT joint measures. */
+  covered: string[];
+  /** In-scope sources with joints but no UT input materialised. */
+  uncovered: string[];
+  /** In-scope sources with a resolvable `[Weld Length "PR all"]` (M33/M35/M36). */
+  lengthCovered: string[];
+  /** In-scope sources whose weld length cannot resolve. */
+  lengthUncovered: string[];
+};
+
+export const EMPTY_UT_COVERAGE: UtCoverage = {
+  covered: [],
+  uncovered: [],
+  lengthCovered: [],
+  lengthUncovered: [],
+};
+
+export async function utCoverage(scope: Scope): Promise<UtCoverage> {
   const p = new Params();
   const sql =
-    `SELECT EXISTS (SELECT 1 FROM ${JOINT_FROM} WHERE ${scopeWhere(scope, p)}` +
-    ` AND w.ut_done_prall) AS present`;
+    `SELECT w.source::text AS source,\n` +
+    `       count(*) FILTER (WHERE w.ut_done_prall) AS ut_joints,\n` +
+    `       count(*) FILTER (WHERE w.ut_weld_length_m_prall IS NOT NULL) AS len_joints\n` +
+    `  FROM ${JOINT_FROM}\n` +
+    ` WHERE ${scopeWhere(scope, p)}\n` +
+    ` GROUP BY 1`;
   try {
-    const rows = await query<{ present: boolean }>(sql, p.list());
-    return Boolean(rows[0]?.present);
+    const rows = z
+      .array(z.object({ source: z.string(), ut_joints: zCount, len_joints: zCount }))
+      .parse(await query(sql, p.list()));
+    const out: UtCoverage = {
+      covered: [],
+      uncovered: [],
+      lengthCovered: [],
+      lengthUncovered: [],
+    };
+    for (const r of rows) {
+      (r.ut_joints > 0 ? out.covered : out.uncovered).push(r.source);
+      (r.len_joints > 0 ? out.lengthCovered : out.lengthUncovered).push(r.source);
+    }
+    return out;
   } catch {
-    return false;
+    return EMPTY_UT_COVERAGE;
   }
 }
 
 /**
- * `true` when the `weld_length_by_dia` dimension has rows.
- *
- * `[Weld Length "PR all"]` is a `LOOKUPVALUE` into that dimension, so M33/M35
- * and therefore M36 are *unknown* — not zero — while it is empty (R3-07 loads
- * its 98 distinct `(dia_inch, weld_length)` rows, not the 728,550 exploded
- * ones).
+ * `true` when the `weld_length_by_dia` dimension has rows. Kept for the
+ * provenance note only: `weld.weld_length_m` can be populated from a source's
+ * own column while this reference dimension is still empty, so it must NOT be
+ * used as the gate — {@link utCoverage}'s `lengthCovered` is the gate.
  */
 export async function weldLengthDimensionLoaded(): Promise<boolean> {
   try {

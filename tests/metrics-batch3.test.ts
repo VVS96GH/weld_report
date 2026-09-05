@@ -26,6 +26,8 @@ import {
   scopeWhere,
 } from "@/lib/metrics/scope";
 import { weldingStats } from "@/lib/metrics/welding";
+import { utCoverage } from "@/lib/metrics/ut";
+import { getWeldingPage } from "@/lib/pages/welding";
 
 /** `analysis/sources3/plan.md` — the delivered populations. */
 const ACCIONA_ROWS = 13_313;
@@ -182,5 +184,111 @@ describe.skipIf(Boolean(skipReason))("page 2's sub-contractor table", () => {
     expect(parties).toContain("ACCIONA");
     expect(parties).not.toContain("INCO");
     expect(parties).not.toContain("Inco");
+  });
+});
+
+
+// ── the fabricated-zero regression ──────────────────────────────────────────
+//
+// This bug shipped twice, both times because an EXISTENCE check stood in for a
+// COVERAGE check. First "is ref_ut_tracker_ccc loaded?" — true while the
+// overlay was NULL on every weld row. Then "does any in-scope row have the
+// overlay?" — true the moment INCO's 441 rows landed, and INCO is excluded from
+// project scope, so the KPIs computed over nothing and rendered 0.
+
+describe.skipIf(Boolean(skipReason))("UT coverage is per source, not existence", () => {
+  it("partitions every in-scope source into covered / uncovered", async () => {
+    const cov = await utCoverage(projectScope());
+    const inScope = await query<{ source: string }>(
+      "SELECT DISTINCT source::text AS source FROM mv_joint ORDER BY 1",
+    );
+    const all = inScope
+      .map((r) => r.source)
+      .filter((sourceName) => sourceName !== "INCO"); // R3-01
+    console.log(
+      `[metrics-batch3.test] UT covered: ${cov.covered.join(", ") || "(none)"} · ` +
+        `uncovered: ${cov.uncovered.join(", ") || "(none)"} · ` +
+        `length covered: ${cov.lengthCovered.join(", ") || "(none)"}`,
+    );
+    expect([...cov.covered, ...cov.uncovered].sort()).toEqual(all.sort());
+  });
+
+  it("never reports INCO as covered inside project scope", async () => {
+    // INCO is the only source with the overlay materialised today, and it is
+    // excluded — so its presence must not make the scope look covered.
+    const cov = await utCoverage(projectScope());
+    expect(cov.covered).not.toContain("INCO");
+    expect(cov.uncovered).not.toContain("INCO");
+  });
+});
+
+describe.skipIf(Boolean(skipReason))("no KPI renders a fabricated zero", () => {
+  it("the UT cards follow their coverage set in BOTH directions", async () => {
+    // The real invariant, not "no zeros anywhere": a metric may render 0 only
+    // when something was actually measured. With coverage it must show a
+    // number — including a legitimate 0.00%, which is what CCC's 30 rejected
+    // joints (0.088986 m over 18,463.01 m inspected = 0.000482%) round to at
+    // the mockup's 2 dp. Without coverage it must show the em-dash.
+    const cov = await utCoverage(projectScope());
+    const model = await getWeldingPage(1);
+    const kpis = new Map(
+      model.widgets
+        .filter((w): w is Extract<typeof w, { kind: "kpi" }> => w.kind === "kpi")
+        .map((w) => [w.label, w.value]),
+    );
+    const utCards = ['Numb UT/PAUT', 'UT/PAUT "A"', 'UT/PAUT "R"', "UT Def.Length"];
+    for (const label of utCards) {
+      const value = kpis.get(label);
+      if (cov.covered.length === 0) {
+        expect(value, `${label} with no covered source`).toBe("\u2014");
+      } else {
+        expect(value, `${label} with coverage ${cov.covered.join(",")}`).not.toBe("\u2014");
+      }
+    }
+    for (const label of ["UT Insp Len", "UT Rej% Len"]) {
+      const value = kpis.get(label);
+      if (cov.lengthCovered.length === 0) {
+        expect(value, `${label} with no length coverage`).toBe("\u2014");
+      } else {
+        expect(value, `${label} with length coverage`).not.toBe("\u2014");
+      }
+    }
+  });
+
+  it("M91 stays an em-dash — its register is still missing", async () => {
+    const model = await getWeldingPage(1);
+    const m91 = model.widgets.find(
+      (w) => w.kind === "kpi" && w.label === "WPS Approved",
+    );
+    expect(m91 && m91.kind === "kpi" ? m91.value : null).toBe("\u2014");
+  });
+
+  it("page 2 shows no bare-zero cell in a metric column", async () => {
+    const model = await getWeldingPage(2);
+    for (const w of model.widgets) {
+      if (w.kind !== "table") continue;
+      for (const row of w.rows) {
+        for (const cell of row.slice(1)) {
+          expect(cell, `${w.title} row ${row[0]}`).not.toBe("0");
+        }
+      }
+    }
+  });
+});
+
+describe.skipIf(Boolean(skipReason))("the welding-status pivots filter Weld Cat IN {F,S}", () => {
+  it("drops CCC's `J` category, as the pbix visuals do", async () => {
+    // Evidence: report-inventory.md page 22 pivots 7feb0e7f… / 3d74883e…, page
+    // 23 pivots eb6ba97e… / da743b15…, each `Weld Cat IN {F, S}`. `J` is a
+    // Talisman-only value (92,240 + 22,442 rows) that no other source uses.
+    const j = await query<{ n: string }>(
+      "SELECT count(*)::text AS n FROM mv_joint WHERE weld_cat = 'J'",
+    );
+    expect(Number(j[0].n), "J joints exist, so the filter is load-bearing").toBeGreaterThan(0);
+    const model = await getWeldingPage(2);
+    for (const w of model.widgets) {
+      if (w.kind !== "table" || !/Welding Status/.test(w.title)) continue;
+      expect(w.rows.map((r) => r[0]), w.title).not.toContain("J");
+    }
   });
 });

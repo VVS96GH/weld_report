@@ -141,7 +141,7 @@ probed once per page, not once per widget:
 |---|---|---|
 | `sourceHasRows(sources)` | does `weld` hold rows for this page's source? | tells "this subcontractor has no welds" from "the export has not been loaded" |
 | `spoolMasterLoaded()` | does `spool` have any row? | with an empty `spool`, `EXISTS(...)` is `false` and every FABRICATED column would read a confident 0 |
-| `utOverlayLoaded(scope)` | is `manual_ut_report_no_all` populated on the FACT rows? | **not** "is `ref_ut_tracker_ccc` loaded". The workbook can hold its 9,419 rows while the overlay is still NULL everywhere, because the CCC loader writes it. Asking the wrong question put `0` on the page-1 UT cards |
+| `utCoverage(scope)` | **which in-scope sources** feed the UT measures? | an existence check produced a fabricated 0 **twice**. "Is the tracker loaded?" was true while the overlay was NULL on every row. "Does any in-scope row have the overlay?" went true when INCO's 441 rows landed — and INCO is excluded from project scope, so the KPIs computed over nothing and rendered `0`. Coverage is per source: none covered → `—`; some covered → the partial total plus a note naming what it does and does not cover |
 | `hasHaValues(scope)` | is `weld.ha` populated? | M52's `ALLEXCEPT` grain includes the handover area; without it the ratio is one level coarser and the page says so |
 
 ---
@@ -371,6 +371,25 @@ expression is the WP1 gate, and it is already correct:
 | Inco PAUT rows | 441 rows carry the same report as both RT and UT (the M copies RT→UT without clearing RT). Both flags fire, which is what the pbix does. INCO is out of project scope anyway |
 
 So **no migration 0015 is needed**; 0013 is untouched.
+
+### `Weld Cat IN {F, S}` on the welding-status pivots
+
+The "Cumulative Welding Status" and "Welding Status for this Week" pivots carry
+a `Weld Cat IN {F, S}` **visual** filter in the pbix — page 22 pivots
+`7feb0e7f3d3a4a556bd0` / `3d74883e1b2d5d486000` and page 23 pivots
+`eb6ba97e72540102c21e` / `da743b15d5328d39855b`
+(`analysis/pbix/report-inventory.md`). It became load-bearing the moment CCC
+landed: Talisman's `Work Category` has a third value, **`J`** (92,240
+welder-record + 22,442 joint-record rows, `analysis/sources2/profile.md:86,285`),
+which no other source uses. The mockup does **not** predate the data — the
+visual filters it out.
+
+What `J` means is not documented in anything we hold; the profiles give the
+vocabulary and the counts, nothing more. So it is filtered exactly where the
+pbix filters it and reported everywhere the pbix reports it — the page-2
+"Project RT/UT Tested" pivot restricts `Weld Type`, not `Weld Cat`, and is left
+alone (no `J` row appears there anyway: no `J` joint passes
+`Weld Type IN {BW,GW,MW,CLET}`).
 
 ### M33 / M35 / M36 and the Inco blank (R3-06)
 

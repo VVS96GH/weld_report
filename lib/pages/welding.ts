@@ -78,9 +78,10 @@ import {
 import {
   utAggs,
   utAggsPrAll,
-  utOverlayLoaded,
+  utCoverage,
   utStatsFromRow,
   weldLengthDimensionLoaded,
+  type UtCoverage,
   type UtStats,
 } from "@/lib/metrics/ut";
 import {
@@ -366,17 +367,21 @@ export type Availability = {
   variant: Variant;
   /** `spool` has rows → M44/M48/M49 are computable. */
   spool: boolean;
-  /**
-   * The UT-tracker OVERLAY (`manual_ut_report_no_all`) is materialised on the
-   * fact rows for this scope. NOT the same as "the tracker workbook is loaded":
-   * the workbook can be in `ref_ut_tracker_ccc` while the overlay is still
-   * NULL everywhere, and computing M32/M34 then yields a fabricated 0.
+/**
+   * Per-source UT coverage inside this scope. `utTracker` is derived from it —
+   * an existence check twice produced a fabricated 0, most recently when INCO's
+   * 441 overlay rows made "some row has it" true while INCO is excluded from
+   * project scope, so the KPIs computed over nothing.
    */
+  ut: UtCoverage;
+  /** `ut.covered.length > 0` — at least one in-scope source feeds the UT measures. */
   utTracker: boolean;
   /** `weld` holds rows for this page's sources. */
   sourceLoaded: boolean;
-  /** `weld_length_by_dia` has rows → M33/M35/M36 can resolve. */
+  /** At least one in-scope source has a resolvable weld length → M33/M35/M36. */
   weldLength: boolean;
+  /** `weld_length_by_dia` itself — provenance for the note, never the gate. */
+  weldLengthDimension: boolean;
 };
 
 /**
@@ -466,14 +471,23 @@ async function bundleByWithTotal(
 async function availability(
   variant: Variant,
   sources: readonly string[],
+  scope: Scope = { sources },
 ): Promise<Availability> {
-  const [spool, utTracker, sourceLoaded, weldLength] = await Promise.all([
+  const [spool, ut, sourceLoaded, weldLengthDimension] = await Promise.all([
     spoolMasterLoaded(),
-    utOverlayLoaded({ sources }),
+    utCoverage(scope),
     sourceHasRows(sources),
     weldLengthDimensionLoaded(),
   ]);
-  return { variant, spool, utTracker, sourceLoaded, weldLength };
+  return {
+    variant,
+    spool,
+    ut,
+    utTracker: ut.covered.length > 0,
+    sourceLoaded,
+    weldLength: ut.lengthCovered.length > 0,
+    weldLengthDimension,
+  };
 }
 
 const GROUP_WELD_CAT: GroupSpec = { key: "weld_cat", sql: "w.weld_cat" };
@@ -712,6 +726,26 @@ function metricTable(
 
 const CAT_ORDER = ["F", "S"];
 
+/**
+ * The "Cumulative Welding Status" / "Welding Status for this Week" pivots carry
+ * a `Weld Cat IN {F, S}` visual filter in the pbix — verbatim from
+ * `analysis/pbix/report-inventory.md`:
+ *   page 22 pivots `7feb0e7f3d3a4a556bd0` and `3d74883e1b2d5d486000`,
+ *   page 23 pivots `eb6ba97e72540102c21e` and `da743b15d5328d39855b`.
+ *
+ * It matters now that CCC is loaded: Talisman's `Work Category` has a third
+ * value, `J` (92,240 welder-record rows + 22,442 joint-record rows;
+ * `analysis/sources2/profile.md:86,285`), which no other source uses and which
+ * the mockup's F/S-only tables therefore never showed. The mockup does NOT
+ * predate the data — the visual filters it out.
+ *
+ * What `J` means is NOT documented in any source we hold: the profiles give the
+ * vocabulary and the counts, nothing more. It is left unfiltered wherever the
+ * pbix leaves it unfiltered (the page-2 "Project RT/UT Tested" pivot restricts
+ * `Weld Type`, not `Weld Cat`), so it is reported where the report reports it.
+ */
+const WELD_STATUS_CATS = ["F", "S"] as const;
+
 function orderedCats(keys: Iterable<string | null>): string[] {
   const seen = [...keys].filter((k): k is string => k !== null && k !== "");
   seen.sort((a, b) => {
@@ -820,6 +854,12 @@ function note(ctx: Ctx, msg: string): void {
   ctx.notes.add(msg);
 }
 
+/** Add a note only when there is one — the note builders return null when the
+ * situation they describe no longer applies. */
+function noteIf(ctx: Ctx, msg: string | null): void {
+  if (msg) ctx.notes.add(msg);
+}
+
 const CCC_NOTE =
   "CCC is not loaded yet: weld holds no CCC_WELDER_RECORD / CCC_JOINT_RECORD " +
   "rows, so every figure on this page is unavailable — not zero. The page is " +
@@ -830,10 +870,47 @@ const TREND_NOTE =
   "weld_weekly_snapshot; the history cannot be recomputed from a single dump " +
   "(the DAX ages on TODAY()). The table is empty, so the charts are empty.";
 
-const UT_TRACKER_NOTE =
-  "Project-scope UT metrics (UT Insp Len, UT Def.Length, % Rej UT Len, " +
-  "Numb UT/PAUT) need UT TRACKER (CCC/GAC/TEK); those workbooks are not in " +
-  "sources/, so those KPIs render blank rather than 0.";
+/**
+ * The UT provenance note, built from measured per-source coverage.
+ *
+ * `null` when every in-scope source is covered — a note that keeps naming
+ * absent trackers after they arrive is as misleading as a fabricated zero.
+ */
+function utCoverageNote(ut: UtCoverage): string | null {
+  const label = (s: string) => SOURCE_LABELS[s] ?? s;
+  if (ut.covered.length === 0) {
+    return (
+      "UT metrics (Numb UT/PAUT, UT \"A\"/\"R\", UT Insp Len, UT Def.Length, " +
+      "% Rej UT Len) are unavailable: no source in this scope has the UT-tracker " +
+      "overlay materialised. UT TRACKER (GAC)_Master.xlsx and UT TRACKER (TEK).xlsx " +
+      "are still missing (ruling R-05); the CCC tracker is loaded but its overlay " +
+      "is written by the CCC loader. The cards show \u2014, never 0."
+    );
+  }
+  if (ut.uncovered.length === 0) return null;
+  return (
+    `UT is a PARTIAL total. Covered: ${ut.covered.map(label).join(", ")}. ` +
+    `Not covered: ${ut.uncovered.map(label).join(", ")} \u2014 their UT-tracker ` +
+    `overlay is not materialised (UT TRACKER (GAC)/(TEK) are still missing, ruling R-05).`
+  );
+}
+
+/** The same policy for the UT length family (M33/M35/M36). */
+function utLengthNote(ut: UtCoverage, dimensionLoaded: boolean): string | null {
+  const label = (s: string) => SOURCE_LABELS[s] ?? s;
+  if (ut.lengthCovered.length === 0) {
+    return (
+      "UT length metrics (M33/M35/M36) are unavailable: [Weld Length \"PR all\"] " +
+      "cannot resolve for any source in this scope" +
+      (dimensionLoaded ? "." : ", and the weld_length_by_dia reference dimension is empty.")
+    );
+  }
+  if (ut.lengthUncovered.length === 0) return null;
+  return (
+    `UT length is a PARTIAL total. Covered: ${ut.lengthCovered.map(label).join(", ")}. ` +
+    `Not covered: ${ut.lengthUncovered.map(label).join(", ")}.`
+  );
+}
 
 const FABRICATED_NOTE =
   "FABRICATED columns need Spool Dump.txt, which is not in sources/.";
@@ -871,9 +948,6 @@ const INCO_LENGTH_NOTE =
   "fills, and the fallback LOOKUPVALUE needs Dia inch, which Inco leaves " +
   "empty. Reproduced literally, not substituted \u2014 flagged for the report owner.";
 
-const WELD_LENGTH_NOTE =
-  "UT length metrics are unavailable: the weld_length_by_dia dimension " +
-  "(Weld Length.xlsx) has no rows, so [Weld Length \"PR all\"] cannot resolve.";
 
 /**
  * The project-scope disclosure, COMPUTED from what `weld` actually holds.
@@ -1076,7 +1150,7 @@ async function buildProjectKpiPage(spec: SpecPage, ctx: Ctx): Promise<Widget[]> 
   // §3.1 / R3-01: every visual on pbix page 21 carries `SC <> Inco`, one of the
   // 69 filters that keep INCO out of project scope. ACCIONA is inside it.
   const scope: Scope = projectScope();
-  const av = await availability("PR_ALL", SOURCES_PR_ALL_LOADED);
+  const av = await availability("PR_ALL", SOURCES_PR_ALL_LOADED, scope);
   const [b, welders, wpsApproved, weekly, dist] = await Promise.all([
     bundleTotal(scope, av),
     qualifiedWelders(),
@@ -1092,10 +1166,14 @@ async function buildProjectKpiPage(spec: SpecPage, ctx: Ctx): Promise<Widget[]> 
   const sources = await loadedSources();
   const scopeNote = projectScopeNote(sources);
   if (scopeNote) note(ctx, scopeNote);
-  if (!av.utTracker) note(ctx, UT_TRACKER_NOTE);
+  noteIf(ctx, utCoverageNote(av.ut));
   if (!av.spool) note(ctx, FABRICATED_NOTE);
-  if (!av.weldLength) note(ctx, WELD_LENGTH_NOTE);
-  if (sources.loaded.includes("INCO")) note(ctx, INCO_LENGTH_NOTE);
+  noteIf(ctx, utLengthNote(av.ut, av.weldLengthDimension));
+  // Only when INCO is actually inside this scope. On the project pages R3-01
+  // excludes it, so a note about INCO's blank length would describe a party the
+  // page does not show. The permanent flag for the report owner lives in
+  // lib/metrics/README.md, which is what R3-06 asks for.
+  if (av.ut.lengthUncovered.includes("INCO")) note(ctx, INCO_LENGTH_NOTE);
   if (!(await sourceHasRows(SOURCES_CCC))) note(ctx, CCC_NOTE);
   if (welders === null || wpsApproved === null) note(ctx, REGISTER_NOTE);
   if (welders?.source_note) note(ctx, `Project_Welder: ${welders.source_note}`);
@@ -1364,19 +1442,20 @@ async function buildProjectStatusPage(
   // R3-01: project scope = the loaded union minus INCO; ACCIONA is included and
   // supplies the mockup's Acciona row in the sub-contractor table.
   const scope: Scope = projectScope({ temporaryLines: false });
-  const av = await availability("PR_ALL", SOURCES_PR_ALL_LOADED);
+  const av = await availability("PR_ALL", SOURCES_PR_ALL_LOADED, scope);
   const sources = await loadedSources();
   const scopeNote = projectScopeNote(sources);
   if (scopeNote) note(ctx, scopeNote);
-  if (!av.utTracker) note(ctx, UT_TRACKER_NOTE);
+  noteIf(ctx, utCoverageNote(av.ut));
   if (!(await sourceHasRows(SOURCES_CCC))) note(ctx, CCC_NOTE);
   const weekEnd = await latestWeekEnd();
   const rtTypes = { ...scope, weldTypes: ["BW", "GW", "MW", "CLET"] };
   const noJ = { ...scope, excludeWeldCats: ["J"] };
+  const statusScope = { ...scope, weldCats: WELD_STATUS_CATS };
   const [pivot, thisWeek, cat, sub] = await Promise.all([
-    weldTypePivot(scope),
+    weldTypePivot(statusScope),
     weekEnd
-      ? weldTypePivot(scope, { thisWeekEnding: weekEnd })
+      ? weldTypePivot(statusScope, { thisWeekEnding: weekEnd })
       : Promise.resolve(null),
     bundleByWithTotal(rtTypes, GROUP_WELD_CAT, av),
     bundleByWithTotal(noJ, GROUP_SUBCON, av),
@@ -1443,14 +1522,19 @@ async function buildSubconPage(
   ctx: Ctx,
 ): Promise<Widget[]> {
   const weekEnd = await latestWeekEnd();
-  const av = await availability(variantFor(confs[0]!.sub), sourcesFor(confs[0]!.sub));
+  const av = await availability(
+    variantFor(confs[0]!.sub),
+    sourcesFor(confs[0]!.sub),
+    baseScope(confs[0]!),
+  );
   const blocks = await Promise.all(
     confs.map(async (conf) => {
       const scope = baseScope(conf);
+      const statusScope = { ...scope, weldCats: WELD_STATUS_CATS };
       const [pivot, thisWeek, byCat, total, weekly, dist] = await Promise.all([
-        weldTypePivot(scope),
+        weldTypePivot(statusScope),
         weekEnd
-          ? weldTypePivot(scope, { thisWeekEnding: weekEnd })
+          ? weldTypePivot(statusScope, { thisWeekEnding: weekEnd })
           : Promise.resolve(null),
         bundleBy(scope, GROUP_WELD_CAT, av),
         bundleTotal(scope, av),
@@ -1466,7 +1550,7 @@ async function buildSubconPage(
     }),
   );
   if (!weekEnd) note(ctx, TREND_NOTE);
-  if (!av.utTracker) note(ctx, UT_TRACKER_NOTE);
+  noteIf(ctx, utCoverageNote(av.ut));
   if (!av.spool) note(ctx, FABRICATED_NOTE);
   if (!av.sourceLoaded) note(ctx, sourceNote(confs[0]!.sub));
 
@@ -1617,7 +1701,7 @@ async function buildNdePage(
     // joint record), so applying it there would empty the page.
     pwhtStatusPresent: conf.kind === "pwht" && !isCcc ? true : undefined,
   };
-  const av = await availability(variant, sourcesFor(conf.sub));
+  const av = await availability(variant, sourcesFor(conf.sub), scope);
   const family =
     conf.kind === "pwht"
       ? variant === "EP"
@@ -1652,7 +1736,7 @@ async function buildNdePage(
       : Promise.resolve(new Map<string | null, AgingBuckets>()),
   ]);
   if (!av.spool) note(ctx, FABRICATED_NOTE);
-  if (!av.utTracker) note(ctx, UT_TRACKER_NOTE);
+  noteIf(ctx, utCoverageNote(av.ut));
   if (isCcc) note(ctx, CCC_AGING_NOTE);
   if (!av.sourceLoaded) note(ctx, sourceNote(conf.sub));
 
@@ -1747,7 +1831,11 @@ async function buildWpsPage(
   confs: SubconConf[],
   ctx: Ctx,
 ): Promise<Widget[]> {
-  const av = await availability(variantFor(confs[0]!.sub), sourcesFor(confs[0]!.sub));
+  const av = await availability(
+    variantFor(confs[0]!.sub),
+    sourcesFor(confs[0]!.sub),
+    baseScope(confs[0]!),
+  );
   const blocks = await Promise.all(
     confs.map(async (conf) => {
       const scope: Scope = {
