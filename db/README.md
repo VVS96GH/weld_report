@@ -56,6 +56,7 @@ rules are right; the pbix stores 958,634 for its own (19 days older) snapshot.
 | `0010_batch2_schema.sql` | `weld_to_date` v3, fractional films, 23 new `weld` columns, `spool`, `ccc_joint_pwht`, the ref tables, `load.source` vocabulary |
 | `0011_mv_weekly_progress_v3.sql` | re-creates `mv_weekly_progress` after 0010 dropped it — **the current definition** |
 | `0012_lengths_and_manual_exclusion.sql` | `weld_length_m` + the two UT length columns + `week_end_date_rt`; `weld_manual_exclusion` seeded with the M’s 4 Joint IDs |
+| `0013_mv_joint.sql` | **metrics lane** — `mv_joint` (2,370,428 rows) and `mv_joint_wps` (2,194,756), the joint-grain rollups the project pages read |
 
 `0002` and `0003` are produced by `scripts/gen-schema-columns.ts` from
 `analysis/dump/columns.json` and **are committed**. Never hand-edit them; edit
@@ -468,6 +469,9 @@ the highest-numbered definition:**
 * `weld_to_date()` — 0001, superseded by **0010**
 * `mv_weekly_progress` — 0006, 0007, superseded by **0011**
 * `weld` — created by 0003 (generated), altered by 0008 and 0010
+* `mv_joint` / `mv_joint_wps` — **0013** (authored by the metrics lane; this lane only
+  REFRESHes them, never edits the file)
+* `weld_manual_exclusion` — 0012
 
 `scripts/sql-schema.ts` replays the whole log and `scripts/check-sql-columns.ts` checks the
 *effective* schema, so a stale earlier definition cannot make a check pass by accident.
@@ -521,6 +525,9 @@ column (only `Welder(Root/Heat/Fill/Cap)`), and a fabricated identifier is worse
 absent one.
 | `load-ccc-welder-record.ts` | `CSVExport_Welder Record.csv` + the ACC/REJ workbook | `weld` | 5,432,993 |
 
+Every one of them refreshes `mv_weekly_progress`, `mv_joint` and `mv_joint_wps` after
+`COMMIT` — see "Every loader refreshes three materialised views" below; budget ~73 s for it.
+
 Each takes `--dry-run`, which parses the real files with **no database** and prints the counts
 above so a drift in a source file is caught before anything is written. Add these to
 `package.json` (frozen for this lane):
@@ -567,6 +574,41 @@ producer is rejected after 10 s instead of hanging.
 
 The joint-record loader now makes **two sequential passes** over the file. Re-reading 634 MB
 costs ~9 s; the deadlock cost the whole load.
+
+### Every loader refreshes three materialised views
+
+After `COMMIT`, and **outside** any transaction, all four loaders call
+`refreshMatviews()` from `scripts/load-common.ts`, which refreshes in this order:
+
+| view | rows | refresh | why it is in the list |
+|---|---:|---|---|
+| `mv_weekly_progress` | 10,309 | plain, ~21 s | the weekly trend (§6.5) |
+| `mv_joint` | 2,370,428 | `CONCURRENTLY`, ~43 s | migration 0013 — the joint-grain rollup the project pages read |
+| `mv_joint_wps` | 2,194,756 | `CONCURRENTLY`, ~8 s | the per-WPS pivot grain |
+
+Three rules the helper enforces so nobody has to remember them:
+
+* **`CONCURRENTLY` cannot refresh a view that has never been populated.** 0011 and 0013 both
+  create theirs `WITH NO DATA`, so the helper reads `pg_class.relispopulated` and makes the
+  *first* refresh after a `npm run db:reset` a plain one. Without that branch the first load
+  into a fresh database fails.
+* **`CONCURRENTLY` cannot run inside a transaction block**, which is why the call sits after
+  `COMMIT` in every loader. `check-sql-columns.ts` fails if a loader grows a hand-rolled
+  `REFRESH MATERIALIZED VIEW` statement again.
+* **`CONCURRENTLY` needs a non-partial unique index.** `mv_joint_key (source, joint_id)` and
+  `mv_joint_wps_key (source, joint_id, wps_no)` are it. No `NULLS NOT DISTINCT` is needed
+  here — unlike `mv_weekly_progress`, whose key columns are nullable — because `weld.source`,
+  `weld.joint_id` and (in the WPS view) `wps_no` are all NOT NULL or filtered non-null.
+
+**A spool load now costs ~73 s of post-processing on top of its ~12 s of parsing.** That is
+not a mistake: `mv_joint`'s FABRICATED flags (M44/M48/M49) are an `EXISTS` against `spool`
+embedded in the view, so loading spools changes the view's contents even though `weld` was
+never touched. Skipping the refresh there would leave every FABRICATED metric reading the
+previous spool export.
+
+If the view is missing (0013 not applied yet), the helper prints a loud warning naming the
+view and telling you to run `npm run db:migrate`, and the load still succeeds — the data is
+correct, the pages that read that view are stale. It does not fabricate a silent success.
 
 ### `Spool Dump.txt`: pad the line, never re-join it
 

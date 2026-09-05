@@ -26,8 +26,8 @@ import { statSync, existsSync } from "node:fs";
 import path from "node:path";
 import { Client } from "pg";
 import {
-  closeLoad, copyLine, copyRows, fmt, num, openLoad, parseDate, readDelimited,
-  requireEnvUrl, secs, sha256File, txt,
+  closeLoad, copyLine, copyRows, formatRefreshes, fmt, num, openLoad, parseDate, readDelimited,
+  refreshMatviews, requireEnvUrl, secs, sha256File, txt,
 } from "./load-common";
 import {
   CCC_JOINT_PWHT_COLUMNS as JR_COLUMNS,
@@ -294,8 +294,8 @@ async function live(): Promise<void> {
     const tPost = Date.now();
     await client.query("VACUUM (ANALYZE) weld");
     await client.query("VACUUM (ANALYZE) ccc_joint_pwht");
-    await client.query("REFRESH MATERIALIZED VIEW mv_weekly_progress");
-    console.log(`  post    VACUUM + REFRESH in ${secs(tPost)}`);
+    const refreshed = await refreshMatviews(client);
+    console.log(`  post    VACUUM + ${formatRefreshes(refreshed)} — ${secs(tPost)} total`);
 
     await closeLoad(client, loadId, stats.lines, weldRows, 0, {
       dropped_del_flag: stats.droppedDelFlag,

@@ -28,8 +28,8 @@ import path from "node:path";
 import { Client } from "pg";
 import ExcelJS from "exceljs";
 import {
-  closeLoad, copyLine, copyRows, fmt, num, openLoad, parseDate, readDelimited,
-  requireEnvUrl, secs, sha256File, txt,
+  closeLoad, copyLine, copyRows, formatRefreshes, fmt, num, openLoad, parseDate, readDelimited,
+  refreshMatviews, requireEnvUrl, secs, sha256File, txt,
 } from "./load-common";
 import { CCC_WELDER_WELD_COLUMNS as WELD_COLUMNS } from "./load-columns";
 import {
@@ -356,8 +356,8 @@ async function live(): Promise<void> {
     report(stats, t0);
     const tPost = Date.now();
     await client.query("VACUUM (ANALYZE) weld");
-    await client.query("REFRESH MATERIALIZED VIEW mv_weekly_progress");
-    console.log(`  post    VACUUM (ANALYZE) weld + REFRESH in ${secs(tPost)}`);
+    const refreshed = await refreshMatviews(client);
+    console.log(`  post    VACUUM (ANALYZE) weld + ${formatRefreshes(refreshed)} — ${secs(tPost)} total`);
 
     await closeLoad(client, loadId, stats.csvLines + stats.xlsxRows, rows, 0, {
       csv_skipped_tested: stats.csvSkippedTested,

@@ -24,6 +24,7 @@ import {
 import {
   EXCLUDED_JOINT_IDS, WELD_TYPE_STEPS, normaliseWeldType, repairRewaldPrAll,
 } from "./ccc-columns";
+import { POST_LOAD_MATVIEWS } from "./load-common";
 
 let failures = 0;
 function check(label: string, ok: boolean, detail = ""): void {
@@ -321,6 +322,44 @@ function main(): void {
       && repairRewaldPrAll("Inco", "X-SP1-1R1", "") === "");
   check("weld_length_by_dia is still EMPTY-by-design (Weld Length.xlsx absent)",
     schema.tables.has("weld_length_by_dia") && weld.has("weld_length_m"));
+
+
+  // ---- 9. mv_joint / mv_joint_wps (migration 0013) and the post-load refresh --
+  const mvNames = new Set(schema.matviews.map((m) => m.name));
+  const spoolTable = names(schema.tables.get("spool"));
+  for (const mv of ["mv_joint", "mv_joint_wps"]) {
+    check(`${mv} is defined in the migration log`, mvNames.has(mv));
+    const bodies = schema.matviews.filter((m) => m.name === mv);
+    const wCols = bodies.flatMap((b) =>
+      [...b.body.matchAll(/\bw\.([a-z_][a-z0-9_]*)/g)].map((x) => x[1]));
+    check(`${mv} reads ${new Set(wCols).size} distinct w.<column>, all in weld`,
+      missing(wCols, weld).length === 0, missing(wCols, weld).join(", "));
+    const spCols = bodies.flatMap((b) =>
+      [...b.body.matchAll(/\bsp\.([a-z_][a-z0-9_]*)/g)].map((x) => x[1]));
+    check(`${mv} reads ${new Set(spCols).size} distinct sp.<column>, all in spool`,
+      missing(spCols, spoolTable).length === 0, missing(spCols, spoolTable).join(", "));
+    // CONCURRENTLY is impossible without a non-partial unique index.
+    check(`${mv} has the UNIQUE index CONCURRENTLY requires`,
+      new RegExp(`CREATE UNIQUE INDEX[^;]*ON ${mv}\\b`).test(allSql));
+  }
+  // The loaders refresh exactly these three, in this order.
+  check("POST_LOAD_MATVIEWS lists mv_weekly_progress, mv_joint, mv_joint_wps in order",
+    POST_LOAD_MATVIEWS.map((m) => m.name).join(",")
+      === "mv_weekly_progress,mv_joint,mv_joint_wps",
+    POST_LOAD_MATVIEWS.map((m) => m.name).join(","));
+  check("every matview the loaders refresh exists in the migration log",
+    POST_LOAD_MATVIEWS.every((m) => mvNames.has(m.name)),
+    POST_LOAD_MATVIEWS.filter((m) => !mvNames.has(m.name)).map((m) => m.name).join(", "));
+  // All four loaders must refresh; a load that skips one leaves the pages stale.
+  for (const f of ["load-weld-dump.ts", "load-ccc-joint-record.ts",
+    "load-ccc-welder-record.ts", "load-spool-dump.ts"]) {
+    const src = readFileSync(path.join(REPO_ROOT, "scripts", f), "utf8");
+    const calls = src.includes("refreshMatviews(client)");
+    const handRolled = /REFRESH MATERIALIZED VIEW/.test(src.replace(/\/\*[\s\S]*?\*\//g, ""));
+    check(`${f} refreshes all three matviews via refreshMatviews(), after COMMIT`,
+      calls && !handRolled,
+      calls ? (handRolled ? "still has a hand-rolled REFRESH statement" : "") : "no refreshMatviews() call");
+  }
 
   console.log(failures === 0 ? "\nall checks passed" : `\n${failures} check(s) FAILED`);
   if (failures > 0) process.exitCode = 1;

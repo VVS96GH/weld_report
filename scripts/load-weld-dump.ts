@@ -30,6 +30,7 @@ import { once } from "node:events";
 import path from "node:path";
 import { Client } from "pg";
 import { from as copyFrom } from "pg-copy-streams";
+import { formatRefreshes, refreshMatviews } from "./load-common";
 import { sourceColumns } from "./weld-columns";
 import {
   DROPPED_WELD_DATES,
@@ -429,8 +430,11 @@ async function liveLoad(opts: Options): Promise<void> {
     // VACUUM (not just ANALYZE): TRUNCATE + INSERT leaves the visibility map empty,
     // so index-only scans would fall back to heap fetches until the next vacuum. ~1 s.
     await client.query("VACUUM (ANALYZE) weld");
-    await client.query("REFRESH MATERIALIZED VIEW mv_weekly_progress");
-    console.log(`post    VACUUM (ANALYZE) + REFRESH MATERIALIZED VIEW in ${((Date.now() - tPost) / 1000).toFixed(1)} s`);
+    const refreshed = await refreshMatviews(client);
+    console.log(
+      `post    VACUUM (ANALYZE) weld + ${formatRefreshes(refreshed)}` +
+      ` — ${((Date.now() - tPost) / 1000).toFixed(1)} s total`,
+    );
 
     await client.query(
       `UPDATE load SET finished_at = now(), records_read = $2, records_loaded = $3,

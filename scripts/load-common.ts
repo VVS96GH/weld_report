@@ -329,6 +329,87 @@ export async function closeLoad(
   );
 }
 
+/**
+ * The materialised views every loader must refresh, in dependency order.
+ *
+ * `mv_joint` / `mv_joint_wps` (migration 0013, authored by the metrics lane) are
+ * the joint-grain rollups the project pages read: `weld` is weld-pass grain
+ * (6.5 M rows over 2,370,428 joints) and the pivots were taking 20-30 s. They
+ * embed an `EXISTS` against `spool` for the FABRICATED flags, so a SPOOL load
+ * changes their contents too — which is why the spool loader refreshes them even
+ * though it never touches `weld`.
+ */
+export const POST_LOAD_MATVIEWS: { name: string; concurrently: boolean }[] = [
+  // Small (~10k rows) but a plain refresh held ACCESS EXCLUSIVE for 21.5 s in the
+  // live spool run, blocking every trend query meanwhile; it has the non-partial
+  // UNIQUE index CONCURRENTLY needs (mv_weekly_progress_key), so refresh online.
+  { name: "mv_weekly_progress", concurrently: true },
+  // 2,370,428 rows, ~41 s. CONCURRENTLY so the app keeps reading during a load:
+  // a plain REFRESH holds ACCESS EXCLUSIVE for its whole duration.
+  { name: "mv_joint", concurrently: true },
+  // 2,194,756 rows, ~7 s.
+  { name: "mv_joint_wps", concurrently: true },
+];
+
+export interface RefreshResult {
+  name: string;
+  seconds: number;
+  /** false when the view had to be refreshed plainly because it was unpopulated. */
+  concurrently: boolean;
+  missing: boolean;
+}
+
+/**
+ * Refreshes the post-load matviews and returns per-view timings.
+ *
+ * MUST be called OUTSIDE a transaction: `REFRESH MATERIALIZED VIEW CONCURRENTLY`
+ * cannot run in a transaction block. All four loaders call this after COMMIT.
+ *
+ * The `relispopulated` branch is not optional: 0011 and 0013 both create their
+ * views `WITH NO DATA`, and CONCURRENTLY refuses to refresh a view that has never
+ * been populated. So the FIRST refresh after `npm run db:reset` is plain and
+ * every later one is concurrent.
+ */
+export async function refreshMatviews(client: Client): Promise<RefreshResult[]> {
+  const out: RefreshResult[] = [];
+  for (const mv of POST_LOAD_MATVIEWS) {
+    const meta = await client.query<{ populated: boolean }>(
+      `SELECT relispopulated AS populated FROM pg_class
+        WHERE oid = to_regclass($1) AND relkind = 'm'`,
+      [mv.name],
+    );
+    if (meta.rowCount === 0) {
+      // Honest-empty, loudly: the load itself succeeded, but the pages that read
+      // this view will be stale until the migration is applied.
+      console.warn(
+        `  !! materialised view ${mv.name} does not exist — skipped. ` +
+        `Run \`npm run db:migrate\`; the pages that read it are stale until you do.`,
+      );
+      out.push({ name: mv.name, seconds: 0, concurrently: false, missing: true });
+      continue;
+    }
+    const concurrently = mv.concurrently && meta.rows[0].populated;
+    const t = Date.now();
+    await client.query(
+      `REFRESH MATERIALIZED VIEW ${concurrently ? "CONCURRENTLY " : ""}${mv.name}`,
+    );
+    out.push({
+      name: mv.name,
+      seconds: Number(((Date.now() - t) / 1000).toFixed(1)),
+      concurrently,
+      missing: false,
+    });
+  }
+  return out;
+}
+
+/** One-line summary for a loader's `post` line. */
+export function formatRefreshes(results: RefreshResult[]): string {
+  return results
+    .map((r) => (r.missing ? `${r.name} SKIPPED` : `${r.name} ${r.seconds}s${r.concurrently ? "" : " (plain)"}`))
+    .join(", ");
+}
+
 export function fmt(n: number): string {
   return n.toLocaleString("en-US");
 }

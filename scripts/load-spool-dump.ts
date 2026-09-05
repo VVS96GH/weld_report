@@ -24,8 +24,8 @@ import { statSync, existsSync } from "node:fs";
 import path from "node:path";
 import { Client } from "pg";
 import {
-  closeLoad, copyLine, copyRows, fmt, num, openLoad, parseDate, readDelimited,
-  requireEnvUrl, secs, sha256File, txt, type Encoding,
+  closeLoad, copyLine, copyRows, formatRefreshes, fmt, num, openLoad, parseDate, readDelimited,
+  refreshMatviews, requireEnvUrl, secs, sha256File, txt, type Encoding,
 } from "./load-common";
 import { SPOOL_DUMP_MAP, TALISMAN_SPOOL_MAP, spoolColumns } from "./load-columns";
 
@@ -259,7 +259,11 @@ async function live(specs: MasterSpec[], truncate: boolean): Promise<void> {
     }
     const t = Date.now();
     await client.query("VACUUM (ANALYZE) spool");
-    console.log(`\npost  VACUUM (ANALYZE) spool in ${secs(t)}`);
+    // A spool load changes mv_joint even though it never touches `weld`: the
+    // FABRICATED flags are an EXISTS against `spool` embedded in the view.
+    // This is why a ~15 s spool load now costs ~50 s more.
+    const refreshed = await refreshMatviews(client);
+    console.log(`\npost  VACUUM (ANALYZE) spool + ${formatRefreshes(refreshed)} — ${secs(t)} total`);
   } finally {
     await client.end();
   }
