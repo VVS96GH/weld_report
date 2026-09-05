@@ -1,0 +1,2163 @@
+{
+ "facts": {
+  "file": "Spool.csv",
+  "slug": "talisman-spool",
+  "size_bytes": 57929146,
+  "bom": null,
+  "first_4_bytes": "51434953",
+  "encoding_used": "cp1252",
+  "delimiter": ",",
+  "m_columns": 22,
+  "m_line": 5264,
+  "header_fields": 22,
+  "header_names_deduped": [
+   "QCISO NO",
+   "SPOOL NO",
+   "WEIGHT",
+   "FABRICATION ORDER",
+   "MATERIAL ISSUE",
+   "CUT / FIT",
+   "SHOP WELD COMPLETE",
+   "QC SPOOL RELEASED TO NDT/PWHT",
+   "PWHT",
+   "SHOP NDE DONE",
+   "PAINT RELEASE",
+   "SENT TO LAYDOWN",
+   "PAINT COMPLETE",
+   "QC RELEASE FROM PAINTING",
+   "PAINTING REPORT DATE",
+   "PAINTING REPORT NO",
+   "LAYDOWN MOVE",
+   "LAYDOWN LOCATION",
+   "SITE MOVE",
+   "SPOOL ERECTION DONE",
+   "FIELD WELD COMPLETE",
+   "FIELD NDE DONE"
+  ],
+  "duplicate_header_names": [],
+  "header_line_ending": "CRLF",
+  "physical_data_lines": 331979,
+  "line_endings": {
+   "crlf": 331979,
+   "lf_only": 0
+  },
+  "field_count_histogram": [
+   [
+    22,
+    331979
+   ]
+  ],
+  "modal_field_count": 22,
+  "lines_short_of_m_columns": 0,
+  "lines_over_m_columns": 0,
+  "ragged_examples": [],
+  "lines_containing_double_quote": 0,
+  "lines_with_quoted_looking_field": 0,
+  "lines_with_decode_replacement_char": 0,
+  "sepcount_records": 331979,
+  "sepcount_rejoins": 0,
+  "pbix_table": "Talisman Spool Dump",
+  "pbix_rows": 331979,
+  "keys": [
+   {
+    "name": "Spool ID  (M: QCISO-SPOOL)",
+    "columns": [
+     "QCISO NO",
+     "SPOOL NO"
+    ],
+    "rows": 331979,
+    "distinct": 331979,
+    "unique": true
+   }
+  ],
+  "seconds": 1.7,
+  "limit": null
+ },
+ "columns": [
+  {
+   "index": 1,
+   "raw_name": "QCISO NO",
+   "name": "QCISO NO",
+   "present_in_header": true,
+   "nonempty": 331979,
+   "blank": 0,
+   "distinct_keyed": 60000,
+   "distinct_capped": true,
+   "values_over_cap": 1257,
+   "profiled_coverage": 0.996214,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     330722
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     330722
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 44,
+   "min": "11010P1-BD6287101",
+   "max": "V11-CH-7392850-0.75-(FXC0KL)-N-73",
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "11010Q1-SW6294101",
+     97
+    ],
+    [
+     "14010Q1-SW7394101",
+     97
+    ],
+    [
+     "13010Q1-SW7294101",
+     96
+    ],
+    [
+     "12010Q1-SW6394101",
+     94
+    ],
+    [
+     "11010S6-SV6209074",
+     92
+    ],
+    [
+     "12010S6-SV6309074",
+     92
+    ],
+    [
+     "13010S6-SV7209074",
+     92
+    ],
+    [
+     "14010S6-SV7309074",
+     92
+    ],
+    [
+     "12Y10U1-FW6383002",
+     86
+    ],
+    [
+     "14Y10U1-FW7383002",
+     86
+    ],
+    [
+     "13Y10U1-FW7283002",
+     85
+    ],
+    [
+     "11010Q6-AG6202002",
+     81
+    ],
+    [
+     "12010Q6-AG6302002",
+     81
+    ],
+    [
+     "13010Q6-AG7202002",
+     81
+    ],
+    [
+     "14010Q6-AG7302002",
+     81
+    ]
+   ]
+  },
+  {
+   "index": 2,
+   "raw_name": "SPOOL NO",
+   "name": "SPOOL NO",
+   "present_in_header": true,
+   "nonempty": 331979,
+   "blank": 0,
+   "distinct_keyed": 199,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     331979
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     331979
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 5,
+   "min": "SP1",
+   "max": "SP9C",
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "SP1",
+     59727
+    ],
+    [
+     "SP2",
+     49528
+    ],
+    [
+     "SP3",
+     38231
+    ],
+    [
+     "SP4",
+     31816
+    ],
+    [
+     "SP5",
+     25510
+    ],
+    [
+     "SP6",
+     20053
+    ],
+    [
+     "SP7",
+     15967
+    ],
+    [
+     "SP8",
+     12936
+    ],
+    [
+     "SP9",
+     10482
+    ],
+    [
+     "SP10",
+     8629
+    ],
+    [
+     "SP11",
+     7040
+    ],
+    [
+     "SP12",
+     5865
+    ],
+    [
+     "SP13",
+     4863
+    ],
+    [
+     "SP14",
+     4097
+    ],
+    [
+     "SP15",
+     3564
+    ]
+   ]
+  },
+  {
+   "index": 3,
+   "raw_name": "WEIGHT",
+   "name": "WEIGHT",
+   "present_in_header": true,
+   "nonempty": 331979,
+   "blank": 0,
+   "distinct_keyed": 37423,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "decimal",
+   "categories": [
+    [
+     "decimal",
+     331979
+    ]
+   ],
+   "formats_seen": [
+    [
+     "decimal(dot)",
+     331979
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 19,
+   "min": "0.0",
+   "max": "999.31",
+   "date_min": null,
+   "date_max": null,
+   "num_min": 0.0,
+   "num_max": 330330.0,
+   "num_int_digits": 6,
+   "num_scale": 17,
+   "top_values": [
+    [
+     "4.0",
+     9938
+    ],
+    [
+     "2.0",
+     8356
+    ],
+    [
+     "3.0",
+     7090
+    ],
+    [
+     "5.0",
+     5466
+    ],
+    [
+     "6.0",
+     5347
+    ],
+    [
+     "7.0",
+     5189
+    ],
+    [
+     "10.0",
+     4204
+    ],
+    [
+     "8.0",
+     4146
+    ],
+    [
+     "9.0",
+     4110
+    ],
+    [
+     "2.57",
+     3919
+    ],
+    [
+     "11.0",
+     3562
+    ],
+    [
+     "1.0",
+     3369
+    ],
+    [
+     "12.0",
+     3235
+    ],
+    [
+     "13.0",
+     3146
+    ],
+    [
+     "6.09",
+     2982
+    ]
+   ]
+  },
+  {
+   "index": 4,
+   "raw_name": "FABRICATION ORDER",
+   "name": "FABRICATION ORDER",
+   "present_in_header": true,
+   "nonempty": 317973,
+   "blank": 14006,
+   "distinct_keyed": 1040,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "date",
+   "categories": [
+    [
+     "date",
+     317973
+    ]
+   ],
+   "formats_seen": [
+    [
+     "yyyy/mm/dd",
+     317973
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 10,
+   "min": "2021/11/08",
+   "max": "2026/08/26",
+   "date_min": "2021-11-08",
+   "date_max": "2026-08-26",
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "2025/12/24",
+     16277
+    ],
+    [
+     "2025/07/17",
+     10015
+    ],
+    [
+     "2025/07/16",
+     9164
+    ],
+    [
+     "2025/07/20",
+     8949
+    ],
+    [
+     "2025/12/11",
+     6404
+    ],
+    [
+     "2025/12/17",
+     6221
+    ],
+    [
+     "2023/10/03",
+     5088
+    ],
+    [
+     "2024/10/30",
+     4913
+    ],
+    [
+     "2024/07/09",
+     4776
+    ],
+    [
+     "2025/07/31",
+     3876
+    ],
+    [
+     "2025/12/31",
+     3608
+    ],
+    [
+     "2025/07/19",
+     3433
+    ],
+    [
+     "2023/09/27",
+     3132
+    ],
+    [
+     "2024/06/04",
+     3053
+    ],
+    [
+     "2024/09/02",
+     3037
+    ]
+   ]
+  },
+  {
+   "index": 5,
+   "raw_name": "MATERIAL ISSUE",
+   "name": "MATERIAL ISSUE",
+   "present_in_header": true,
+   "nonempty": 280822,
+   "blank": 51157,
+   "distinct_keyed": 1273,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "date",
+   "categories": [
+    [
+     "date",
+     280822
+    ]
+   ],
+   "formats_seen": [
+    [
+     "yyyy/mm/dd",
+     280822
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 10,
+   "min": "2021/11/08",
+   "max": "2026/08/27",
+   "date_min": "2021-11-08",
+   "date_max": "2026-08-27",
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "2024/11/09",
+     5581
+    ],
+    [
+     "2025/05/11",
+     3765
+    ],
+    [
+     "2025/05/18",
+     3318
+    ],
+    [
+     "2025/04/30",
+     2961
+    ],
+    [
+     "2025/10/06",
+     2944
+    ],
+    [
+     "2024/11/14",
+     2879
+    ],
+    [
+     "2024/04/25",
+     2716
+    ],
+    [
+     "2025/09/23",
+     2556
+    ],
+    [
+     "2024/08/17",
+     2528
+    ],
+    [
+     "2024/10/27",
+     2437
+    ],
+    [
+     "2025/05/14",
+     2312
+    ],
+    [
+     "2024/11/07",
+     2310
+    ],
+    [
+     "2024/10/03",
+     2269
+    ],
+    [
+     "2024/10/28",
+     2245
+    ],
+    [
+     "2025/09/29",
+     2198
+    ]
+   ]
+  },
+  {
+   "index": 6,
+   "raw_name": "CUT / FIT",
+   "name": "CUT / FIT",
+   "present_in_header": true,
+   "nonempty": 164966,
+   "blank": 167013,
+   "distinct_keyed": 1350,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "date",
+   "categories": [
+    [
+     "date",
+     164966
+    ]
+   ],
+   "formats_seen": [
+    [
+     "yyyy/mm/dd",
+     164966
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 10,
+   "min": "2021/11/16",
+   "max": "2026/08/18",
+   "date_min": "2021-11-16",
+   "date_max": "2026-08-18",
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "2025/01/09",
+     443
+    ],
+    [
+     "2025/07/22",
+     443
+    ],
+    [
+     "2025/07/31",
+     432
+    ],
+    [
+     "2025/07/24",
+     431
+    ],
+    [
+     "2025/01/12",
+     427
+    ],
+    [
+     "2025/07/08",
+     422
+    ],
+    [
+     "2025/04/23",
+     421
+    ],
+    [
+     "2025/07/10",
+     421
+    ],
+    [
+     "2025/07/12",
+     410
+    ],
+    [
+     "2025/01/06",
+     404
+    ],
+    [
+     "2025/05/22",
+     404
+    ],
+    [
+     "2025/07/03",
+     403
+    ],
+    [
+     "2025/05/20",
+     401
+    ],
+    [
+     "2025/07/07",
+     401
+    ],
+    [
+     "2025/05/14",
+     396
+    ]
+   ]
+  },
+  {
+   "index": 7,
+   "raw_name": "SHOP WELD COMPLETE",
+   "name": "SHOP WELD COMPLETE",
+   "present_in_header": true,
+   "nonempty": 165103,
+   "blank": 166876,
+   "distinct_keyed": 1318,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "date",
+   "categories": [
+    [
+     "date",
+     165103
+    ]
+   ],
+   "formats_seen": [
+    [
+     "yyyy/mm/dd",
+     165103
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 10,
+   "min": "2021/11/16",
+   "max": "2026/08/19",
+   "date_min": "2021-11-16",
+   "date_max": "2026-08-19",
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "2025/07/15",
+     462
+    ],
+    [
+     "2025/07/24",
+     445
+    ],
+    [
+     "2025/01/27",
+     439
+    ],
+    [
+     "2025/07/30",
+     423
+    ],
+    [
+     "2025/02/04",
+     420
+    ],
+    [
+     "2025/05/15",
+     417
+    ],
+    [
+     "2025/07/17",
+     415
+    ],
+    [
+     "2025/08/09",
+     415
+    ],
+    [
+     "2025/05/29",
+     413
+    ],
+    [
+     "2025/09/04",
+     408
+    ],
+    [
+     "2025/07/10",
+     407
+    ],
+    [
+     "2025/08/02",
+     405
+    ],
+    [
+     "2025/01/07",
+     400
+    ],
+    [
+     "2025/02/03",
+     396
+    ],
+    [
+     "2025/07/07",
+     392
+    ]
+   ]
+  },
+  {
+   "index": 8,
+   "raw_name": "QC SPOOL RELEASED TO NDT/PWHT",
+   "name": "QC SPOOL RELEASED TO NDT/PWHT",
+   "present_in_header": true,
+   "nonempty": 165028,
+   "blank": 166951,
+   "distinct_keyed": 1339,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "date",
+   "categories": [
+    [
+     "date",
+     165028
+    ]
+   ],
+   "formats_seen": [
+    [
+     "yyyy/mm/dd",
+     165028
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 10,
+   "min": "2021/11/16",
+   "max": "2026/08/23",
+   "date_min": "2021-11-16",
+   "date_max": "2026-08-23",
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "2025/07/15",
+     461
+    ],
+    [
+     "2025/07/24",
+     458
+    ],
+    [
+     "2025/02/04",
+     443
+    ],
+    [
+     "2025/07/29",
+     435
+    ],
+    [
+     "2025/01/28",
+     433
+    ],
+    [
+     "2025/01/30",
+     426
+    ],
+    [
+     "2025/08/02",
+     421
+    ],
+    [
+     "2025/07/17",
+     420
+    ],
+    [
+     "2025/01/08",
+     413
+    ],
+    [
+     "2025/06/05",
+     411
+    ],
+    [
+     "2025/01/09",
+     408
+    ],
+    [
+     "2025/07/10",
+     406
+    ],
+    [
+     "2025/05/29",
+     403
+    ],
+    [
+     "2025/07/31",
+     402
+    ],
+    [
+     "2025/08/04",
+     400
+    ]
+   ]
+  },
+  {
+   "index": 9,
+   "raw_name": "PWHT",
+   "name": "PWHT",
+   "present_in_header": true,
+   "nonempty": 26665,
+   "blank": 305314,
+   "distinct_keyed": 1093,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "date",
+   "categories": [
+    [
+     "date",
+     26665
+    ]
+   ],
+   "formats_seen": [
+    [
+     "yyyy/mm/dd",
+     26665
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 10,
+   "min": "2021/11/16",
+   "max": "2026/08/09",
+   "date_min": "2021-11-16",
+   "date_max": "2026-08-09",
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "2025/06/05",
+     96
+    ],
+    [
+     "2024/08/11",
+     94
+    ],
+    [
+     "2025/01/23",
+     93
+    ],
+    [
+     "2024/07/30",
+     92
+    ],
+    [
+     "2024/11/09",
+     91
+    ],
+    [
+     "2023/06/15",
+     88
+    ],
+    [
+     "2024/04/25",
+     88
+    ],
+    [
+     "2025/08/31",
+     86
+    ],
+    [
+     "2025/08/07",
+     86
+    ],
+    [
+     "2024/05/05",
+     83
+    ],
+    [
+     "2025/09/04",
+     83
+    ],
+    [
+     "2025/06/12",
+     82
+    ],
+    [
+     "2025/05/31",
+     82
+    ],
+    [
+     "2025/02/27",
+     81
+    ],
+    [
+     "2023/05/24",
+     79
+    ]
+   ]
+  },
+  {
+   "index": 10,
+   "raw_name": "SHOP NDE DONE",
+   "name": "SHOP NDE DONE",
+   "present_in_header": true,
+   "nonempty": 164176,
+   "blank": 167803,
+   "distinct_keyed": 1302,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "date",
+   "categories": [
+    [
+     "date",
+     164176
+    ]
+   ],
+   "formats_seen": [
+    [
+     "yyyy/mm/dd",
+     164176
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 10,
+   "min": "2021/12/15",
+   "max": "2026/08/26",
+   "date_min": "2021-12-15",
+   "date_max": "2026-08-26",
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "2025/05/14",
+     681
+    ],
+    [
+     "2025/05/03",
+     561
+    ],
+    [
+     "2025/02/08",
+     526
+    ],
+    [
+     "2025/08/02",
+     492
+    ],
+    [
+     "2025/02/03",
+     465
+    ],
+    [
+     "2025/01/21",
+     454
+    ],
+    [
+     "2025/06/01",
+     442
+    ],
+    [
+     "2025/02/02",
+     439
+    ],
+    [
+     "2025/09/12",
+     432
+    ],
+    [
+     "2025/02/04",
+     427
+    ],
+    [
+     "2025/07/15",
+     425
+    ],
+    [
+     "2025/02/12",
+     424
+    ],
+    [
+     "2025/02/15",
+     422
+    ],
+    [
+     "2025/07/19",
+     420
+    ],
+    [
+     "2025/01/18",
+     419
+    ]
+   ]
+  },
+  {
+   "index": 11,
+   "raw_name": "PAINT RELEASE",
+   "name": "PAINT RELEASE",
+   "present_in_header": true,
+   "nonempty": 311647,
+   "blank": 20332,
+   "distinct_keyed": 1185,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "date",
+   "categories": [
+    [
+     "date",
+     311647
+    ]
+   ],
+   "formats_seen": [
+    [
+     "yyyy/mm/dd",
+     311647
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 10,
+   "min": "2021/11/16",
+   "max": "2026/08/26",
+   "date_min": "2021-11-16",
+   "date_max": "2026-08-26",
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "2024/11/24",
+     2529
+    ],
+    [
+     "2024/11/27",
+     2100
+    ],
+    [
+     "2026/01/03",
+     1562
+    ],
+    [
+     "2024/12/17",
+     1542
+    ],
+    [
+     "2025/03/19",
+     1324
+    ],
+    [
+     "2025/05/01",
+     1312
+    ],
+    [
+     "2024/10/03",
+     1277
+    ],
+    [
+     "2025/05/11",
+     1270
+    ],
+    [
+     "2024/12/15",
+     1185
+    ],
+    [
+     "2025/05/22",
+     1079
+    ],
+    [
+     "2026/02/01",
+     1036
+    ],
+    [
+     "2025/06/15",
+     1033
+    ],
+    [
+     "2025/06/11",
+     1020
+    ],
+    [
+     "2025/05/03",
+     1013
+    ],
+    [
+     "2024/11/23",
+     998
+    ]
+   ]
+  },
+  {
+   "index": 12,
+   "raw_name": "SENT TO LAYDOWN",
+   "name": "SENT TO LAYDOWN",
+   "present_in_header": true,
+   "nonempty": 306765,
+   "blank": 25214,
+   "distinct_keyed": 1151,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "date",
+   "categories": [
+    [
+     "date",
+     306765
+    ]
+   ],
+   "formats_seen": [
+    [
+     "yyyy/mm/dd",
+     306765
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 10,
+   "min": "2021/11/16",
+   "max": "2026/08/26",
+   "date_min": "2021-11-16",
+   "date_max": "2026-08-26",
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "2026/06/08",
+     4505
+    ],
+    [
+     "2025/12/27",
+     3265
+    ],
+    [
+     "2024/07/29",
+     3077
+    ],
+    [
+     "2025/06/17",
+     3002
+    ],
+    [
+     "2024/07/17",
+     2927
+    ],
+    [
+     "2024/12/28",
+     2514
+    ],
+    [
+     "2025/03/16",
+     2491
+    ],
+    [
+     "2025/11/30",
+     2351
+    ],
+    [
+     "2024/11/07",
+     2170
+    ],
+    [
+     "2025/07/03",
+     1952
+    ],
+    [
+     "2025/01/08",
+     1915
+    ],
+    [
+     "2025/08/28",
+     1881
+    ],
+    [
+     "2025/08/21",
+     1854
+    ],
+    [
+     "2025/05/24",
+     1749
+    ],
+    [
+     "2025/05/19",
+     1711
+    ]
+   ]
+  },
+  {
+   "index": 13,
+   "raw_name": "PAINT COMPLETE",
+   "name": "PAINT COMPLETE",
+   "present_in_header": true,
+   "nonempty": 303790,
+   "blank": 28189,
+   "distinct_keyed": 1240,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "date",
+   "categories": [
+    [
+     "date",
+     303790
+    ]
+   ],
+   "formats_seen": [
+    [
+     "yyyy/mm/dd",
+     303790
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 10,
+   "min": "2021/11/16",
+   "max": "2026/08/26",
+   "date_min": "2021-11-16",
+   "date_max": "2026-08-26",
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "2024/11/28",
+     3791
+    ],
+    [
+     "2024/09/16",
+     2808
+    ],
+    [
+     "2024/11/07",
+     2115
+    ],
+    [
+     "2025/03/19",
+     1800
+    ],
+    [
+     "2026/02/03",
+     1707
+    ],
+    [
+     "2026/04/27",
+     1684
+    ],
+    [
+     "2025/05/01",
+     1508
+    ],
+    [
+     "2024/11/27",
+     1495
+    ],
+    [
+     "2025/04/15",
+     1489
+    ],
+    [
+     "2024/11/23",
+     1417
+    ],
+    [
+     "2025/06/22",
+     1362
+    ],
+    [
+     "2025/01/14",
+     1351
+    ],
+    [
+     "2026/04/12",
+     1345
+    ],
+    [
+     "2025/07/02",
+     1282
+    ],
+    [
+     "2025/07/05",
+     1274
+    ]
+   ]
+  },
+  {
+   "index": 14,
+   "raw_name": "QC RELEASE FROM PAINTING",
+   "name": "QC RELEASE FROM PAINTING",
+   "present_in_header": true,
+   "nonempty": 303970,
+   "blank": 28009,
+   "distinct_keyed": 1327,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "date",
+   "categories": [
+    [
+     "date",
+     303970
+    ]
+   ],
+   "formats_seen": [
+    [
+     "yyyy/mm/dd",
+     303970
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 10,
+   "min": "2021/11/16",
+   "max": "2026/08/26",
+   "date_min": "2021-11-16",
+   "date_max": "2026-08-26",
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "2026/04/27",
+     2544
+    ],
+    [
+     "2025/07/03",
+     2079
+    ],
+    [
+     "2025/06/22",
+     1606
+    ],
+    [
+     "2025/04/27",
+     1516
+    ],
+    [
+     "2025/04/02",
+     1511
+    ],
+    [
+     "2024/11/20",
+     1448
+    ],
+    [
+     "2025/01/18",
+     1410
+    ],
+    [
+     "2025/06/30",
+     1360
+    ],
+    [
+     "2025/06/11",
+     1357
+    ],
+    [
+     "2025/01/13",
+     1346
+    ],
+    [
+     "2026/04/12",
+     1344
+    ],
+    [
+     "2025/03/18",
+     1311
+    ],
+    [
+     "2025/05/22",
+     1144
+    ],
+    [
+     "2025/10/07",
+     1112
+    ],
+    [
+     "2025/05/11",
+     1103
+    ]
+   ]
+  },
+  {
+   "index": 15,
+   "raw_name": "PAINTING REPORT DATE",
+   "name": "PAINTING REPORT DATE",
+   "present_in_header": true,
+   "nonempty": 270054,
+   "blank": 61925,
+   "distinct_keyed": 1173,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "date",
+   "categories": [
+    [
+     "date",
+     270054
+    ]
+   ],
+   "formats_seen": [
+    [
+     "yyyy/mm/dd",
+     270054
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 10,
+   "min": "2022/04/12",
+   "max": "2026/08/24",
+   "date_min": "2022-04-12",
+   "date_max": "2026-08-24",
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "2026/04/27",
+     2473
+    ],
+    [
+     "2024/11/20",
+     1442
+    ],
+    [
+     "2025/01/18",
+     1408
+    ],
+    [
+     "2025/01/13",
+     1346
+    ],
+    [
+     "2025/06/22",
+     1341
+    ],
+    [
+     "2026/04/12",
+     1341
+    ],
+    [
+     "2025/06/30",
+     1089
+    ],
+    [
+     "2025/10/07",
+     1062
+    ],
+    [
+     "2026/04/25",
+     1037
+    ],
+    [
+     "2025/05/12",
+     1013
+    ],
+    [
+     "2025/04/27",
+     1001
+    ],
+    [
+     "2025/04/14",
+     990
+    ],
+    [
+     "2024/12/04",
+     985
+    ],
+    [
+     "2026/06/15",
+     974
+    ],
+    [
+     "2025/07/07",
+     969
+    ]
+   ]
+  },
+  {
+   "index": 16,
+   "raw_name": "PAINTING REPORT NO",
+   "name": "PAINTING REPORT NO",
+   "present_in_header": true,
+   "nonempty": 270054,
+   "blank": 61925,
+   "distinct_keyed": 6457,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     270054
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     270054
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 42,
+   "max_len": 14,
+   "min": "GA02293",
+   "max": "PA8871",
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "PA05548",
+     464
+    ],
+    [
+     "PA06511-3",
+     412
+    ],
+    [
+     "PA06021-05",
+     398
+    ],
+    [
+     "PA03859-001",
+     356
+    ],
+    [
+     "PA06879- 1",
+     347
+    ],
+    [
+     "PA05386-1",
+     344
+    ],
+    [
+     "PA06985",
+     340
+    ],
+    [
+     "PA05309-1",
+     328
+    ],
+    [
+     "PA06159-3",
+     324
+    ],
+    [
+     "PA02973-11",
+     309
+    ],
+    [
+     "PA05717-04",
+     298
+    ],
+    [
+     "PA06021-1",
+     295
+    ],
+    [
+     "PA06021-5",
+     294
+    ],
+    [
+     "PA05214-2",
+     285
+    ],
+    [
+     "PA05919-02",
+     284
+    ]
+   ]
+  },
+  {
+   "index": 17,
+   "raw_name": "LAYDOWN MOVE",
+   "name": "LAYDOWN MOVE",
+   "present_in_header": true,
+   "nonempty": 300908,
+   "blank": 31071,
+   "distinct_keyed": 1376,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "date",
+   "categories": [
+    [
+     "date",
+     300908
+    ]
+   ],
+   "formats_seen": [
+    [
+     "yyyy/mm/dd",
+     300908
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 10,
+   "min": "2021/11/16",
+   "max": "2026/08/27",
+   "date_min": "2021-11-16",
+   "date_max": "2026-08-27",
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "2025/04/04",
+     2852
+    ],
+    [
+     "2025/02/08",
+     2127
+    ],
+    [
+     "2025/07/29",
+     1847
+    ],
+    [
+     "2025/04/06",
+     1614
+    ],
+    [
+     "2025/05/04",
+     1562
+    ],
+    [
+     "2025/01/13",
+     1533
+    ],
+    [
+     "2025/02/13",
+     1472
+    ],
+    [
+     "2026/01/19",
+     1436
+    ],
+    [
+     "2025/05/20",
+     1306
+    ],
+    [
+     "2025/04/21",
+     1295
+    ],
+    [
+     "2025/07/10",
+     1259
+    ],
+    [
+     "2025/04/19",
+     1162
+    ],
+    [
+     "2025/01/15",
+     1161
+    ],
+    [
+     "2024/11/16",
+     1161
+    ],
+    [
+     "2024/12/21",
+     1154
+    ]
+   ]
+  },
+  {
+   "index": 18,
+   "raw_name": "LAYDOWN LOCATION",
+   "name": "LAYDOWN LOCATION",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 331979,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 19,
+   "raw_name": "SITE MOVE",
+   "name": "SITE MOVE",
+   "present_in_header": true,
+   "nonempty": 236643,
+   "blank": 95336,
+   "distinct_keyed": 1396,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "date",
+   "categories": [
+    [
+     "date",
+     236643
+    ]
+   ],
+   "formats_seen": [
+    [
+     "yyyy/mm/dd",
+     236643
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 10,
+   "min": "2021/11/29",
+   "max": "2026/08/27",
+   "date_min": "2021-11-29",
+   "date_max": "2026-08-27",
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "2026/06/16",
+     1334
+    ],
+    [
+     "2026/01/04",
+     1167
+    ],
+    [
+     "2026/01/03",
+     1154
+    ],
+    [
+     "2024/12/04",
+     1120
+    ],
+    [
+     "2025/12/07",
+     1097
+    ],
+    [
+     "2025/02/26",
+     1094
+    ],
+    [
+     "2024/12/26",
+     981
+    ],
+    [
+     "2025/12/31",
+     972
+    ],
+    [
+     "2025/03/06",
+     950
+    ],
+    [
+     "2025/02/13",
+     934
+    ],
+    [
+     "2026/05/17",
+     891
+    ],
+    [
+     "2026/06/06",
+     878
+    ],
+    [
+     "2026/01/28",
+     863
+    ],
+    [
+     "2025/02/25",
+     862
+    ],
+    [
+     "2026/01/07",
+     761
+    ]
+   ]
+  },
+  {
+   "index": 20,
+   "raw_name": "SPOOL ERECTION DONE",
+   "name": "SPOOL ERECTION DONE",
+   "present_in_header": true,
+   "nonempty": 220121,
+   "blank": 111858,
+   "distinct_keyed": 1381,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "date",
+   "categories": [
+    [
+     "date",
+     220121
+    ]
+   ],
+   "formats_seen": [
+    [
+     "yyyy/mm/dd",
+     220121
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 10,
+   "min": "2021/11/16",
+   "max": "2026/08/26",
+   "date_min": "2021-11-16",
+   "date_max": "2026-08-26",
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "2026/01/28",
+     1124
+    ],
+    [
+     "2026/04/09",
+     1079
+    ],
+    [
+     "2025/03/06",
+     864
+    ],
+    [
+     "2026/01/05",
+     810
+    ],
+    [
+     "2024/12/08",
+     809
+    ],
+    [
+     "2026/01/08",
+     714
+    ],
+    [
+     "2025/03/23",
+     682
+    ],
+    [
+     "2025/07/17",
+     665
+    ],
+    [
+     "2026/01/06",
+     662
+    ],
+    [
+     "2026/01/03",
+     658
+    ],
+    [
+     "2026/01/07",
+     648
+    ],
+    [
+     "2026/01/04",
+     647
+    ],
+    [
+     "2026/05/07",
+     647
+    ],
+    [
+     "2026/06/25",
+     646
+    ],
+    [
+     "2026/03/31",
+     644
+    ]
+   ]
+  },
+  {
+   "index": 21,
+   "raw_name": "FIELD WELD COMPLETE",
+   "name": "FIELD WELD COMPLETE",
+   "present_in_header": true,
+   "nonempty": 189847,
+   "blank": 142132,
+   "distinct_keyed": 1480,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "date",
+   "categories": [
+    [
+     "date",
+     189847
+    ]
+   ],
+   "formats_seen": [
+    [
+     "yyyy/mm/dd",
+     189847
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 10,
+   "min": "2021/12/01",
+   "max": "2026/08/28",
+   "date_min": "2021-12-01",
+   "date_max": "2026-08-28",
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "2025/03/17",
+     1766
+    ],
+    [
+     "2025/03/18",
+     675
+    ],
+    [
+     "2025/04/01",
+     529
+    ],
+    [
+     "2025/05/18",
+     515
+    ],
+    [
+     "2025/06/04",
+     513
+    ],
+    [
+     "2024/11/23",
+     498
+    ],
+    [
+     "2024/11/14",
+     489
+    ],
+    [
+     "2025/05/19",
+     485
+    ],
+    [
+     "2025/04/03",
+     470
+    ],
+    [
+     "2024/11/06",
+     470
+    ],
+    [
+     "2025/06/02",
+     465
+    ],
+    [
+     "2025/05/12",
+     461
+    ],
+    [
+     "2025/05/15",
+     458
+    ],
+    [
+     "2025/01/04",
+     449
+    ],
+    [
+     "2025/04/26",
+     448
+    ]
+   ]
+  },
+  {
+   "index": 22,
+   "raw_name": "FIELD NDE DONE",
+   "name": "FIELD NDE DONE",
+   "present_in_header": true,
+   "nonempty": 201855,
+   "blank": 130124,
+   "distinct_keyed": 1452,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "date",
+   "categories": [
+    [
+     "date",
+     201855
+    ]
+   ],
+   "formats_seen": [
+    [
+     "yyyy/mm/dd",
+     201855
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 10,
+   "min": "2021/12/02",
+   "max": "2026/08/28",
+   "date_min": "2021-12-02",
+   "date_max": "2026-08-28",
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "2025/03/17",
+     1786
+    ],
+    [
+     "2025/03/18",
+     704
+    ],
+    [
+     "2025/05/12",
+     675
+    ],
+    [
+     "2025/05/20",
+     619
+    ],
+    [
+     "2025/06/05",
+     617
+    ],
+    [
+     "2025/06/03",
+     589
+    ],
+    [
+     "2025/05/18",
+     565
+    ],
+    [
+     "2025/06/12",
+     542
+    ],
+    [
+     "2025/06/04",
+     531
+    ],
+    [
+     "2025/07/16",
+     530
+    ],
+    [
+     "2025/04/28",
+     517
+    ],
+    [
+     "2024/11/14",
+     516
+    ],
+    [
+     "2025/05/26",
+     497
+    ],
+    [
+     "2025/07/10",
+     495
+    ],
+    [
+     "2025/05/15",
+     488
+    ]
+   ]
+  }
+ ]
+}

@@ -3,7 +3,9 @@ name = "weld-report-analysis"
 version = "0.1.0"
 description = "Stdlib-only analysis scripts for the weld report (profiling, mockup extraction, reconciliation). Run with `uv run <script>`."
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "openpyxl>=3.1.5",
+]
 
 [tool.uv]
 package = false

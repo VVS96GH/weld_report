@@ -1,0 +1,5517 @@
+{
+ "facts": {
+  "file": "CSVExport_Welder Record.csv",
+  "slug": "welder-record",
+  "size_bytes": 1534750665,
+  "bom": null,
+  "first_4_bytes": "44656c20",
+  "encoding_used": "utf-8",
+  "delimiter": ",",
+  "m_columns": 119,
+  "m_line": 3794,
+  "header_fields": 119,
+  "header_names_deduped": [
+   "Del Flag",
+   "Original Joint",
+   "Sub-Con Code",
+   "Welder No.",
+   "Welder Name",
+   "Weld Date",
+   "Serial No.",
+   "Weld Week",
+   "Weld Month",
+   "Area Code",
+   "Area Group-1",
+   "Area Group-2",
+   "Area Group-3",
+   "Area Group-4",
+   "Area Group-5",
+   "QC ISO DWG. No.",
+   "Sheet No.",
+   "Joint No.",
+   "Repair Suffix",
+   "Spool No.",
+   "Service Class",
+   "Pressure Level",
+   "Pipe Size",
+   "Wall Thickness",
+   "Dia Inch",
+   "Material Category",
+   "P No.",
+   "Work Category",
+   "Original Work Category",
+   "Weld Type",
+   "NDT Remarks",
+   "Weld Point Code",
+   "Welded(Weld Point)",
+   "Weld Remark",
+   "Joint Percent",
+   "Welding Process",
+   "Welding Position",
+   "Welding Rod Type",
+   "Tracer Shot",
+   "RT/UT",
+   "RT/UT Report No.",
+   "RT/UT Date",
+   "RT Film Total",
+   "RT Film Reject",
+   "RT/UT Result",
+   "RT/UT(%)",
+   "RT/UT Request Date",
+   "RT/UT Defect Code",
+   "RT/UT Defect Code Class",
+   "Reshoot-1 RT/UT Report No.",
+   "Reshoot-1 RT/UT Date",
+   "Reshoot-1 RT Film Total",
+   "Reshoot-1 RT Film Reject",
+   "Reshoot-1 RT/UT Result",
+   "Reshoot-1 RT/UT Defect Code",
+   "Reshoot-1 RT/UT Defect Code Class",
+   "Reshoot-2 RT/UT Report No.",
+   "Reshoot-2 RT/UT Date",
+   "Reshoot-2 RT Film Total",
+   "Reshoot-2 RT Film Reject",
+   "Reshoot-2 RT/UT Result",
+   "Reshoot-2 RT/UT Defect Code",
+   "Reshoot-2 RT/UT Defect Code Class",
+   "Reshoot-3 RT/UT Report No.",
+   "Reshoot-3 RT/UT Date",
+   "Reshoot-3 RT Film Total",
+   "Reshoot-3 RT Film Reject",
+   "Reshoot-3 RT/UT Result",
+   "Reshoot-3 RT/UT Defect Code",
+   "Reshoot-3 RT/UT Defect Code Class",
+   "Reshoot RT/UT Total",
+   "Reshoot RT/UT Film Total",
+   "Last Reshoot Date",
+   "Last Reshoot Report No",
+   "Last Reshoot Result",
+   "Last Reshoot RT/UT Defect Code",
+   "Last Reshoot RT/UT Defect Code Class",
+   "RT2/UT2",
+   "RT2/UT2 Report No.",
+   "RT2/UT2 Date",
+   "RT2 Film Total",
+   "RT2 Film Reject",
+   "RT2/UT2 Result",
+   "RT2/UT2(%)",
+   "RT2/UT2 Request Date",
+   "RT2/UT2 Defect Code",
+   "RT2/UT2 Defect Code Class",
+   "Reshoot-1 RT2/UT2 Report No.",
+   "Reshoot-1 RT2/UT2 Date",
+   "Reshoot-1 RT2 Film Total",
+   "Reshoot-1 RT2 Film Reject",
+   "Reshoot-1 RT2/UT2 Result",
+   "Reshoot-1 RT2/UT2 Defect Code",
+   "Reshoot-2 RT2/UT2 Report No.",
+   "Reshoot-2 RT2/UT2 Date",
+   "Reshoot-2 RT2 Film Total",
+   "Reshoot-2 RT2 Film Reject",
+   "Reshoot-1 RT2/UT2 Defect Code Class",
+   "Reshoot-2 RT2/UT2 Result",
+   "Reshoot-2 RT2/UT2 Defect Code",
+   "Reshoot-2 RT2/UT2 Defect Code Class",
+   "Reshoot-3 RT2/UT2 Report No.",
+   "Reshoot-3 RT2/UT2 Date",
+   "Reshoot-3 RT2 Film Total",
+   "Reshoot-3 RT2 Film Reject",
+   "Reshoot-3 RT2/UT2 Result",
+   "Reshoot-3 RT2/UT2 Defect Code",
+   "Reshoot-3 RT2/UT2 Defect Code Class",
+   "Reshoot RT2/UT2 Total",
+   "Reshoot RT2/UT2 Film Total",
+   "Last Reshoot Date.1",
+   "Last Reshoot Report No.1",
+   "Last Reshoot Result.1",
+   "Last Reshoot RT2/UT2 Defect Code",
+   "Last Reshoot RT2/UT2 Defect Code Class",
+   "VT Judge",
+   "Welding Inspection Identifier Date",
+   "Welding Inspection Identifier Client",
+   "Welding Inspection Identifier Chiyoda"
+  ],
+  "duplicate_header_names": [],
+  "header_line_ending": "CRLF",
+  "physical_data_lines": 5430732,
+  "line_endings": {
+   "crlf": 5430732,
+   "lf_only": 0
+  },
+  "field_count_histogram": [
+   [
+    119,
+    5430732
+   ]
+  ],
+  "modal_field_count": 119,
+  "lines_short_of_m_columns": 0,
+  "lines_over_m_columns": 0,
+  "ragged_examples": [],
+  "lines_containing_double_quote": 0,
+  "lines_with_quoted_looking_field": 0,
+  "lines_with_decode_replacement_char": 0,
+  "sepcount_records": 5430732,
+  "sepcount_rejoins": 0,
+  "pbix_table": "CSVExport_Welder Record",
+  "pbix_rows": 5433009,
+  "keys": [
+   {
+    "name": "Joint ID  (M: ISO-Spool-WeldNo+RepairSuffix)",
+    "columns": [
+     "QC ISO DWG. No.",
+     "Spool No.",
+     "Joint No.",
+     "Repair Suffix"
+    ],
+    "rows": 5430732,
+    "distinct": 1339063,
+    "unique": false
+   },
+   {
+    "name": "Joint ID + Welder + WeldPoint",
+    "columns": [
+     "QC ISO DWG. No.",
+     "Spool No.",
+     "Joint No.",
+     "Repair Suffix",
+     "Welder No.",
+     "Welded(Weld Point)"
+    ],
+    "rows": 5430732,
+    "distinct": 5430530,
+    "unique": false
+   },
+   {
+    "name": "Spool ID  (ISO-Spool)",
+    "columns": [
+     "QC ISO DWG. No.",
+     "Spool No."
+    ],
+    "rows": 5430732,
+    "distinct": 317415,
+    "unique": false
+   }
+  ],
+  "seconds": 57.4,
+  "limit": null
+ },
+ "columns": [
+  {
+   "index": 1,
+   "raw_name": "Del Flag",
+   "name": "Del Flag",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 2,
+   "raw_name": "Original Joint",
+   "name": "Original Joint",
+   "present_in_header": true,
+   "nonempty": 5389971,
+   "blank": 40761,
+   "distinct_keyed": 1,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     5389971
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     5389971
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 1,
+   "min": "#",
+   "max": "#",
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "#",
+     5389971
+    ]
+   ]
+  },
+  {
+   "index": 3,
+   "raw_name": "Sub-Con Code",
+   "name": "Sub-Con Code",
+   "present_in_header": true,
+   "nonempty": 5430732,
+   "blank": 0,
+   "distinct_keyed": 1,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     5430732
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     5430732
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 3,
+   "min": "CCC",
+   "max": "CCC",
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "CCC",
+     5430732
+    ]
+   ]
+  },
+  {
+   "index": 4,
+   "raw_name": "Welder No.",
+   "name": "Welder No.",
+   "present_in_header": true,
+   "nonempty": 5430729,
+   "blank": 3,
+   "distinct_keyed": 2047,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     5421211
+    ],
+    [
+     "int",
+     9518
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     5421211
+    ],
+    [
+     "int",
+     9518
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 7,
+   "min": "0",
+   "max": "w-879",
+   "date_min": null,
+   "date_max": null,
+   "num_min": 0.0,
+   "num_max": 1889.0,
+   "num_int_digits": 4,
+   "num_scale": null,
+   "top_values": [
+    [
+     "W-1089",
+     76138
+    ],
+    [
+     "W-933",
+     64784
+    ],
+    [
+     "W-635",
+     62926
+    ],
+    [
+     "W-744",
+     54791
+    ],
+    [
+     "W-1194",
+     54210
+    ],
+    [
+     "W-267",
+     53206
+    ],
+    [
+     "W-1447",
+     51438
+    ],
+    [
+     "W-1092",
+     50456
+    ],
+    [
+     "W-659",
+     47922
+    ],
+    [
+     "W-762",
+     47518
+    ],
+    [
+     "W-730",
+     47187
+    ],
+    [
+     "W-761",
+     46719
+    ],
+    [
+     "W-429",
+     46186
+    ],
+    [
+     "W-895",
+     46041
+    ],
+    [
+     "W-327",
+     45913
+    ]
+   ]
+  },
+  {
+   "index": 5,
+   "raw_name": "Welder Name",
+   "name": "Welder Name",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 6,
+   "raw_name": "Weld Date",
+   "name": "Weld Date",
+   "present_in_header": true,
+   "nonempty": 5430732,
+   "blank": 0,
+   "distinct_keyed": 1607,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "date",
+   "categories": [
+    [
+     "date",
+     5430732
+    ]
+   ],
+   "formats_seen": [
+    [
+     "yyyy/mm/dd",
+     5430732
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 10,
+   "min": "2021/12/01",
+   "max": "2026/08/28",
+   "date_min": "2021-12-01",
+   "date_max": "2026-08-28",
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "2025/07/24",
+     12529
+    ],
+    [
+     "2025/07/17",
+     12360
+    ],
+    [
+     "2025/07/10",
+     12314
+    ],
+    [
+     "2025/07/31",
+     12272
+    ],
+    [
+     "2025/07/30",
+     11808
+    ],
+    [
+     "2025/07/15",
+     11439
+    ],
+    [
+     "2025/07/27",
+     11254
+    ],
+    [
+     "2025/08/03",
+     11196
+    ],
+    [
+     "2025/07/23",
+     11112
+    ],
+    [
+     "2025/06/05",
+     11109
+    ],
+    [
+     "2025/07/14",
+     11034
+    ],
+    [
+     "2025/05/15",
+     11019
+    ],
+    [
+     "2025/07/13",
+     11018
+    ],
+    [
+     "2025/05/29",
+     10953
+    ],
+    [
+     "2025/06/04",
+     10907
+    ]
+   ]
+  },
+  {
+   "index": 7,
+   "raw_name": "Serial No.",
+   "name": "Serial No.",
+   "present_in_header": true,
+   "nonempty": 5430732,
+   "blank": 0,
+   "distinct_keyed": 60000,
+   "distinct_capped": true,
+   "values_over_cap": 24064,
+   "profiled_coverage": 0.995569,
+   "inferred_type": "int",
+   "categories": [
+    [
+     "int",
+     5406668
+    ]
+   ],
+   "formats_seen": [
+    [
+     "int",
+     5406668
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 5,
+   "min": "1",
+   "max": "9999",
+   "date_min": null,
+   "date_max": null,
+   "num_min": 1.0,
+   "num_max": 60000.0,
+   "num_int_digits": 5,
+   "num_scale": null,
+   "top_values": [
+    [
+     "1",
+     2030
+    ],
+    [
+     "2",
+     2030
+    ],
+    [
+     "3",
+     2028
+    ],
+    [
+     "4",
+     2027
+    ],
+    [
+     "5",
+     2010
+    ],
+    [
+     "6",
+     2009
+    ],
+    [
+     "7",
+     2005
+    ],
+    [
+     "8",
+     2004
+    ],
+    [
+     "9",
+     1973
+    ],
+    [
+     "10",
+     1972
+    ],
+    [
+     "11",
+     1972
+    ],
+    [
+     "12",
+     1972
+    ],
+    [
+     "13",
+     1912
+    ],
+    [
+     "14",
+     1912
+    ],
+    [
+     "15",
+     1912
+    ]
+   ]
+  },
+  {
+   "index": 8,
+   "raw_name": "Weld Week",
+   "name": "Weld Week",
+   "present_in_header": true,
+   "nonempty": 5430732,
+   "blank": 0,
+   "distinct_keyed": 248,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     5430732
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     5430732
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 15,
+   "min": "013_DEC-3-2021",
+   "max": "260_AUG-28-2026",
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "202_JUL-18-2025",
+     67093
+    ],
+    [
+     "204_AUG-1-2025",
+     66086
+    ],
+    [
+     "203_JUL-25-2025",
+     64923
+    ],
+    [
+     "196_JUN-6-2025",
+     63455
+    ],
+    [
+     "201_JUL-11-2025",
+     63119
+    ],
+    [
+     "195_MAY-30-2025",
+     62258
+    ],
+    [
+     "194_MAY-23-2025",
+     59673
+    ],
+    [
+     "200_JUL-4-2025",
+     59332
+    ],
+    [
+     "193_MAY-16-2025",
+     59129
+    ],
+    [
+     "206_AUG-15-2025",
+     57502
+    ],
+    [
+     "199_JUN-27-2025",
+     57455
+    ],
+    [
+     "198_JUN-20-2025",
+     56899
+    ],
+    [
+     "191_MAY-2-2025",
+     56166
+    ],
+    [
+     "190_APR-25-2025",
+     55297
+    ],
+    [
+     "208_AUG-29-2025",
+     54733
+    ]
+   ]
+  },
+  {
+   "index": 9,
+   "raw_name": "Weld Month",
+   "name": "Weld Month",
+   "present_in_header": true,
+   "nonempty": 5430732,
+   "blank": 0,
+   "distinct_keyed": 57,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     5430732
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     5430732
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 12,
+   "min": "004_DEC-2021",
+   "max": "060_AUG-2026",
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "047_JUL-2025",
+     292258
+    ],
+    [
+     "045_MAY-2025",
+     252096
+    ],
+    [
+     "046_JUN-2025",
+     243461
+    ],
+    [
+     "038_OCT-2024",
+     228228
+    ],
+    [
+     "048_AUG-2025",
+     227777
+    ],
+    [
+     "044_APR-2025",
+     226496
+    ],
+    [
+     "050_OCT-2025",
+     205553
+    ],
+    [
+     "049_SEP-2025",
+     199095
+    ],
+    [
+     "039_NOV-2024",
+     197143
+    ],
+    [
+     "051_NOV-2025",
+     195970
+    ],
+    [
+     "053_JAN-2026",
+     192955
+    ],
+    [
+     "041_JAN-2025",
+     188659
+    ],
+    [
+     "042_FEB-2025",
+     175254
+    ],
+    [
+     "037_SEP-2024",
+     171710
+    ],
+    [
+     "040_DEC-2024",
+     165208
+    ]
+   ]
+  },
+  {
+   "index": 10,
+   "raw_name": "Area Code",
+   "name": "Area Code",
+   "present_in_header": true,
+   "nonempty": 5430732,
+   "blank": 0,
+   "distinct_keyed": 487,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     5430732
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     5430732
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 7,
+   "min": "11010P1",
+   "max": "74100AA",
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "11090A2",
+     134811
+    ],
+    [
+     "12090A2",
+     132203
+    ],
+    [
+     "13090A2",
+     121017
+    ],
+    [
+     "11070A1",
+     110653
+    ],
+    [
+     "14090A2",
+     108552
+    ],
+    [
+     "12070A1",
+     106866
+    ],
+    [
+     "11020A1",
+     99325
+    ],
+    [
+     "12020A1",
+     97242
+    ],
+    [
+     "13070A1",
+     92092
+    ],
+    [
+     "13020A1",
+     83838
+    ],
+    [
+     "14070A1",
+     79949
+    ],
+    [
+     "14020A1",
+     79855
+    ],
+    [
+     "11060A4",
+     78308
+    ],
+    [
+     "11080A1",
+     76744
+    ],
+    [
+     "12060A4",
+     73436
+    ]
+   ]
+  },
+  {
+   "index": 11,
+   "raw_name": "Area Group-1",
+   "name": "Area Group-1",
+   "present_in_header": true,
+   "nonempty": 5430732,
+   "blank": 0,
+   "distinct_keyed": 3,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     5430732
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     5430732
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 11,
+   "min": "Non-Rack",
+   "max": "Underground",
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "Non-Rack",
+     3763771
+    ],
+    [
+     "Rack",
+     1570839
+    ],
+    [
+     "Underground",
+     96122
+    ]
+   ]
+  },
+  {
+   "index": 12,
+   "raw_name": "Area Group-2",
+   "name": "Area Group-2",
+   "present_in_header": true,
+   "nonempty": 5430732,
+   "blank": 0,
+   "distinct_keyed": 12,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     5430732
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     5430732
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 18,
+   "min": "Intercon PR HA-1",
+   "max": "Utilities HA-3",
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "Train-8 Process",
+     1493903
+    ],
+    [
+     "Train-9 Process",
+     1437060
+    ],
+    [
+     "Train-10 Process",
+     1278863
+    ],
+    [
+     "Train-11 Process",
+     1164638
+    ],
+    [
+     "Intercon PR HA-2",
+     17305
+    ],
+    [
+     "Intercon PR HA-3",
+     11316
+    ],
+    [
+     "Intercon PR HA-1",
+     9327
+    ],
+    [
+     "Intercon PR HA-4",
+     7404
+    ],
+    [
+     "Utilities HA-3",
+     4939
+    ],
+    [
+     "Utilities HA-1",
+     4164
+    ],
+    [
+     "Retention Ponds",
+     1571
+    ],
+    [
+     "Retention Ponds UG",
+     242
+    ]
+   ]
+  },
+  {
+   "index": 13,
+   "raw_name": "Area Group-3",
+   "name": "Area Group-3",
+   "present_in_header": true,
+   "nonempty": 5430732,
+   "blank": 0,
+   "distinct_keyed": 2,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     5430732
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     5430732
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 2,
+   "min": "AG",
+   "max": "UG",
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "AG",
+     5323453
+    ],
+    [
+     "UG",
+     107279
+    ]
+   ]
+  },
+  {
+   "index": 14,
+   "raw_name": "Area Group-4",
+   "name": "Area Group-4",
+   "present_in_header": true,
+   "nonempty": 5430732,
+   "blank": 0,
+   "distinct_keyed": 3,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     5430732
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     5430732
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 8,
+   "min": "PSM-001",
+   "max": "PSM-003B",
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "PSM-002",
+     5365120
+    ],
+    [
+     "PSM-003B",
+     45352
+    ],
+    [
+     "PSM-001",
+     20260
+    ]
+   ]
+  },
+  {
+   "index": 15,
+   "raw_name": "Area Group-5",
+   "name": "Area Group-5",
+   "present_in_header": true,
+   "nonempty": 5430732,
+   "blank": 0,
+   "distinct_keyed": 2,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     5430732
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     5430732
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 3,
+   "min": "POC",
+   "max": "YOC",
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "YOC",
+     5376277
+    ],
+    [
+     "POC",
+     54455
+    ]
+   ]
+  },
+  {
+   "index": 16,
+   "raw_name": "QC ISO DWG. No.",
+   "name": "QC ISO DWG. No.",
+   "present_in_header": true,
+   "nonempty": 5430732,
+   "blank": 0,
+   "distinct_keyed": 56257,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     5430732
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     5430732
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 21,
+   "min": "11010P1-BD6287101",
+   "max": "74100AA-WB6084613R01",
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "11010P4-CV6284101",
+     2932
+    ],
+    [
+     "12010P4-CV6384101",
+     2610
+    ],
+    [
+     "13010P4-CV7284101",
+     2542
+    ],
+    [
+     "14010P4-CV7384101",
+     2238
+    ],
+    [
+     "11010Q1-N6296101",
+     1793
+    ],
+    [
+     "11010Q3-MS6292101",
+     1781
+    ],
+    [
+     "12040A1-HHS6392141",
+     1774
+    ],
+    [
+     "11040A1-HHS6292141",
+     1772
+    ],
+    [
+     "12010Q3-MS6392101",
+     1748
+    ],
+    [
+     "12010Q1-N6396101",
+     1748
+    ],
+    [
+     "13040A1-HHS7292141",
+     1708
+    ],
+    [
+     "12040A3-CV6384132",
+     1704
+    ],
+    [
+     "14010Q3-MS7392101",
+     1696
+    ],
+    [
+     "13040A3-CV7284132",
+     1695
+    ],
+    [
+     "11040A3-CV6284132",
+     1672
+    ]
+   ]
+  },
+  {
+   "index": 17,
+   "raw_name": "Sheet No.",
+   "name": "Sheet No.",
+   "present_in_header": true,
+   "nonempty": 5430732,
+   "blank": 0,
+   "distinct_keyed": 31,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "int",
+   "categories": [
+    [
+     "int",
+     5430720
+    ],
+    [
+     "text",
+     12
+    ]
+   ],
+   "formats_seen": [
+    [
+     "int",
+     5430720
+    ],
+    [
+     "text",
+     12
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 3,
+   "min": "1",
+   "max": "R",
+   "date_min": null,
+   "date_max": null,
+   "num_min": 1.0,
+   "num_max": 29.0,
+   "num_int_digits": 2,
+   "num_scale": null,
+   "top_values": [
+    [
+     "1",
+     2393491
+    ],
+    [
+     "2",
+     1305293
+    ],
+    [
+     "3",
+     609565
+    ],
+    [
+     "4",
+     332721
+    ],
+    [
+     "5",
+     213067
+    ],
+    [
+     "6",
+     144120
+    ],
+    [
+     "7",
+     107213
+    ],
+    [
+     "8",
+     73938
+    ],
+    [
+     "9",
+     57228
+    ],
+    [
+     "10",
+     42714
+    ],
+    [
+     "11",
+     33974
+    ],
+    [
+     "12",
+     27961
+    ],
+    [
+     "13",
+     21719
+    ],
+    [
+     "14",
+     15757
+    ],
+    [
+     "15",
+     11498
+    ]
+   ]
+  },
+  {
+   "index": 18,
+   "raw_name": "Joint No.",
+   "name": "Joint No.",
+   "present_in_header": true,
+   "nonempty": 5430732,
+   "blank": 0,
+   "distinct_keyed": 1860,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "int",
+   "categories": [
+    [
+     "int",
+     5244604
+    ],
+    [
+     "text",
+     186128
+    ]
+   ],
+   "formats_seen": [
+    [
+     "int",
+     5244604
+    ],
+    [
+     "text",
+     186128
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 6,
+   "min": "1",
+   "max": "9J",
+   "date_min": null,
+   "date_max": null,
+   "num_min": 1.0,
+   "num_max": 806.0,
+   "num_int_digits": 3,
+   "num_scale": null,
+   "top_values": [
+    [
+     "2",
+     226497
+    ],
+    [
+     "3",
+     221120
+    ],
+    [
+     "4",
+     209397
+    ],
+    [
+     "1",
+     206357
+    ],
+    [
+     "5",
+     198210
+    ],
+    [
+     "6",
+     194690
+    ],
+    [
+     "7",
+     185253
+    ],
+    [
+     "8",
+     177538
+    ],
+    [
+     "9",
+     169152
+    ],
+    [
+     "10",
+     139669
+    ],
+    [
+     "11",
+     132728
+    ],
+    [
+     "12",
+     126784
+    ],
+    [
+     "13",
+     120492
+    ],
+    [
+     "14",
+     113839
+    ],
+    [
+     "15",
+     107286
+    ]
+   ]
+  },
+  {
+   "index": 19,
+   "raw_name": "Repair Suffix",
+   "name": "Repair Suffix",
+   "present_in_header": true,
+   "nonempty": 40761,
+   "blank": 5389971,
+   "distinct_keyed": 8,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     40761
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     40761
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 6,
+   "min": "R01",
+   "max": "RW2",
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "RW1",
+     34706
+    ],
+    [
+     "RS1",
+     4432
+    ],
+    [
+     "R01",
+     1487
+    ],
+    [
+     "RW2",
+     60
+    ],
+    [
+     "RW1RS1",
+     36
+    ],
+    [
+     "RS2",
+     16
+    ],
+    [
+     "R1RS1",
+     12
+    ],
+    [
+     "R02",
+     12
+    ]
+   ]
+  },
+  {
+   "index": 20,
+   "raw_name": "Spool No.",
+   "name": "Spool No.",
+   "present_in_header": true,
+   "nonempty": 5430732,
+   "blank": 0,
+   "distinct_keyed": 199,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     5430732
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     5430732
+    ]
+   ],
+   "null_token_counts": [
+    [
+     "-",
+     4202
+    ]
+   ],
+   "values_with_lead_trail_space": 0,
+   "max_len": 5,
+   "min": "-",
+   "max": "SP9C",
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "SP1",
+     1205339
+    ],
+    [
+     "SP2",
+     804741
+    ],
+    [
+     "SP3",
+     634820
+    ],
+    [
+     "SP4",
+     509612
+    ],
+    [
+     "SP5",
+     404387
+    ],
+    [
+     "SP6",
+     310713
+    ],
+    [
+     "SP7",
+     246061
+    ],
+    [
+     "SP8",
+     196888
+    ],
+    [
+     "SP9",
+     154978
+    ],
+    [
+     "SP10",
+     123212
+    ],
+    [
+     "SP11",
+     105545
+    ],
+    [
+     "SP12",
+     86369
+    ],
+    [
+     "SP13",
+     67866
+    ],
+    [
+     "SP14",
+     57625
+    ],
+    [
+     "SP15",
+     49499
+    ]
+   ]
+  },
+  {
+   "index": 21,
+   "raw_name": "Service Class",
+   "name": "Service Class",
+   "present_in_header": true,
+   "nonempty": 5430732,
+   "blank": 0,
+   "distinct_keyed": 112,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     5430732
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     5430732
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 6,
+   "min": "1A1A",
+   "max": "YY0KL",
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "1S1A",
+     1108667
+    ],
+    [
+     "1A1A",
+     544849
+    ],
+    [
+     "1P1A",
+     224389
+    ],
+    [
+     "1W3AX",
+     201867
+    ],
+    [
+     "3R1B2",
+     161589
+    ],
+    [
+     "3R0JL",
+     153744
+    ],
+    [
+     "1R1B",
+     141300
+    ],
+    [
+     "6R1B",
+     131582
+    ],
+    [
+     "3R1B3",
+     122298
+    ],
+    [
+     "1R0JL",
+     112530
+    ],
+    [
+     "3P1A",
+     101284
+    ],
+    [
+     "1B6AS",
+     95733
+    ],
+    [
+     "6R0JL6",
+     94367
+    ],
+    [
+     "1W0WG",
+     93314
+    ],
+    [
+     "1W0WA",
+     83730
+    ]
+   ]
+  },
+  {
+   "index": 22,
+   "raw_name": "Pressure Level",
+   "name": "Pressure Level",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 23,
+   "raw_name": "Pipe Size",
+   "name": "Pipe Size",
+   "present_in_header": true,
+   "nonempty": 5430732,
+   "blank": 0,
+   "distinct_keyed": 47,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "decimal",
+   "categories": [
+    [
+     "decimal",
+     5430732
+    ]
+   ],
+   "formats_seen": [
+    [
+     "decimal(dot)",
+     5430732
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 5,
+   "min": "0.5",
+   "max": "82.0",
+   "date_min": null,
+   "date_max": null,
+   "num_min": 0.5,
+   "num_max": 126.0,
+   "num_int_digits": 3,
+   "num_scale": 2,
+   "top_values": [
+    [
+     "1.0",
+     1238691
+    ],
+    [
+     "2.0",
+     820224
+    ],
+    [
+     "0.75",
+     777507
+    ],
+    [
+     "3.0",
+     311643
+    ],
+    [
+     "6.0",
+     287511
+    ],
+    [
+     "0.5",
+     257492
+    ],
+    [
+     "1.5",
+     222405
+    ],
+    [
+     "4.0",
+     213885
+    ],
+    [
+     "8.0",
+     150651
+    ],
+    [
+     "10.0",
+     126790
+    ],
+    [
+     "12.0",
+     116855
+    ],
+    [
+     "20.0",
+     111271
+    ],
+    [
+     "16.0",
+     101830
+    ],
+    [
+     "24.0",
+     97235
+    ],
+    [
+     "18.0",
+     84867
+    ]
+   ]
+  },
+  {
+   "index": 24,
+   "raw_name": "Wall Thickness",
+   "name": "Wall Thickness",
+   "present_in_header": true,
+   "nonempty": 5430732,
+   "blank": 0,
+   "distinct_keyed": 63,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "decimal",
+   "categories": [
+    [
+     "decimal",
+     5430732
+    ]
+   ],
+   "formats_seen": [
+    [
+     "decimal(dot)",
+     5430732
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 5,
+   "min": "10.15",
+   "max": "9.53",
+   "date_min": null,
+   "date_max": null,
+   "num_min": 3.73,
+   "num_max": 44.0,
+   "num_int_digits": 2,
+   "num_scale": 2,
+   "top_values": [
+    [
+     "6.35",
+     1230091
+    ],
+    [
+     "5.56",
+     529024
+    ],
+    [
+     "5.54",
+     528801
+    ],
+    [
+     "3.91",
+     376988
+    ],
+    [
+     "12.7",
+     249156
+    ],
+    [
+     "5.49",
+     225053
+    ],
+    [
+     "4.78",
+     213847
+    ],
+    [
+     "7.92",
+     192421
+    ],
+    [
+     "7.14",
+     187621
+    ],
+    [
+     "7.11",
+     185559
+    ],
+    [
+     "8.74",
+     154242
+    ],
+    [
+     "4.55",
+     137101
+    ],
+    [
+     "6.02",
+     128862
+    ],
+    [
+     "9.53",
+     104375
+    ],
+    [
+     "10.97",
+     91396
+    ]
+   ]
+  },
+  {
+   "index": 25,
+   "raw_name": "Dia Inch",
+   "name": "Dia Inch",
+   "present_in_header": true,
+   "nonempty": 5430724,
+   "blank": 8,
+   "distinct_keyed": 69,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "decimal",
+   "categories": [
+    [
+     "decimal",
+     5430724
+    ]
+   ],
+   "formats_seen": [
+    [
+     "decimal(dot)",
+     5430724
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 5,
+   "min": "0.0",
+   "max": "96.0",
+   "date_min": null,
+   "date_max": null,
+   "num_min": 0.0,
+   "num_max": 192.0,
+   "num_int_digits": 3,
+   "num_scale": 2,
+   "top_values": [
+    [
+     "1.0",
+     1213744
+    ],
+    [
+     "2.0",
+     766746
+    ],
+    [
+     "0.75",
+     751569
+    ],
+    [
+     "0.0",
+     448842
+    ],
+    [
+     "3.0",
+     275217
+    ],
+    [
+     "0.5",
+     255332
+    ],
+    [
+     "6.0",
+     250149
+    ],
+    [
+     "1.5",
+     215827
+    ],
+    [
+     "4.0",
+     186324
+    ],
+    [
+     "8.0",
+     128786
+    ],
+    [
+     "10.0",
+     102568
+    ],
+    [
+     "12.0",
+     91588
+    ],
+    [
+     "20.0",
+     89841
+    ],
+    [
+     "16.0",
+     86372
+    ],
+    [
+     "24.0",
+     78323
+    ]
+   ]
+  },
+  {
+   "index": 26,
+   "raw_name": "Material Category",
+   "name": "Material Category",
+   "present_in_header": true,
+   "nonempty": 5430732,
+   "blank": 0,
+   "distinct_keyed": 6,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     5430732
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     5430732
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 5,
+   "min": "CS",
+   "max": "SS",
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "CS",
+     3365049
+    ],
+    [
+     "SS",
+     1036129
+    ],
+    [
+     "LTCS",
+     931150
+    ],
+    [
+     "LINED",
+     42834
+    ],
+    [
+     "LA",
+     41597
+    ],
+    [
+     "NF",
+     13973
+    ]
+   ]
+  },
+  {
+   "index": 27,
+   "raw_name": "P No.",
+   "name": "P No.",
+   "present_in_header": true,
+   "nonempty": 5415666,
+   "blank": 15066,
+   "distinct_keyed": 4,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "decimal",
+   "categories": [
+    [
+     "decimal",
+     5415666
+    ]
+   ],
+   "formats_seen": [
+    [
+     "decimal(dot)",
+     5415666
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 4,
+   "min": "1.0",
+   "max": "8.0",
+   "date_min": null,
+   "date_max": null,
+   "num_min": 1.0,
+   "num_max": 34.0,
+   "num_int_digits": 2,
+   "num_scale": 1,
+   "top_values": [
+    [
+     "1.0",
+     4336067
+    ],
+    [
+     "8.0",
+     1024029
+    ],
+    [
+     "4.0",
+     41597
+    ],
+    [
+     "34.0",
+     13973
+    ]
+   ]
+  },
+  {
+   "index": 28,
+   "raw_name": "Work Category",
+   "name": "Work Category",
+   "present_in_header": true,
+   "nonempty": 5430732,
+   "blank": 0,
+   "distinct_keyed": 3,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     5430732
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     5430732
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 1,
+   "min": "F",
+   "max": "S",
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "F",
+     2754117
+    ],
+    [
+     "S",
+     2584375
+    ],
+    [
+     "J",
+     92240
+    ]
+   ]
+  },
+  {
+   "index": 29,
+   "raw_name": "Original Work Category",
+   "name": "Original Work Category",
+   "present_in_header": true,
+   "nonempty": 1527264,
+   "blank": 3903468,
+   "distinct_keyed": 3,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     1527264
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     1527264
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 1,
+   "min": "F",
+   "max": "S",
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "S",
+     1109995
+    ],
+    [
+     "F",
+     375681
+    ],
+    [
+     "J",
+     41588
+    ]
+   ]
+  },
+  {
+   "index": 30,
+   "raw_name": "Weld Type",
+   "name": "Weld Type",
+   "present_in_header": true,
+   "nonempty": 5430732,
+   "blank": 0,
+   "distinct_keyed": 26,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     5430732
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     5430732
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 5,
+   "min": "BW",
+   "max": "THD",
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "BW",
+     2205519
+    ],
+    [
+     "SW",
+     2110599
+    ],
+    [
+     "SP",
+     428792
+    ],
+    [
+     "LET",
+     228960
+    ],
+    [
+     "SOF",
+     123847
+    ],
+    [
+     "RPD",
+     104129
+    ],
+    [
+     "THD",
+     92241
+    ],
+    [
+     "FW",
+     39901
+    ],
+    [
+     "SOB",
+     26586
+    ],
+    [
+     "RPD0",
+     19278
+    ],
+    [
+     "SOB0",
+     18217
+    ],
+    [
+     "RPDUA",
+     6316
+    ],
+    [
+     "SOBUA",
+     6025
+    ],
+    [
+     "CLET",
+     5844
+    ],
+    [
+     "RPDS",
+     3404
+    ]
+   ]
+  },
+  {
+   "index": 31,
+   "raw_name": "NDT Remarks",
+   "name": "NDT Remarks",
+   "present_in_header": true,
+   "nonempty": 5430732,
+   "blank": 0,
+   "distinct_keyed": 4,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     5430732
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     5430732
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 1,
+   "min": "H",
+   "max": "V",
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "H",
+     3229809
+    ],
+    [
+     "P",
+     1499305
+    ],
+    [
+     "S",
+     449736
+    ],
+    [
+     "V",
+     251882
+    ]
+   ]
+  },
+  {
+   "index": 32,
+   "raw_name": "Weld Point Code",
+   "name": "Weld Point Code",
+   "present_in_header": true,
+   "nonempty": 5430732,
+   "blank": 0,
+   "distinct_keyed": 4,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     5430732
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     5430732
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 1,
+   "min": "C",
+   "max": "R",
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "C",
+     1425991
+    ],
+    [
+     "F",
+     1335101
+    ],
+    [
+     "R",
+     1334830
+    ],
+    [
+     "H",
+     1334810
+    ]
+   ]
+  },
+  {
+   "index": 33,
+   "raw_name": "Welded(Weld Point)",
+   "name": "Welded(Weld Point)",
+   "present_in_header": true,
+   "nonempty": 5430732,
+   "blank": 0,
+   "distinct_keyed": 32,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "int",
+   "categories": [
+    [
+     "int",
+     5430732
+    ]
+   ],
+   "formats_seen": [
+    [
+     "int",
+     5430732
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 2,
+   "min": "1",
+   "max": "9",
+   "date_min": null,
+   "date_max": null,
+   "num_min": 1.0,
+   "num_max": 32.0,
+   "num_int_digits": 2,
+   "num_scale": null,
+   "top_values": [
+    [
+     "1",
+     1342075
+    ],
+    [
+     "3",
+     1250485
+    ],
+    [
+     "2",
+     1249341
+    ],
+    [
+     "4",
+     1249160
+    ],
+    [
+     "5",
+     84521
+    ],
+    [
+     "6",
+     82759
+    ],
+    [
+     "7",
+     80851
+    ],
+    [
+     "8",
+     79468
+    ],
+    [
+     "10",
+     1767
+    ],
+    [
+     "9",
+     1670
+    ],
+    [
+     "11",
+     1550
+    ],
+    [
+     "12",
+     1478
+    ],
+    [
+     "13",
+     1411
+    ],
+    [
+     "14",
+     1406
+    ],
+    [
+     "16",
+     1380
+    ]
+   ]
+  },
+  {
+   "index": 34,
+   "raw_name": "Weld Remark",
+   "name": "Weld Remark",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 35,
+   "raw_name": "Joint Percent",
+   "name": "Joint Percent",
+   "present_in_header": true,
+   "nonempty": 5430732,
+   "blank": 0,
+   "distinct_keyed": 34,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "decimal",
+   "categories": [
+    [
+     "decimal",
+     5430732
+    ]
+   ],
+   "formats_seen": [
+    [
+     "decimal(dot)",
+     5430732
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 5,
+   "min": "10.0",
+   "max": "9.1",
+   "date_min": null,
+   "date_max": null,
+   "num_min": 2.97,
+   "num_max": 100.0,
+   "num_int_digits": 3,
+   "num_scale": 2,
+   "top_values": [
+    [
+     "25.0",
+     4652254
+    ],
+    [
+     "12.5",
+     635154
+    ],
+    [
+     "100.0",
+     90248
+    ],
+    [
+     "6.25",
+     22578
+    ],
+    [
+     "16.67",
+     16299
+    ],
+    [
+     "8.33",
+     4246
+    ],
+    [
+     "16.65",
+     3263
+    ],
+    [
+     "20.0",
+     2240
+    ],
+    [
+     "10.0",
+     1534
+    ],
+    [
+     "50.0",
+     1136
+    ],
+    [
+     "8.37",
+     388
+    ],
+    [
+     "7.14",
+     247
+    ],
+    [
+     "4.17",
+     230
+    ],
+    [
+     "14.29",
+     210
+    ],
+    [
+     "5.0",
+     160
+    ]
+   ]
+  },
+  {
+   "index": 36,
+   "raw_name": "Welding Process",
+   "name": "Welding Process",
+   "present_in_header": true,
+   "nonempty": 5430730,
+   "blank": 2,
+   "distinct_keyed": 85,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     5430730
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     5430730
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 15,
+   "min": "304-SS-01",
+   "max": "THD",
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "CS/LTCS-001",
+     2694463
+    ],
+    [
+     "304-SS-01",
+     742607
+    ],
+    [
+     "CS/LTCS-002",
+     428005
+    ],
+    [
+     "CS/LTCS-003",
+     330002
+    ],
+    [
+     "CS/LTCS-004",
+     151207
+    ],
+    [
+     "CS/LTCS-021",
+     113495
+    ],
+    [
+     "316-SS-01",
+     110037
+    ],
+    [
+     "CS/LTCS-AUT-005",
+     103146
+    ],
+    [
+     "THD",
+     92237
+    ],
+    [
+     "CS/LTCS-005",
+     79389
+    ],
+    [
+     "304-SS-02",
+     73943
+    ],
+    [
+     "CS-02",
+     68137
+    ],
+    [
+     "CS/LTCS-006",
+     36275
+    ],
+    [
+     "CS/LTCS-AUT-006",
+     35937
+    ],
+    [
+     "304-SS-04",
+     32605
+    ]
+   ]
+  },
+  {
+   "index": 37,
+   "raw_name": "Welding Position",
+   "name": "Welding Position",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 38,
+   "raw_name": "Welding Rod Type",
+   "name": "Welding Rod Type",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 39,
+   "raw_name": "Tracer Shot",
+   "name": "Tracer Shot",
+   "present_in_header": true,
+   "nonempty": 4215,
+   "blank": 5426517,
+   "distinct_keyed": 1,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     4215
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     4215
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 1,
+   "min": "T",
+   "max": "T",
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "T",
+     4215
+    ]
+   ]
+  },
+  {
+   "index": 40,
+   "raw_name": "RT/UT",
+   "name": "RT/UT",
+   "present_in_header": true,
+   "nonempty": 639298,
+   "blank": 4791434,
+   "distinct_keyed": 1,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     639298
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     639298
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 2,
+   "min": "RT",
+   "max": "RT",
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "RT",
+     639298
+    ]
+   ]
+  },
+  {
+   "index": 41,
+   "raw_name": "RT/UT Report No.",
+   "name": "RT/UT Report No.",
+   "present_in_header": true,
+   "nonempty": 639298,
+   "blank": 4791434,
+   "distinct_keyed": 60000,
+   "distinct_capped": true,
+   "values_over_cap": 335279,
+   "profiled_coverage": 0.475551,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     304019
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     304019
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 15,
+   "min": "NFE1-MUTF00001",
+   "max": "NFE1-rt40058",
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "NFE1-MUTF03981",
+     32
+    ],
+    [
+     "NFE1-RT00382",
+     24
+    ],
+    [
+     "NFE1-RT85107",
+     24
+    ],
+    [
+     "NFE1-RT70578",
+     24
+    ],
+    [
+     "NFE1-RT62933",
+     20
+    ],
+    [
+     "NFE1-RT41317",
+     20
+    ],
+    [
+     "NFE1-RT111700",
+     20
+    ],
+    [
+     "NFE1-MUTF00363",
+     20
+    ],
+    [
+     "NFE1-RTD0212",
+     20
+    ],
+    [
+     "NFE1-RT04908",
+     20
+    ],
+    [
+     "NFE1-MUTF00753",
+     18
+    ],
+    [
+     "NFE1-RT116042",
+     18
+    ],
+    [
+     "NFE1-RT14625",
+     18
+    ],
+    [
+     "NFE1-RT108709",
+     18
+    ],
+    [
+     "NFE1-RT00687",
+     17
+    ]
+   ]
+  },
+  {
+   "index": 42,
+   "raw_name": "RT/UT Date",
+   "name": "RT/UT Date",
+   "present_in_header": true,
+   "nonempty": 639298,
+   "blank": 4791434,
+   "distinct_keyed": 1478,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "date",
+   "categories": [
+    [
+     "date",
+     639298
+    ]
+   ],
+   "formats_seen": [
+    [
+     "yyyy/mm/dd",
+     639298
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 10,
+   "min": "2021/12/06",
+   "max": "2026/08/26",
+   "date_min": "2021-12-06",
+   "date_max": "2026-08-26",
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "2025/07/25",
+     1488
+    ],
+    [
+     "2025/07/29",
+     1436
+    ],
+    [
+     "2025/06/09",
+     1418
+    ],
+    [
+     "2024/11/19",
+     1396
+    ],
+    [
+     "2025/06/11",
+     1380
+    ],
+    [
+     "2025/07/09",
+     1329
+    ],
+    [
+     "2025/05/28",
+     1320
+    ],
+    [
+     "2025/08/05",
+     1284
+    ],
+    [
+     "2024/11/20",
+     1262
+    ],
+    [
+     "2025/06/01",
+     1236
+    ],
+    [
+     "2025/06/10",
+     1220
+    ],
+    [
+     "2025/08/20",
+     1204
+    ],
+    [
+     "2025/10/12",
+     1204
+    ],
+    [
+     "2025/06/05",
+     1200
+    ],
+    [
+     "2025/07/22",
+     1200
+    ]
+   ]
+  },
+  {
+   "index": 43,
+   "raw_name": "RT Film Total",
+   "name": "RT Film Total",
+   "present_in_header": true,
+   "nonempty": 638686,
+   "blank": 4792046,
+   "distinct_keyed": 145,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "decimal",
+   "categories": [
+    [
+     "decimal",
+     638686
+    ]
+   ],
+   "formats_seen": [
+    [
+     "decimal(dot)",
+     638686
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 4,
+   "min": "0.0",
+   "max": "6.5",
+   "date_min": null,
+   "date_max": null,
+   "num_min": 0.0,
+   "num_max": 6.5,
+   "num_int_digits": 1,
+   "num_scale": 2,
+   "top_values": [
+    [
+     "0.75",
+     296274
+    ],
+    [
+     "1.0",
+     83911
+    ],
+    [
+     "0.5",
+     76411
+    ],
+    [
+     "1.25",
+     24304
+    ],
+    [
+     "0.88",
+     21432
+    ],
+    [
+     "0.63",
+     21358
+    ],
+    [
+     "1.5",
+     16458
+    ],
+    [
+     "1.13",
+     12602
+    ],
+    [
+     "1.75",
+     10668
+    ],
+    [
+     "2.0",
+     8994
+    ],
+    [
+     "1.38",
+     6693
+    ],
+    [
+     "2.5",
+     6512
+    ],
+    [
+     "1.63",
+     5804
+    ],
+    [
+     "2.25",
+     5368
+    ],
+    [
+     "0.25",
+     4096
+    ]
+   ]
+  },
+  {
+   "index": 44,
+   "raw_name": "RT Film Reject",
+   "name": "RT Film Reject",
+   "present_in_header": true,
+   "nonempty": 638654,
+   "blank": 4792078,
+   "distinct_keyed": 8,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "decimal",
+   "categories": [
+    [
+     "decimal",
+     638654
+    ]
+   ],
+   "formats_seen": [
+    [
+     "decimal(dot)",
+     638654
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 4,
+   "min": "0.0",
+   "max": "6.0",
+   "date_min": null,
+   "date_max": null,
+   "num_min": 0.0,
+   "num_max": 10.0,
+   "num_int_digits": 2,
+   "num_scale": 1,
+   "top_values": [
+    [
+     "0.0",
+     637809
+    ],
+    [
+     "1.0",
+     693
+    ],
+    [
+     "2.0",
+     104
+    ],
+    [
+     "3.0",
+     37
+    ],
+    [
+     "6.0",
+     6
+    ],
+    [
+     "4.0",
+     3
+    ],
+    [
+     "5.0",
+     1
+    ],
+    [
+     "10.0",
+     1
+    ]
+   ]
+  },
+  {
+   "index": 45,
+   "raw_name": "RT/UT Result",
+   "name": "RT/UT Result",
+   "present_in_header": true,
+   "nonempty": 639298,
+   "blank": 4791434,
+   "distinct_keyed": 3,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     639298
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     639298
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 2,
+   "min": "A",
+   "max": "RS",
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "A",
+     631426
+    ],
+    [
+     "RS",
+     5038
+    ],
+    [
+     "R",
+     2834
+    ]
+   ]
+  },
+  {
+   "index": 46,
+   "raw_name": "RT/UT(%)",
+   "name": "RT/UT(%)",
+   "present_in_header": true,
+   "nonempty": 5430732,
+   "blank": 0,
+   "distinct_keyed": 5,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "int",
+   "categories": [
+    [
+     "int",
+     5430732
+    ]
+   ],
+   "formats_seen": [
+    [
+     "int",
+     5430732
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 3,
+   "min": "0",
+   "max": "5",
+   "date_min": null,
+   "date_max": null,
+   "num_min": 0.0,
+   "num_max": 100.0,
+   "num_int_digits": 3,
+   "num_scale": null,
+   "top_values": [
+    [
+     "0",
+     3421891
+    ],
+    [
+     "5",
+     1223209
+    ],
+    [
+     "100",
+     484130
+    ],
+    [
+     "10",
+     279920
+    ],
+    [
+     "20",
+     21582
+    ]
+   ]
+  },
+  {
+   "index": 47,
+   "raw_name": "RT/UT Request Date",
+   "name": "RT/UT Request Date",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 48,
+   "raw_name": "RT/UT Defect Code",
+   "name": "RT/UT Defect Code",
+   "present_in_header": true,
+   "nonempty": 706,
+   "blank": 5430026,
+   "distinct_keyed": 9,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     706
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     706
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 2,
+   "min": "BT",
+   "max": "XX",
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "LF",
+     281
+    ],
+    [
+     "SL",
+     183
+    ],
+    [
+     "P",
+     165
+    ],
+    [
+     "XX",
+     35
+    ],
+    [
+     "EP",
+     18
+    ],
+    [
+     "IP",
+     10
+    ],
+    [
+     "CR",
+     8
+    ],
+    [
+     "BT",
+     4
+    ],
+    [
+     "UC",
+     2
+    ]
+   ]
+  },
+  {
+   "index": 49,
+   "raw_name": "RT/UT Defect Code Class",
+   "name": "RT/UT Defect Code Class",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 50,
+   "raw_name": "Reshoot-1 RT/UT Report No.",
+   "name": "Reshoot-1 RT/UT Report No.",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 51,
+   "raw_name": "Reshoot-1 RT/UT Date",
+   "name": "Reshoot-1 RT/UT Date",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 52,
+   "raw_name": "Reshoot-1 RT Film Total",
+   "name": "Reshoot-1 RT Film Total",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 53,
+   "raw_name": "Reshoot-1 RT Film Reject",
+   "name": "Reshoot-1 RT Film Reject",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 54,
+   "raw_name": "Reshoot-1 RT/UT Result",
+   "name": "Reshoot-1 RT/UT Result",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 55,
+   "raw_name": "Reshoot-1 RT/UT Defect Code",
+   "name": "Reshoot-1 RT/UT Defect Code",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 56,
+   "raw_name": "Reshoot-1 RT/UT Defect Code Class",
+   "name": "Reshoot-1 RT/UT Defect Code Class",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 57,
+   "raw_name": "Reshoot-2 RT/UT Report No.",
+   "name": "Reshoot-2 RT/UT Report No.",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 58,
+   "raw_name": "Reshoot-2 RT/UT Date",
+   "name": "Reshoot-2 RT/UT Date",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 59,
+   "raw_name": "Reshoot-2 RT Film Total",
+   "name": "Reshoot-2 RT Film Total",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 60,
+   "raw_name": "Reshoot-2 RT Film Reject",
+   "name": "Reshoot-2 RT Film Reject",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 61,
+   "raw_name": "Reshoot-2 RT/UT Result",
+   "name": "Reshoot-2 RT/UT Result",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 62,
+   "raw_name": "Reshoot-2 RT/UT Defect Code",
+   "name": "Reshoot-2 RT/UT Defect Code",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 63,
+   "raw_name": "Reshoot-2 RT/UT Defect Code Class",
+   "name": "Reshoot-2 RT/UT Defect Code Class",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 64,
+   "raw_name": "Reshoot-3 RT/UT Report No.",
+   "name": "Reshoot-3 RT/UT Report No.",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 65,
+   "raw_name": "Reshoot-3 RT/UT Date",
+   "name": "Reshoot-3 RT/UT Date",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 66,
+   "raw_name": "Reshoot-3 RT Film Total",
+   "name": "Reshoot-3 RT Film Total",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 67,
+   "raw_name": "Reshoot-3 RT Film Reject",
+   "name": "Reshoot-3 RT Film Reject",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 68,
+   "raw_name": "Reshoot-3 RT/UT Result",
+   "name": "Reshoot-3 RT/UT Result",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 69,
+   "raw_name": "Reshoot-3 RT/UT Defect Code",
+   "name": "Reshoot-3 RT/UT Defect Code",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 70,
+   "raw_name": "Reshoot-3 RT/UT Defect Code Class",
+   "name": "Reshoot-3 RT/UT Defect Code Class",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 71,
+   "raw_name": "Reshoot RT/UT Total",
+   "name": "Reshoot RT/UT Total",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 72,
+   "raw_name": "Reshoot RT/UT Film Total",
+   "name": "Reshoot RT/UT Film Total",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 73,
+   "raw_name": "Last Reshoot Date",
+   "name": "Last Reshoot Date",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 74,
+   "raw_name": "Last Reshoot Report No",
+   "name": "Last Reshoot Report No",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 75,
+   "raw_name": "Last Reshoot Result",
+   "name": "Last Reshoot Result",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 76,
+   "raw_name": "Last Reshoot RT/UT Defect Code",
+   "name": "Last Reshoot RT/UT Defect Code",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 77,
+   "raw_name": "Last Reshoot RT/UT Defect Code Class",
+   "name": "Last Reshoot RT/UT Defect Code Class",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 78,
+   "raw_name": "RT2/UT2",
+   "name": "RT2/UT2",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 79,
+   "raw_name": "RT2/UT2 Report No.",
+   "name": "RT2/UT2 Report No.",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 80,
+   "raw_name": "RT2/UT2 Date",
+   "name": "RT2/UT2 Date",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 81,
+   "raw_name": "RT2 Film Total",
+   "name": "RT2 Film Total",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 82,
+   "raw_name": "RT2 Film Reject",
+   "name": "RT2 Film Reject",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 83,
+   "raw_name": "RT2/UT2 Result",
+   "name": "RT2/UT2 Result",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 84,
+   "raw_name": "RT2/UT2(%)",
+   "name": "RT2/UT2(%)",
+   "present_in_header": true,
+   "nonempty": 5430732,
+   "blank": 0,
+   "distinct_keyed": 5,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "int",
+   "categories": [
+    [
+     "int",
+     5430732
+    ]
+   ],
+   "formats_seen": [
+    [
+     "int",
+     5430732
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 3,
+   "min": "0",
+   "max": "5",
+   "date_min": null,
+   "date_max": null,
+   "num_min": 0.0,
+   "num_max": 100.0,
+   "num_int_digits": 3,
+   "num_scale": null,
+   "top_values": [
+    [
+     "0",
+     3421891
+    ],
+    [
+     "5",
+     1223209
+    ],
+    [
+     "100",
+     484130
+    ],
+    [
+     "10",
+     279920
+    ],
+    [
+     "20",
+     21582
+    ]
+   ]
+  },
+  {
+   "index": 85,
+   "raw_name": "RT2/UT2 Request Date",
+   "name": "RT2/UT2 Request Date",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 86,
+   "raw_name": "RT2/UT2 Defect Code",
+   "name": "RT2/UT2 Defect Code",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 87,
+   "raw_name": "RT2/UT2 Defect Code Class",
+   "name": "RT2/UT2 Defect Code Class",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 88,
+   "raw_name": "Reshoot-1 RT2/UT2 Report No.",
+   "name": "Reshoot-1 RT2/UT2 Report No.",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 89,
+   "raw_name": "Reshoot-1 RT2/UT2 Date",
+   "name": "Reshoot-1 RT2/UT2 Date",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 90,
+   "raw_name": "Reshoot-1 RT2 Film Total",
+   "name": "Reshoot-1 RT2 Film Total",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 91,
+   "raw_name": "Reshoot-1 RT2 Film Reject",
+   "name": "Reshoot-1 RT2 Film Reject",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 92,
+   "raw_name": "Reshoot-1 RT2/UT2 Result",
+   "name": "Reshoot-1 RT2/UT2 Result",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 93,
+   "raw_name": "Reshoot-1 RT2/UT2 Defect Code",
+   "name": "Reshoot-1 RT2/UT2 Defect Code",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 94,
+   "raw_name": "Reshoot-2 RT2/UT2 Report No.",
+   "name": "Reshoot-2 RT2/UT2 Report No.",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 95,
+   "raw_name": "Reshoot-2 RT2/UT2 Date",
+   "name": "Reshoot-2 RT2/UT2 Date",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 96,
+   "raw_name": "Reshoot-2 RT2 Film Total",
+   "name": "Reshoot-2 RT2 Film Total",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 97,
+   "raw_name": "Reshoot-2 RT2 Film Reject",
+   "name": "Reshoot-2 RT2 Film Reject",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 98,
+   "raw_name": "Reshoot-1 RT2/UT2 Defect Code Class",
+   "name": "Reshoot-1 RT2/UT2 Defect Code Class",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 99,
+   "raw_name": "Reshoot-2 RT2/UT2 Result",
+   "name": "Reshoot-2 RT2/UT2 Result",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 100,
+   "raw_name": "Reshoot-2 RT2/UT2 Defect Code",
+   "name": "Reshoot-2 RT2/UT2 Defect Code",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 101,
+   "raw_name": "Reshoot-2 RT2/UT2 Defect Code Class",
+   "name": "Reshoot-2 RT2/UT2 Defect Code Class",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 102,
+   "raw_name": "Reshoot-3 RT2/UT2 Report No.",
+   "name": "Reshoot-3 RT2/UT2 Report No.",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 103,
+   "raw_name": "Reshoot-3 RT2/UT2 Date",
+   "name": "Reshoot-3 RT2/UT2 Date",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 104,
+   "raw_name": "Reshoot-3 RT2 Film Total",
+   "name": "Reshoot-3 RT2 Film Total",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 105,
+   "raw_name": "Reshoot-3 RT2 Film Reject",
+   "name": "Reshoot-3 RT2 Film Reject",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 106,
+   "raw_name": "Reshoot-3 RT2/UT2 Result",
+   "name": "Reshoot-3 RT2/UT2 Result",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 107,
+   "raw_name": "Reshoot-3 RT2/UT2 Defect Code",
+   "name": "Reshoot-3 RT2/UT2 Defect Code",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 108,
+   "raw_name": "Reshoot-3 RT2/UT2 Defect Code Class",
+   "name": "Reshoot-3 RT2/UT2 Defect Code Class",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 109,
+   "raw_name": "Reshoot RT2/UT2 Total",
+   "name": "Reshoot RT2/UT2 Total",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 110,
+   "raw_name": "Reshoot RT2/UT2 Film Total",
+   "name": "Reshoot RT2/UT2 Film Total",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 111,
+   "raw_name": "Last Reshoot Date.1",
+   "name": "Last Reshoot Date.1",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 112,
+   "raw_name": "Last Reshoot Report No.1",
+   "name": "Last Reshoot Report No.1",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 113,
+   "raw_name": "Last Reshoot Result.1",
+   "name": "Last Reshoot Result.1",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 114,
+   "raw_name": "Last Reshoot RT2/UT2 Defect Code",
+   "name": "Last Reshoot RT2/UT2 Defect Code",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 115,
+   "raw_name": "Last Reshoot RT2/UT2 Defect Code Class",
+   "name": "Last Reshoot RT2/UT2 Defect Code Class",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 116,
+   "raw_name": "VT Judge",
+   "name": "VT Judge",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 117,
+   "raw_name": "Welding Inspection Identifier Date",
+   "name": "Welding Inspection Identifier Date",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 118,
+   "raw_name": "Welding Inspection Identifier Client",
+   "name": "Welding Inspection Identifier Client",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 119,
+   "raw_name": "Welding Inspection Identifier Chiyoda",
+   "name": "Welding Inspection Identifier Chiyoda",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 5430732,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  }
+ ]
+}

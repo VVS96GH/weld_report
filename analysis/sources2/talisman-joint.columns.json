@@ -1,0 +1,4776 @@
+{
+ "facts": {
+  "file": "Joint.csv",
+  "slug": "talisman-joint",
+  "size_bytes": 322659087,
+  "bom": null,
+  "first_4_bytes": "53554243",
+  "encoding_used": "cp1252",
+  "delimiter": ",",
+  "m_columns": 62,
+  "m_line": 5223,
+  "header_fields": 62,
+  "header_names_deduped": [
+   "SUBCON CODE",
+   "QCISO NO",
+   "SHEET NO",
+   "JOINT NO",
+   "ORIGINAL REPAIR DELETE FLAG",
+   "REV NO",
+   "SPOOL NO",
+   "WORK CATEGORY",
+   "ORIGINAL WORK CATEGORY",
+   "SIZE",
+   "2ND SIZE",
+   "WELD TYPE",
+   "AREA",
+   "SERVICE CLASS",
+   "TESTPACK NO",
+   "SUBSYSTEM NO",
+   "LINE NO",
+   "WELD DATE",
+   "WELDER ID 1",
+   "WELDER ID 2",
+   "WELDER ID 3",
+   "WELDER ID 4",
+   "WPS CODE",
+   "REWORK CODE",
+   "RT1 DATE",
+   "RT1 REP NO",
+   "RT1 RESULT",
+   "RT1 TOTAL FILM NO",
+   "RT1 REJECT FILM NO",
+   "RT1 DEFECT CODE",
+   "RT2 DATE",
+   "RT2 REP NO",
+   "RT2 RESULT",
+   "RT2 TOTAL FILM NO",
+   "RT2 REJECT FILM NO",
+   "RT2 DEFECT CODE",
+   "UT1 DATE",
+   "UT1 REP NO",
+   "UT1 RESULT",
+   "UT1 DEFECT CODE",
+   "UT2 DATE",
+   "UT2 REP NO",
+   "UT2 RESULT",
+   "UT2 DEFECT CODE",
+   "TRACER FLG",
+   "PT DATE",
+   "PT REP NO",
+   "MT DATE",
+   "MT REP NO",
+   "PWHT DATE",
+   "PWHT REP NO",
+   "HT DATE",
+   "HT REP NO",
+   "PMI DATE",
+   "PMI REP NO",
+   "PMI UP DATE",
+   "PMI UP REP NO",
+   "PMI DOWN DATE",
+   "PMI DOWN REP NO",
+   "FT DATE",
+   "FT REP NO",
+   "WELD REP NO"
+  ],
+  "duplicate_header_names": [],
+  "header_line_ending": "CRLF",
+  "physical_data_lines": 1548056,
+  "line_endings": {
+   "crlf": 1548056,
+   "lf_only": 0
+  },
+  "field_count_histogram": [
+   [
+    62,
+    1548056
+   ]
+  ],
+  "modal_field_count": 62,
+  "lines_short_of_m_columns": 0,
+  "lines_over_m_columns": 0,
+  "ragged_examples": [],
+  "lines_containing_double_quote": 15499,
+  "lines_with_quoted_looking_field": 15499,
+  "lines_with_decode_replacement_char": 0,
+  "sepcount_records": 1548056,
+  "sepcount_rejoins": 0,
+  "pbix_table": "TALISMAN DATA",
+  "pbix_rows": 3098341,
+  "keys": [
+   {
+    "name": "Joint ID  (M: QCISO-SPOOL-JOINT)",
+    "columns": [
+     "QCISO NO",
+     "SPOOL NO",
+     "JOINT NO"
+    ],
+    "rows": 1548056,
+    "distinct": 1547795,
+    "unique": false
+   },
+   {
+    "name": "Joint ID + WELDER ID 1",
+    "columns": [
+     "QCISO NO",
+     "SPOOL NO",
+     "JOINT NO",
+     "WELDER ID 1"
+    ],
+    "rows": 1548056,
+    "distinct": 1547822,
+    "unique": false
+   }
+  ],
+  "seconds": 14.1,
+  "limit": null
+ },
+ "columns": [
+  {
+   "index": 1,
+   "raw_name": "SUBCON CODE",
+   "name": "SUBCON CODE",
+   "present_in_header": true,
+   "nonempty": 1548056,
+   "blank": 0,
+   "distinct_keyed": 1,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     1548056
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     1548056
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 3,
+   "min": "CCC",
+   "max": "CCC",
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "CCC",
+     1548056
+    ]
+   ]
+  },
+  {
+   "index": 2,
+   "raw_name": "QCISO NO",
+   "name": "QCISO NO",
+   "present_in_header": true,
+   "nonempty": 1548056,
+   "blank": 0,
+   "distinct_keyed": 60000,
+   "distinct_capped": true,
+   "values_over_cap": 6331,
+   "profiled_coverage": 0.99591,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     1541725
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     1541725
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 44,
+   "min": "\"V08-HHS6292R013-0.75\"\"(M1FN0SAB)-26-N2\"",
+   "max": "V11-73PT920038-B-16-C3",
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "11010Q1-SW6294101",
+     486
+    ],
+    [
+     "11010Q1-N6296101",
+     473
+    ],
+    [
+     "12010Q1-N6396101",
+     457
+    ],
+    [
+     "14010Q1-N7396101",
+     455
+    ],
+    [
+     "13010Q1-N7296101",
+     449
+    ],
+    [
+     "11010P4-CV6284101",
+     426
+    ],
+    [
+     "13010P4-CV7284101",
+     419
+    ],
+    [
+     "12010P4-CV6384101",
+     412
+    ],
+    [
+     "11010Q6-AG6202001",
+     406
+    ],
+    [
+     "14010P4-CV7384101",
+     406
+    ],
+    [
+     "11010P1-N6296101",
+     387
+    ],
+    [
+     "12010Q6-AG6302001",
+     384
+    ],
+    [
+     "13010Q6-AG7202001",
+     384
+    ],
+    [
+     "14010Q6-AG7302001",
+     384
+    ],
+    [
+     "12040A1-HHS6392141",
+     376
+    ]
+   ]
+  },
+  {
+   "index": 3,
+   "raw_name": "SHEET NO",
+   "name": "SHEET NO",
+   "present_in_header": true,
+   "nonempty": 1547863,
+   "blank": 193,
+   "distinct_keyed": 111,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "int",
+   "categories": [
+    [
+     "int",
+     1547821
+    ],
+    [
+     "text",
+     39
+    ],
+    [
+     "decimal",
+     3
+    ]
+   ],
+   "formats_seen": [
+    [
+     "int",
+     1547821
+    ],
+    [
+     "text",
+     39
+    ],
+    [
+     "decimal(dot)",
+     3
+    ]
+   ],
+   "null_token_counts": [
+    [
+     "-",
+     3
+    ]
+   ],
+   "values_with_lead_trail_space": 7768,
+   "max_len": 50,
+   "min": "-",
+   "max": "`1",
+   "date_min": null,
+   "date_max": null,
+   "num_min": 0.0,
+   "num_max": 139.0,
+   "num_int_digits": 3,
+   "num_scale": 1,
+   "top_values": [
+    [
+     "1",
+     662981
+    ],
+    [
+     "2",
+     365064
+    ],
+    [
+     "3",
+     172964
+    ],
+    [
+     "4",
+     94367
+    ],
+    [
+     "5",
+     59754
+    ],
+    [
+     "6",
+     39870
+    ],
+    [
+     "7",
+     29209
+    ],
+    [
+     "8",
+     20138
+    ],
+    [
+     "9",
+     15706
+    ],
+    [
+     "10",
+     12139
+    ],
+    [
+     "11",
+     10126
+    ],
+    [
+     "12",
+     8253
+    ],
+    [
+     "13",
+     7234
+    ],
+    [
+     "14",
+     5520
+    ],
+    [
+     "15",
+     4708
+    ]
+   ]
+  },
+  {
+   "index": 4,
+   "raw_name": "JOINT NO",
+   "name": "JOINT NO",
+   "present_in_header": true,
+   "nonempty": 1547897,
+   "blank": 159,
+   "distinct_keyed": 3403,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "int",
+   "categories": [
+    [
+     "int",
+     1471850
+    ],
+    [
+     "text",
+     76041
+    ],
+    [
+     "decimal",
+     6
+    ]
+   ],
+   "formats_seen": [
+    [
+     "int",
+     1471850
+    ],
+    [
+     "text",
+     76041
+    ],
+    [
+     "decimal(dot)",
+     6
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 83,
+   "max_len": 10,
+   "min": ".14",
+   "max": "W9RW",
+   "date_min": null,
+   "date_max": null,
+   "num_min": 0.14,
+   "num_max": 7109.0,
+   "num_int_digits": 4,
+   "num_scale": 2,
+   "top_values": [
+    [
+     "1",
+     55677
+    ],
+    [
+     "2",
+     54995
+    ],
+    [
+     "3",
+     53218
+    ],
+    [
+     "4",
+     52106
+    ],
+    [
+     "5",
+     49871
+    ],
+    [
+     "6",
+     48616
+    ],
+    [
+     "7",
+     46241
+    ],
+    [
+     "8",
+     44964
+    ],
+    [
+     "9",
+     42916
+    ],
+    [
+     "10",
+     35771
+    ],
+    [
+     "11",
+     33849
+    ],
+    [
+     "12",
+     32524
+    ],
+    [
+     "13",
+     30933
+    ],
+    [
+     "14",
+     29508
+    ],
+    [
+     "15",
+     27789
+    ]
+   ]
+  },
+  {
+   "index": 5,
+   "raw_name": "ORIGINAL REPAIR DELETE FLAG",
+   "name": "ORIGINAL REPAIR DELETE FLAG",
+   "present_in_header": true,
+   "nonempty": 1548056,
+   "blank": 0,
+   "distinct_keyed": 3,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     1548056
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     1548056
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 1,
+   "min": "D",
+   "max": "R",
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "O",
+     1495851
+    ],
+    [
+     "D",
+     41935
+    ],
+    [
+     "R",
+     10270
+    ]
+   ]
+  },
+  {
+   "index": 6,
+   "raw_name": "REV NO",
+   "name": "REV NO",
+   "present_in_header": true,
+   "nonempty": 1548056,
+   "blank": 0,
+   "distinct_keyed": 38,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "int",
+   "categories": [
+    [
+     "int",
+     952900
+    ],
+    [
+     "text",
+     595156
+    ]
+   ],
+   "formats_seen": [
+    [
+     "int",
+     952900
+    ],
+    [
+     "text",
+     595156
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 2,
+   "min": "0",
+   "max": "C",
+   "date_min": null,
+   "date_max": null,
+   "num_min": 0.0,
+   "num_max": 4.0,
+   "num_int_digits": 1,
+   "num_scale": null,
+   "top_values": [
+    [
+     "0",
+     723356
+    ],
+    [
+     "0A",
+     256666
+    ],
+    [
+     "1",
+     205816
+    ],
+    [
+     "1A",
+     117104
+    ],
+    [
+     "0B",
+     75080
+    ],
+    [
+     "1B",
+     45103
+    ],
+    [
+     "2",
+     21507
+    ],
+    [
+     "0C",
+     21351
+    ],
+    [
+     "1C",
+     20123
+    ],
+    [
+     "2A",
+     14809
+    ],
+    [
+     "0D",
+     8291
+    ],
+    [
+     "0E",
+     7496
+    ],
+    [
+     "1D",
+     4704
+    ],
+    [
+     "2B",
+     4670
+    ],
+    [
+     "2C",
+     3802
+    ]
+   ]
+  },
+  {
+   "index": 7,
+   "raw_name": "SPOOL NO",
+   "name": "SPOOL NO",
+   "present_in_header": true,
+   "nonempty": 1548056,
+   "blank": 0,
+   "distinct_keyed": 201,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     1548055
+    ],
+    [
+     "int",
+     1
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     1548055
+    ],
+    [
+     "int",
+     1
+    ]
+   ],
+   "null_token_counts": [
+    [
+     "-",
+     8524
+    ]
+   ],
+   "values_with_lead_trail_space": 0,
+   "max_len": 5,
+   "min": "-",
+   "max": "SP9C",
+   "date_min": null,
+   "date_max": null,
+   "num_min": 0.0,
+   "num_max": 0.0,
+   "num_int_digits": 1,
+   "num_scale": null,
+   "top_values": [
+    [
+     "SP1",
+     348360
+    ],
+    [
+     "SP2",
+     225369
+    ],
+    [
+     "SP3",
+     176127
+    ],
+    [
+     "SP4",
+     141647
+    ],
+    [
+     "SP5",
+     113463
+    ],
+    [
+     "SP6",
+     88415
+    ],
+    [
+     "SP7",
+     70246
+    ],
+    [
+     "SP8",
+     56837
+    ],
+    [
+     "SP9",
+     45006
+    ],
+    [
+     "SP10",
+     35936
+    ],
+    [
+     "SP11",
+     30097
+    ],
+    [
+     "SP12",
+     24497
+    ],
+    [
+     "SP13",
+     19556
+    ],
+    [
+     "SP14",
+     16658
+    ],
+    [
+     "SP15",
+     14042
+    ]
+   ]
+  },
+  {
+   "index": 8,
+   "raw_name": "WORK CATEGORY",
+   "name": "WORK CATEGORY",
+   "present_in_header": true,
+   "nonempty": 1548047,
+   "blank": 9,
+   "distinct_keyed": 5,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     1548045
+    ],
+    [
+     "int",
+     2
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     1548045
+    ],
+    [
+     "int",
+     2
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 1,
+   "min": "7",
+   "max": "S",
+   "date_min": null,
+   "date_max": null,
+   "num_min": 7.0,
+   "num_max": 7.0,
+   "num_int_digits": 1,
+   "num_scale": null,
+   "top_values": [
+    [
+     "F",
+     815216
+    ],
+    [
+     "S",
+     617637
+    ],
+    [
+     "J",
+     115190
+    ],
+    [
+     "7",
+     2
+    ],
+    [
+     "B",
+     2
+    ]
+   ]
+  },
+  {
+   "index": 9,
+   "raw_name": "ORIGINAL WORK CATEGORY",
+   "name": "ORIGINAL WORK CATEGORY",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 1548056,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 10,
+   "raw_name": "SIZE",
+   "name": "SIZE",
+   "present_in_header": true,
+   "nonempty": 1548056,
+   "blank": 0,
+   "distinct_keyed": 72,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "decimal",
+   "categories": [
+    [
+     "decimal",
+     1548056
+    ]
+   ],
+   "formats_seen": [
+    [
+     "decimal(dot)",
+     1548056
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 6,
+   "min": "0.0",
+   "max": "96.0",
+   "date_min": null,
+   "date_max": null,
+   "num_min": 0.0,
+   "num_max": 1024.0,
+   "num_int_digits": 4,
+   "num_scale": 2,
+   "top_values": [
+    [
+     "1.0",
+     391497
+    ],
+    [
+     "0.75",
+     247736
+    ],
+    [
+     "2.0",
+     246126
+    ],
+    [
+     "3.0",
+     86142
+    ],
+    [
+     "0.5",
+     84042
+    ],
+    [
+     "6.0",
+     82069
+    ],
+    [
+     "1.5",
+     81624
+    ],
+    [
+     "4.0",
+     61009
+    ],
+    [
+     "8.0",
+     42249
+    ],
+    [
+     "10.0",
+     36073
+    ],
+    [
+     "12.0",
+     30599
+    ],
+    [
+     "16.0",
+     20619
+    ],
+    [
+     "20.0",
+     19643
+    ],
+    [
+     "24.0",
+     16480
+    ],
+    [
+     "14.0",
+     16058
+    ]
+   ]
+  },
+  {
+   "index": 11,
+   "raw_name": "2ND SIZE",
+   "name": "2ND SIZE",
+   "present_in_header": true,
+   "nonempty": 1548056,
+   "blank": 0,
+   "distinct_keyed": 1,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "int",
+   "categories": [
+    [
+     "int",
+     1548056
+    ]
+   ],
+   "formats_seen": [
+    [
+     "int",
+     1548056
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 1,
+   "min": "0",
+   "max": "0",
+   "date_min": null,
+   "date_max": null,
+   "num_min": 0.0,
+   "num_max": 0.0,
+   "num_int_digits": 1,
+   "num_scale": null,
+   "top_values": [
+    [
+     "0",
+     1548056
+    ]
+   ]
+  },
+  {
+   "index": 12,
+   "raw_name": "WELD TYPE",
+   "name": "WELD TYPE",
+   "present_in_header": true,
+   "nonempty": 1548047,
+   "blank": 9,
+   "distinct_keyed": 36,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     1548045
+    ],
+    [
+     "int",
+     2
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     1548045
+    ],
+    [
+     "int",
+     2
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 5,
+   "min": "01",
+   "max": "bW",
+   "date_min": null,
+   "date_max": null,
+   "num_min": 1.0,
+   "num_max": 2.0,
+   "num_int_digits": 2,
+   "num_scale": null,
+   "top_values": [
+    [
+     "SW",
+     601095
+    ],
+    [
+     "BW",
+     549763
+    ],
+    [
+     "SP",
+     143444
+    ],
+    [
+     "THD",
+     115544
+    ],
+    [
+     "LET",
+     57225
+    ],
+    [
+     "SOF",
+     30559
+    ],
+    [
+     "RPD",
+     21400
+    ],
+    [
+     "FW",
+     12872
+    ],
+    [
+     "SOB",
+     10991
+    ],
+    [
+     "CLET",
+     1489
+    ],
+    [
+     "SOB0",
+     759
+    ],
+    [
+     "RPD0",
+     748
+    ],
+    [
+     "FP",
+     540
+    ],
+    [
+     "BRN",
+     416
+    ],
+    [
+     "RPDUA",
+     204
+    ]
+   ]
+  },
+  {
+   "index": 13,
+   "raw_name": "AREA",
+   "name": "AREA",
+   "present_in_header": true,
+   "nonempty": 1505030,
+   "blank": 43026,
+   "distinct_keyed": 494,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     1505025
+    ],
+    [
+     "int",
+     5
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     1505025
+    ],
+    [
+     "int",
+     5
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 13,
+   "min": "043564",
+   "max": "Commissioning",
+   "date_min": null,
+   "date_max": null,
+   "num_min": 43564.0,
+   "num_max": 43564.0,
+   "num_int_digits": 6,
+   "num_scale": null,
+   "top_values": [
+    [
+     "12090A2",
+     35769
+    ],
+    [
+     "11090A2",
+     35638
+    ],
+    [
+     "13090A2",
+     35186
+    ],
+    [
+     "14090A2",
+     34781
+    ],
+    [
+     "11070A1",
+     29374
+    ],
+    [
+     "12070A1",
+     29250
+    ],
+    [
+     "13070A1",
+     28956
+    ],
+    [
+     "14070A1",
+     28796
+    ],
+    [
+     "11020A1",
+     25497
+    ],
+    [
+     "12020A1",
+     25313
+    ],
+    [
+     "13020A1",
+     25013
+    ],
+    [
+     "14020A1",
+     24787
+    ],
+    [
+     "11080A1",
+     20460
+    ],
+    [
+     "12080A1",
+     20356
+    ],
+    [
+     "11060A4",
+     20185
+    ]
+   ]
+  },
+  {
+   "index": 14,
+   "raw_name": "SERVICE CLASS",
+   "name": "SERVICE CLASS",
+   "present_in_header": true,
+   "nonempty": 1547979,
+   "blank": 77,
+   "distinct_keyed": 148,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     1547979
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     1547979
+    ]
+   ],
+   "null_token_counts": [
+    [
+     "-",
+     2932
+    ]
+   ],
+   "values_with_lead_trail_space": 3,
+   "max_len": 11,
+   "min": "-",
+   "max": "YY0KL",
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "1S1A",
+     317458
+    ],
+    [
+     "1A1A",
+     156468
+    ],
+    [
+     "1P1A",
+     62887
+    ],
+    [
+     "1W3AX",
+     59565
+    ],
+    [
+     "1W0WG",
+     57615
+    ],
+    [
+     "3R0JL",
+     43828
+    ],
+    [
+     "3R1B2",
+     41022
+    ],
+    [
+     "1W0WA",
+     39294
+    ],
+    [
+     "1R1B",
+     34296
+    ],
+    [
+     "6R1B",
+     32509
+    ],
+    [
+     "3R1B3",
+     30740
+    ],
+    [
+     "1R0JL",
+     29268
+    ],
+    [
+     "3P1A",
+     28493
+    ],
+    [
+     "6R0JL6",
+     25296
+    ],
+    [
+     "1B6AS",
+     23547
+    ]
+   ]
+  },
+  {
+   "index": 15,
+   "raw_name": "TESTPACK NO",
+   "name": "TESTPACK NO",
+   "present_in_header": true,
+   "nonempty": 1540294,
+   "blank": 7762,
+   "distinct_keyed": 19738,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     1540294
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     1540294
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 33,
+   "min": "62STH0210",
+   "max": "TESTPACK_NOT_REQUIRED_AS_PER_CTJV",
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "TBD-12-9204-010-522",
+     22158
+    ],
+    [
+     "TBD-11-9204-010-522",
+     21751
+    ],
+    [
+     "TBD-14-9204-010-522",
+     21446
+    ],
+    [
+     "TBD-13-9204-010-522",
+     21434
+    ],
+    [
+     "TBD-12-9213-010-503",
+     14202
+    ],
+    [
+     "TBD-14-9601-010-503",
+     14199
+    ],
+    [
+     "TBD-14-9213-010-503",
+     13897
+    ],
+    [
+     "TBD-11-9213-010-503",
+     13803
+    ],
+    [
+     "TBD-13-9213-010-503",
+     13549
+    ],
+    [
+     "TBD-11-8401-010-501",
+     11394
+    ],
+    [
+     "TBD-12-8401-010-501",
+     11387
+    ],
+    [
+     "TBD-13-8401-010-501",
+     11163
+    ],
+    [
+     "TBD-14-8401-010-501",
+     11063
+    ],
+    [
+     "TBD-14-9503-010-501",
+     10596
+    ],
+    [
+     "TBD-14-9401-010-502",
+     7515
+    ]
+   ]
+  },
+  {
+   "index": 16,
+   "raw_name": "SUBSYSTEM NO",
+   "name": "SUBSYSTEM NO",
+   "present_in_header": true,
+   "nonempty": 1534324,
+   "blank": 13732,
+   "distinct_keyed": 959,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     1534324
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     1534324
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 11,
+   "min": "11-0220-010",
+   "max": "74-9602-016",
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "11-9204-010",
+     27972
+    ],
+    [
+     "12-9204-010",
+     27748
+    ],
+    [
+     "13-9204-010",
+     27593
+    ],
+    [
+     "14-9204-010",
+     26237
+    ],
+    [
+     "11-9213-010",
+     15306
+    ],
+    [
+     "12-9213-010",
+     15152
+    ],
+    [
+     "13-9213-010",
+     14938
+    ],
+    [
+     "14-9213-010",
+     14791
+    ],
+    [
+     "11-9601-010",
+     14746
+    ],
+    [
+     "13-9601-010",
+     14662
+    ],
+    [
+     "12-9601-010",
+     14657
+    ],
+    [
+     "14-9601-010",
+     14295
+    ],
+    [
+     "11-0930-010",
+     14120
+    ],
+    [
+     "12-0930-010",
+     14092
+    ],
+    [
+     "13-0930-010",
+     13732
+    ]
+   ]
+  },
+  {
+   "index": 17,
+   "raw_name": "LINE NO",
+   "name": "LINE NO",
+   "present_in_header": true,
+   "nonempty": 1412426,
+   "blank": 135630,
+   "distinct_keyed": 48394,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     1412426
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     1412426
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 41,
+   "min": "\"1 1/2\"\"-AE-053-57B30.007\"",
+   "max": "WB7393112B",
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "N6296101",
+     1037
+    ],
+    [
+     "N6396101",
+     1000
+    ],
+    [
+     "N7396101",
+     993
+    ],
+    [
+     "N7296101",
+     986
+    ],
+    [
+     "MS6292101",
+     802
+    ],
+    [
+     "MS7392101",
+     799
+    ],
+    [
+     "SW6294101",
+     740
+    ],
+    [
+     "LS6392102",
+     723
+    ],
+    [
+     "MS7292101",
+     720
+    ],
+    [
+     "SA6395101",
+     701
+    ],
+    [
+     "SA6295101",
+     697
+    ],
+    [
+     "SA7295101",
+     687
+    ],
+    [
+     "SA7395101",
+     684
+    ],
+    [
+     "LS6292102",
+     668
+    ],
+    [
+     "LS7392102",
+     666
+    ]
+   ]
+  },
+  {
+   "index": 18,
+   "raw_name": "WELD DATE",
+   "name": "WELD DATE",
+   "present_in_header": true,
+   "nonempty": 1362214,
+   "blank": 185842,
+   "distinct_keyed": 1615,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "date",
+   "categories": [
+    [
+     "date",
+     1362214
+    ]
+   ],
+   "formats_seen": [
+    [
+     "yyyy/mm/dd",
+     1362214
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 10,
+   "min": "2021/12/01",
+   "max": "2026/08/28",
+   "date_min": "2021-12-01",
+   "date_max": "2026-08-28",
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "2025/07/10",
+     3154
+    ],
+    [
+     "2025/07/24",
+     3133
+    ],
+    [
+     "2025/07/17",
+     3118
+    ],
+    [
+     "2026/02/08",
+     3084
+    ],
+    [
+     "2025/07/31",
+     3041
+    ],
+    [
+     "2025/07/30",
+     2984
+    ],
+    [
+     "2025/07/15",
+     2851
+    ],
+    [
+     "2025/07/27",
+     2817
+    ],
+    [
+     "2025/08/03",
+     2793
+    ],
+    [
+     "2025/07/23",
+     2755
+    ],
+    [
+     "2025/07/14",
+     2735
+    ],
+    [
+     "2025/07/12",
+     2729
+    ],
+    [
+     "2025/07/13",
+     2726
+    ],
+    [
+     "2025/05/15",
+     2711
+    ],
+    [
+     "2025/07/03",
+     2704
+    ]
+   ]
+  },
+  {
+   "index": 19,
+   "raw_name": "WELDER ID 1",
+   "name": "WELDER ID 1",
+   "present_in_header": true,
+   "nonempty": 1268831,
+   "blank": 279225,
+   "distinct_keyed": 15116,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     1267058
+    ],
+    [
+     "int",
+     1773
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     1267058
+    ],
+    [
+     "int",
+     1773
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 52,
+   "min": "1369",
+   "max": "w-879/W-966",
+   "date_min": null,
+   "date_max": null,
+   "num_min": 1369.0,
+   "num_max": 1889.0,
+   "num_int_digits": 4,
+   "num_scale": null,
+   "top_values": [
+    [
+     "W-1089",
+     19040
+    ],
+    [
+     "W-933",
+     16243
+    ],
+    [
+     "W-635",
+     15986
+    ],
+    [
+     "W-744",
+     13995
+    ],
+    [
+     "W-1194",
+     13730
+    ],
+    [
+     "W-267",
+     13280
+    ],
+    [
+     "W-1447",
+     13060
+    ],
+    [
+     "W-1092",
+     12614
+    ],
+    [
+     "W-762",
+     11987
+    ],
+    [
+     "W-659",
+     11977
+    ],
+    [
+     "W-761",
+     11958
+    ],
+    [
+     "W-730",
+     11890
+    ],
+    [
+     "W-1471",
+     11775
+    ],
+    [
+     "W-895",
+     11714
+    ],
+    [
+     "W-429",
+     11650
+    ]
+   ]
+  },
+  {
+   "index": 20,
+   "raw_name": "WELDER ID 2",
+   "name": "WELDER ID 2",
+   "present_in_header": true,
+   "nonempty": 1268841,
+   "blank": 279215,
+   "distinct_keyed": 15110,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     1267068
+    ],
+    [
+     "int",
+     1773
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     1267068
+    ],
+    [
+     "int",
+     1773
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 52,
+   "min": "1369",
+   "max": "w-879/W-966",
+   "date_min": null,
+   "date_max": null,
+   "num_min": 1369.0,
+   "num_max": 1889.0,
+   "num_int_digits": 4,
+   "num_scale": null,
+   "top_values": [
+    [
+     "W-1089",
+     19040
+    ],
+    [
+     "W-933",
+     16243
+    ],
+    [
+     "W-635",
+     15987
+    ],
+    [
+     "W-744",
+     13995
+    ],
+    [
+     "W-1194",
+     13730
+    ],
+    [
+     "W-267",
+     13280
+    ],
+    [
+     "W-1447",
+     13060
+    ],
+    [
+     "W-1092",
+     12615
+    ],
+    [
+     "W-762",
+     11987
+    ],
+    [
+     "W-659",
+     11976
+    ],
+    [
+     "W-761",
+     11959
+    ],
+    [
+     "W-730",
+     11890
+    ],
+    [
+     "W-1471",
+     11775
+    ],
+    [
+     "W-895",
+     11714
+    ],
+    [
+     "W-429",
+     11650
+    ]
+   ]
+  },
+  {
+   "index": 21,
+   "raw_name": "WELDER ID 3",
+   "name": "WELDER ID 3",
+   "present_in_header": true,
+   "nonempty": 1270304,
+   "blank": 277752,
+   "distinct_keyed": 15114,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     1268537
+    ],
+    [
+     "int",
+     1767
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     1268537
+    ],
+    [
+     "int",
+     1767
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 52,
+   "min": "1369",
+   "max": "w-879/W-966",
+   "date_min": null,
+   "date_max": null,
+   "num_min": 1369.0,
+   "num_max": 1889.0,
+   "num_int_digits": 4,
+   "num_scale": null,
+   "top_values": [
+    [
+     "W-1089",
+     19040
+    ],
+    [
+     "W-933",
+     16241
+    ],
+    [
+     "W-635",
+     15987
+    ],
+    [
+     "W-744",
+     13994
+    ],
+    [
+     "W-1194",
+     13730
+    ],
+    [
+     "W-267",
+     13263
+    ],
+    [
+     "W-1447",
+     13060
+    ],
+    [
+     "W-1092",
+     12615
+    ],
+    [
+     "W-762",
+     11987
+    ],
+    [
+     "W-659",
+     11977
+    ],
+    [
+     "W-761",
+     11959
+    ],
+    [
+     "W-730",
+     11890
+    ],
+    [
+     "W-1471",
+     11775
+    ],
+    [
+     "W-895",
+     11714
+    ],
+    [
+     "W-429",
+     11650
+    ]
+   ]
+  },
+  {
+   "index": 22,
+   "raw_name": "WELDER ID 4",
+   "name": "WELDER ID 4",
+   "present_in_header": true,
+   "nonempty": 1362155,
+   "blank": 185901,
+   "distinct_keyed": 15127,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     1360388
+    ],
+    [
+     "int",
+     1767
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     1360388
+    ],
+    [
+     "int",
+     1767
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 4,
+   "max_len": 52,
+   "min": "1369",
+   "max": "w-879/W-966",
+   "date_min": null,
+   "date_max": null,
+   "num_min": 1369.0,
+   "num_max": 1889.0,
+   "num_int_digits": 4,
+   "num_scale": null,
+   "top_values": [
+    [
+     "THE-009",
+     21397
+    ],
+    [
+     "W-1089",
+     19050
+    ],
+    [
+     "THE-008",
+     18612
+    ],
+    [
+     "THE-006",
+     17651
+    ],
+    [
+     "W-933",
+     16243
+    ],
+    [
+     "W-635",
+     15991
+    ],
+    [
+     "W-744",
+     14004
+    ],
+    [
+     "W-1194",
+     13733
+    ],
+    [
+     "W-267",
+     13263
+    ],
+    [
+     "W-1447",
+     13062
+    ],
+    [
+     "W-1092",
+     12624
+    ],
+    [
+     "W-762",
+     11989
+    ],
+    [
+     "W-659",
+     11980
+    ],
+    [
+     "W-761",
+     11968
+    ],
+    [
+     "W-730",
+     11897
+    ]
+   ]
+  },
+  {
+   "index": 23,
+   "raw_name": "WPS CODE",
+   "name": "WPS CODE",
+   "present_in_header": true,
+   "nonempty": 1362214,
+   "blank": 185842,
+   "distinct_keyed": 101,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     1362214
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     1362214
+    ]
+   ],
+   "null_token_counts": [
+    [
+     "N/A",
+     2
+    ]
+   ],
+   "values_with_lead_trail_space": 0,
+   "max_len": 15,
+   "min": "304-SS-01",
+   "max": "THD",
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "CS/LTCS-001",
+     676055
+    ],
+    [
+     "304-SS-01",
+     178543
+    ],
+    [
+     "CS/LTCS-002",
+     106413
+    ],
+    [
+     "THD",
+     91706
+    ],
+    [
+     "CS/LTCS-003",
+     62738
+    ],
+    [
+     "316-SS-01",
+     31179
+    ],
+    [
+     "CS/LTCS-021",
+     28360
+    ],
+    [
+     "CS/LTCS-004",
+     27853
+    ],
+    [
+     "CS/LTCS-AUT-005",
+     25769
+    ],
+    [
+     "CS-02",
+     13358
+    ],
+    [
+     "CS/LTCS-005",
+     12599
+    ],
+    [
+     "304-SS-02",
+     11253
+    ],
+    [
+     "CS/LTCS-AUT-006",
+     9002
+    ],
+    [
+     "LA-01",
+     6160
+    ],
+    [
+     "DEW-CS/LTCS-001",
+     6051
+    ]
+   ]
+  },
+  {
+   "index": 24,
+   "raw_name": "REWORK CODE",
+   "name": "REWORK CODE",
+   "present_in_header": true,
+   "nonempty": 115866,
+   "blank": 1432190,
+   "distinct_keyed": 31,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     115858
+    ],
+    [
+     "int",
+     7
+    ],
+    [
+     "decimal",
+     1
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     115858
+    ],
+    [
+     "int",
+     7
+    ],
+    [
+     "decimal(dot)",
+     1
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 12,
+   "min": "0",
+   "max": "vendor scope",
+   "date_min": null,
+   "date_max": null,
+   "num_min": 0.0,
+   "num_max": 19.0,
+   "num_int_digits": 2,
+   "num_scale": 2,
+   "top_values": [
+    [
+     "1a",
+     33093
+    ],
+    [
+     "1c",
+     31372
+    ],
+    [
+     "1b",
+     25062
+    ],
+    [
+     "1d",
+     7997
+    ],
+    [
+     "1e",
+     7785
+    ],
+    [
+     "2c",
+     7551
+    ],
+    [
+     "7a",
+     1015
+    ],
+    [
+     "2d",
+     800
+    ],
+    [
+     "7c",
+     673
+    ],
+    [
+     "2a",
+     376
+    ],
+    [
+     "7d",
+     64
+    ],
+    [
+     "a",
+     14
+    ],
+    [
+     "2b",
+     12
+    ],
+    [
+     "0f1",
+     12
+    ],
+    [
+     "s",
+     11
+    ]
+   ]
+  },
+  {
+   "index": 25,
+   "raw_name": "RT1 DATE",
+   "name": "RT1 DATE",
+   "present_in_header": true,
+   "nonempty": 137963,
+   "blank": 1410093,
+   "distinct_keyed": 1478,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "date",
+   "categories": [
+    [
+     "date",
+     137963
+    ]
+   ],
+   "formats_seen": [
+    [
+     "yyyy/mm/dd",
+     137963
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 10,
+   "min": "2021/12/06",
+   "max": "2026/08/26",
+   "date_min": "2021-12-06",
+   "date_max": "2026-08-26",
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "2025/06/09",
+     347
+    ],
+    [
+     "2025/07/29",
+     344
+    ],
+    [
+     "2025/07/25",
+     338
+    ],
+    [
+     "2025/06/11",
+     320
+    ],
+    [
+     "2025/05/28",
+     314
+    ],
+    [
+     "2024/11/19",
+     313
+    ],
+    [
+     "2025/08/05",
+     299
+    ],
+    [
+     "2025/07/09",
+     298
+    ],
+    [
+     "2025/06/01",
+     296
+    ],
+    [
+     "2025/06/10",
+     290
+    ],
+    [
+     "2025/07/28",
+     285
+    ],
+    [
+     "2025/07/22",
+     282
+    ],
+    [
+     "2025/10/12",
+     276
+    ],
+    [
+     "2025/08/17",
+     276
+    ],
+    [
+     "2024/11/20",
+     275
+    ]
+   ]
+  },
+  {
+   "index": 26,
+   "raw_name": "RT1 REP NO",
+   "name": "RT1 REP NO",
+   "present_in_header": true,
+   "nonempty": 137963,
+   "blank": 1410093,
+   "distinct_keyed": 60000,
+   "distinct_capped": true,
+   "values_over_cap": 77963,
+   "profiled_coverage": 0.434899,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     60000
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     60000
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 15,
+   "min": "NFE1-MUTF00001",
+   "max": "NFE1-rt40058",
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "NFE1-RT33533",
+     1
+    ],
+    [
+     "NFE1-RT53614",
+     1
+    ],
+    [
+     "NFE1-RT59503",
+     1
+    ],
+    [
+     "NFE1-RT08374",
+     1
+    ],
+    [
+     "NFE1-RT50370",
+     1
+    ],
+    [
+     "NFE1-RT66222",
+     1
+    ],
+    [
+     "NFE1-RT72458",
+     1
+    ],
+    [
+     "NFE1-RT08375",
+     1
+    ],
+    [
+     "NFE1-RT66227",
+     1
+    ],
+    [
+     "NFE1-RT01170",
+     1
+    ],
+    [
+     "NFE1-RT01170A",
+     1
+    ],
+    [
+     "NFE1-RT03007",
+     1
+    ],
+    [
+     "NFE1-RT10984",
+     1
+    ],
+    [
+     "NFE1-RT10985",
+     1
+    ],
+    [
+     "NFE1-RT10331",
+     1
+    ]
+   ]
+  },
+  {
+   "index": 27,
+   "raw_name": "RT1 RESULT",
+   "name": "RT1 RESULT",
+   "present_in_header": true,
+   "nonempty": 137963,
+   "blank": 1410093,
+   "distinct_keyed": 3,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     137963
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     137963
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 2,
+   "min": "A",
+   "max": "RS",
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "A",
+     136402
+    ],
+    [
+     "RS",
+     1029
+    ],
+    [
+     "R",
+     532
+    ]
+   ]
+  },
+  {
+   "index": 28,
+   "raw_name": "RT1 TOTAL FILM NO",
+   "name": "RT1 TOTAL FILM NO",
+   "present_in_header": true,
+   "nonempty": 137963,
+   "blank": 1410093,
+   "distinct_keyed": 25,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "int",
+   "categories": [
+    [
+     "int",
+     137963
+    ]
+   ],
+   "formats_seen": [
+    [
+     "int",
+     137963
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 2,
+   "min": "1",
+   "max": "9",
+   "date_min": null,
+   "date_max": null,
+   "num_min": 1.0,
+   "num_max": 34.0,
+   "num_int_digits": 2,
+   "num_scale": null,
+   "top_values": [
+    [
+     "3",
+     70031
+    ],
+    [
+     "4",
+     19557
+    ],
+    [
+     "2",
+     14888
+    ],
+    [
+     "7",
+     5959
+    ],
+    [
+     "6",
+     5901
+    ],
+    [
+     "5",
+     5472
+    ],
+    [
+     "10",
+     3624
+    ],
+    [
+     "8",
+     3297
+    ],
+    [
+     "9",
+     2344
+    ],
+    [
+     "11",
+     1518
+    ],
+    [
+     "13",
+     1240
+    ],
+    [
+     "1",
+     1035
+    ],
+    [
+     "12",
+     832
+    ],
+    [
+     "18",
+     660
+    ],
+    [
+     "15",
+     603
+    ]
+   ]
+  },
+  {
+   "index": 29,
+   "raw_name": "RT1 REJECT FILM NO",
+   "name": "RT1 REJECT FILM NO",
+   "present_in_header": true,
+   "nonempty": 137963,
+   "blank": 1410093,
+   "distinct_keyed": 8,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "int",
+   "categories": [
+    [
+     "int",
+     137963
+    ]
+   ],
+   "formats_seen": [
+    [
+     "int",
+     137963
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 2,
+   "min": "0",
+   "max": "6",
+   "date_min": null,
+   "date_max": null,
+   "num_min": 0.0,
+   "num_max": 10.0,
+   "num_int_digits": 2,
+   "num_scale": null,
+   "top_values": [
+    [
+     "0",
+     137445
+    ],
+    [
+     "1",
+     443
+    ],
+    [
+     "2",
+     53
+    ],
+    [
+     "3",
+     17
+    ],
+    [
+     "4",
+     2
+    ],
+    [
+     "5",
+     1
+    ],
+    [
+     "10",
+     1
+    ],
+    [
+     "6",
+     1
+    ]
+   ]
+  },
+  {
+   "index": 30,
+   "raw_name": "RT1 DEFECT CODE",
+   "name": "RT1 DEFECT CODE",
+   "present_in_header": true,
+   "nonempty": 533,
+   "blank": 1547523,
+   "distinct_keyed": 15,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     533
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     533
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 8,
+   "min": "BT",
+   "max": "XX",
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "LF",
+     190
+    ],
+    [
+     "SL",
+     137
+    ],
+    [
+     "P",
+     132
+    ],
+    [
+     "XX",
+     27
+    ],
+    [
+     "EP",
+     20
+    ],
+    [
+     "IP",
+     7
+    ],
+    [
+     "CR",
+     7
+    ],
+    [
+     "BT",
+     3
+    ],
+    [
+     "LF SL",
+     2
+    ],
+    [
+     "LF P",
+     2
+    ],
+    [
+     "UC",
+     2
+    ],
+    [
+     "P SL",
+     1
+    ],
+    [
+     "P XX",
+     1
+    ],
+    [
+     "CR LF UC",
+     1
+    ],
+    [
+     "SL UC",
+     1
+    ]
+   ]
+  },
+  {
+   "index": 31,
+   "raw_name": "RT2 DATE",
+   "name": "RT2 DATE",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 1548056,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 32,
+   "raw_name": "RT2 REP NO",
+   "name": "RT2 REP NO",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 1548056,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 33,
+   "raw_name": "RT2 RESULT",
+   "name": "RT2 RESULT",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 1548056,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 34,
+   "raw_name": "RT2 TOTAL FILM NO",
+   "name": "RT2 TOTAL FILM NO",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 1548056,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 35,
+   "raw_name": "RT2 REJECT FILM NO",
+   "name": "RT2 REJECT FILM NO",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 1548056,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 36,
+   "raw_name": "RT2 DEFECT CODE",
+   "name": "RT2 DEFECT CODE",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 1548056,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 37,
+   "raw_name": "UT1 DATE",
+   "name": "UT1 DATE",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 1548056,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 38,
+   "raw_name": "UT1 REP NO",
+   "name": "UT1 REP NO",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 1548056,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 39,
+   "raw_name": "UT1 RESULT",
+   "name": "UT1 RESULT",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 1548056,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 40,
+   "raw_name": "UT1 DEFECT CODE",
+   "name": "UT1 DEFECT CODE",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 1548056,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 41,
+   "raw_name": "UT2 DATE",
+   "name": "UT2 DATE",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 1548056,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 42,
+   "raw_name": "UT2 REP NO",
+   "name": "UT2 REP NO",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 1548056,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 43,
+   "raw_name": "UT2 RESULT",
+   "name": "UT2 RESULT",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 1548056,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 44,
+   "raw_name": "UT2 DEFECT CODE",
+   "name": "UT2 DEFECT CODE",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 1548056,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 45,
+   "raw_name": "TRACER FLG",
+   "name": "TRACER FLG",
+   "present_in_header": true,
+   "nonempty": 1073,
+   "blank": 1546983,
+   "distinct_keyed": 1,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     1073
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     1073
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 1,
+   "min": "T",
+   "max": "T",
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "T",
+     1073
+    ]
+   ]
+  },
+  {
+   "index": 46,
+   "raw_name": "PT DATE",
+   "name": "PT DATE",
+   "present_in_header": true,
+   "nonempty": 152917,
+   "blank": 1395139,
+   "distinct_keyed": 1111,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "date",
+   "categories": [
+    [
+     "date",
+     152917
+    ]
+   ],
+   "formats_seen": [
+    [
+     "yyyy/mm/dd",
+     152917
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 10,
+   "min": "2023/02/28",
+   "max": "2026/08/27",
+   "date_min": "2023-02-28",
+   "date_max": "2026-08-27",
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "2025/09/17",
+     531
+    ],
+    [
+     "2024/11/09",
+     525
+    ],
+    [
+     "2025/04/14",
+     524
+    ],
+    [
+     "2024/11/16",
+     516
+    ],
+    [
+     "2025/10/06",
+     486
+    ],
+    [
+     "2025/10/08",
+     484
+    ],
+    [
+     "2025/09/05",
+     473
+    ],
+    [
+     "2025/08/26",
+     460
+    ],
+    [
+     "2025/05/02",
+     457
+    ],
+    [
+     "2025/07/30",
+     447
+    ],
+    [
+     "2024/11/24",
+     440
+    ],
+    [
+     "2025/08/06",
+     439
+    ],
+    [
+     "2025/10/07",
+     436
+    ],
+    [
+     "2025/04/18",
+     431
+    ],
+    [
+     "2025/08/04",
+     427
+    ]
+   ]
+  },
+  {
+   "index": 47,
+   "raw_name": "PT REP NO",
+   "name": "PT REP NO",
+   "present_in_header": true,
+   "nonempty": 152917,
+   "blank": 1395139,
+   "distinct_keyed": 59335,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     152917
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     152917
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 8,
+   "min": "PT00006",
+   "max": "PTE5590",
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "PTE1715",
+     12
+    ],
+    [
+     "PTE1764",
+     12
+    ],
+    [
+     "PTE1713",
+     12
+    ],
+    [
+     "PTE2575",
+     12
+    ],
+    [
+     "PTE2600",
+     12
+    ],
+    [
+     "PTE2576",
+     12
+    ],
+    [
+     "PTE1407",
+     12
+    ],
+    [
+     "PTE1373",
+     12
+    ],
+    [
+     "PTE1503",
+     12
+    ],
+    [
+     "PTE1712",
+     11
+    ],
+    [
+     "PTE1762",
+     11
+    ],
+    [
+     "PTE1757",
+     11
+    ],
+    [
+     "PTE1704",
+     11
+    ],
+    [
+     "PTE1714",
+     11
+    ],
+    [
+     "PTE1741",
+     11
+    ]
+   ]
+  },
+  {
+   "index": 48,
+   "raw_name": "MT DATE",
+   "name": "MT DATE",
+   "present_in_header": true,
+   "nonempty": 245674,
+   "blank": 1302382,
+   "distinct_keyed": 1561,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "date",
+   "categories": [
+    [
+     "date",
+     245674
+    ]
+   ],
+   "formats_seen": [
+    [
+     "yyyy/mm/dd",
+     245674
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 10,
+   "min": "2021/12/02",
+   "max": "2026/08/27",
+   "date_min": "2021-12-02",
+   "date_max": "2026-08-27",
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "2025/06/30",
+     723
+    ],
+    [
+     "2025/05/13",
+     695
+    ],
+    [
+     "2024/11/28",
+     622
+    ],
+    [
+     "2024/04/14",
+     620
+    ],
+    [
+     "2024/09/24",
+     620
+    ],
+    [
+     "2025/06/23",
+     602
+    ],
+    [
+     "2025/04/12",
+     593
+    ],
+    [
+     "2024/11/03",
+     569
+    ],
+    [
+     "2025/09/17",
+     567
+    ],
+    [
+     "2025/04/18",
+     556
+    ],
+    [
+     "2024/11/02",
+     552
+    ],
+    [
+     "2025/05/31",
+     545
+    ],
+    [
+     "2025/05/15",
+     544
+    ],
+    [
+     "2025/06/16",
+     538
+    ],
+    [
+     "2024/10/06",
+     536
+    ]
+   ]
+  },
+  {
+   "index": 49,
+   "raw_name": "MT REP NO",
+   "name": "MT REP NO",
+   "present_in_header": true,
+   "nonempty": 245674,
+   "blank": 1302382,
+   "distinct_keyed": 60000,
+   "distinct_capped": true,
+   "values_over_cap": 102448,
+   "profiled_coverage": 0.582992,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     143226
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     143226
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 14,
+   "min": "NFE1-MT00030B",
+   "max": "NFE1-MTE3557",
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "NFE1-MTE2338",
+     18
+    ],
+    [
+     "NFE1-MTE1938",
+     18
+    ],
+    [
+     "NFE1-MTE2322",
+     17
+    ],
+    [
+     "NFE1-MTE2368",
+     17
+    ],
+    [
+     "NFE1-MTE2405",
+     17
+    ],
+    [
+     "NFE1-MTE3015",
+     17
+    ],
+    [
+     "NFE1-MTE2429",
+     17
+    ],
+    [
+     "NFE1-MTE2378",
+     17
+    ],
+    [
+     "NFE1-MTE2379",
+     17
+    ],
+    [
+     "NFE1-MTE2393",
+     17
+    ],
+    [
+     "NFE1-MTE2972",
+     17
+    ],
+    [
+     "NFE1-MTE2438",
+     17
+    ],
+    [
+     "NFE1-MTE2978",
+     17
+    ],
+    [
+     "NFE1-MTE2443",
+     17
+    ],
+    [
+     "NFE1-MTE2267",
+     17
+    ]
+   ]
+  },
+  {
+   "index": 50,
+   "raw_name": "PWHT DATE",
+   "name": "PWHT DATE",
+   "present_in_header": true,
+   "nonempty": 170465,
+   "blank": 1377591,
+   "distinct_keyed": 1296,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "date",
+   "categories": [
+    [
+     "date",
+     170465
+    ]
+   ],
+   "formats_seen": [
+    [
+     "yyyy/mm/dd",
+     170465
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 10,
+   "min": "2022/02/25",
+   "max": "2026/08/27",
+   "date_min": "2022-02-25",
+   "date_max": "2026-08-27",
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "2025/12/11",
+     1202
+    ],
+    [
+     "2025/06/05",
+     885
+    ],
+    [
+     "2025/06/21",
+     716
+    ],
+    [
+     "2025/12/01",
+     708
+    ],
+    [
+     "2025/06/14",
+     681
+    ],
+    [
+     "2025/06/10",
+     650
+    ],
+    [
+     "2025/05/17",
+     626
+    ],
+    [
+     "2025/05/27",
+     588
+    ],
+    [
+     "2025/12/21",
+     579
+    ],
+    [
+     "2025/06/09",
+     577
+    ],
+    [
+     "2024/10/01",
+     548
+    ],
+    [
+     "2025/04/19",
+     523
+    ],
+    [
+     "2025/11/27",
+     511
+    ],
+    [
+     "2026/01/17",
+     506
+    ],
+    [
+     "2025/05/21",
+     499
+    ]
+   ]
+  },
+  {
+   "index": 51,
+   "raw_name": "PWHT REP NO",
+   "name": "PWHT REP NO",
+   "present_in_header": true,
+   "nonempty": 170465,
+   "blank": 1377591,
+   "distinct_keyed": 38488,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     170465
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     170465
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 11,
+   "min": "PWFR00002",
+   "max": "pwht13654",
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "PWFRN00155",
+     357
+    ],
+    [
+     "PWFRN00141",
+     335
+    ],
+    [
+     "PWFRN00143",
+     292
+    ],
+    [
+     "PWFRN00135",
+     269
+    ],
+    [
+     "PWFR00064",
+     266
+    ],
+    [
+     "PWFRN00167",
+     264
+    ],
+    [
+     "PWFR00056",
+     258
+    ],
+    [
+     "PWFR00076",
+     256
+    ],
+    [
+     "PWFR00093",
+     252
+    ],
+    [
+     "PWFR00062",
+     250
+    ],
+    [
+     "PWFR00098",
+     248
+    ],
+    [
+     "PWFR00092",
+     243
+    ],
+    [
+     "PWFR00113",
+     242
+    ],
+    [
+     "PWFR00157",
+     241
+    ],
+    [
+     "PWFRN00156",
+     239
+    ]
+   ]
+  },
+  {
+   "index": 52,
+   "raw_name": "HT DATE",
+   "name": "HT DATE",
+   "present_in_header": true,
+   "nonempty": 177145,
+   "blank": 1370911,
+   "distinct_keyed": 1289,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "date",
+   "categories": [
+    [
+     "date",
+     177145
+    ]
+   ],
+   "formats_seen": [
+    [
+     "yyyy/mm/dd",
+     177145
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 10,
+   "min": "2022/01/30",
+   "max": "2026/08/27",
+   "date_min": "2022-01-30",
+   "date_max": "2026-08-27",
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "2025/12/13",
+     1203
+    ],
+    [
+     "2025/06/06",
+     798
+    ],
+    [
+     "2025/06/15",
+     733
+    ],
+    [
+     "2025/06/22",
+     733
+    ],
+    [
+     "2025/12/02",
+     722
+    ],
+    [
+     "2025/06/11",
+     687
+    ],
+    [
+     "2025/06/10",
+     641
+    ],
+    [
+     "2025/04/14",
+     639
+    ],
+    [
+     "2025/05/18",
+     636
+    ],
+    [
+     "2024/10/02",
+     592
+    ],
+    [
+     "2025/12/22",
+     587
+    ],
+    [
+     "2025/05/28",
+     569
+    ],
+    [
+     "2025/04/20",
+     529
+    ],
+    [
+     "2025/07/08",
+     526
+    ],
+    [
+     "2025/05/25",
+     510
+    ]
+   ]
+  },
+  {
+   "index": 53,
+   "raw_name": "HT REP NO",
+   "name": "HT REP NO",
+   "present_in_header": true,
+   "nonempty": 177145,
+   "blank": 1370911,
+   "distinct_keyed": 60000,
+   "distinct_capped": true,
+   "values_over_cap": 43146,
+   "profiled_coverage": 0.756437,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     133999
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     133999
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 9,
+   "min": "HT00001",
+   "max": "ht38854",
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "HTE1877",
+     12
+    ],
+    [
+     "HTE1510",
+     12
+    ],
+    [
+     "HTE1733",
+     12
+    ],
+    [
+     "HTE2171",
+     12
+    ],
+    [
+     "HTE1873",
+     12
+    ],
+    [
+     "HTE1791",
+     12
+    ],
+    [
+     "HT31341",
+     11
+    ],
+    [
+     "HTE2191",
+     11
+    ],
+    [
+     "HTE2270",
+     11
+    ],
+    [
+     "HT19664",
+     10
+    ],
+    [
+     "HT22699",
+     10
+    ],
+    [
+     "HT22700",
+     10
+    ],
+    [
+     "HT29202",
+     10
+    ],
+    [
+     "HT26424",
+     10
+    ],
+    [
+     "HT24701",
+     10
+    ]
+   ]
+  },
+  {
+   "index": 54,
+   "raw_name": "PMI DATE",
+   "name": "PMI DATE",
+   "present_in_header": true,
+   "nonempty": 232651,
+   "blank": 1315405,
+   "distinct_keyed": 1128,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "date",
+   "categories": [
+    [
+     "date",
+     232651
+    ]
+   ],
+   "formats_seen": [
+    [
+     "yyyy/mm/dd",
+     232651
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 10,
+   "min": "2023/03/25",
+   "max": "2026/08/27",
+   "date_min": "2023-03-25",
+   "date_max": "2026-08-27",
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "2025/05/15",
+     883
+    ],
+    [
+     "2025/05/13",
+     873
+    ],
+    [
+     "2025/09/17",
+     785
+    ],
+    [
+     "2024/11/03",
+     768
+    ],
+    [
+     "2025/05/02",
+     756
+    ],
+    [
+     "2024/11/09",
+     715
+    ],
+    [
+     "2024/11/04",
+     702
+    ],
+    [
+     "2025/06/05",
+     700
+    ],
+    [
+     "2025/05/27",
+     696
+    ],
+    [
+     "2024/11/14",
+     683
+    ],
+    [
+     "2024/11/23",
+     666
+    ],
+    [
+     "2024/11/16",
+     665
+    ],
+    [
+     "2025/05/28",
+     646
+    ],
+    [
+     "2025/06/04",
+     639
+    ],
+    [
+     "2024/10/30",
+     626
+    ]
+   ]
+  },
+  {
+   "index": 55,
+   "raw_name": "PMI REP NO",
+   "name": "PMI REP NO",
+   "present_in_header": true,
+   "nonempty": 232651,
+   "blank": 1315405,
+   "distinct_keyed": 60000,
+   "distinct_capped": true,
+   "values_over_cap": 74707,
+   "profiled_coverage": 0.678888,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     157944
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     157944
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 9,
+   "min": "PMI00002",
+   "max": "PMIE6501",
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "PMIE3183",
+     12
+    ],
+    [
+     "PMI25435",
+     10
+    ],
+    [
+     "PMIE3077",
+     10
+    ],
+    [
+     "PMIE3078",
+     10
+    ],
+    [
+     "PMIE3160",
+     10
+    ],
+    [
+     "PMIE3171",
+     10
+    ],
+    [
+     "PMIE3090",
+     10
+    ],
+    [
+     "PMIE3091",
+     10
+    ],
+    [
+     "PMIE3158",
+     10
+    ],
+    [
+     "PMIE3195",
+     10
+    ],
+    [
+     "PMI01456",
+     9
+    ],
+    [
+     "PMI01543",
+     9
+    ],
+    [
+     "PMI01544",
+     9
+    ],
+    [
+     "PMI02313",
+     9
+    ],
+    [
+     "PMI01341",
+     9
+    ]
+   ]
+  },
+  {
+   "index": 56,
+   "raw_name": "PMI UP DATE",
+   "name": "PMI UP DATE",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 1548056,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 57,
+   "raw_name": "PMI UP REP NO",
+   "name": "PMI UP REP NO",
+   "present_in_header": true,
+   "nonempty": 9431,
+   "blank": 1538625,
+   "distinct_keyed": 16,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     9431
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     9431
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 27,
+   "min": "Ayush Kumar Singh - MUT 8",
+   "max": "Sukhvinder Singh - MUT 5",
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "S.Lingeshwaran  - MUT 4",
+     1596
+    ],
+    [
+     "Mansoor Ali Khan - MUT 2",
+     1550
+    ],
+    [
+     "Sukhvinder Singh - MUT 5",
+     1416
+    ],
+    [
+     "Mohammed Azhar - MUT 3",
+     1234
+    ],
+    [
+     "Ramesh Pitta -MUT 6",
+     1157
+    ],
+    [
+     "Jayesh  Sarvaiya -MUT 7",
+     871
+    ],
+    [
+     "Sukhvindar Singh -MUT 5",
+     827
+    ],
+    [
+     "Ayush Kumar Singh - MUT 8",
+     382
+    ],
+    [
+     "Jithin Krishna",
+     181
+    ],
+    [
+     "SukhVindar singh -MUT 5",
+     88
+    ],
+    [
+     "S.Lingeshwar - MUT 4",
+     38
+    ],
+    [
+     "Sukhvindar Singh - MUT 5",
+     34
+    ],
+    [
+     "Ramesh Pitta - MUT 6",
+     31
+    ],
+    [
+     "Sukhvindar singh -MUT 5",
+     19
+    ],
+    [
+     "Ritesh Kumar Shukla - MUT 1",
+     6
+    ]
+   ]
+  },
+  {
+   "index": 58,
+   "raw_name": "PMI DOWN DATE",
+   "name": "PMI DOWN DATE",
+   "present_in_header": true,
+   "nonempty": 232651,
+   "blank": 1315405,
+   "distinct_keyed": 1128,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "date",
+   "categories": [
+    [
+     "date",
+     232651
+    ]
+   ],
+   "formats_seen": [
+    [
+     "yyyy/mm/dd",
+     232651
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 10,
+   "min": "2023/03/25",
+   "max": "2026/08/27",
+   "date_min": "2023-03-25",
+   "date_max": "2026-08-27",
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "2025/05/15",
+     883
+    ],
+    [
+     "2025/05/13",
+     873
+    ],
+    [
+     "2025/09/17",
+     785
+    ],
+    [
+     "2024/11/03",
+     768
+    ],
+    [
+     "2025/05/02",
+     756
+    ],
+    [
+     "2024/11/09",
+     715
+    ],
+    [
+     "2024/11/04",
+     702
+    ],
+    [
+     "2025/06/05",
+     700
+    ],
+    [
+     "2025/05/27",
+     696
+    ],
+    [
+     "2024/11/14",
+     683
+    ],
+    [
+     "2024/11/23",
+     666
+    ],
+    [
+     "2024/11/16",
+     665
+    ],
+    [
+     "2025/05/28",
+     646
+    ],
+    [
+     "2025/06/04",
+     639
+    ],
+    [
+     "2024/10/30",
+     626
+    ]
+   ]
+  },
+  {
+   "index": 59,
+   "raw_name": "PMI DOWN REP NO",
+   "name": "PMI DOWN REP NO",
+   "present_in_header": true,
+   "nonempty": 319,
+   "blank": 1547737,
+   "distinct_keyed": 5,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     319
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     319
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 23,
+   "min": "Gawakar Yadav",
+   "max": "Somnath Giri",
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "Shahid Akhtar",
+     184
+    ],
+    [
+     "Somnath Giri",
+     90
+    ],
+    [
+     "Gawaskar Yadav",
+     22
+    ],
+    [
+     "Gawakar Yadav",
+     21
+    ],
+    [
+     "S.Lingeshwaran  - MUT 4",
+     2
+    ]
+   ]
+  },
+  {
+   "index": 60,
+   "raw_name": "FT DATE",
+   "name": "FT DATE",
+   "present_in_header": true,
+   "nonempty": 0,
+   "blank": 1548056,
+   "distinct_keyed": 0,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": null,
+   "inferred_type": "empty",
+   "categories": [],
+   "formats_seen": [],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 0,
+   "min": null,
+   "max": null,
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": []
+  },
+  {
+   "index": 61,
+   "raw_name": "FT REP NO",
+   "name": "FT REP NO",
+   "present_in_header": true,
+   "nonempty": 29,
+   "blank": 1548027,
+   "distinct_keyed": 16,
+   "distinct_capped": false,
+   "values_over_cap": 0,
+   "profiled_coverage": 1.0,
+   "inferred_type": "decimal",
+   "categories": [
+    [
+     "int",
+     16
+    ],
+    [
+     "decimal",
+     13
+    ]
+   ],
+   "formats_seen": [
+    [
+     "int",
+     16
+    ],
+    [
+     "decimal(dot)",
+     13
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 5,
+   "min": "0",
+   "max": "4.37",
+   "date_min": null,
+   "date_max": null,
+   "num_min": 0.0,
+   "num_max": 4.37,
+   "num_int_digits": 1,
+   "num_scale": 3,
+   "top_values": [
+    [
+     "0",
+     14
+    ],
+    [
+     "0.49",
+     1
+    ],
+    [
+     "0.885",
+     1
+    ],
+    [
+     "1.063",
+     1
+    ],
+    [
+     "3",
+     1
+    ],
+    [
+     "0.669",
+     1
+    ],
+    [
+     "0.393",
+     1
+    ],
+    [
+     "1.29",
+     1
+    ],
+    [
+     "0.98",
+     1
+    ],
+    [
+     "0.78",
+     1
+    ],
+    [
+     "1.98",
+     1
+    ],
+    [
+     "1.18",
+     1
+    ],
+    [
+     "2",
+     1
+    ],
+    [
+     "4.37",
+     1
+    ],
+    [
+     "0.59",
+     1
+    ]
+   ]
+  },
+  {
+   "index": 62,
+   "raw_name": "WELD REP NO",
+   "name": "WELD REP NO",
+   "present_in_header": true,
+   "nonempty": 1362213,
+   "blank": 185843,
+   "distinct_keyed": 60000,
+   "distinct_capped": true,
+   "values_over_cap": 1230205,
+   "profiled_coverage": 0.096907,
+   "inferred_type": "text",
+   "categories": [
+    [
+     "text",
+     132008
+    ]
+   ],
+   "formats_seen": [
+    [
+     "text",
+     132008
+    ]
+   ],
+   "null_token_counts": [],
+   "values_with_lead_trail_space": 0,
+   "max_len": 7,
+   "min": "F00757",
+   "max": "TS4901",
+   "date_min": null,
+   "date_max": null,
+   "num_min": null,
+   "num_max": null,
+   "num_int_digits": null,
+   "num_scale": null,
+   "top_values": [
+    [
+     "S08674",
+     42
+    ],
+    [
+     "S06011",
+     35
+    ],
+    [
+     "S06855",
+     27
+    ],
+    [
+     "F105547",
+     26
+    ],
+    [
+     "F09210",
+     25
+    ],
+    [
+     "S08656",
+     25
+    ],
+    [
+     "S08819",
+     25
+    ],
+    [
+     "S09239",
+     24
+    ],
+    [
+     "S08776",
+     24
+    ],
+    [
+     "F09359",
+     22
+    ],
+    [
+     "F07508",
+     22
+    ],
+    [
+     "F30280",
+     22
+    ],
+    [
+     "S08101",
+     20
+    ],
+    [
+     "S10201",
+     20
+    ],
+    [
+     "S07516",
+     20
+    ]
+   ]
+  }
+ ]
+}
