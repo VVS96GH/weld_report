@@ -3,12 +3,17 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   ArcElement,
+  BarController,
   BarElement,
   CategoryScale,
   Chart as ChartJS,
+  DoughnutController,
+  Filler,
   Legend,
   LinearScale,
+  LineController,
   LineElement,
+  PieController,
   PointElement,
   Tooltip,
 } from "chart.js";
@@ -16,13 +21,23 @@ import { Chart } from "react-chartjs-2";
 
 import type { ChartWidget } from "@/lib/page-model";
 
+// The generic <Chart type=…> from react-chartjs-2 does not auto-register the
+// controller for its `type` (the typed <Bar>/<Line> wrappers do), so every
+// chart type the report uses must be registered here. Without the controllers
+// the production bundle throws `"bar" is not a registered controller` on the
+// client and Next swaps the whole page for its global error boundary.
 ChartJS.register(
+  BarController,
+  LineController,
+  DoughnutController,
+  PieController,
   CategoryScale,
   LinearScale,
   BarElement,
   LineElement,
   PointElement,
   ArcElement,
+  Filler,
   Tooltip,
   Legend,
 );

@@ -59,13 +59,14 @@ jobs:
           POSTGRES_USER: weld
           POSTGRES_PASSWORD: weld
           POSTGRES_DB: weld_report
-        ports:
-          - 5432:5432
+        # no host port mapping: the job runs in a container on the same docker
+        # network and reaches the service by its hostname; publishing 5432 on the
+        # runner host collided with a Postgres already bound there (run #1)
         options: >-
           --health-cmd "pg_isready -U weld -d weld_report"
           --health-interval 5s --health-timeout 5s --health-retries 20
     env:
-      DATABASE_URL: postgres://weld:weld@127.0.0.1:5432/weld_report
+      DATABASE_URL: postgres://weld:weld@postgres:5432/weld_report
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -112,7 +113,7 @@ jobs:
         env:
           E2E_START_SERVER: "1"
           E2E_BASE_URL: http://127.0.0.1:3000
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v3   # v4 needs GitHub-only APIs; Gitea supports v3
         if: always()
         with:
           name: playwright-report
