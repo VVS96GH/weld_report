@@ -43,14 +43,50 @@ export const SOURCES_PR_ALL = [
 
 /**
  * `"PR all"` restricted to what is actually loadable today. Every project-scope
- * page must disclose that ACCIONA/INCO are missing rather than implying the
- * union is complete.
+ * page discloses which of the five are absent rather than implying the union is
+ * complete — the note is computed from the data, never hard-coded.
  */
 export const SOURCES_PR_ALL_LOADED = [
   "WELD_DUMP",
   "CCC_WELDER_RECORD",
   "CCC_JOINT_RECORD",
+  "ACCIONA",
+  "INCO",
 ] as const;
+
+/**
+ * R3-01 — INCO is loaded but excluded from project scope at the QUERY layer.
+ *
+ * The pbix puts this in 69 visual/page filters, not in the model: the measure
+ * `[Total Scope Dia "BW" "PR all"]` includes Inco explicitly, so the exclusion
+ * cannot live in the loader or in a measure without over- or under-counting
+ * something. It belongs exactly here, applied by {@link projectScope}.
+ *
+ * ACCIONA is **inside** project scope — mockup page 2 has an Acciona row. (7
+ * internal pbix pages do exclude Acciona too, but those are pages 13/76/82/87/
+ * 113/114, none of which the mockup renders; it is not a global invariant.)
+ *
+ * Both spellings are listed on purpose. R2-08 canonicalises the party to
+ * upper-case `INCO`, but the DAX filters read `Sub-Contractor NOT IN {Inco}`
+ * and the trend workbooks carry both — a single-spelling predicate silently
+ * stops excluding anything the day the other spelling appears.
+ */
+export const PROJECT_EXCLUDED_SUBCONTRACTORS = ["INCO", "Inco"] as const;
+
+/**
+ * The project ("PR all") scope: the loaded union minus INCO.
+ *
+ * Every page-1/page-2 widget and every project-scope metric goes through this
+ * so the predicate is written once. The per-subcontractor pages do NOT use it —
+ * they are already scoped to one party.
+ */
+export function projectScope(extra: Scope = {}): Scope {
+  return {
+    sources: SOURCES_PR_ALL_LOADED,
+    excludeSubContractors: PROJECT_EXCLUDED_SUBCONTRACTORS,
+    ...extra,
+  };
+}
 
 /**
  * R-04 / §7 C-4: `PWHT Y/N = '25.01'` (580,860 rows) is counted as BOTH `Y` and

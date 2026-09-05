@@ -259,3 +259,22 @@ export async function utOverlayLoaded(scope: Scope): Promise<boolean> {
     return false;
   }
 }
+
+/**
+ * `true` when the `weld_length_by_dia` dimension has rows.
+ *
+ * `[Weld Length "PR all"]` is a `LOOKUPVALUE` into that dimension, so M33/M35
+ * and therefore M36 are *unknown* — not zero — while it is empty (R3-07 loads
+ * its 98 distinct `(dia_inch, weld_length)` rows, not the 728,550 exploded
+ * ones).
+ */
+export async function weldLengthDimensionLoaded(): Promise<boolean> {
+  try {
+    const rows = await query<{ present: boolean }>(
+      "SELECT EXISTS (SELECT 1 FROM weld_length_by_dia) AS present",
+    );
+    return Boolean(rows[0]?.present);
+  } catch {
+    return false;
+  }
+}

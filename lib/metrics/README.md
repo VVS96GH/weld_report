@@ -5,6 +5,30 @@ One module per metric family. Every exported function is parameterised
 cites the metric id(s) from `analysis/calculation-logic.md` §2 plus the DAX
 measure name it implements.
 
+### R3-01 — INCO is loaded, and excluded at the query layer
+
+`projectScope()` in `scope.ts` is the single place the project filter is
+written. It is `sources = the loaded union` **minus**
+`PROJECT_EXCLUDED_SUBCONTRACTORS = ['INCO','Inco']`.
+
+Why the query layer and not the loader: the pbix puts this in **69 visual/page
+filters**, and `[Total Scope Dia "BW" "PR all"]` includes Inco *explicitly*, so
+excluding it at load time would break that measure while excluding it in a
+measure would break the 69 filters. ACCIONA is **inside** project scope —
+mockup page 2 has an Acciona row and no Inco row.
+
+Both spellings are in the list deliberately. R2-08 canonicalises the party to
+upper-case `INCO`; the DAX filters read `Sub-Contractor NOT IN {Inco}`. The
+phase-2 code said `<> 'Inco'` only, which would have stopped excluding anything
+the moment the loader wrote `INCO` — a silent over-count of every project
+total. `tests/metrics-batch3.test.ts` pins both spellings, and pins that
+ACCIONA is *not* in the list, with no database needed.
+
+The per-subcontractor pages never use `projectScope()`; they are already scoped
+to one party.
+
+---
+
 Two scope families, chosen explicitly per page — never by a flag:
 
 | family | `source IN …` | who uses it |
@@ -328,6 +352,57 @@ change a flag without re-running that suite.
 `mv_joint_wps` after every `weld` load and after any `spool` reload (the
 FABRICATED flags embed the spool join). Both have the UNIQUE index
 CONCURRENTLY requires. Measured: 41 s and 6.7 s.
+
+---
+
+## Batch-3 sources: what changed, and what deliberately did not
+
+`mv_joint` needed **no change** for ACCIONA and INCO. Every flag in
+`db/migrations/0013_mv_joint.sql` was re-read against
+`analysis/sources3/{acciona,inco}-column-map.md`; the only source-conditional
+expression is the WP1 gate, and it is already correct:
+
+| concern | verdict |
+|---|---|
+| `wp1Cond` = `CASE source WHEN 'WELD_DUMP' THEN weldpoint_no = 1 ELSE weldpoint_seq = 1 END` | correct for both. Acciona sets `weldpoint_no = 1` on **every** row and is one row per joint; Inco sets `weldpoint_no = 1` on every row but is joint × RT-fragment, so `weldpoint_no` would over-count and `weldpoint_seq` is what dedups it. **This is a loader dependency**, pinned by a test: a NULL `weldpoint_seq` makes the gate never match and silently drops the source from M23/M24/M33 |
+| RT backlog hold list (16 codes) | Acciona synthesises its own `RT Weld Status`; its `HS` (RT % = 100, no report yet) is in the list and *should* enter the backlog. Its `S` needs `rt_pct = 100`, and Acciona's `rt_pct` is blank on 87.8 % of rows, so that branch correctly does not fire |
+| PWHT flags | neither source has PWHT (Inco's columns are 100 % empty, Acciona's are added blank), so the flags do not fire and the PWHT pages stay GAC/TEK/MED/CCC-only |
+| `is_fabricated` | neither party's spools are in either master, so it is `false` — correct, not a gap |
+| Inco PAUT rows | 441 rows carry the same report as both RT and UT (the M copies RT→UT without clearing RT). Both flags fire, which is what the pbix does. INCO is out of project scope anyway |
+
+So **no migration 0015 is needed**; 0013 is untouched.
+
+### M33 / M35 / M36 and the Inco blank (R3-06)
+
+They read `weld.weld_length_m`, rolled up in `mv_joint.ut_weld_length_m_prall`,
+with `weld_length_by_dia` as the reference dimension (98 distinct
+`(dia_inch, weld_length)` rows, R3-07). Two honest-empty gates:
+
+* `weldLengthDimensionLoaded()` — while `weld_length_by_dia` is empty,
+  `[Weld Length "PR all"]` cannot resolve at all, so M33/M35/M36 are *unknown*
+  and the KPIs render `—`;
+* **INCO is blank by the DAX's own guard.** `[Weld Length "PR all"]` gates its
+  Inco branch on `[Manual UT Report No.] <> ""` — a `Weld Dump` column the Inco
+  source never fills — and the fallback `LOOKUPVALUE` needs `Dia inch`, which
+  Inco leaves empty. Reproduced literally per R3-06, never substituted, and the
+  page carries a note saying so for the report owner.
+
+### M90 `Project_Welder` (R3-09, R3-10)
+
+`refs.qualifiedWelders()` returns `{ total, as_of, source_note }` and the KPI
+renders `sub: "as of <date> (file date)"`. The date is the **file's mtime**, not
+a reporting date — `SCTR NFE WELDERS APPLIED.xls` carries no date anywhere, and
+presenting a file timestamp as a data date would misstate the currency of a
+headline number. Total is 3,816 across six parties once loaded.
+
+R3-09: the pbix's own M for that `.xls` is stale (the sheet gained a left-hand
+column, so its `RenameColumns` targets a name that no longer exists and its two
+`RemoveLastN` steps would cut 5 live rows). The loader is built positionally
+against the delivered file, so this number comes from the file rather than from
+a query that would now fail to refresh.
+
+**M91 `WPS Approved` stays honest-empty**: `WPQ RECORD REGISTER.xlsx` is one of
+the three files still missing.
 
 ---
 

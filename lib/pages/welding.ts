@@ -80,6 +80,7 @@ import {
   utAggsPrAll,
   utOverlayLoaded,
   utStatsFromRow,
+  weldLengthDimensionLoaded,
   type UtStats,
 } from "@/lib/metrics/ut";
 import {
@@ -108,6 +109,8 @@ import {
   type GroupSpec,
   JOINT_FROM,
   Params,
+  PROJECT_EXCLUDED_SUBCONTRACTORS,
+  projectScope,
   type Scope,
   scopeWhere,
   SOURCES_CCC,
@@ -372,6 +375,8 @@ export type Availability = {
   utTracker: boolean;
   /** `weld` holds rows for this page's sources. */
   sourceLoaded: boolean;
+  /** `weld_length_by_dia` has rows → M33/M35/M36 can resolve. */
+  weldLength: boolean;
 };
 
 /**
@@ -462,12 +467,13 @@ async function availability(
   variant: Variant,
   sources: readonly string[],
 ): Promise<Availability> {
-  const [spool, utTracker, sourceLoaded] = await Promise.all([
+  const [spool, utTracker, sourceLoaded, weldLength] = await Promise.all([
     spoolMasterLoaded(),
     utOverlayLoaded({ sources }),
     sourceHasRows(sources),
+    weldLengthDimensionLoaded(),
   ]);
-  return { variant, spool, utTracker, sourceLoaded };
+  return { variant, spool, utTracker, sourceLoaded, weldLength };
 }
 
 const GROUP_WELD_CAT: GroupSpec = { key: "weld_cat", sql: "w.weld_cat" };
@@ -854,8 +860,20 @@ const HA_NOTE =
   "sources/ and Subsystem Code / System no did not yield a handover area.";
 
 const REGISTER_NOTE =
-  "Project_Welder and WPS Approved come from the manual registers " +
-  "ref_qualified_welders / ref_wps_register; both are empty.";
+  "Project_Welder (M90) reads ref_qualified_welders and WPS Approved (M91) " +
+  "reads ref_wps_register. WPQ RECORD REGISTER.xlsx is still missing, so M91 " +
+  "stays blank; a register that is empty renders \u2014, never 0.";
+
+const INCO_LENGTH_NOTE =
+  "UT length metrics (M33/M35/M36) are blank for INCO by the DAX's own guard " +
+  "(ruling R3-06): [Weld Length \"PR all\"] gates the Inco branch on " +
+  "[Manual UT Report No.] <> \"\", a Weld Dump column the Inco source never " +
+  "fills, and the fallback LOOKUPVALUE needs Dia inch, which Inco leaves " +
+  "empty. Reproduced literally, not substituted \u2014 flagged for the report owner.";
+
+const WELD_LENGTH_NOTE =
+  "UT length metrics are unavailable: the weld_length_by_dia dimension " +
+  "(Weld Length.xlsx) has no rows, so [Weld Length \"PR all\"] cannot resolve.";
 
 /**
  * The project-scope disclosure, COMPUTED from what `weld` actually holds.
@@ -1055,12 +1073,9 @@ export async function getWeldingPage(
 // ── page 1 — project KPIs and charts ────────────────────────────────────────
 
 async function buildProjectKpiPage(spec: SpecPage, ctx: Ctx): Promise<Widget[]> {
-  // §3.1: every visual on pbix page 21 carries `SC <> Inco`. The union is the
-  // "PR all" family; ACCIONA and INCO are still unloaded (§7 C-12).
-  const scope: Scope = {
-    sources: SOURCES_PR_ALL_LOADED,
-    excludeSubContractors: ["Inco"],
-  };
+  // §3.1 / R3-01: every visual on pbix page 21 carries `SC <> Inco`, one of the
+  // 69 filters that keep INCO out of project scope. ACCIONA is inside it.
+  const scope: Scope = projectScope();
   const av = await availability("PR_ALL", SOURCES_PR_ALL_LOADED);
   const [b, welders, wpsApproved, weekly, dist] = await Promise.all([
     bundleTotal(scope, av),
@@ -1069,7 +1084,7 @@ async function buildProjectKpiPage(spec: SpecPage, ctx: Ctx): Promise<Widget[]> 
     weeklyProgress({
       weeks: 14,
       excludeWeldCats: ["J"],
-      excludeSubContractors: ["Inco"],
+      excludeSubContractors: PROJECT_EXCLUDED_SUBCONTRACTORS,
       sources: SOURCES_PR_ALL_LOADED,
     }),
     weldTypeDistribution({ ...scope, excludeWeldTypes: ["THD"] }),
@@ -1079,8 +1094,11 @@ async function buildProjectKpiPage(spec: SpecPage, ctx: Ctx): Promise<Widget[]> 
   if (scopeNote) note(ctx, scopeNote);
   if (!av.utTracker) note(ctx, UT_TRACKER_NOTE);
   if (!av.spool) note(ctx, FABRICATED_NOTE);
+  if (!av.weldLength) note(ctx, WELD_LENGTH_NOTE);
+  if (sources.loaded.includes("INCO")) note(ctx, INCO_LENGTH_NOTE);
   if (!(await sourceHasRows(SOURCES_CCC))) note(ctx, CCC_NOTE);
   if (welders === null || wpsApproved === null) note(ctx, REGISTER_NOTE);
+  if (welders?.source_note) note(ctx, `Project_Welder: ${welders.source_note}`);
 
   const kpi = (label: string, value: string): KpiWidget => ({
     kind: "kpi",
@@ -1114,7 +1132,16 @@ async function buildProjectKpiPage(spec: SpecPage, ctx: Ctx): Promise<Widget[]> 
           out.push(kpi(w.label, kpiPct(b.rt.film_rejection_rate)));
           break;
         case "Project_Welder":
-          out.push(kpi(w.label, kpiInt(welders)));
+          // R3-10: the register carries no date of its own, so the provenance
+          // says whose date it is.
+          out.push({
+            kind: "kpi",
+            label: w.label,
+            value: welders ? kpiInt(welders.total) : HONEST_EMPTY,
+            sub: welders?.as_of
+              ? `as of ${welders.as_of} (file date)`
+              : undefined,
+          });
           break;
         case "WPS Approved":
           out.push(kpi(w.label, kpiInt(wpsApproved)));
@@ -1131,11 +1158,28 @@ async function buildProjectKpiPage(spec: SpecPage, ctx: Ctx): Promise<Widget[]> 
         case 'UT/PAUT "R"':
           out.push(av.utTracker ? kpi(w.label, kpiInt(b.ut.ut_rejected)) : emptyKpi(w));
           break;
-        // M35/M36 resolve through [Weld Length "PR all"], a LOOKUPVALUE into
-        // the `Weld Length` workbook that is still absent (§7 C-12 row 8).
-        case "UT Rej% Len":
+        // M35 `[UT Inspected Length by Joint "PR all"]` resolves through
+        // [Weld Length "PR all"], and M36 is M34/M35.
         case "UT Insp Len":
-          out.push(emptyKpi(w));
+          out.push(
+            av.weldLength && av.utTracker
+              ? kpi(w.label, kpiNum(b.ut.ut_weld_length_m, 2))
+              : emptyKpi(w),
+          );
+          break;
+        case "UT Rej% Len":
+          out.push(
+            av.weldLength && av.utTracker
+              ? kpi(
+                  w.label,
+                  kpiPct(
+                    b.ut.ut_weld_length_m === 0
+                      ? null
+                      : b.ut.ut_rej_length_m / b.ut.ut_weld_length_m,
+                  ),
+                )
+              : emptyKpi(w),
+          );
           break;
         // M34 — the CCC term needs ref_ut_tracker_ccc.
         case "UT Def.Length":
@@ -1317,11 +1361,9 @@ async function buildProjectStatusPage(
   spec: SpecPage,
   ctx: Ctx,
 ): Promise<Widget[]> {
-  const scope: Scope = {
-    sources: SOURCES_PR_ALL_LOADED,
-    excludeSubContractors: ["Inco"],
-    temporaryLines: false,
-  };
+  // R3-01: project scope = the loaded union minus INCO; ACCIONA is included and
+  // supplies the mockup's Acciona row in the sub-contractor table.
+  const scope: Scope = projectScope({ temporaryLines: false });
   const av = await availability("PR_ALL", SOURCES_PR_ALL_LOADED);
   const sources = await loadedSources();
   const scopeNote = projectScopeNote(sources);

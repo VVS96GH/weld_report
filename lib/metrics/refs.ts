@@ -16,30 +16,66 @@ import { Params, zCount, zText } from "./scope";
 /** `[ DOCUMENT STATUS]` value that M91 counts. */
 export const WPS_APPROVED_STATUS = "WPS APPROVED BY CTJV/ CPY";
 
+export type QualifiedWelders = {
+  /** M90 total — 3,816 across the six parties on the delivered file. */
+  total: number;
+  /**
+   * R3-10: the workbook carries NO date, so this is the FILE's mtime
+   * (2026-08-23). The widget must say "as of <date> (file date)" — presenting a
+   * file timestamp as a data date would be a quiet lie about currency.
+   */
+  as_of: string | null;
+  source_note: string | null;
+};
+
 /**
  * M90 `Project_Welder` = `Sum(SCTR OVERALL APPLIED WELDERS[QUALIFIED WELDERS])`.
- * `null` when `ref_qualified_welders` is absent or empty.
+ *
+ * R3-09: the pbix's own M for this `.xls` is stale (the sheet gained a
+ * left-hand column, so its `RenameColumns` targets a name that no longer
+ * exists and its two `RemoveLastN` steps would cut 5 live rows). DB-LANE's
+ * loader is built positionally against the delivered file instead, so this
+ * number comes from the file, not from a query that would now fail to refresh.
+ *
+ * `null` when `ref_qualified_welders` is absent or empty — the KPI then renders
+ * "—", never 0.
  */
 export async function qualifiedWelders(
   subContractor?: string,
-): Promise<number | null> {
-  const p = new Params();
-  const where =
-    subContractor === undefined
-      ? "TRUE"
-      : `r.sub_contractor = ${p.add(subContractor)}`;
-  try {
-    const rows = await query(
-      `SELECT sum(r.qualified_welders) AS n FROM ref_qualified_welders r WHERE ${where}`,
-      p.list(),
-    );
-    const n = z.object({ n: z.union([z.null(), z.coerce.number()]) }).parse(
-      rows[0] ?? { n: null },
-    ).n;
-    return n;
-  } catch {
-    return null;
+): Promise<QualifiedWelders | null> {
+  const build = (withAsOf: boolean) => {
+    const p = new Params();
+    const where =
+      subContractor === undefined
+        ? "TRUE"
+        : `r.sub_contractor = ${p.add(subContractor)}`;
+    const extra = withAsOf
+      ? ", max(r.as_of)::text AS as_of, max(r.source_note) AS source_note"
+      : ", NULL::text AS as_of, NULL::text AS source_note";
+    return {
+      sql: `SELECT sum(r.qualified_welders) AS n${extra} FROM ref_qualified_welders r WHERE ${where}`,
+      params: p.list(),
+    };
+  };
+  const Row = z.object({
+    n: z.union([z.null(), z.coerce.number()]),
+    as_of: zText,
+    source_note: zText,
+  });
+  for (const withAsOf of [true, false]) {
+    // `as_of` / `source_note` arrive with migration 0014; fall back to the
+    // narrow shape so the KPI works either side of that migration.
+    try {
+      const { sql, params } = build(withAsOf);
+      const rows = await query(sql, params);
+      const r = Row.parse(rows[0] ?? { n: null, as_of: null, source_note: null });
+      if (r.n === null) return null;
+      return { total: r.n, as_of: r.as_of, source_note: r.source_note };
+    } catch {
+      /* try the narrow shape */
+    }
   }
+  return null;
 }
 
 /**
