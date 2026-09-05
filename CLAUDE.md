@@ -15,7 +15,12 @@ npx eslint app/page.tsx        # lint a single file
 npx tsc --noEmit               # typecheck only (tsconfig has noEmit)
 ```
 
-No test runner is configured yet.
+npm test                       # vitest (integration tests need DATABASE_URL reachable)
+npm run db:up / db:migrate / db:load   # Postgres 17 in Docker, migrations, load sources/Weld Dump.txt
+
+**Python: `uv` only.** Analysis scripts under `analysis/` are stdlib-only and run with
+`uv run analysis/<script>.py` (root `pyproject.toml`, no deps). Never call `python3`/`pip`
+directly or hand-build venvs; a dependency is added with `uv add`. `uv` is at `~/.local/bin`.
 
 `next dev` rewrites the `nextjs-agent-rules` block in `AGENTS.md`; commit that regenerated block with your work rather than reverting it.
 

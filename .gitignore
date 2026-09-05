@@ -44,3 +44,6 @@ next-env.d.ts
 /sources/
 *:Zone.Identifier
 /analysis/__pycache__/
+
+# python (uv)
+/.venv/
