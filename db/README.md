@@ -55,6 +55,7 @@ rules are right; the pbix stores 958,634 for its own (19 days older) snapshot.
 | `0009_weld_source_ccc_joint_record.sql` | **runs outside a transaction** — adds the `CCC_JOINT_RECORD` enum value (R2-03) |
 | `0010_batch2_schema.sql` | `weld_to_date` v3, fractional films, 23 new `weld` columns, `spool`, `ccc_joint_pwht`, the ref tables, `load.source` vocabulary |
 | `0011_mv_weekly_progress_v3.sql` | re-creates `mv_weekly_progress` after 0010 dropped it — **the current definition** |
+| `0012_lengths_and_manual_exclusion.sql` | `weld_length_m` + the two UT length columns + `week_end_date_rt`; `weld_manual_exclusion` seeded with the M’s 4 Joint IDs |
 
 `0002` and `0003` are produced by `scripts/gen-schema-columns.ts` from
 `analysis/dump/columns.json` and **are committed**. Never hand-edit them; edit
@@ -470,6 +471,112 @@ the highest-numbered definition:**
 
 `scripts/sql-schema.ts` replays the whole log and `scripts/check-sql-columns.ts` checks the
 *effective* schema, so a stale earlier definition cannot make a check pass by accident.
+
+## Workbook seeders (SEED-LANE, rulings R2-02/R2-08/R2-09/R2-14)
+
+| script | workbook(s) | table(s) | rows | normalisation |
+|---|---|---|---:|---|
+| `scripts/seed-weekly-snapshot.ts` | `CUM Trend file RT and PWHT Backlog .xlsx`, `CUM Trend RT% UT% RejRate.xlsx`, `CUM Trend Active Welders.xlsx`, `CUM MPI Done .xlsx` (live copies, not `Back up/`) | `weld_weekly_snapshot` (10,386), `ref_mpi_done` (124), `ref_active_welders` (576) | 10,386 + 124 + 576 | R2-08 label split (`GAC SG`→GAC/SG, `TEKFEN TMCP`→TEKFEN/TMCP, `Inco`/`INCO`→INCO/ALL, else uppercase/ALL); blank cell → NULL, literal `0` kept (R2-09); MPI rows → `sub_contractor='PROJECT'`; GAC SG 2026-08-28 All-Types<For-RT typo reproduced as-is and flagged in the run output |
+| `scripts/load-ut-tracker-ccc.ts` | `UT TRACKER (CCC)_Talisman.xlsx`, sheet `TalismanUT_update` (24 cols; `Reject` sheet NOT loaded) | `ref_ut_tracker_ccc` | 9,419 | `joint_id` derived: `qciso_no‖'-'‖spool_no‖'-'‖joint_no`; `welder_id` kept as a `/`-pair verbatim, never split |
+| `scripts/load-exclusion-list.ts` | `TO BE EXLUDE FROM DATA.xlsx`, sheet `TO BE Exlude from Data` (`Sheet1`, 20 rows, NOT loaded) | `ref_exclusion_list` | 596 | **stored UNAPPLIED (R2-02)** — no loader/metric may filter on it; `rt_report`/`welder` split from `RT/UT Report No.`/`Welder No.`; distinct-pair count is 159, not the workbook's own precomputed `RT Report + Welder` column's 161 — 2 rows where that combined column disagrees with the split source columns (a source typo, printed as evidence by the script, not silently reconciled) |
+
+`scripts/lib/xlsx.ts` holds the shared exceljs helpers (`readSheet`, `toISODate`/`isFridayISO`,
+`toNum`/`toText`, `normalizeSubContractorLabel`) all three scripts and `tests/seeders.test.ts`
+import. Every script supports `--dry-run` (parse + counts, no database) and, live, appends one
+`load` row per run. `seed-weekly-snapshot.ts` UPSERTs (`ON CONFLICT … DO UPDATE`) rather than
+delete-then-insert, per this file's own rule that `weld_weekly_snapshot` history is
+irreplaceable; the two reference loaders delete only the previous rows of their own `source`
+before inserting, same shape as `load-weld-dump.ts`.
+
+npm scripts to add (package.json is not edited by this lane):
+```
+"db:seed:snapshot":  "node --env-file-if-exists=.env --import tsx scripts/seed-weekly-snapshot.ts",
+"db:load:ut-ccc":    "node --env-file-if-exists=.env --import tsx scripts/load-ut-tracker-ccc.ts",
+"db:load:exclusions":"node --env-file-if-exists=.env --import tsx scripts/load-exclusion-list.ts"
+```
+
+### `repair_reweld` and `tmcp_pipe` — one column, two rules
+
+Ruling D4: one column each; the loader picks the rule by source. Both rules live in
+`scripts/ccc-columns.ts` and `scripts/weld-sql.ts`, side by side:
+
+| | `WELD_DUMP` ("WD" rule) | every other source ("PR all" rule) |
+|---|---|---|
+| `repair_reweld` | `Weld Dump[Repair & Reweld]`: `right([Weld No.],2)` → `R1`/`R2` = `Repair`, `RW` = `Reweld`, else `''`. **3 categories.** | `PRALL[Repair & Reweld "PR all"]`: `Sub-Contractor = "Inco"` → `''`; else `right([Joint ID],2)` → `R1`/`R2` = `Repair`, `RW` = `Reweld`; else `Repair Suffix = "RW1"` → `Reweld`, `= "RS1"` → **`RS1`**, else `''`. **4 categories** — `RS1` is its own bucket, not `Repair` (the model's stored cardinality is 4). |
+| `tmcp_pipe` | `Service class = '9C3AQN' AND dia_inch = 46` | `Service class = '9C3AQN' AND dia_inch IN (30, 34, 46)` |
+
+A metric reading `repair_reweld = ''` therefore means "not a repair or reweld" in both
+vocabularies; a metric that needs the `RS1` distinction must test for it explicitly, and will
+only ever see it on CCC rows.
+
+## The batch-2 loaders
+
+| script | source(s) | target | rows |
+|---|---|---|---:|
+| `load-spool-dump.ts` | `Spool Dump.txt`, `Spool.csv` | `spool` | 198,647 + 331,979 |
+| `load-ccc-joint-record.ts` | `AllTrain_CSVExport_Joint Record.csv` | `ccc_joint_pwht` + `weld` | 1,470,065 + 130,994 |
+| `load-ccc-welder-record.ts` | `CSVExport_Welder Record.csv` + the ACC/REJ workbook | `weld` | 5,432,993 |
+
+Each takes `--dry-run`, which parses the real files with **no database** and prints the counts
+above so a drift in a source file is caught before anything is written. Add these to
+`package.json` (frozen for this lane):
+
+```json
+"db:load:spool":      "node --env-file-if-exists=.env --import tsx scripts/load-spool-dump.ts",
+"db:load:ccc-joints": "node --env-file-if-exists=.env --import tsx scripts/load-ccc-joint-record.ts",
+"db:load:ccc":        "node --env-file-if-exists=.env --max-old-space-size=4096 --import tsx scripts/load-ccc-welder-record.ts"
+```
+
+**Order matters.** `load-ccc-welder-record.ts` refuses to start if `ccc_joint_pwht` is empty:
+the CCC NDE branches are a `LEFT JOIN` to it, and loading first would write NULLs into
+`pwht_y_n_ccc` and friends and look perfectly successful.
+
+### `Spool Dump.txt`: pad the line, never re-join it
+
+`Weld Dump.txt` needs a record assembler because 1,253 of its records span lines. `Spool
+Dump.txt` needs the opposite: every physical line carries **100** fields against a **102**-name
+header (the trailing `BHS`/`WHS` have no data field, exactly as in the weld dump), and Power
+Query with `QuoteStyle.None` pads each *physical line* to the declared width. An assembler that
+re-joined until the separator count reached 101 would fuse pairs of lines and produce 101,176
+records instead of 202,352. The loader pads and never re-joins.
+
+`COPY … FORMAT text`, never CSV: 193,563 of the 202,352 lines contain a literal `"` — the inch
+mark in `Line No` (`BD6132034A01-6"(1C1KL)-S(52)(25)`).
+
+The 66,931 date cells the loader reports as parse failures are all the literal `NA` token, which
+is exactly what `weld_to_date()` is meant to NULL. The dry run prints the offending values so a
+real parse bug cannot hide behind that number.
+
+### The CCC welder record: the §1.4 split
+
+```
+CSV rows with `RT/UT Report No.` = ''      4,791,434
++ every row of the ACC/REJ workbook          641,575
+= 5,433,009                                          = the pbix's stored row count
+```
+Loading the CSV whole would double-count the 639,298 tested rows; loading only the CSV would
+lose the workbook's corrected ACC/REJ results. The workbook has the same 119-column header and
+is read with the `exceljs` streaming `WorkbookReader`, so neither file is ever fully in memory
+(measured peak RSS 960 MB for the whole pass).
+
+Then the M's `#"EXLUDE 4 RT B.log CCC"` removes four hard-coded Joint IDs — **16 rows**,
+matching the pbix's own row arithmetic exactly — leaving **5,432,993** in `weld`. The four ids
+live in `weld_manual_exclusion` (migration 0012) as well as in the loader, and
+`check-sql-columns.ts` fails if the two lists ever diverge.
+
+`weldpoint_seq` is counted during the stream rather than by a post-load
+`ROW_NUMBER() OVER (PARTITION BY joint_id)`: rows are COPYed in file order, so the counter
+gives the same answer and saves a full rewrite of 5.4 M rows. The CCC NDE overlay is the one
+`UPDATE`, a single join to `ccc_joint_pwht`.
+
+### Distinct `joint_id` for CCC: 1,339,099, not 1,339,063
+
+Both numbers are right, for different row sets. `analysis/sources2/profile.md` reports
+**1,339,063** distinct Joint IDs over the *whole* CSV (all 5,430,732 rows) — the loader's Joint
+ID recipe reproduces that number exactly when run over the whole file. What lands in `weld` is
+a *different* population: the CSV's untested rows plus the workbook's 641,575, which together
+carry **1,339,099** distinct joints (and 1,339,103 before the four manual exclusions). The
+workbook contributes joints the untested CSV slice does not.
 
 ---
 

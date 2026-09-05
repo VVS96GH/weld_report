@@ -18,7 +18,10 @@
     "test:e2e": "playwright test",
     "db:seed:snapshot": "node --env-file-if-exists=.env --import tsx scripts/seed-weekly-snapshot.ts",
     "db:load:ut-ccc": "node --env-file-if-exists=.env --import tsx scripts/load-ut-tracker-ccc.ts",
-    "db:load:exclusions": "node --env-file-if-exists=.env --import tsx scripts/load-exclusion-list.ts"
+    "db:load:exclusions": "node --env-file-if-exists=.env --import tsx scripts/load-exclusion-list.ts",
+    "db:load:spool": "node --env-file-if-exists=.env --import tsx scripts/load-spool-dump.ts",
+    "db:load:ccc-joints": "node --env-file-if-exists=.env --import tsx scripts/load-ccc-joint-record.ts",
+    "db:load:ccc": "node --env-file-if-exists=.env --max-old-space-size=4096 --import tsx scripts/load-ccc-welder-record.ts"
   },
   "dependencies": {
     "chart.js": "4.5.1",
