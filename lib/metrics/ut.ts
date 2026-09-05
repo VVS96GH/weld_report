@@ -13,9 +13,13 @@
  * are still missing, so GAC/TEKFEN keep their raw `UT Acc/Rej` fallback and
  * ruling R-05 stays open for them.
  *
- * M35/M36 stay honest-empty: `[Inspected Length(MM).]` resolves through
- * `[Weld Length "PR all"]`, a `LOOKUPVALUE` into the `Weld Length` dimension
- * (`weld_length_by_dia`), and that workbook is still absent (§7 C-12).
+ * M33/M35/M36 read the loader-materialised `weld_length_m` /
+ * `inspected_length_mm` / `defect_length_mm` columns (migration 0012). All
+ * three resolve through `[Weld Length "PR all"]`, a `LOOKUPVALUE` into the
+ * `Weld Length` dimension (`weld_length_by_dia`), whose workbook is still
+ * absent (§7 C-12) — so they are NULL today and the pages render honest-empty.
+ * Reading the columns rather than hardcoding NULL means they start working the
+ * moment the workbook lands, instead of silently staying blank.
  *
  * Reality check: MEDGULF has zero rows with a `UT Report` in this dump, which
  * matches the mockup's blank UT columns on pages 6 and 11 (§4.6 finding 5).
@@ -32,6 +36,7 @@ import {
   buildGroupedSelect,
   divide,
   filterWhere,
+  JOINT_FROM,
   scopeWhere,
   zCount,
   zSum,
@@ -47,29 +52,15 @@ export function utDoneCond(p: Params, a = "w"): string {
 }
 
 export function utAggs(p: Params, a = "w"): AggSpec[] {
-  const done = utDoneCond(p, a);
+  void p;
   return [
-    { key: "ut_done", sql: `count(DISTINCT ${a}.joint_id) ${filterWhere([done])}` },
-    {
-      key: "ut_accepted",
-      sql: `count(DISTINCT ${a}.joint_id) ${filterWhere([done, `${a}.ut_acc_rej = ${p.add("A")}`])}`,
-    },
-    {
-      key: "ut_rejected",
-      sql: `count(DISTINCT ${a}.joint_id) ${filterWhere([done, `${a}.ut_acc_rej = ${p.add("R")}`])}`,
-    },
-    // M33 `[UT Weld Length by Joint "EP"]`
-    {
-      key: "ut_weld_length_m",
-      sql: `sum(${a}.weld_length) ${filterWhere([`${a}.weldpoint_no = 1`, `${a}.ut_report IS NOT NULL`])}`,
-    },
-    // `Rej Length` — the raw column behind `[Defect Length(MM).]` for the
-    // non-Inco, non-CCC branch. Exposed for disclosure; M34 itself is not
-    // implementable at "EP" scope (there is no "EP" version — §M34).
-    {
-      key: "ut_rej_length_m",
-      sql: `sum(${a}.rej_length) ${filterWhere([done, `${a}.ut_acc_rej = ${p.add("R")}`])}`,
-    },
+    { key: "ut_done", sql: `count(*) ${filterWhere([`${a}.ut_done`])}` },          // M30
+    { key: "ut_accepted", sql: `count(*) ${filterWhere([`${a}.ut_accepted`])}` },  // M31 "A"
+    { key: "ut_rejected", sql: `count(*) ${filterWhere([`${a}.ut_rejected`])}` },  // M31 "R"
+    { key: "ut_weld_length_m", sql: `sum(${a}.ut_weld_length_m)` },                // M33
+    // `Rej Length` over rejected UT joints — the raw column behind the non-Inco,
+    // non-CCC branch of `[Defect Length(MM).]`. There is no "EP" M34 (§M34).
+    { key: "ut_rej_length_m", sql: `sum(${a}.ut_rej_length_m)` },
   ];
 }
 
@@ -189,6 +180,9 @@ export function defectLengthExpr(p: Params, a = "w"): string {
   const y = p.add("Y");
   return (
     `CASE\n` +
+    // Migration 0012 materialises the DAX column itself; prefer it when the
+    // loader has filled it and fall back to the branches below otherwise.
+    `         WHEN ${a}.defect_length_mm IS NOT NULL THEN ${a}.defect_length_mm\n` +
     `         WHEN ${a}.manual_ut_report_no_all IS NOT NULL AND ${a}.by_ut = ${y} THEN ${a}.rej_length\n` +
     `         WHEN ${a}.manual_ut_status_all = ${r} AND ${a}.sub_contractor = ${ccc} AND ${a}.weldpoint_seq = 1\n` +
     `           THEN (SELECT max(t.weld_defect_length) FROM ref_ut_tracker_ccc t WHERE t.joint_id = ${a}.joint_id)\n` +
@@ -198,26 +192,19 @@ export function defectLengthExpr(p: Params, a = "w"): string {
 }
 
 export function utAggsPrAll(p: Params, a = "w"): AggSpec[] {
-  const done = utDoneCondPrAll(a);
-  const rejected = and([done, `${a}.manual_ut_status_all = ${p.add("R")}`]);
+  void p;
   return [
-    { key: "ut_done", sql: `count(DISTINCT ${a}.joint_id) ${filterWhere([done])}` },
+    { key: "ut_done", sql: `count(*) ${filterWhere([`${a}.ut_done_prall`])}` },
     // [Numb UT "A" "PR All"] = [Numb UT "PR All"] - [Numb UT "R" "PR All"]
     {
       key: "ut_accepted",
       sql:
-        `count(DISTINCT ${a}.joint_id) ${filterWhere([done])}` +
-        ` - count(DISTINCT ${a}.joint_id) ${filterWhere([rejected])}`,
+        `count(*) ${filterWhere([`${a}.ut_done_prall`])}` +
+        ` - count(*) ${filterWhere([`${a}.ut_rejected_prall`])}`,
     },
-    { key: "ut_rejected", sql: `count(DISTINCT ${a}.joint_id) ${filterWhere([rejected])}` },
-    // M33 "PR all" needs [Weld Length "PR all"], a LOOKUPVALUE into the missing
-    // `Weld Length` workbook — NULL here, rendered honest-empty by the caller.
-    { key: "ut_weld_length_m", sql: `NULL::numeric` },
-    // M34
-    {
-      key: "ut_rej_length_m",
-      sql: `sum(${defectLengthExpr(p, a)}) ${filterWhere([done, `${a}.manual_ut_status_all = ${p.add("R")}`])}`,
-    },
+    { key: "ut_rejected", sql: `count(*) ${filterWhere([`${a}.ut_rejected_prall`])}` },
+    { key: "ut_weld_length_m", sql: `sum(${a}.ut_weld_length_m_prall)` },   // M33
+    { key: "ut_rej_length_m", sql: `sum(${a}.ut_defect_length_prall)` },    // M34
   ];
 }
 
@@ -263,8 +250,8 @@ export async function utTrackerCccLoaded(): Promise<boolean> {
 export async function utOverlayLoaded(scope: Scope): Promise<boolean> {
   const p = new Params();
   const sql =
-    `SELECT EXISTS (SELECT 1 FROM weld w WHERE ${scopeWhere(scope, p)}` +
-    ` AND w.manual_ut_report_no_all IS NOT NULL) AS present`;
+    `SELECT EXISTS (SELECT 1 FROM ${JOINT_FROM} WHERE ${scopeWhere(scope, p)}` +
+    ` AND w.ut_done_prall) AS present`;
   try {
     const rows = await query<{ present: boolean }>(sql, p.list());
     return Boolean(rows[0]?.present);

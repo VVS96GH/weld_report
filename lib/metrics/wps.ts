@@ -13,6 +13,15 @@
  *
  * Pinned row-by-row against `analysis/reconcile_results.json → wps_gac_nonsg`
  * (scope: GAC, `service_cat <> 'SG'`, `weld_type <> 'DMY'`, `wps_no` present).
+ *
+ * ── Why this one reads a different view ─────────────────────────────────────
+ * Every other pivot reads the joint-grain `mv_joint`. This one cannot:
+ * `wps_no` is the single dimension that is genuinely multi-valued per joint
+ * (1 joint of 2,370,428 — measured). At row grain that joint counts in BOTH
+ * WPS cells, which is what the DAX does and what the pin expects; at joint
+ * grain `max(wps_no)` puts it in one and `GAC-WPS-P-CS/LTC-002` came out at
+ * 223,301 instead of 223,302. So the pivot reads `mv_joint_wps`, the same
+ * rollup at `(source, joint_id, wps_no)` grain — correct AND fast.
  */
 
 import { z } from "zod";
@@ -22,14 +31,11 @@ import {
   type Scope,
   and,
   divide,
-  filterWhere,
-  notEq,
   scopeWhere,
+  WPS_FROM,
   zCount,
   zSum,
 } from "./scope";
-import { rejectedCond, testedCond } from "./rt";
-import { weldedCond, weldedInclRepairCond } from "./welding";
 
 const Row = z.object({
   wps_no: z.string(),
@@ -76,16 +82,15 @@ export async function wpsRejectionTable(
 ): Promise<WpsRejectionRow[]> {
   const p = new Params();
   const where = and([scopeWhere(scope, p), "w.wps_no IS NOT NULL"]);
-  const notRs = notEq("w.rt_acc_rej", "RS", p);
   const sql =
     `SELECT w.wps_no,\n` +
-    `       count(DISTINCT w.joint_id) ${filterWhere([weldedCond()])} AS joints_welded,\n` +
-    `       count(DISTINCT w.joint_id) ${filterWhere([weldedInclRepairCond()])} AS joints_welded_incl_repair_reweld,\n` +
-    `       count(DISTINCT w.joint_id) ${filterWhere([testedCond(p)])} AS tested_joints,\n` +
-    `       count(DISTINCT w.joint_id) ${filterWhere([rejectedCond(p)])} AS rejected,\n` +
-    `       sum(w.rt_film_total) ${filterWhere([notRs])} AS rt_total_films,\n` +
-    `       sum(w.total_no_of_films_rej) AS rt_films_rejected\n` +
-    `  FROM weld w\n` +
+    `       count(*) FILTER (WHERE w.is_welded_norepair) AS joints_welded,\n` +
+    `       count(*) FILTER (WHERE w.is_welded) AS joints_welded_incl_repair_reweld,\n` +
+    `       count(*) FILTER (WHERE w.is_tested_ep) AS tested_joints,\n` +
+    `       count(*) FILTER (WHERE w.is_rejected) AS rejected,\n` +
+    `       sum(w.films_all) AS rt_total_films,\n` +
+    `       sum(w.films_all_rej) AS rt_films_rejected\n` +
+    `  FROM ${WPS_FROM}\n` +
     ` WHERE ${where}\n` +
     ` GROUP BY 1\n` +
     ` ORDER BY 1`;

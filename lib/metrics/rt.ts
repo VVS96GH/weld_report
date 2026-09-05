@@ -49,12 +49,13 @@ import {
   RT_BACKLOG_STATUS_PRALL,
   RT_WELD_TYPES,
   type Scope,
-  agingCondition,
+  agingConditionOn,
   and,
   buildGroupedSelect,
   divide,
   fabricatedCond,
   filterWhere,
+  JOINT_FROM,
   inList,
   inListOrBlank,
   notEq,
@@ -143,42 +144,30 @@ export function rtBacklogPwhtYNotDoneCond(p: Params, a = "w"): string {
 
 /** The RT/film aggregate bundle used by every "Tested and Accepted" table. */
 export function rtAggs(p: Params, a = "w"): AggSpec[] {
-  const wp1 = `${a}.weldpoint_no = 1`;
-  const notRs = notEq(`${a}.rt_acc_rej`, "RS", p);
+  void p;
   return [
-    // M10 tested joints
-    { key: "tested", sql: `count(DISTINCT ${a}.joint_id) ${filterWhere([testedCond(p, a)])}` },
-    // M12 rejected joints
-    { key: "rejected", sql: `count(DISTINCT ${a}.joint_id) ${filterWhere([rejectedCond(p, a)])}` },
-    // M20 films taken by joint
-    { key: "films", sql: `sum(${a}.rt_film_total) ${filterWhere([wp1, notRs])}` },
-    // M21 films accepted by joint (literal `sum(Total No of films Acc)`)
-    { key: "films_acc_sum", sql: `sum(${a}.total_no_of_films_acc) ${filterWhere([wp1, notRs])}` },
-    // M22 films rejected by joint — WeldPoint 1 only, NO `<> "RS"` filter
-    { key: "films_rejected", sql: `sum(${a}.total_no_of_films_rej) ${filterWhere([wp1])}` },
-    // M26 all-weld-point film totals (the per-WPS pages)
-    { key: "films_all", sql: `sum(${a}.rt_film_total) ${filterWhere([notRs])}` },
-    { key: "films_all_acc", sql: `sum(${a}.total_no_of_films_acc) ${filterWhere([notRs])}` },
-    { key: "films_all_rejected", sql: `sum(${a}.total_no_of_films_rej)` },
+    { key: "tested", sql: `count(*) ${filterWhere([`${a}.is_tested_ep`])}` },     // M10
+    { key: "rejected", sql: `count(*) ${filterWhere([`${a}.is_rejected`])}` },    // M12
+    { key: "films", sql: `sum(${a}.films_wp1)` },                                 // M20
+    { key: "films_acc_sum", sql: `sum(${a}.films_acc_wp1)` },                     // M21
+    { key: "films_rejected", sql: `sum(${a}.films_rej_wp1)` },                    // M22
+    { key: "films_all", sql: `sum(${a}.films_all)` },                             // M26
+    { key: "films_all_acc", sql: `sum(${a}.films_all_acc)` },
+    { key: "films_all_rejected", sql: `sum(${a}.films_all_rej)` },
   ];
 }
 
 /** Backlog aggregate bundle: M40, M42, M45, M46, M47. */
 export function rtBacklogAggs(p: Params, a = "w"): AggSpec[] {
+  void p;
   return [
-    { key: "rt_backlog", sql: `count(DISTINCT ${a}.joint_id) ${filterWhere([rtBacklogCond(p, a)])}` },
-    { key: "rt100_backlog", sql: `count(DISTINCT ${a}.joint_id) ${filterWhere([rt100BacklogCond(p, a)])}` },
-    {
-      key: "rt_backlog_pwht_y_done",
-      sql: `count(DISTINCT ${a}.joint_id) ${filterWhere([rtBacklogPwhtYDoneCond(p, a)])}`,
-    },
-    {
-      key: "rt_backlog_pwht_n",
-      sql: `count(DISTINCT ${a}.joint_id) ${filterWhere([rtBacklogPwhtNCond(p, a)])}`,
-    },
+    { key: "rt_backlog", sql: `count(*) ${filterWhere([`${a}.rt_backlog`])}` },
+    { key: "rt100_backlog", sql: `count(*) ${filterWhere([`${a}.rt100_backlog`])}` },
+    { key: "rt_backlog_pwht_y_done", sql: `count(*) ${filterWhere([`${a}.rt_backlog_pwht_y_done`])}` },
+    { key: "rt_backlog_pwht_n", sql: `count(*) ${filterWhere([`${a}.rt_backlog_pwht_n`])}` },
     {
       key: "rt_backlog_pwht_y_not_done",
-      sql: `count(DISTINCT ${a}.joint_id) ${filterWhere([rtBacklogPwhtYNotDoneCond(p, a)])}`,
+      sql: `count(*) ${filterWhere([`${a}.rt_backlog_pwht_y_not_done`])}`,
     },
   ];
 }
@@ -376,49 +365,101 @@ const AgingRow = z.object({
  * (calculation-logic §4.3). Literal per-row DAX would let one joint appear in
  * two buckets.
  */
+/**
+ * A backlog family: the `mv_joint` flag that says a joint is in it, and the
+ * clock the aging buckets read.
+ *
+ * The clock is per family on purpose. `analysis/reconcile_check.py` ages a
+ * backlog joint from the latest weld date among its BACKLOG rows, and a joint
+ * can carry a later non-backlog row — using the joint's overall `weld_date`
+ * would move joints between buckets.
+ */
+export type BacklogFamily = { flag: string; dateCol: string };
+
+export const RT_BACKLOG_EP: BacklogFamily = {
+  flag: "rt_backlog",
+  dateCol: "rt_backlog_weld_date",
+};
+export const RT_BACKLOG_PRALL: BacklogFamily = {
+  flag: "rt_backlog_prall",
+  dateCol: "rt_backlog_prall_weld_date",
+};
+
+/**
+ * M51 — RT backlog aging, `≤3 / 3–7 / 7–15 / 15–30 / >30` days from the
+ * joint's backlog `weld_date` to `as_of`
+ * (`DATEDIFF([Weld Date], TODAY(), DAY)`; §0.5 `No of Days "WD"`).
+ *
+ * One row per joint in `mv_joint`, so this is a plain `count(*) FILTER` — the
+ * per-joint `max(weld_date)` the buckets need is materialised in the view.
+ */
 export async function rtBacklogAging(
   scope: Scope,
   asOf: string,
 ): Promise<AgingBuckets> {
-  return backlogAging(scope, asOf, (p) => rtBacklogCond(p));
+  return backlogAging(scope, asOf, RT_BACKLOG_EP);
 }
 
 /** Shared by {@link rtBacklogAging} and `pwht.ts`'s M66 twin. */
 export async function backlogAging(
   scope: Scope,
   asOf: string,
-  cond: (p: Params) => string,
+  family: BacklogFamily,
 ): Promise<AgingBuckets> {
   const p = new Params();
-  const where = and([scopeWhere(scope, p), cond(p)]);
+  const where = and([scopeWhere(scope, p), `w.${family.flag}`]);
   const asOfParam = p.add(asOf);
-  // `bk` (not `b`) so the JS property access never looks like a `b.<column>`
-  // SQL reference to tests/columns.test.ts.
+  const d = `w.${family.dateCol}`;
   const buckets = AGING_BUCKETS.map(
-    (bk) => `count(*) FILTER (WHERE ${agingCondition(bk, asOfParam, "b")}) AS "${bk.key}"`,
+    (bk) =>
+      `count(*) FILTER (WHERE ${agingConditionOn(bk, asOfParam, d)}) AS "${bk.key}"`,
   ).join(",\n       ");
   const sql =
-    `WITH b AS (\n` +
-    `  SELECT w.joint_id, max(w.weld_date) AS weld_date\n` +
-    `    FROM weld w\n` +
-    `   WHERE ${where}\n` +
-    `   GROUP BY 1\n` +
-    `)\n` +
     `SELECT ${buckets},\n` +
-    `       count(*) FILTER (WHERE b.weld_date IS NULL) AS no_weld_date\n` +
-    `  FROM b`;
+    `       count(*) FILTER (WHERE ${d} IS NULL) AS no_weld_date\n` +
+    `  FROM ${JOINT_FROM}\n` +
+    ` WHERE ${where}`;
   const rows = await query(sql, p.list());
-  const parsed = AgingRow.parse(
-    rows[0] ?? {
-      within_3: 0,
-      "3_to_7": 0,
-      "7_to_15": 0,
-      "15_to_30": 0,
-      above_30: 0,
-      no_weld_date: 0,
-    },
-  );
-  return parsed as AgingBuckets;
+  return AgingRow.parse(rows[0] ?? EMPTY_AGING_ROW) as AgingBuckets;
+}
+
+const EMPTY_AGING_ROW = {
+  within_3: 0,
+  "3_to_7": 0,
+  "7_to_15": 0,
+  "15_to_30": 0,
+  above_30: 0,
+  no_weld_date: 0,
+};
+
+/** {@link backlogAging}, grouped by one dimension. */
+export async function backlogAgingBy(
+  scope: Scope,
+  asOf: string,
+  family: BacklogFamily,
+  group: GroupSpec,
+): Promise<Map<string | null, AgingBuckets>> {
+  const p = new Params();
+  const where = and([scopeWhere(scope, p), `w.${family.flag}`]);
+  const asOfParam = p.add(asOf);
+  const d = `w.${family.dateCol}`;
+  const buckets = AGING_BUCKETS.map(
+    (bk) =>
+      `count(*) FILTER (WHERE ${agingConditionOn(bk, asOfParam, d)}) AS "${bk.key}"`,
+  ).join(",\n       ");
+  const sql =
+    `SELECT ${group.sql} AS ${group.key}, ${buckets},\n` +
+    `       count(*) FILTER (WHERE ${d} IS NULL) AS no_weld_date\n` +
+    `  FROM ${JOINT_FROM}\n` +
+    ` WHERE ${where}\n` +
+    ` GROUP BY 1`;
+  const rows = await query(sql, p.list());
+  const out = new Map<string | null, AgingBuckets>();
+  for (const raw of rows) {
+    const key = zText.parse((raw as Record<string, unknown>)[group.key] ?? null);
+    out.set(key, AgingRow.parse(raw) as AgingBuckets);
+  }
+  return out;
 }
 
 /**
@@ -448,20 +489,13 @@ export async function coverageGapByServiceClass(
   const p = new Params();
   const where = scopeWhere(scope, p);
   const keys = opts.byHa ? `w.ha, ${group.sql}` : group.sql;
-  const nRt = `count(DISTINCT w.joint_id) ${filterWhere([
-    `w.rt_report IS NOT NULL`,
-    notEq("w.rt_acc_rej", "RS", p),
-    notEq("w.rt_acc_rej", "U/Review", p),
-  ])}`;
-  const nJoints = `count(DISTINCT w.joint_id) ${filterWhere([
-    `w.weld_date IS NOT NULL`,
-    `coalesce(w.repair_reweld,'') = ''`,
-  ])}`;
+  const nRt = `count(*) ${filterWhere(["w.is_rt_reported"])}`;
+  const nJoints = `count(*) ${filterWhere(["w.is_welded_norepair"])}`;
   const t = p.add(targetFraction);
   const sql =
     `WITH g AS (\n` +
     `  SELECT ${group.sql} AS grp, ${nRt} AS n_rt, ${nJoints} AS n_joints\n` +
-    `    FROM weld w\n` +
+    `    FROM ${JOINT_FROM}\n` +
     `   WHERE ${where}\n` +
     `   GROUP BY ${keys}\n` +
     `)\n` +
@@ -483,49 +517,9 @@ export async function coverageGapByServiceClass(
 export async function hasHaValues(scope: Scope): Promise<boolean> {
   const p = new Params();
   const sql =
-    `SELECT EXISTS (SELECT 1 FROM weld w WHERE ${scopeWhere(scope, p)} AND w.ha IS NOT NULL) AS present`;
+    `SELECT EXISTS (SELECT 1 FROM ${JOINT_FROM} WHERE ${scopeWhere(scope, p)} AND w.ha IS NOT NULL) AS present`;
   const rows = await query<{ present: boolean }>(sql, p.list());
   return Boolean(rows[0]?.present);
-}
-
-/**
- * {@link backlogAging}, grouped by one dimension. The joint-level dedup
- * happens at `(group, joint_id)` grain, so each level of a hierarchy must be
- * queried at its own grain — summing a child level would double-count any
- * joint that spans two groups.
- */
-export async function backlogAgingBy(
-  scope: Scope,
-  asOf: string,
-  cond: (p: Params) => string,
-  group: GroupSpec,
-): Promise<Map<string | null, AgingBuckets>> {
-  const p = new Params();
-  const where = and([scopeWhere(scope, p), cond(p)]);
-  const asOfParam = p.add(asOf);
-  // `bk` (not `b`) so the JS property access never looks like a `b.<column>`
-  // SQL reference to tests/columns.test.ts.
-  const buckets = AGING_BUCKETS.map(
-    (bk) => `count(*) FILTER (WHERE ${agingCondition(bk, asOfParam, "b")}) AS "${bk.key}"`,
-  ).join(",\n       ");
-  const sql =
-    `WITH b AS (\n` +
-    `  SELECT ${group.sql} AS ${group.key}, w.joint_id, max(w.weld_date) AS weld_date\n` +
-    `    FROM weld w\n` +
-    `   WHERE ${where}\n` +
-    `   GROUP BY 1, 2\n` +
-    `)\n` +
-    `SELECT b.${group.key}, ${buckets},\n` +
-    `       count(*) FILTER (WHERE b.weld_date IS NULL) AS no_weld_date\n` +
-    `  FROM b\n` +
-    ` GROUP BY 1`;
-  const rows = await query(sql, p.list());
-  const out = new Map<string | null, AgingBuckets>();
-  for (const raw of rows) {
-    const key = zText.parse((raw as Record<string, unknown>)[group.key] ?? null);
-    out.set(key, AgingRow.parse(raw) as AgingBuckets);
-  }
-  return out;
 }
 
 /** Map one row of a combined `rtAggs()` select into {@link RtStats}. */
@@ -650,26 +644,17 @@ export function rt100BacklogCondPrAll(p: Params, a = "w"): string {
 
 /** The `"PR all"` RT/film bundle (M11, M12, M13, M14, M23, M24, M25). */
 export function rtAggsPrAll(p: Params, a = "w"): AggSpec[] {
+  void p;
   return [
-    { key: "tested", sql: `count(DISTINCT ${a}.joint_id) ${filterWhere([testedCondPrAll(p, a)])}` },
-    { key: "rejected", sql: `count(DISTINCT ${a}.joint_id) ${filterWhere([rejectedCond(p, a)])}` },
-    { key: "films", sql: `(${filmsTakenPrAllExpr(p, a)})` },
-    { key: "films_rejected", sql: `(${filmsRejectedPrAllExpr(p, a)})` },
-    // M26 — the per-WPS all-weld-point totals. The `"EP"` flavour is
-    // deliberately ungated and is pinned to reconcile_results.json
-    // (180,034 films for GAC non-SG), so it stays exactly as it was. At
-    // `"PR all"` scope the same ungated sum would count a CCC joint's films
-    // once per welder pass (~4x), so the WP1 gate of the orchestrator's
-    // mid-flight ruling is extended to it here. Flagged: this makes M26 differ
-    // between the two families by design.
-    {
-      key: "films_all",
-      sql: `coalesce(sum(${a}.rt_film_total) ${filterWhere([wp1Cond(a), notEq(`${a}.rt_acc_rej`, "RS", p)])}, 0)`,
-    },
-    {
-      key: "films_all_rejected",
-      sql: `coalesce(sum(${a}.total_no_of_films_rej) ${filterWhere([wp1Cond(a)])}, 0)`,
-    },
+    { key: "tested", sql: `count(*) ${filterWhere([`${a}.is_tested_prall`])}` },  // M11
+    { key: "rejected", sql: `count(*) ${filterWhere([`${a}.is_rejected`])}` },    // M12
+    { key: "films", sql: `sum(${a}.films_taken_prall)` },                         // M23
+    { key: "films_rejected", sql: `sum(${a}.films_rej_prall)` },                  // M24
+    // M26 — the `"EP"` flavour is ungated and pinned to reconcile_results.json;
+    // the `"PR all"` flavour is WP1-gated per source so a CCC joint's films are
+    // not counted once per welder pass.
+    { key: "films_all", sql: `sum(${a}.films_all_prall)` },
+    { key: "films_all_rejected", sql: `sum(${a}.films_all_rej_prall)` },
   ];
 }
 
@@ -788,18 +773,16 @@ export function rtBacklogPwhtYNotDoneFabricatedCond(p: Params, a = "w"): string 
 }
 
 export function fabricatedAggs(p: Params, a = "w"): AggSpec[] {
+  void p;
   return [
-    {
-      key: "rt_backlog_fabricated",
-      sql: `count(DISTINCT ${a}.joint_id) ${filterWhere([rtBacklogFabricatedCond(p, a)])}`,
-    },
+    { key: "rt_backlog_fabricated", sql: `count(*) ${filterWhere([`${a}.rt_backlog_fabricated`])}` },
     {
       key: "rt_backlog_pwht_y_done_or_n_fabricated",
-      sql: `count(DISTINCT ${a}.joint_id) ${filterWhere([rtBacklogPwhtYDoneOrNFabricatedCond(p, a)])}`,
+      sql: `count(*) ${filterWhere([`${a}.rt_backlog_pwht_ydone_or_n_fabricated`])}`,
     },
     {
       key: "rt_backlog_pwht_y_not_done_fabricated",
-      sql: `count(DISTINCT ${a}.joint_id) ${filterWhere([rtBacklogPwhtYNotDoneFabricatedCond(p, a)])}`,
+      sql: `count(*) ${filterWhere([`${a}.rt_backlog_pwht_ynotdone_fabricated`])}`,
     },
   ];
 }
@@ -835,42 +818,13 @@ export async function spoolMasterLoaded(): Promise<boolean> {
 
 /** The `"PR all"` backlog bundle: M41, M43, M45, M46, M47. */
 export function rtBacklogAggsPrAll(p: Params, a = "w"): AggSpec[] {
-  const backlog = rtBacklogCondPrAll(p, a);
-  const count = (cond: string) => `count(DISTINCT ${a}.joint_id) ${filterWhere([cond])}`;
+  void p;
+  const count = (flag: string) => `count(*) ${filterWhere([`${a}.${flag}`])}`;
   return [
-    { key: "rt_backlog", sql: count(backlog) },
-    { key: "rt100_backlog", sql: count(rt100BacklogCondPrAll(p, a)) },
-    {
-      key: "rt_backlog_pwht_y_done",
-      sql: count(
-        and([
-          backlog,
-          `(${and([inList(`${a}.pwht_y_n`, PWHT_YES_TOKENS, p), `${a}.pwht_report IS NOT NULL`])}` +
-            ` OR ${and([`${a}.pwht_y_n_ccc = ${p.add("Y")}`, `${a}.pwht_report_no_ccc IS NOT NULL`])})`,
-        ]),
-      ),
-    },
-    {
-      key: "rt_backlog_pwht_n",
-      sql: count(
-        and([
-          backlog,
-          `(${and([inList(`${a}.pwht_y_n`, PWHT_NO_TOKENS, p), `${a}.pwht_weld_status IS NULL`])}` +
-            ` OR ${a}.pwht_y_n_ccc = ${p.add("N")})`,
-        ]),
-      ),
-    },
-    {
-      key: "rt_backlog_pwht_y_not_done",
-      sql: count(
-        and([
-          backlog,
-          inList(`${a}.pwht_y_n`, PWHT_YES_TOKENS, p),
-          // The "PR all" twin adds 'NR' to the hold list (§M47).
-          inList(`${a}.pwht_weld_status`, ["H", "HS", "NR"], p),
-          `${a}.pwht_report IS NULL`,
-        ]),
-      ),
-    },
+    { key: "rt_backlog", sql: count("rt_backlog_prall") },
+    { key: "rt100_backlog", sql: count("rt100_backlog_prall") },
+    { key: "rt_backlog_pwht_y_done", sql: count("rt_backlog_pwht_y_done_prall") },
+    { key: "rt_backlog_pwht_n", sql: count("rt_backlog_pwht_n_prall") },
+    { key: "rt_backlog_pwht_y_not_done", sql: count("rt_backlog_pwht_y_not_done_prall") },
   ];
 }

@@ -24,7 +24,6 @@ import {
   Params,
   PWHT_BACKLOG_STATUS,
   PWHT_BACKLOG_STATUS_PRALL,
-  PWHT_YES_TOKENS,
   RT_BACKLOG_STATUS,
   RT_BACKLOG_STATUS_100,
   RT_WELD_TYPES,
@@ -38,7 +37,7 @@ import {
   zCount,
   zText,
 } from "./scope";
-import { type AgingBuckets, backlogAging } from "./rt";
+import { type AgingBuckets, type BacklogFamily, backlogAging } from "./rt";
 
 /** M60 `[PWHT Backlog Weld Status All Weld Types "EP"]`. */
 export function pwhtBacklogCond(p: Params, a = "w"): string {
@@ -80,28 +79,15 @@ export function pwhtBacklogRtNotDoneCond(p: Params, a = "w"): string {
 }
 
 export function pwhtAggs(p: Params, a = "w"): AggSpec[] {
+  void p;
+  const count = (flag: string) => `count(*) ${filterWhere([`${a}.${flag}`])}`;
   return [
-    {
-      key: "pwht_backlog_all_types",
-      sql: `count(DISTINCT ${a}.joint_id) ${filterWhere([pwhtBacklogCond(p, a)])}`,
-    },
-    {
-      key: "pwht_backlog_rt_types",
-      sql: `count(DISTINCT ${a}.joint_id) ${filterWhere([pwhtBacklogRtTypesCond(p, a)])}`,
-    },
-    {
-      key: "pwht_backlog_rt100",
-      sql: `count(DISTINCT ${a}.joint_id) ${filterWhere([pwhtBacklogRt100Cond(p, a)])}`,
-    },
-    {
-      key: "pwht_backlog_rt_not_done",
-      sql: `count(DISTINCT ${a}.joint_id) ${filterWhere([pwhtBacklogRtNotDoneCond(p, a)])}`,
-    },
-    { key: "pwht_done", sql: `count(DISTINCT ${a}.joint_id) ${filterWhere([pwhtDoneCond(a)])}` },
-    {
-      key: "pwht_required",
-      sql: `count(DISTINCT ${a}.joint_id) ${filterWhere([inList(`${a}.pwht_y_n`, PWHT_YES_TOKENS, p)])}`,
-    },
+    { key: "pwht_backlog_all_types", sql: count("pwht_backlog") },       // M60
+    { key: "pwht_backlog_rt_types", sql: count("pwht_backlog_rt_types") }, // M62
+    { key: "pwht_backlog_rt100", sql: count("pwht_backlog_rt100") },     // M63
+    { key: "pwht_backlog_rt_not_done", sql: count("pwht_backlog_rt_not_done") }, // M64
+    { key: "pwht_done", sql: count("pwht_done") },                       // M65
+    { key: "pwht_required", sql: count("pwht_required") },
   ];
 }
 
@@ -168,8 +154,18 @@ export async function pwhtBacklogAging(
   scope: Scope,
   asOf: string,
 ): Promise<AgingBuckets> {
-  return backlogAging(scope, asOf, (p) => pwhtBacklogCond(p));
+  return backlogAging(scope, asOf, PWHT_BACKLOG_EP);
 }
+
+/** The M66 backlog families, for {@link backlogAging} / `backlogAgingBy`. */
+export const PWHT_BACKLOG_EP: BacklogFamily = {
+  flag: "pwht_backlog",
+  dateCol: "pwht_backlog_weld_date",
+};
+export const PWHT_BACKLOG_PRALL: BacklogFamily = {
+  flag: "pwht_backlog_rest",
+  dateCol: "pwht_backlog_prall_weld_date",
+};
 
 /** Map one row of a combined `pwhtAggs()` select into {@link PwhtStats}. */
 export function pwhtStatsFromRow(raw: unknown): PwhtStats {
@@ -210,41 +206,28 @@ export function pwhtDoneCondPrAll(a = "w"): string {
 }
 
 export function pwhtAggsPrAll(p: Params, a = "w"): AggSpec[] {
-  const ccc = pwhtBacklogCccCond(p, a);
-  const rest = pwhtBacklogCondPrAll(p, a);
-  const rtTypes = inList(`${a}.weld_type`, RT_WELD_TYPES, p);
-  const count = (cond: string) => `count(DISTINCT ${a}.joint_id) ${filterWhere([cond])}`;
+  void p;
+  const count = (flag: string) => `count(*) ${filterWhere([`${a}.${flag}`])}`;
+  // M61-M63 are two ADDED distinct counts (CCC branch + everyone else), so the
+  // view carries both flags and the metric adds the two counts.
   return [
-    // M61 = CCC branch + everyone else
     {
       key: "pwht_backlog_all_types",
-      sql: `${count(ccc)} + ${count(rest)}`,
+      sql: `${count("pwht_backlog_ccc")} + ${count("pwht_backlog_rest")}`,
     },
-    // M62 "PR all" = M61 + RT weld types
     {
       key: "pwht_backlog_rt_types",
-      sql: `${count(and([ccc, rtTypes]))} + ${count(and([rest, rtTypes]))}`,
+      sql: `${count("pwht_backlog_ccc_rt")} + ${count("pwht_backlog_rest_rt")}`,
     },
-    // M63 "PR all" = M62 + RT% = 100
     {
       key: "pwht_backlog_rt100",
-      sql:
-        `${count(and([ccc, rtTypes, `${a}.rt_pct = 100`]))}` +
-        ` + ${count(and([rest, rtTypes, `${a}.rt_pct = 100`]))}`,
+      sql: `${count("pwht_backlog_ccc_rt100")} + ${count("pwht_backlog_rest_rt100")}`,
     },
-    // M64 "PR all" — the SG/TMCP special case is a page filter, not a formula
-    // change, so the RT-not-done predicate is shared with the "EP" flavour.
-    {
-      key: "pwht_backlog_rt_not_done",
-      sql: count(pwhtBacklogRtNotDoneCond(p, a)),
-    },
-    // M65 "PR all"
-    { key: "pwht_done", sql: count(pwhtDoneCondPrAll(a)) },
+    { key: "pwht_backlog_rt_not_done", sql: count("pwht_backlog_rt_not_done") },
+    { key: "pwht_done", sql: count("pwht_done_prall") },
     {
       key: "pwht_required",
-      sql:
-        `${count(inList(`${a}.pwht_y_n`, PWHT_YES_TOKENS, p))}` +
-        ` + ${count(`${a}.pwht_y_n_ccc = ${p.add("Y")}`)}`,
+      sql: `${count("pwht_required")} + ${count("pwht_required_ccc")}`,
     },
   ];
 }

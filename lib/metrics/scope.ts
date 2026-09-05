@@ -261,13 +261,34 @@ export function scopeConditions(
     c.push(`${a}.wps_no IS NOT NULL`);
   }
   if (scope.pwhtStatusPresent) {
-    c.push(`${a}.pwht_weld_status IS NOT NULL`);
+    // `has_pwht_status` is the joint-grain form of `pwht_weld_status IS NOT NULL`.
+    c.push(`${a}.has_pwht_status`);
   }
   if (scope.areaClassificationLabel !== undefined) {
     c.push(`${a}.area_classification_label = ${p.add(scope.areaClassificationLabel)}`);
   }
   return c;
 }
+
+/**
+ * The joint-grain rollup every measure reads (`db/migrations/0013_mv_joint.sql`).
+ *
+ * One row per `(source, joint_id)`, so `DISTINCTCOUNT(Joint ID)` becomes
+ * `count(*)` and Postgres stops sorting 6.5 M joint ids once per aggregate per
+ * group. The row-level predicate functions in this package remain the canonical
+ * definition of every flag in that view — read them together.
+ */
+export const JOINT_FROM = "mv_joint w";
+
+/** The weld-pass fact table. Only row-level detail should read it. */
+export const ROW_FROM = "weld w";
+
+/**
+ * The per-WPS pivot grain, `(source, joint_id, wps_no)`. `wps_no` is the one
+ * dimension that is genuinely multi-valued per joint, so the WPS pivots cannot
+ * use {@link JOINT_FROM} without losing a joint from one of its two cells.
+ */
+export const WPS_FROM = "mv_joint_wps w";
 
 /** `AND` a list of conditions; `TRUE` when empty. */
 export function and(conds: readonly string[]): string {
@@ -316,8 +337,17 @@ export function agingCondition(
   asOfParam: string,
   alias = "w",
 ): string {
-  const age = `(${asOfParam}::date - ${alias}.weld_date)`;
-  const parts: string[] = [`${alias}.weld_date IS NOT NULL`];
+  return agingConditionOn(bucket, asOfParam, `${alias}.weld_date`);
+}
+
+/** {@link agingCondition} against an explicit date column. */
+export function agingConditionOn(
+  bucket: (typeof AGING_BUCKETS)[number],
+  asOfParam: string,
+  dateCol: string,
+): string {
+  const age = `(${asOfParam}::date - ${dateCol})`;
+  const parts: string[] = [`${dateCol} IS NOT NULL`];
   if (bucket.min !== null) parts.push(`${age} > ${bucket.min}`);
   if (bucket.max !== null) parts.push(`${age} <= ${bucket.max}`);
   return and(parts);
@@ -353,7 +383,7 @@ export function buildGroupedSelect(opts: {
   orderBy?: string;
   from?: string;
 }): string {
-  const from = opts.from ?? "weld w";
+  const from = opts.from ?? JOINT_FROM;
   const groupCols = opts.groups.map((g) => `${g.sql} AS ${g.key}`);
   const aggCols = opts.aggs.map((a) => `${a.sql} AS ${a.key}`);
   const select = [...groupCols, ...aggCols].join(",\n       ");

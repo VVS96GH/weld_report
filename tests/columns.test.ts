@@ -76,6 +76,22 @@ function batch2Columns(): Set<string> {
   return out;
 }
 
+/**
+ * `mv_joint` (migration 0013) — the joint-grain rollup every measure reads.
+ * Aliased `w`, the same as `weld`, because `scopeConditions` builds one WHERE
+ * for both, so its output columns join the `weld` allow-list.
+ */
+function mvJointColumns(): Set<string> {
+  const sql = readFileSync(
+    path.join(ROOT, "db/migrations/0013_mv_joint.sql"),
+    "utf8",
+  );
+  const out = new Set<string>();
+  for (const m of sql.matchAll(/\bAS\s+([a-z][a-z0-9_]*)\s*,?\s*$/gim)) out.add(m[1]);
+  for (const m of sql.matchAll(/^\s*w\.([a-z][a-z0-9_]*),\s*$/gim)) out.add(m[1]);
+  return out;
+}
+
 /** `spool` (R2-06) — aliased `sp` in lib/metrics/scope.ts. */
 function spoolColumns(): Set<string> {
   const sql = readFileSync(
@@ -188,7 +204,12 @@ function collectRefs(): Ref[] {
 
 describe("SQL column names exist in the schema contract", () => {
   it("references no unknown column", () => {
-    const weld = new Set([...dumpColumns(), ...DERIVED, ...batch2Columns()]);
+    const weld = new Set([
+      ...dumpColumns(),
+      ...DERIVED,
+      ...batch2Columns(),
+      ...mvJointColumns(),
+    ]);
     expect(weld.size).toBeGreaterThan(230);
 
     const allowed: Record<string, Set<string>> = {

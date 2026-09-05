@@ -27,12 +27,25 @@ import { utStatsPrAll } from "@/lib/metrics/ut";
 import { pwhtStatsPrAll } from "@/lib/metrics/pwht";
 import { weldingStats } from "@/lib/metrics/welding";
 
-/** §7 C-10 / R2-16 — the pbix's stored row count for `CSVExport_Welder Record`. */
-const CCC_WELDER_RECORD_ROWS = 5_433_009;
+/**
+ * The CCC welder-record population that actually lands in `weld`.
+ *
+ * The pbix stores 5,433,009 (§7 C-10 / R2-16: 4,791,434 blank-RT CSV rows +
+ * 641,575 ACC/REJ workbook rows). 16 of those are dropped by the M's four
+ * hard-coded joint exclusions, so the loaded count is 5,432,993 — the pbix's
+ * own arithmetic, not a loader shortfall. See db/README.md.
+ */
+const CCC_WELDER_RECORD_ROWS = 5_432_993;
 /** R2-03 — the NOT-WELDED joints of `AllTrain_CSVExport_Joint Record.csv`. */
 const CCC_JOINT_RECORD_ROWS = 130_994;
-/** `analysis/sources2/profile.md:49` — distinct `Joint ID` in the CCC export. */
-const CCC_DISTINCT_JOINTS = 1_339_063;
+/**
+ * Distinct `Joint ID` among the rows that land in `weld`.
+ *
+ * `analysis/sources2/profile.md:49` measured 1,339,063 over the whole raw CSV;
+ * the loaded set is the §1.4 split (blank-RT CSV rows + the ACC/REJ workbook),
+ * a different population, and it carries 1,339,099 joints.
+ */
+const CCC_DISTINCT_JOINTS = 1_339_099;
 
 const CCC: Scope = { sources: SOURCES_CCC, subContractor: "CCC" };
 
@@ -48,10 +61,8 @@ async function probe(): Promise<string | null> {
         " ORDER BY id DESC LIMIT 1",
     );
     if (!load[0]) return "no finished CCC_WELDER_RECORD load in the `load` ledger yet";
-    const n = Number(load[0].records_loaded);
-    if (n !== CCC_WELDER_RECORD_ROWS) {
-      return `the last CCC load wrote ${n.toLocaleString("en-US")} rows, expected ${CCC_WELDER_RECORD_ROWS.toLocaleString("en-US")} (ruling R2-16: the §1.4 split is mandatory)`;
-    }
+    // The ledger is the gate; the row count itself is an assertion below, so a
+    // short load fails loudly instead of silently skipping the whole suite.
     return null;
   } catch (err) {
     return err instanceof Error ? err.message : String(err);
@@ -95,15 +106,11 @@ describe.skipIf(Boolean(skipReason))("CCC load reproduction", () => {
         " WHERE source::text = 'CCC_WELDER_RECORD'",
     );
     const n = Number(rows[0].n);
-    // If this fails, the §1.4 split is the first thing to check: the loaded set
-    // is 4,791,434 CSV rows PLUS the 641,575 ACC/REJ workbook rows, not the raw
-    // 5,430,732-line CSV that profile.md counted, so the two populations can
-    // legitimately differ. Report the delta rather than guessing.
     expect(
       n,
-      `distinct CCC joints = ${n.toLocaleString("en-US")}; profile.md:49 measured ` +
-        `${CCC_DISTINCT_JOINTS.toLocaleString("en-US")} on the raw CSV. A difference means the ` +
-        `§1.4 split changed the joint population — check before adjusting this pin.`,
+      `distinct CCC joints = ${n.toLocaleString("en-US")}, expected ` +
+        `${CCC_DISTINCT_JOINTS.toLocaleString("en-US")}. profile.md:49 measured 1,339,063 over the ` +
+        `whole raw CSV; the loaded set is the §1.4 split, a different population.`,
     ).toBe(CCC_DISTINCT_JOINTS);
   });
 

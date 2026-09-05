@@ -17,7 +17,9 @@ import {
   and,
   buildGroupedSelect,
   filterWhere,
+  JOINT_FROM,
   scopeWhere,
+  SOURCES_PR_ALL,
   zCount,
   zSum,
   zText,
@@ -40,28 +42,31 @@ export function weldedInclRepairCond(a = "w"): string {
 }
 
 /** The welding aggregate bundle. */
+/**
+ * The welding bundle, read from `mv_joint`. Each flag there is `bool_or()` of
+ * the row-level predicate above, so `count(*) FILTER (WHERE flag)` is exactly
+ * the DAX's `DISTINCTCOUNT(Joint ID)` with that filter.
+ */
 export function weldingAggs(p: Params, a = "w"): AggSpec[] {
+  void p;
   return [
     // M01 Joints Welded
-    { key: "joints_welded", sql: `count(DISTINCT ${a}.joint_id) ${filterWhere([weldedCond(a)])}` },
+    { key: "joints_welded", sql: `count(*) ${filterWhere([`${a}.is_welded_norepair`])}` },
     // M03 Joints Welded incl. repairs & rewelds (denominator of the WPS ratio)
     {
       key: "joints_welded_incl_repair_reweld",
-      sql: `count(DISTINCT ${a}.joint_id) ${filterWhere([weldedInclRepairCond(a)])}`,
+      sql: `count(*) ${filterWhere([`${a}.is_welded`])}`,
     },
-    // M70 MT/PT Done, `"EP"` flavour (MT report + PT report, both welded)
+    // M70 MT/PT Done — the DAX adds two independent distinct counts.
     {
       key: "mt_pt_done",
       sql:
-        `count(DISTINCT ${a}.joint_id) ${filterWhere([`${a}.weld_date IS NOT NULL`, `${a}.mt_report IS NOT NULL`])}` +
-        ` + count(DISTINCT ${a}.joint_id) ${filterWhere([`${a}.weld_date IS NOT NULL`, `${a}.pt_report IS NOT NULL`])}`,
+        `count(*) ${filterWhere([`${a}.mt_done`])}` +
+        ` + count(*) ${filterWhere([`${a}.pt_done`])}`,
     },
     // M71 MT Qty / MPI Done
-    {
-      key: "mt_done",
-      sql: `count(DISTINCT ${a}.joint_id) ${filterWhere([`${a}.weld_date IS NOT NULL`, `${a}.mt_report IS NOT NULL`])}`,
-    },
-    { key: "dia_inch", sql: `sum(${a}.dia_inch) ${filterWhere([weldedCond(a)])}` },
+    { key: "mt_done", sql: `count(*) ${filterWhere([`${a}.mt_done`])}` },
+    { key: "dia_inch", sql: `sum(${a}.dia_inch_welded)` },
   ];
 }
 
@@ -146,18 +151,21 @@ export async function weldTypePivot(
   opts: { thisWeekEnding?: string } = {},
 ): Promise<WeldTypePivot> {
   const p = new Params();
-  const conds = [scopeWhere(scope, p), weldedCond()];
+  const conds = [scopeWhere(scope, p), "w.is_welded_norepair"];
   if (opts.thisWeekEnding) {
     // M05 — Welding Status for this Week. Weeks run Saturday→Friday and the
-    // label is the Friday (`Calendar[Week_End_Date]`, §M05).
+    // label is the Friday (`Calendar[Week_End_Date]`, §M05). The clock is the
+    // joint's latest NON-REPAIR weld date, because M01 excludes repairs.
     const we = p.add(opts.thisWeekEnding);
-    conds.push(`w.weld_date > ${we}::date - 7 AND w.weld_date <= ${we}::date`);
+    conds.push(
+      `w.weld_date_norepair > ${we}::date - 7 AND w.weld_date_norepair <= ${we}::date`,
+    );
   }
   const where = and(conds);
   const sql =
-    `SELECT w.weld_cat, w.weld_type, count(DISTINCT w.joint_id) AS joints_welded,\n` +
+    `SELECT w.weld_cat, w.weld_type, count(*) AS joints_welded,\n` +
     `       GROUPING(w.weld_cat) AS g_cat, GROUPING(w.weld_type) AS g_type\n` +
-    `  FROM weld w\n` +
+    `  FROM ${JOINT_FROM}\n` +
     ` WHERE ${where}\n` +
     ` GROUP BY GROUPING SETS ((w.weld_cat, w.weld_type), (w.weld_cat), ())`;
   const rows = await query(sql, p.list());
@@ -197,9 +205,9 @@ export async function weldTypeDistribution(
 ): Promise<Array<{ weld_type: string | null; joints_welded: number }>> {
   const p = new Params();
   const sql =
-    `SELECT w.weld_type, count(DISTINCT w.joint_id) AS joints_welded\n` +
-    `  FROM weld w\n` +
-    ` WHERE ${and([scopeWhere(scope, p), weldedCond()])}\n` +
+    `SELECT w.weld_type, count(*) AS joints_welded\n` +
+    `  FROM ${JOINT_FROM}\n` +
+    ` WHERE ${and([scopeWhere(scope, p), "w.is_welded_norepair"])}\n` +
     ` GROUP BY 1\n` +
     ` ORDER BY 2 DESC NULLS LAST`;
   const rows = await query(sql, p.list());
@@ -222,7 +230,7 @@ export function weldingStatsFromRow(raw: unknown): WeldingStats {
  */
 export async function sourceHasRows(sources: readonly string[]): Promise<boolean> {
   const p = new Params();
-  const sql = `SELECT EXISTS (SELECT 1 FROM weld w WHERE w.source::text = ANY(${p.any(sources)}::text[])) AS present`;
+  const sql = `SELECT EXISTS (SELECT 1 FROM ${JOINT_FROM} WHERE w.source::text = ANY(${p.any(sources)}::text[])) AS present`;
   try {
     const rows = await query<{ present: boolean }>(sql, p.list());
     return Boolean(rows[0]?.present);
@@ -230,3 +238,36 @@ export async function sourceHasRows(sources: readonly string[]): Promise<boolean
     return false;
   }
 }
+
+/**
+ * Which fact sources actually have rows in `weld`, and which of the pbix's
+ * five do not.
+ *
+ * Every "X is not loaded" note on a page is derived from this, never
+ * hard-coded: a note that keeps claiming CCC is missing after CCC loads is
+ * exactly as dishonest as a fabricated zero, just in the other direction.
+ */
+export async function loadedSources(): Promise<{
+  loaded: string[];
+  absent: string[];
+}> {
+  const all = [...SOURCES_PR_ALL];
+  try {
+    const rows = await query<{ source: string }>(
+      "SELECT DISTINCT source::text AS source FROM mv_joint ORDER BY 1",
+    );
+    const loaded = rows.map((r) => r.source);
+    return { loaded, absent: all.filter((s) => !loaded.includes(s)) };
+  } catch {
+    return { loaded: [], absent: all };
+  }
+}
+
+/** Human-readable party names for the `weld_source` enum values. */
+export const SOURCE_LABELS: Readonly<Record<string, string>> = {
+  WELD_DUMP: "Weld Dump (GAC, TEKFEN, MEDGULF)",
+  CCC_WELDER_RECORD: "CCC welder record",
+  CCC_JOINT_RECORD: "CCC joint record",
+  ACCIONA: "ACCIONA",
+  INCO: "INCO",
+};

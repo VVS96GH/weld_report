@@ -272,6 +272,65 @@ digit, with the same SQL semantics this layer uses.
 
 ---
 
+## Where the numbers come from: `mv_joint`
+
+Every measure reads the joint-grain materialised view
+`db/migrations/0013_mv_joint.sql`, authored by this lane.
+
+`weld` is weld-pass grain — 6.5 M rows over 2,370,428 joints, CCC alone
+contributing 5,432,993 rows over 1,339,099 joints (~4.06 rows per joint,
+ruling R2-01). Every headline measure is `DISTINCTCOUNT(Joint ID)`, so each
+pivot sorted millions of joint ids once per aggregate per group. Measured
+through the API at 6.5 M rows: page 1 = 20.8 s, page 2 = 30.8 s, page 3 = 22.0 s.
+§6.5 predicted exactly this.
+
+**The translation.** DAX evaluates each filter at ROW level and then counts
+distinct joints, so a joint is counted iff ANY of its rows satisfies the
+filter — which is `bool_or(<row predicate>)`. Every flag in the view is that,
+one per predicate function in this package, and every
+`count(DISTINCT joint_id) FILTER (WHERE p)` becomes `count(*) FILTER (WHERE flag)`.
+Additive values (films, lengths, dia inch) stay sums.
+
+The row-level predicate functions (`rtBacklogCond`, `pwhtBacklogCond`,
+`testedCond`, …) are **still the canonical definition** — they are what the view
+materialises, and they are the fallback if a flag ever has to be re-derived.
+
+**Three grains, deliberately:**
+
+| view | grain | who reads it |
+|---|---|---|
+| `mv_joint` | `(source, joint_id)` — 2,370,428 rows | every measure and pivot |
+| `mv_joint_wps` | `(source, joint_id, wps_no)` — 2,194,756 rows | the per-WPS pivots only |
+| `weld` | weld pass — 6.5 M rows | nothing in `lib/metrics` any more |
+
+`wps_no` is the single dimension that is genuinely multi-valued per joint (1
+joint of 2,370,428, measured). At row grain that joint counts in BOTH WPS
+cells, which is what the DAX does and what `wps_gac_nonsg` pins; at joint grain
+`GAC-WPS-P-CS/LTC-002` came out at 223,301 instead of 223,302. Hence the second
+view. The other twelve dimensions are single-valued for all but ≤11 joints
+(`rt_pct` and `service_class_cat_ndt` 11 each; `weld_type`, `dia_inch_factor` 1
+each; the rest 0) and the per-RT%/per-weld-type pins police them.
+
+**Per-family aging clocks.** `mv_joint.weld_date` is the max over ALL of a
+joint's rows and must NOT drive the buckets: `reconcile_check.py` ages a
+backlog joint from the latest weld date among its BACKLOG rows, and a joint can
+carry a later non-backlog row. So the view carries
+`rt_backlog_weld_date`, `rt_backlog_prall_weld_date`,
+`pwht_backlog_weld_date`, `pwht_backlog_prall_weld_date`, and
+`weld_date_norepair` for M05's week filter (M01 excludes repairs).
+`BacklogFamily` in `rt.ts` pairs each flag with its clock.
+
+**The proof.** All 358 assertions of `tests/metrics.test.ts` against
+`analysis/reconcile_results.json` pass bit-for-bit after the switch. Do not
+change a flag without re-running that suite.
+
+**REFRESH.** `REFRESH MATERIALIZED VIEW CONCURRENTLY mv_joint;` **and**
+`mv_joint_wps` after every `weld` load and after any `spool` reload (the
+FABRICATED flags embed the spool join). Both have the UNIQUE index
+CONCURRENTLY requires. Measured: 41 s and 6.7 s.
+
+---
+
 ## Batching
 
 Page assemblers call `bundleTotal()` / `bundleBy()` in `lib/pages/welding.ts`,

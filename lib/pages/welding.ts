@@ -58,9 +58,9 @@ import {
   rtAggsPrAll,
   rtBacklogAggs,
   rtBacklogAggsPrAll,
-  rtBacklogCond,
-  rtBacklogCondPrAll,
   rtBacklogStatsFromRow,
+  RT_BACKLOG_EP,
+  RT_BACKLOG_PRALL,
   rtPrAllStatsFromRow,
   rtStatsFromRow,
   spoolMasterLoaded,
@@ -70,9 +70,9 @@ import {
 import {
   pwhtAggs,
   pwhtAggsPrAll,
-  pwhtBacklogCond,
-  pwhtBacklogCondPrAll,
   pwhtStatsFromRow,
+  PWHT_BACKLOG_EP,
+  PWHT_BACKLOG_PRALL,
   type PwhtStats,
 } from "@/lib/metrics/pwht";
 import {
@@ -83,6 +83,8 @@ import {
   type UtStats,
 } from "@/lib/metrics/ut";
 import {
+  loadedSources,
+  SOURCE_LABELS,
   sourceHasRows,
   weldingAggs,
   weldingStatsFromRow,
@@ -104,6 +106,7 @@ import {
 import {
   buildGroupedSelect,
   type GroupSpec,
+  JOINT_FROM,
   Params,
   type Scope,
   scopeWhere,
@@ -409,6 +412,49 @@ async function bundleBy(
     out.set(key, bundleFromRow(raw, av.variant, av.spool));
   }
   return out;
+}
+
+/**
+ * `bundleBy` and `bundleTotal` in ONE round-trip, via `GROUPING SETS`.
+ *
+ * Every table needs both the per-group rows and the grand total, and the total
+ * is not the sum of the groups (distinct counts are not additive). Asking for
+ * them separately doubled the scans on the project pages; the rollup row of a
+ * grouping set is the same grand total for one scan.
+ */
+async function bundleByWithTotal(
+  scope: Scope,
+  group: GroupSpec,
+  av: Availability,
+): Promise<{ byGroup: Map<string | null, Bundle>; total: Bundle }> {
+  const p = new Params();
+  const aggs = allAggs(p, av.variant, av.spool);
+  const cols = [
+    `${group.sql} AS ${group.key}`,
+    `GROUPING(${group.sql}) AS g_rollup`,
+    ...aggs.map((a) => `${a.sql} AS ${a.key}`),
+  ].join(",\n       ");
+  const sql =
+    `SELECT ${cols}\n` +
+    `  FROM ${JOINT_FROM}\n` +
+    ` WHERE ${scopeWhere(scope, p)}\n` +
+    ` GROUP BY GROUPING SETS ((${group.sql}), ())`;
+  const rows = await query(sql, p.list());
+  const byGroup = new Map<string | null, Bundle>();
+  let total = emptyBundle();
+  for (const raw of rows) {
+    const rec = raw as Record<string, unknown>;
+    if (Number(rec.g_rollup) === 1) {
+      total = bundleFromRow(raw, av.variant, av.spool);
+      continue;
+    }
+    const key =
+      rec[group.key] === null || rec[group.key] === undefined
+        ? null
+        : String(rec[group.key]);
+    byGroup.set(key, bundleFromRow(raw, av.variant, av.spool));
+  }
+  return { byGroup, total };
 }
 
 /** Probe the batch-2 tables once per page rather than once per widget. */
@@ -811,10 +857,25 @@ const REGISTER_NOTE =
   "Project_Welder and WPS Approved come from the manual registers " +
   "ref_qualified_welders / ref_wps_register; both are empty.";
 
-const PROJECT_SCOPE_NOTE =
-  "Project totals cover the loaded sources only (Weld Dump: GAC, TEKFEN, " +
-  "MEDGULF). CCC, ACCIONA and INCO are not loaded, so these numbers are not " +
-  "the full project scope the mockup showed.";
+/**
+ * The project-scope disclosure, COMPUTED from what `weld` actually holds.
+ * Hard-coding it meant page 1 kept saying CCC was missing after CCC loaded —
+ * a stale note is as dishonest as a fabricated zero.
+ */
+function projectScopeNote(sources: {
+  loaded: string[];
+  absent: string[];
+}): string | null {
+  if (sources.absent.length === 0) return null;
+  const label = (s: string) => SOURCE_LABELS[s] ?? s;
+  return (
+    `Project totals cover the loaded sources only: ` +
+    `${sources.loaded.map(label).join(", ") || "none"}. ` +
+    `${sources.absent.map(label).join(", ")} ` +
+    `${sources.absent.length === 1 ? "is" : "are"} not loaded, so these numbers ` +
+    `are not the full project scope the mockup showed.`
+  );
+}
 
 // ── page families ───────────────────────────────────────────────────────────
 
@@ -1013,7 +1074,9 @@ async function buildProjectKpiPage(spec: SpecPage, ctx: Ctx): Promise<Widget[]> 
     }),
     weldTypeDistribution({ ...scope, excludeWeldTypes: ["THD"] }),
   ]);
-  note(ctx, PROJECT_SCOPE_NOTE);
+  const sources = await loadedSources();
+  const scopeNote = projectScopeNote(sources);
+  if (scopeNote) note(ctx, scopeNote);
   if (!av.utTracker) note(ctx, UT_TRACKER_NOTE);
   if (!av.spool) note(ctx, FABRICATED_NOTE);
   if (!(await sourceHasRows(SOURCES_CCC))) note(ctx, CCC_NOTE);
@@ -1260,22 +1323,26 @@ async function buildProjectStatusPage(
     temporaryLines: false,
   };
   const av = await availability("PR_ALL", SOURCES_PR_ALL_LOADED);
-  note(ctx, PROJECT_SCOPE_NOTE);
+  const sources = await loadedSources();
+  const scopeNote = projectScopeNote(sources);
+  if (scopeNote) note(ctx, scopeNote);
   if (!av.utTracker) note(ctx, UT_TRACKER_NOTE);
   if (!(await sourceHasRows(SOURCES_CCC))) note(ctx, CCC_NOTE);
   const weekEnd = await latestWeekEnd();
   const rtTypes = { ...scope, weldTypes: ["BW", "GW", "MW", "CLET"] };
   const noJ = { ...scope, excludeWeldCats: ["J"] };
-  const [pivot, thisWeek, byCat, total, bySub, subTotal] = await Promise.all([
+  const [pivot, thisWeek, cat, sub] = await Promise.all([
     weldTypePivot(scope),
     weekEnd
       ? weldTypePivot(scope, { thisWeekEnding: weekEnd })
       : Promise.resolve(null),
-    bundleBy(rtTypes, GROUP_WELD_CAT, av),
-    bundleTotal(rtTypes, av),
-    bundleBy(noJ, GROUP_SUBCON, av),
-    bundleTotal(noJ, av),
+    bundleByWithTotal(rtTypes, GROUP_WELD_CAT, av),
+    bundleByWithTotal(noJ, GROUP_SUBCON, av),
   ]);
+  const byCat = cat.byGroup;
+  const total = cat.total;
+  const bySub = sub.byGroup;
+  const subTotal = sub.total;
   if (!thisWeek) note(ctx, TREND_NOTE);
   if (!av.spool) note(ctx, FABRICATED_NOTE);
 
@@ -1509,14 +1576,14 @@ async function buildNdePage(
     pwhtStatusPresent: conf.kind === "pwht" && !isCcc ? true : undefined,
   };
   const av = await availability(variant, sourcesFor(conf.sub));
-  const cond =
+  const family =
     conf.kind === "pwht"
       ? variant === "EP"
-        ? pwhtBacklogCond
-        : pwhtBacklogCondPrAll
+        ? PWHT_BACKLOG_EP
+        : PWHT_BACKLOG_PRALL
       : variant === "EP"
-        ? rtBacklogCond
-        : rtBacklogCondPrAll;
+        ? RT_BACKLOG_EP
+        : RT_BACKLOG_PRALL;
 
   // R2-05: `RT Selected Date` is empty on every CCC row, so M51/M66 have no
   // clock for CCC. Honest-empty, never a substituted date.
@@ -1534,12 +1601,12 @@ async function buildNdePage(
     bundleBy(scope, GROUP_WELD_CAT, av),
     bundleBy(scope, classGroup, av),
     bundleBy(scope, GROUP_RT_PCT, av),
-    wantAging ? backlogAging(scope, ctx.asOf, cond) : Promise.resolve(null),
+    wantAging ? backlogAging(scope, ctx.asOf, family) : Promise.resolve(null),
     wantAging
-      ? backlogAgingBy(scope, ctx.asOf, cond, GROUP_WELD_CAT)
+      ? backlogAgingBy(scope, ctx.asOf, family, GROUP_WELD_CAT)
       : Promise.resolve(new Map<string | null, AgingBuckets>()),
     wantAging
-      ? backlogAgingBy(scope, ctx.asOf, cond, classGroup)
+      ? backlogAgingBy(scope, ctx.asOf, family, classGroup)
       : Promise.resolve(new Map<string | null, AgingBuckets>()),
   ]);
   if (!av.spool) note(ctx, FABRICATED_NOTE);
