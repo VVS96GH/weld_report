@@ -56,6 +56,8 @@ rules are right; the pbix stores 958,634 for its own (19 days older) snapshot.
 | `0010_batch2_schema.sql` | `weld_to_date` v3, fractional films, 23 new `weld` columns, `spool`, `ccc_joint_pwht`, the ref tables, `load.source` vocabulary |
 | `0011_mv_weekly_progress_v3.sql` | re-creates `mv_weekly_progress` after 0010 dropped it — **the current definition** |
 | `0012_lengths_and_manual_exclusion.sql` | `weld_length_m` + the two UT length columns + `week_end_date_rt`; `weld_manual_exclusion` seeded with the M’s 4 Joint IDs |
+| `0013_mv_joint.sql` | **metrics lane** — `mv_joint` / `mv_joint_wps`, the joint-grain rollups |
+| `0014_batch3_schema.sql` | `weld.sub_contractor_tier`; `weld_length`/`rej_length` widened for Inco's millimetres; `weld_length_by_dia` precision; `ref_code_label`; the three welder tables |
 | `0013_mv_joint.sql` | **metrics lane** — `mv_joint` (2,370,428 rows) and `mv_joint_wps` (2,194,756), the joint-grain rollups the project pages read |
 
 `0002` and `0003` are produced by `scripts/gen-schema-columns.ts` from
@@ -656,6 +658,139 @@ ID recipe reproduces that number exactly when run over the whole file. What land
 a *different* population: the CSV's untested rows plus the workbook's 641,575, which together
 carry **1,339,099** distinct joints (and 1,339,103 before the four manual exclusions). The
 workbook contributes joints the untested CSV slice does not.
+
+
+## Batch 3 — Acciona, Inco, weld length, the welder registers
+
+Rulings R3-01 … R3-15 (`analysis/sources3/rulings.md`) are binding. Migration `0014`,
+four loaders, all measured live.
+
+| loader | source(s) | target | rows |
+|---|---|---|---:|
+| `load-acciona.ts` | `Acciona/Acciona_Latest Add to Query.xlsx` | `weld` (ACCIONA) | 13,313 |
+| `load-inco.ts` | `Inco/Master Weld_Latest.xlsx` | `weld` (INCO) | 10,327 |
+| `load-weld-length.ts` | `Weld Length/Weld Length.xlsx` + `Rework code.xlsx` | `weld_length_by_dia`, `ref_code_label`, `weld.weld_length_m` | 98 + 73 + 6.07 M updated |
+| `load-welders.ts` | `Welders/SCTR NFE WELDERS APPLIED.xls` + `Welders Power Q for PBI .xlsx` | `ref_qualified_welders`, `ref_welder_qualification`, `ref_welder_status_weekly` | 6 + 5,484 + 6,096 |
+
+```json
+"db:load:acciona":     "node --env-file-if-exists=.env --import tsx scripts/load-acciona.ts",
+"db:load:inco":        "node --env-file-if-exists=.env --import tsx scripts/load-inco.ts",
+"db:load:weld-length": "node --env-file-if-exists=.env --import tsx scripts/load-weld-length.ts",
+"db:load:welders":     "node --env-file-if-exists=.env --import tsx scripts/load-welders.ts"
+```
+
+Run `db:load:weld-length` **after** Acciona and Inco: it materialises `weld.weld_length_m`
+across every source in one pass.
+
+### `weld_length` carries two different units, and that is the pbix's doing
+
+`0014` widens `weld.weld_length` and `weld.rej_length` from `numeric(5,4)` to
+`numeric(12,4)`. Not cosmetic: `numeric(5,4)` maxes out at 9.9999, which fits the dump's
+**metres** (0.1049…) and overflows on Inco's **millimetres** (`Length (MM)` up to 7,957,
+`RT LENGTH (MM)` up to 2,500). The M files Inco's millimetres into the same column, and the
+DAX's Inco branch divides by 1000 to compensate. Read `weld_length_m`, which normalises to
+metres; `weld_length` itself is METRES for `WELD_DUMP`, MILLIMETRES for `INCO`, NULL for
+CCC and Acciona.
+
+Two materialised views read those columns — `mv_weekly_progress` (0011) and `mv_joint`
+(0013, the **metrics lane's**) — and Postgres refuses to alter a column a view reads. Rather
+than copy 0013's 400-line definition into a file this lane does not own, `0014` captures the
+dependants from the catalogue with `pg_get_viewdef()` / `pg_get_indexdef()`, drops them,
+alters, and rebuilds them from what the database itself holds. Nothing is retyped and the
+metrics lane stays the only author of `mv_joint`. They come back `WITH NO DATA`, so the
+next `refreshMatviews()` does a plain first refresh — which is exactly why that
+`relispopulated` branch exists.
+
+### `weld_length_m`, materialised — what each source gets, measured
+
+The DAX, verbatim: Inco with a manual-UT report gets `Weld Length / 1000`; everything else
+gets `LOOKUPVALUE('Weld Length'[Weld Length], [Dia inch])`, and `ISBLANK → BLANK()` — never 0.
+
+| source | rows with a length | NULL | why |
+|---|---:|---:|---|
+| `WELD_DUMP` | 958,613 | 2 | two dia values are not among the 98 |
+| `CCC_WELDER_RECORD` | 4,984,143 | 448,850 | `Dia inch` is `0.0`, and `0` is not one of the 98 keys (the smallest is 0.01) |
+| `CCC_JOINT_RECORD` | 111,486 | 19,508 | as CCC |
+| `ACCIONA` | 13,313 | 0 | all 15 of its dia values are in the table |
+| `INCO` | 0 | 10,327 | **R3-06** — the Inco branch is gated on `Manual UT Report No. <> ''`, which the Inco M never fills, and the fallback lookup needs `Dia inch`, which Inco leaves empty. Reproduced literally; not substituted |
+
+### Acciona
+
+One row per joint, 13,313 rows over **13,312** distinct `joint_id` — see the deviation note
+below. It contributes to the RT / PMI / PT metrics and the welded-joint counts and to
+**nothing else**: PWHT, HT, UT, MT, weld length and spool status are all blank BY SOURCE (the
+M adds them as `""`), not blank by data.
+
+Reproduced literally, each flagged rather than tidied:
+
+* `tracer_shot` holds `FJ-49`, not `T`. The M computes a `Tracer Shot = if [Tracer 1] <> "" then "T"` flag, deletes it, then renames the raw `Tracer 1` over the top.
+* `PMI Acc/Rej` keeps 26 `ACCEPTED` rows: the M's `Accepted → A` is a case-**sensitive** `ReplaceText`.
+* `repair_reweld` is `''` for every Acciona row — `Weld No.` ends `RW1`/`RS1`, so `right(joint_id,2)` is `W1`, never `RW`/`R1`/`R2`. **Acciona repairs are invisible to the repair/reweld split.**
+* `rt_weld_status` emits only `S` (11,689) and `''` (1,624). Its `HS` branch tests `RT Report = null` on a column that holds `""`, and every row that has an `RT%` also has a report, so `HS` never fires.
+* `original_joint` holds the literal `"Acciona"`, not a joint id. No `original_joint` logic may run on these rows.
+* `joint_id` repeats the ISO number, because Acciona's `Spool No.` is often a full `31941A6-IA6594827-01-01` string: `31941A7-BR6594818AE-31941A7-BR6594818AE-03-FJ-47`. That is what the pbix stores.
+* Dates are `dd-mm-yyyy` TEXT, parsed in `scripts/lib/xlsx-stream.ts::parseDmy` and **nowhere else** (R3-03) — adding it to `weld_to_date()` would make every other source mis-read `01-02-2024`.
+* The M's `RemoveRowsWithErrors` would drop an unparseable `RT Date` row **silently**. The loader keeps and logs them instead; today there are 0.
+
+`sub_contractor_tier` (R3-04) carries Acciona's `Column12`: `FOURTH DIMENSION` 8,593 /
+`DEBAJ` 4,720. NULL for every other source — no other source has a tier, as opposed to
+having an unknown one.
+
+### Inco
+
+Loaded, **not** filtered (R3-01): the default exclusion belongs in the query layer as
+`sub_contractor <> 'INCO'`, where the pbix's 69 filters put it. `[Total Scope Dia "BW" "PR all"]`
+includes Inco explicitly, so a loader-level exclusion would make that measure wrong.
+
+10,327 rows over **7,238** distinct joints — joint × RT-fragment grain, so every Inco metric
+must be `count(DISTINCT joint_id)`. `weldpoint_seq` is the per-joint sequence in file order
+(max 23) because `mv_joint`'s WP1 gate is
+`CASE source WHEN 'WELD_DUMP' THEN weldpoint_no = 1 ELSE weldpoint_seq = 1 END` and a NULL
+there would drop the whole source from M23/M24/M33.
+
+* `joint_id` carries three consecutive hyphens (`65-T9405-A---H1`): `Spool No.` is the literal `"-"`. `spool_id` is `"-"` too, so **Inco can never join `spool`**.
+* The M **fabricates a UT block out of a free-text remark** — `Remarks = 'PAUT'` on 441 rows sets `by_ut`, `ut_remarks`, `ut_date`, `ut_report`, `ut_acc_rej` from the RT columns *without clearing them*, so those 441 rows count as both RT and UT. `manual_ut_report_no_all` carries the same value, because the DAX's Inco branch of `[Manual UT Report No.]` coalesces `UT Report`.
+* `PT/MT Report` and `PT/MT Date` each feed **two** targets: MT and PT are identical for every Inco row.
+* `RT LENGTH (MM)` is the **inspected** length and the M files it under `rej_length`.
+* `PWHT Report` / `PWHT Date` are 100 % empty, so the PWHT pages stay GAC/TEK/MED/CCC-only.
+* `repair_reweld` is `''`: `Repair & Reweld "PR all"` opens with `[Sub-Contractor] <> "Inco"`, a DAX exclusion, not a filter-layer one.
+
+### The welder registers
+
+`SCTR NFE WELDERS APPLIED.xls` is **BIFF8**, which `exceljs` cannot read at all — handed an
+`.xls` it looks for a zip central directory and throws. It is converted **at load time**
+through `uv run scripts/py/xls_to_csv.py` (R3-11); a checked-in conversion would go stale
+silently the next time the analyst re-downloads the workbook. The loader resolves `uv` from
+`UV_BIN`, `~/.local/bin`, `/usr/local/bin`, `/usr/bin` and `command -v`, and fails loudly
+with all of them named rather than loading a partial register.
+
+**The stored Power Query for that sheet is stale and would ERROR on refresh** (R3-09). A
+column has been inserted at the left since it was written, so
+`RenameColumns({{"Column2","SUB CONTRACTOR"}})` targets a name that no longer exists — and
+`Table.RenameColumns` raises on a missing column. Its two `RemoveLastN` steps would also cut
+5 live rows; the pbix's stored 16 are reproduced by the final `TOTAL` filter alone. The
+loader is therefore built **positionally against the file**, taking the party name from
+column 3 with fill-down and dropping the `TOTAL` row. M90 = **3,816** (CCC 2,045, TEKFEN 773,
+GAC 611, INCO 239, MEDGULF 121, ACCIONA 27) — the two CCC rows and the two TEKFEN rows are
+summed at load, which is what the DAX does under its party filter.
+
+`ref_qualified_welders.as_of` is the **file mtime** (2026-08-23), not a reporting date: the
+sheet carries no date anywhere. `source_note` says so on every row, so a widget can show
+provenance honestly instead of implying a reporting week.
+
+`ref_welder_status_weekly` unpivots `CUM WEEK # Status`: 1,016 source rows × 6 parties =
+**6,096** rows, 127 weeks × 8 categories × 6 parties. Deliberately not eight new
+`weld_weekly_snapshot` metric ids (R3-13) — they are a category breakdown of one population,
+and putting them in the snapshot table would make `sum(value)` over metrics meaningless. The
+current-week sheet (`WEEK #   STATUS`, 8 rows) uses different category strings, so the pbix
+relationship between the two matches on almost nothing; treat them as independent.
+
+### `ref_code_label` is not a pbix reproduction
+
+`Rework code.xlsx` is read by **no** Power Query and feeds no measure. It is loaded as
+display labels only, never a join key, never a filter, and never a source of truth about
+which codes exist — the fact tables are. 73 rows: `rework_code` 32, `defect_code` 18,
+`nde_status` 9, `weld_type` 14.
 
 ---
 

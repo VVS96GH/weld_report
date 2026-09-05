@@ -21,7 +21,11 @@
     "db:load:exclusions": "node --env-file-if-exists=.env --import tsx scripts/load-exclusion-list.ts",
     "db:load:spool": "node --env-file-if-exists=.env --import tsx scripts/load-spool-dump.ts",
     "db:load:ccc-joints": "node --env-file-if-exists=.env --import tsx scripts/load-ccc-joint-record.ts",
-    "db:load:ccc": "node --env-file-if-exists=.env --max-old-space-size=4096 --import tsx scripts/load-ccc-welder-record.ts"
+    "db:load:ccc": "node --env-file-if-exists=.env --max-old-space-size=4096 --import tsx scripts/load-ccc-welder-record.ts",
+    "db:load:acciona": "node --env-file-if-exists=.env --import tsx scripts/load-acciona.ts",
+    "db:load:inco": "node --env-file-if-exists=.env --import tsx scripts/load-inco.ts",
+    "db:load:weld-length": "node --env-file-if-exists=.env --import tsx scripts/load-weld-length.ts",
+    "db:load:welders": "node --env-file-if-exists=.env --import tsx scripts/load-welders.ts"
   },
   "dependencies": {
     "chart.js": "4.5.1",

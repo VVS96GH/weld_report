@@ -19,7 +19,8 @@ import { buildStagingDdl, buildWeldDdl, buildWeldInsert, copyColumns } from "./w
 import { resolveMigrations, type TableSchema } from "./sql-schema";
 import {
   CCC_JOINT_PWHT_COLUMNS, CCC_JOINT_WELD_COLUMNS, CCC_OVERLAY_COLUMNS,
-  CCC_WELDER_WELD_COLUMNS, SPOOL_DUMP_MAP, TALISMAN_SPOOL_MAP, spoolColumns,
+  ACCIONA_WELD_COLUMNS, CCC_WELDER_WELD_COLUMNS, INCO_WELD_COLUMNS,
+  SPOOL_DUMP_MAP, TALISMAN_SPOOL_MAP, spoolColumns,
 } from "./load-columns";
 import {
   EXCLUDED_JOINT_IDS, WELD_TYPE_STEPS, normaliseWeldType, repairRewaldPrAll,
@@ -117,8 +118,8 @@ function main(): void {
 
   check("stg_weld_dump has 223 data columns + load_id + line_no", stg.size === 225, `got ${stg.size}`);
   check(
-    "weld effective column count = 246 (219 after 0008; +23 in 0010, +4 in 0012)",
-    weld.size === 246,
+    "weld effective column count = 247 (219 after 0008; +23 in 0010, +4 in 0012, +1 in 0014)",
+    weld.size === 247,
     `got ${weld.size}`,
   );
 
@@ -360,6 +361,71 @@ function main(): void {
       calls && !handRolled,
       calls ? (handRolled ? "still has a hand-rolled REFRESH statement" : "") : "no refreshMatviews() call");
   }
+
+
+  // ---- 10. batch 3 (migration 0014, rulings R3-01..R3-15) -----------------
+  const b3Tables: Record<string, string[]> = {
+    ref_code_label: ["domain", "code", "description"],
+    ref_qualified_welders: ["sub_contractor", "qualified_welders", "active_welders",
+      "active_piping_welders", "as_of", "source_note"],
+    ref_welder_qualification: ["load_id", "discipline", "welder_name", "wqt_no", "welder_no",
+      "wps_no", "date_of_test", "status", "sub_contractor", "sub_contractor_raw",
+      "welder_id_name", "welder_id_code_sub"],
+    ref_welder_status_weekly: ["week_end_date", "sub_contractor", "category", "value",
+      "category_raw", "period_raw", "week_raw"],
+  };
+  for (const [t, cols] of Object.entries(b3Tables)) {
+    const have = names(schema.tables.get(t));
+    check(`${t} exists with its ${cols.length} contract columns`,
+      have.size > 0 && missing(cols, have).length === 0,
+      have.size === 0 ? "table absent" : missing(cols, have).join(", "));
+  }
+  check("R3-04: weld.sub_contractor_tier exists (Acciona's FOURTH DIMENSION / DEBAJ)",
+    weld.has("sub_contractor_tier"));
+  check("R3-07: weld_length_by_dia.weld_length is numeric(12,9)",
+    schema.tables.get("weld_length_by_dia")?.columns.get("weld_length") === "numeric(12,9)",
+    schema.tables.get("weld_length_by_dia")?.columns.get("weld_length") ?? "ABSENT");
+  // Found while writing the Inco loader: mm values up to 7,957 in a numeric(5,4).
+  for (const c of ["weld_length", "rej_length"]) {
+    check(`weld.${c} is numeric(12,4) — Inco files MILLIMETRES in it`,
+      weldTypes.get(c) === "numeric(12,4)", weldTypes.get(c) ?? "ABSENT");
+  }
+  check("ref_code_label is marked NOT A PBIX REPRODUCTION in its COMMENT (R3-08)",
+    /COMMENT ON TABLE ref_code_label[\s\S]{0,200}NOT A PBIX REPRODUCTION/.test(allSql));
+  for (const src of ["WELDERS_SCTR", "WELDERS_QUALIFICATION", "WELDER_STATUS_WEEKLY",
+    "CODE_LABELS", "ACCIONA", "INCO", "WELD_LENGTH"]) {
+    check(`load.source vocabulary accepts '${src}'`,
+      new RegExp(`load_source_vocabulary[\\s\\S]*'${src}'`).test(allSql));
+  }
+  const b3Loaders: [string, readonly string[]][] = [
+    ["load-acciona.ts -> weld", ACCIONA_WELD_COLUMNS],
+    ["load-inco.ts -> weld", INCO_WELD_COLUMNS],
+  ];
+  for (const [label, cols] of b3Loaders) {
+    check(`${label}: all ${cols.length} columns exist`,
+      missing(cols, weld).length === 0, missing(cols, weld).join(", "));
+    const gen = ["rt_film_total", "is_cancelled"].filter((g) => (cols as readonly string[]).includes(g));
+    check(`${label}: writes no GENERATED column`, gen.length === 0, gen.join(", "));
+    // The metrics lane's mv_joint WP1 gate is
+    // `CASE source WHEN 'WELD_DUMP' THEN weldpoint_no = 1 ELSE weldpoint_seq = 1 END`,
+    // so a non-dump loader that omits weldpoint_seq silently drops its source from
+    // M23/M24/M33. Every batch-2/3 loader must write it.
+    check(`${label}: writes weldpoint_seq (the mv_joint WP1 gate)`,
+      (cols as readonly string[]).includes("weldpoint_seq"));
+  }
+  check("load-inco.ts writes manual_ut_report_no_all (the DAX's Inco branch)",
+    (INCO_WELD_COLUMNS as readonly string[]).includes("manual_ut_report_no_all"));
+  check("CCC_WELDER_WELD_COLUMNS also writes weldpoint_seq",
+    (CCC_WELDER_WELD_COLUMNS as readonly string[]).includes("weldpoint_seq"));
+  for (const f of ["load-acciona.ts", "load-inco.ts", "load-weld-length.ts", "load-welders.ts"]) {
+    const src = readFileSync(path.join(REPO_ROOT, "scripts", f), "utf8");
+    const calls = src.includes("refreshMatviews(client)");
+    check(`${f} refreshes the matviews after COMMIT (R3-15)`, calls,
+      calls ? "" : "no refreshMatviews() call");
+  }
+  check("the .xls is read through uv at load time, never a checked-in conversion (R3-11)",
+    readFileSync(path.join(REPO_ROOT, "scripts", "load-welders.ts"), "utf8")
+      .includes("scripts/py/xls_to_csv.py"));
 
   console.log(failures === 0 ? "\nall checks passed" : `\n${failures} check(s) FAILED`);
   if (failures > 0) process.exitCode = 1;

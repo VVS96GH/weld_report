@@ -108,3 +108,39 @@ export const CCC_OVERLAY_COLUMNS = [
   "pmi_report_ccc", "pmi_date_ccc", "ht_report_ccc", "ht_date_ccc",
   "dwir_ccc_from_jr", "thickness_from_jr", "rework_code_all",
 ] as const;
+
+/** `weld` columns the ACCIONA loader writes (source ACCIONA). */
+export const ACCIONA_WELD_COLUMNS = [
+  "source", "load_id", "joint_id", "spool_id",
+  "iso_number", "iso_rev_no", "spool_no", "weld_no",
+  "dia_inch", "dia_inch_factor", "thickness", "material_type", "wps_no", "weld_type",
+  "welder", "welder_id", "dwir_no", "weld_cat", "pds_area", "service_class",
+  "sub_contractor", "sub_contractor_tier", "original_joint",
+  "weldpoint_no", "weldpoint_seq",
+  "fitup_date", "weld_date",
+  "pmi_report", "pmi_date", "pmi_acc_rej",
+  "pt_report", "pt_date", "pt_acc_rej",
+  "rt_report", "rt_date", "rt_acc_rej", "rt_pct", "rt_remarks", "rt_weld_status",
+  "rt_re_shoot_rep", "rt_re_shoot_data",
+  "total_no_of_films_acc", "total_no_of_films_rej",
+  "tracer_shot", "testpack_no",
+  "repair_reweld", "service_class_cat_wd", "service_class_cat_ndt",
+  "temporary_lines", "tmcp_pipe", "exclude_ut_films", "exclude_debris_films",
+] as const;
+
+/** `weld` columns the INCO loader writes (source INCO). */
+export const INCO_WELD_COLUMNS = [
+  "source", "load_id", "joint_id", "spool_id",
+  "iso_number", "spool_no", "weld_no", "weld_cat", "weld_type",
+  "material_type", "thickness", "weld_length", "wps_no", "welder", "welder_id",
+  "sub_contractor", "original_joint", "weldpoint_no", "weldpoint_seq",
+  "fitup_date", "weld_date",
+  "rt_report", "rt_date", "rt_acc_rej", "rej_length",
+  "total_no_of_films_acc", "total_no_of_films_rej", "defect_code",
+  "mt_report", "mt_date", "mt_weld_status", "pt_report", "pt_date",
+  "pwht_report", "pwht_date", "ht_report", "ht_date", "ht_remarks",
+  "by_ut", "ut_remarks", "ut_report", "ut_date", "ut_acc_rej",
+  "manual_ut_report_no_all",
+  "repair_reweld", "service_class_cat_wd", "service_class_cat_ndt",
+  "temporary_lines", "tmcp_pipe", "exclude_ut_films", "exclude_debris_films",
+] as const;

@@ -29,7 +29,9 @@ import { weldingStats } from "@/lib/metrics/welding";
 
 /** `analysis/sources3/plan.md` — the delivered populations. */
 const ACCIONA_ROWS = 13_313;
-const ACCIONA_JOINTS = 13_313;
+// 13,312, not 13,313: the source workbook carries one duplicated joint id
+// (31941A2-IA6594838-02-…-05-FJ-81 appears twice) — DB-LANE finding F1, batch 3.
+const ACCIONA_JOINTS = 13_312;
 const INCO_ROWS = 10_327;
 const INCO_JOINTS = 7_238;
 
