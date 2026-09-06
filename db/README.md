@@ -60,6 +60,7 @@ rules are right; the pbix stores 958,634 for its own (19 days older) snapshot.
 | `0014_batch3_schema.sql` | `weld.sub_contractor_tier`; `weld_length`/`rej_length` widened for Inco's millimetres; `weld_length_by_dia` precision; `ref_code_label`; the three welder tables |
 | `0015_flange.sql` | the `flange` register (83 cols) + `ref_ha` (empty by design) — the flange dashboard's fact table, separate from `weld` |
 | `0020_inco_repair_length.sql` | `weld.repair_length_mm` — the Inco branch of `[Defect Length(MM).]` (0016-0019 are the metrics lane's) |
+| `0022_wps_register.sql` | `ref_wps_register` widened + `ref_wps_process` / `ref_wps_status_cum` / `ref_wps_pwht_status` (0021 is the metrics lane's) |
 | `0013_mv_joint.sql` | **metrics lane** — `mv_joint` (2,370,428 rows) and `mv_joint_wps` (2,194,756), the joint-grain rollups the project pages read |
 
 `0002` and `0003` are produced by `scripts/gen-schema-columns.ts` from
@@ -998,6 +999,88 @@ absent, which is why **6,593 joint ids (1.84 %)** have no HA. They belong in a v
 * **RF-09: no materialised view.** Measured after the load: `GROUP BY sub_contractor` with
   `count(DISTINCT joint_id)` runs in **481 ms** at 363k rows — just under the 500 ms threshold,
   so it stays live for now and is the number to re-measure when the page is built.
+
+
+## The WPQ RECORD REGISTER (migration 0022, loader `load-wps-register.ts`)
+
+Four reference tables, 745 rows, from three of the five delivered files. Nothing lands in
+`weld`, so there is no matview to refresh. Rulings R4-01 … R4-08 are binding.
+
+| loader | source(s) | target | rows |
+|---|---|---|---:|
+| `load-wps-register.ts` | `WPQ RECORD REGISTER.xlsx` (2 sheets), `CUM WPS Status.xlsx`, `WPS PWHT Status.xlsx` | `ref_wps_register`, `ref_wps_process`, `ref_wps_status_cum`, `ref_wps_pwht_status` | 318 + 266 + 254 + 34 |
+
+```json
+"db:load:wps": "node --env-file-if-exists=.env --import tsx scripts/load-wps-register.ts"
+```
+
+### The one number that moves: M91 = 318
+
+`WPS Approved` is `count(DISTINCT wps_no)` over `ref_wps_register` where
+`document_status = 'WPS APPROVED BY CTJV/ CPY'`. All 318 rows carry that status and all 318
+`wps_no` are distinct, so the filter is a **no-op today** — kept anyway, as the DAX has it.
+The mockup's 294 is the same series' 2025-10 → 2026-03 plateau: `ref_wps_status_cum` reads
+318 for `WPS_APPROVED` at 2026-08-28 and 294 across that earlier window. The pbix snapshot is
+older, not wrong. `ref_wps_register.as_of` is the **file mtime** (2026-08-04) — the sheet
+carries no date — and says so in `notes`, as `ref_qualified_welders` does.
+
+### Never join `ref_wps_register` to `weld.wps_no` (R4-03)
+
+It holds **document** numbers (`383-TEK-…`, `WPS-638-…`); `weld` holds **site** numbers
+(`TEK-…`, `MED-WPS-638-…`). They coincide on about 61 % by accident of prefix, and the pbix
+does not join them either. The warning is in the table's `COMMENT` and pinned by
+`check-sql-columns.ts`.
+
+**`ref_wps_process` is the WPS join table**, and its `wps_no` is stored `btrim`+`upper`
+normalised so the join needs no function. Coverage re-measured on every load, at **joint
+grain** (`mv_joint`), in both scopes — reproducing `analysis/sources4/mapping.md` §6 exactly:
+
+```
+ALL sources          2,208,057 / 2,215,305  (99.67%)
+in scope (<> INCO)   2,208,057 / 2,208,067  (100.00%)
+```
+Joint grain matters: `SELECT DISTINCT joint_id, wps_no FROM weld` counts (joint, WPS) **pairs**
+and inflates the denominator by 101. INCO is the whole 0.33 % — none of its 23 WPS values is
+in the register, which is why "in scope" excludes it.
+
+### Read by header NAME — two of the four stored M queries would fail
+
+* `CONSOLIDATED` has gained a blank left column, so every auto-named blank column shifted by
+  one and the M's `RemoveColumns({"Column13".."Column18"})` names fields that no longer
+  exist — `Table.RemoveColumns` raises.
+* the `.xls` register's only sheet is `WPS Reg.`, while the M asks for `WPS Reg#`;
+  `Excel.Workbook` returns no row for that key and the step raises.
+
+Same staleness class as R3-09 (the welders `.xls`). The loader finds each header row **by the
+names on it** and indexes columns by name, accepting both the delivered spelling and a
+whitespace-collapsed form — `CONSOLIDATED` carries `' DOCUMENT STATUS'` with a leading space,
+`'PWHT '` with a trailing one and `'PQR \nNo/Rev.'` with an embedded newline. It **asserts
+then aborts** on any row-count miss: these are tiny tables whose counts are the point, and a
+partial register would quietly break M91.
+
+### Deliberately not loaded
+
+* `WPS-WPQT Record Register Rev_0 24-01-25.xls` (R4-04) — Rev. 0 of Jan-2025, a different
+  `DocumentStatus` vocabulary, backing one hidden pbix page. This loader therefore has **no**
+  `uv`/`xlrd` path at all, unlike `load-welders.ts`.
+* `WPS (Welding Process).csv` (R4-07) — a flat export of the `WELDING PROCESS` sheet; the
+  sheet is canonical (the R3-14 precedent). The csv adds an unnamed 6th column (a GAC
+  document-number alias on 8 rows) and two space-spelled `Welding process` values.
+
+`ref_wps_status_cum` is `(week_end_date, metric, value)` — the **long** shape per R4-06, not
+the wide sketch in mapping.md §4 — 127 weeks × `WPS_SUBMITTED`/`WPS_APPROVED` = 254 rows,
+**UPSERTed and never cleared**, the same discipline `weld_weekly_snapshot` has. It is
+deliberately its own table rather than new `weld_weekly_snapshot` metric ids (R3-13; the
+`ref_mpi_done` double-write is the exception that predates that ruling).
+
+`ref_wps_pwht_status` is **documentation only** (R4-08): no measure reads it, and it must not
+override `weld.pwht_y_n` or `PWHT_AMBIGUOUS_TOKEN` (ruling R-04) without a separate ruling.
+Three of its 34 keys — `CS/LTCS-AUT-003`, `-009`, `-010` — have no `ref_wps_process` row, so
+the pbix's "1:1" edge is aspirational and there is no FK here either.
+
+The `Sn.` / `S.N` columns are **provenance only**. The pbix's three 1:1 edges from them into
+`Flg CCC_Flange Repair[SN]` are row-number-to-row-number auto-detections and are never
+reproduced (R4-05).
 
 ---
 

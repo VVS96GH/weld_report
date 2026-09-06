@@ -547,6 +547,52 @@ function main(): void {
   check("RF-09: the flange loader creates no materialised view",
     !/REFRESH MATERIALIZED VIEW|CREATE MATERIALIZED VIEW/.test(flSrc));
 
+
+  // ---- 13. the WPQ RECORD REGISTER (migration 0022, rulings R4-01..R4-08) --
+  const wpsTables: Record<string, string[]> = {
+    ref_wps_register: ["wps_no", "document_status", "sctr", "wps_rev_no", "pqr_no_rev",
+      "welding_process_es", "welding_process_mode", "pqr_material_1", "pqr_material_2",
+      "pwht", "application", "sn", "as_of", "load_id"],
+    ref_wps_process: ["wps_no", "wps_no_raw", "sn", "sctr", "welding_process",
+      "welding_machine_type", "load_id"],
+    ref_wps_status_cum: ["week_end_date", "metric", "value", "load_id"],
+    ref_wps_pwht_status: ["wps_no", "wps_no_raw", "pwht_yn", "thickness_note", "load_id"],
+  };
+  for (const [t, cols] of Object.entries(wpsTables)) {
+    const have = names(schema.tables.get(t));
+    check(`${t} exists with its ${cols.length} contract columns`,
+      have.size > 0 && missing(cols, have).length === 0,
+      have.size === 0 ? "table absent" : missing(cols, have).join(", "));
+  }
+  // R4-03 is the ruling most easily broken by a later query, so it is pinned twice:
+  // in the table COMMENT and here.
+  check("R4-03: ref_wps_register carries the NEVER-JOIN warning in its COMMENT",
+    /COMMENT ON TABLE ref_wps_register[\s\S]{0,400}NEVER JOIN/.test(allSql));
+  check("R4-08: ref_wps_pwht_status is marked DOCUMENTATION ONLY",
+    /COMMENT ON TABLE ref_wps_pwht_status[\s\S]{0,400}DOCUMENTATION ONLY/.test(allSql));
+  check("R4-06: ref_wps_status_cum is (week_end_date, metric) — the long shape, UPSERTed",
+    /PRIMARY KEY \(week_end_date, metric\)/.test(allSql));
+  for (const src of ["WPS_REGISTER", "WPS_PROCESS", "WPS_STATUS_CUM", "WPS_PWHT_STATUS"]) {
+    check(`load.source vocabulary accepts '${src}'`,
+      new RegExp(`load_source_vocabulary[\\s\\S]*'${src}'`).test(allSql));
+  }
+  const wpsSrc = readFileSync(path.join(REPO_ROOT, "scripts/load-wps-register.ts"), "utf8");
+  check("R4-01: the loader reads by header NAME, not by position or by replaying the M",
+    /headerIndexOf/.test(wpsSrc) && /probe/.test(wpsSrc));
+  // Tested against CODE, not prose: the module comment names both excluded files
+  // on purpose, so a naive text search would trip on its own documentation.
+  const wpsCode = wpsSrc
+    .replace(/\/\*[\s\S]*?\*\//g, "")   // block comments
+    .replace(/^\s*\/\/.*$/gm, "");        // line comments
+  check("R4-04: no child-process/xlrd path — the Rev.0 .xls is deliberately not loaded",
+    !/child_process|execFile|xls_to_csv/.test(wpsCode) && !/\.xls["']/.test(wpsCode));
+  check("R4-07: the WPS (Welding Process).csv is not read",
+    !/\.csv["']/.test(wpsCode));
+  check("the loader ABORTS on a row-count miss rather than loading a partial register",
+    /refusing to load/.test(wpsSrc));
+  check("join coverage is measured at JOINT grain (mv_joint), not (joint, wps) pairs",
+    /FROM mv_joint j/.test(wpsSrc) && /LEFT JOIN ref_wps_process p/.test(wpsSrc));
+
   console.log(failures === 0 ? "\nall checks passed" : `\n${failures} check(s) FAILED`);
   if (failures > 0) process.exitCode = 1;
 }

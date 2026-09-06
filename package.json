@@ -26,7 +26,8 @@
     "db:load:inco": "node --env-file-if-exists=.env --import tsx scripts/load-inco.ts",
     "db:load:weld-length": "node --env-file-if-exists=.env --import tsx scripts/load-weld-length.ts",
     "db:load:welders": "node --env-file-if-exists=.env --import tsx scripts/load-welders.ts",
-    "db:load:flange": "node --env-file-if-exists=.env --import tsx scripts/load-flange.ts"
+    "db:load:flange": "node --env-file-if-exists=.env --import tsx scripts/load-flange.ts",
+    "db:load:wps": "node --env-file-if-exists=.env --import tsx scripts/load-wps-register.ts"
   },
   "dependencies": {
     "chart.js": "4.5.1",
