@@ -19,7 +19,7 @@ import { buildStagingDdl, buildWeldDdl, buildWeldInsert, copyColumns } from "./w
 import { resolveMigrations, type TableSchema } from "./sql-schema";
 import {
   CCC_JOINT_PWHT_COLUMNS, CCC_JOINT_WELD_COLUMNS, CCC_OVERLAY_COLUMNS,
-  ACCIONA_WELD_COLUMNS, CCC_WELDER_WELD_COLUMNS, INCO_WELD_COLUMNS,
+  ACCIONA_WELD_COLUMNS, CCC_WELDER_WELD_COLUMNS, FLANGE_COLUMNS, INCO_WELD_COLUMNS,
   SPOOL_DUMP_MAP, TALISMAN_SPOOL_MAP, spoolColumns,
 } from "./load-columns";
 import {
@@ -464,6 +464,44 @@ function main(): void {
     trackerSrc.includes("applyCccUtOverlay(client)"), "no applyCccUtOverlay() call");
   check("load-ut-tracker-ccc.ts refreshes the matviews (R3-15)",
     trackerSrc.includes("refreshMatviews(client)"), "no refreshMatviews() call");
+
+
+  // ---- 12. the flange register (migration 0015, rulings RF-01..RF-09) ----
+  const flange = names(schema.tables.get("flange"));
+  check("flange exists", flange.size > 0, "table absent");
+  const flangeContract = ["joint_id", "source", "load_id", "sub_contractor", "ha",
+    "joint_method", "joint_method_original", "cat", "joint_date", "pcc_tightening_date",
+    "reason_for_de_tightening", "control_inspection_date", "status_ar",
+    "flange_joint_status", "test_pack", "pds_area", "diam", "iso_number", "bt_no"];
+  check(`flange carries the ${flangeContract.length} columns the 9 mockup measures and 3 filters read`,
+    missing(flangeContract, flange).length === 0, missing(flangeContract, flange).join(", "));
+  check("FLANGE_COLUMNS matches the table, minus the bigserial id",
+    FLANGE_COLUMNS.length === flange.size - 1
+      && missing(FLANGE_COLUMNS, flange).length === 0,
+    `${FLANGE_COLUMNS.length} vs ${flange.size - 1}; missing ${missing(FLANGE_COLUMNS, flange).join(", ")}`);
+  check("the loader writes no bigserial id", !(FLANGE_COLUMNS as readonly string[]).includes("id"));
+  check("ref_ha exists and is documented as empty-by-design (RF-03)",
+    names(schema.tables.get("ref_ha")).has("location_number")
+      && /EMPTY BY DESIGN/.test(allSql));
+  for (const idx of ["flange_joint", "flange_subcon", "flange_ha", "flange_method"]) {
+    check(`index ${idx} is created`, new RegExp(`CREATE INDEX IF NOT EXISTS ${idx}\\b`).test(allSql));
+  }
+  for (const src of ["FLANGE_PROGRESS", "OVASSETS_1619"]) {
+    check(`load.source vocabulary accepts '${src}'`,
+      new RegExp(`load_source_vocabulary[\\s\\S]*'${src}'`).test(allSql));
+  }
+  // RF-06: the two facts must never be unioned, and nothing may join them.
+  check("flange is a separate table — no weld column leaked into it (RF-06)",
+    !flange.has("weld_date") && !flange.has("weldpoint_seq") && !flange.has("rt_report"));
+  const flSrc = readFileSync(path.join(REPO_ROOT, "scripts/load-flange.ts"), "utf8");
+  check("load-flange.ts detects the header row rather than Table.Skip(5)",
+    /probe\.every/.test(flSrc) && /headerRow/.test(flSrc));
+  check("load-flange.ts collapses whitespace in headers (ovAssets has embedded newlines)",
+    /replace\(\/\\s\+\/g, " "\)/.test(flSrc));
+  check("load-flange.ts uses FL - Tightening Method, not the plain one",
+    flSrc.includes('g("FL - Tightening Method")'));
+  check("RF-09: the flange loader creates no materialised view",
+    !/REFRESH MATERIALIZED VIEW|CREATE MATERIALIZED VIEW/.test(flSrc));
 
   console.log(failures === 0 ? "\nall checks passed" : `\n${failures} check(s) FAILED`);
   if (failures > 0) process.exitCode = 1;

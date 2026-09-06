@@ -58,6 +58,7 @@ rules are right; the pbix stores 958,634 for its own (19 days older) snapshot.
 | `0012_lengths_and_manual_exclusion.sql` | `weld_length_m` + the two UT length columns + `week_end_date_rt`; `weld_manual_exclusion` seeded with the M’s 4 Joint IDs |
 | `0013_mv_joint.sql` | **metrics lane** — `mv_joint` / `mv_joint_wps`, the joint-grain rollups |
 | `0014_batch3_schema.sql` | `weld.sub_contractor_tier`; `weld_length`/`rej_length` widened for Inco's millimetres; `weld_length_by_dia` precision; `ref_code_label`; the three welder tables |
+| `0015_flange.sql` | the `flange` register (83 cols) + `ref_ha` (empty by design) — the flange dashboard's fact table, separate from `weld` |
 | `0013_mv_joint.sql` | **metrics lane** — `mv_joint` (2,370,428 rows) and `mv_joint_wps` (2,194,756), the joint-grain rollups the project pages read |
 
 `0002` and `0003` are produced by `scripts/gen-schema-columns.ts` from
@@ -878,6 +879,78 @@ manual re-apply, or a check that the two are in step. The call is two lines:
 import { applyCccUtOverlay, formatUtOverlay } from "./lib/ut-overlay";
 console.log(`  ${formatUtOverlay(await applyCccUtOverlay(client))}`);
 ```
+
+
+## The flange register (migration 0015, loader `load-flange.ts`)
+
+A **different fact from `weld`** and deliberately a separate table (RF-06): the grain is a
+flanged joint, not a weld; the two never join; nothing in `lib/metrics/*` should union them.
+
+| loader | source(s) | target | rows |
+|---|---|---|---:|
+| `load-flange.ts` | `Flange Progress.xlsx` + `ovAssets_1619.xlsx` | `flange` | 136,741 + 226,504 |
+
+```json
+"db:load:flange": "node --env-file-if-exists=.env --import tsx scripts/load-flange.ts"
+```
+
+**Grain: one register LINE.** 363,245 rows over **357,787** distinct `joint_id` — 5,458 joints
+are listed twice. **Every joint metric is `count(DISTINCT joint_id)`, never `count(*)`.**
+
+**The union is an APPEND, not a join.** The pbix's `Flange Progress` is
+`Table.Combine({Flange Progress.xlsx, Flange ovAssets_1619})` and the two files share **zero**
+joint ids (measured, and re-checked in SQL after every load), so `source` partitions the table
+cleanly: GAC/TEKFEN/MEDGULF on one side, CCC on the other.
+
+### The measure contract
+
+| mockup label | SQL |
+|---|---|
+| Total | `count(DISTINCT joint_id)` |
+| Inspected / Jointed | `… WHERE joint_date IS NOT NULL` |
+| Remains | `… WHERE joint_date IS NULL` |
+| Const-n ("CCC no cat") | `joint_date IS NOT NULL AND pcc_tightening_date IS NULL AND (sub_contractor = 'CCC' OR cat IN ('X','Y'))` |
+| PCC ("CCC no cat") | `pcc_tightening_date IS NOT NULL OR (joint_date IS NOT NULL AND sub_contractor <> 'CCC' AND cat IN ('Z','A','B'))` |
+| Leaked | `upper(reason_for_de_tightening) = 'FLANGE LEAKAGE'` |
+
+Use the **"CCC no cat"** pair, not the plain `Cat. IN {X,Y}` trio (RF-07): `Cat.` is only 75.3 %
+filled on the CCC side, so the plain trio zeroes CCC.
+
+`upper()` on the leak test is load-bearing. The ovAssets side stores `Flange Leakage`, and the
+M's two `ReplaceText` steps (`"Flange leaking"`, `"Flange leakage"`) are case-**sensitive** and
+miss it — but DAX string equality is case-insensitive, so the pbix counts those 119 rows. The
+loader reproduces the M literally; the metric must compare case-insensitively.
+
+### HA
+
+`HA1..HA4` or NULL — never a guessed bucket. Flange Progress side: the DAX rule
+`MID([System], 2, 1)`. CCC side: parsed from ovAssets `[Process Plant]` (RF-03), which agrees
+with the DAX rule on 226,438 of 226,504 rows with **zero** disagreements. `ref_ha` exists and is
+**empty by design**: `l0_abs_guide_202502191028.csv` (912 rows) is the DAX fallback and is
+absent, which is why **6,593 joint ids (1.84 %)** have no HA. They belong in a visible
+"(blank)" row, never folded into HA1.
+
+### Loader notes
+
+* **Header detection, not `Table.Skip(5)`.** The M skips five rows on `FlangeJointProgress`; the
+  streaming reader drops all-blank rows, so a positional skip would silently shift by one — and
+  it would have: the header lands at index **4**, not 5. The loader finds the row carrying both
+  `Iso Number` and `BT No.` and reports which row that was, so a layout change is visible.
+* **ovAssets headers carry embedded newlines** (`PCC Remarks -\n Field045 (Custom)`), so every
+  header is whitespace-collapsed before matching.
+* **`FL - Tightening Method`, not the plain `Tightening Method`.** Both exist; only the FL one
+  reproduces the pinned method split (Manual 249,155 / Torquing 103,713 / Tensioning 2,913 /
+  TBN 2,006). Using the other would be silently wrong by ~1,000 joints.
+* **Four date shapes, not three.** `15-Feb-2026`, `2025/10/28` and `2026/8/20` all pass through
+  the shared `parseDate()`. The fourth is ovAssets-only `m/d/yyyy` with an optional time, 720
+  values — and month-first is **measured, not assumed**: across them the first component never
+  exceeds 12 while the second reaches 30. It is parsed in the flange loader only; the shared
+  `weld_to_date()` is not widened with an ambiguous format (the R3-03 discipline).
+* **RF-05: dirty rows are KEPT and counted** in the ledger notes — one `TBD` sub-contractor, one
+  2027 joint date. The pbix does not filter them either.
+* **RF-09: no materialised view.** Measured after the load: `GROUP BY sub_contractor` with
+  `count(DISTINCT joint_id)` runs in **481 ms** at 363k rows — just under the 500 ms threshold,
+  so it stays live for now and is the number to re-measure when the page is built.
 
 ---
 
