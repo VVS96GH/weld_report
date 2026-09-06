@@ -2396,3 +2396,25 @@ stands); do not carry forward a 159 figure into the loader or its assertions —
 supporting measurement.
 
 **Ruling:** R3-05, R3-08; R2-02 (unapplied exclusion list stands).
+
+### C-19 — the `Manual UT Status.` CCC precedence branch is dead code (2026-09-05)
+
+**What the DAX contains:** `analysis/pbix/raw/prall-columns.json` → `Manual UT Status.` declares
+`VAR UTTrackerCCCID = IF([Sub-Contractor]="CCC" && [RT/UT]="UT", … LOOKUPVALUE(PRALL[RT Acc/Rej], …
+Welder ID …) … tracker[UT1 RESULT] …)` — a row-level `RT Acc/Rej` first, the tracker second.
+
+**What actually runs:** the identifier `UTTrackerCCCID` occurs exactly once in that column (its own
+declaration) and the `RETURN` chain `GAC → TEKFEN → INCO → inline LOOKUPVALUE(tracker[UT1 RESULT])`
+never references it; DAX evaluates VARs lazily, so the branch never executes. In `UT Operator ID.`,
+`Manual UT Report No.` and `Manual UT Date.` the same variable occurs three times (declared and
+used), which is why only `ut_operator_id_all` carries the `[RT/UT] = "UT"` gate. Verified by the
+orchestrator by counting occurrences in the raw JSON.
+
+**Consequence for the build:** `manual_ut_status_all` for CCC is tracker-only (`UT1 RESULT`), exactly
+what the pbix stores: A 60,935 / R 204 rows = 9,382 / 30 joints over 9,412 matched tracker joints.
+Applying the dead branch would move 86 of 61,155 CCC `rt_ut = 'UT'` rows (70 R→A, 16 NULL→A) away
+from the model's values. Its inner lookup also passes `CurrentJointID` as LOOKUPVALUE's *alternate
+result*, so on a miss it would return the joint id as a status string.
+
+**Ruling:** keep tracker-only (faithful to the pbix); the presence of the unused branch is a question
+for the report owner (did they intend row-level results to take precedence?). See db/README.md.
