@@ -46,15 +46,31 @@ export type TextWidget = {
   text: string;
 };
 
-export type Widget = KpiWidget | TableWidget | ChartWidget | TextWidget;
+/**
+ * A server-driven filter control (flange dashboard: HA / sub-contractor /
+ * joint method). The page is re-rendered with the chosen values as URL search
+ * params; `value` is the currently applied option ("All" when none).
+ */
+export type FilterWidget = {
+  kind: "filter";
+  /** Search-param name, e.g. "ha", "subco", "method". */
+  id: string;
+  label: string;
+  options: string[];
+  value: string;
+};
+
+export type Widget = KpiWidget | TableWidget | ChartWidget | TextWidget | FilterWidget;
 
 export type PageModel = {
-  /** 1-based page number in the welding report (1..44). */
+  /** 1-based page number in the welding report (1..44); 0 for single-page reports. */
   page: number;
   id: string;
   title: string;
   subtitle?: string;
   widgets: Widget[];
+  /** Applied filter values (filter id → value) for filter-driven pages. */
+  filters?: Record<string, string>;
   /** Data provenance: which snapshot/load produced the numbers. */
   meta?: {
     source: "fixture" | "database";

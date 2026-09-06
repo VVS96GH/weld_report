@@ -37,10 +37,11 @@ function groupWidgets(widgets: Widget[]): Group[] {
     } else if (w.kind === "chart") {
       if (last?.kind === "chart") last.items.push(w);
       else groups.push({ kind: "chart", items: [w] });
-    } else {
+    } else if (w.kind === "text") {
       if (last?.kind === "text") last.items.push(w);
       else groups.push({ kind: "text", items: [w] });
     }
+    // "filter" widgets are rendered by the page's filter bar, not in the grid.
   }
   return groups;
 }
