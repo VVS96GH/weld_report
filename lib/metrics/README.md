@@ -523,20 +523,115 @@ pbix filters it and reported everywhere the pbix reports it — the page-2
 alone (no `J` row appears there anyway: no `J` joint passes
 `Weld Type IN {BW,GW,MW,CLET}`).
 
-### M33 / M35 / M36 and the Inco blank (R3-06)
+### The three `"PR all"` UT length measures (migrations 0018 / 0019)
 
-They read `weld.weld_length_m`, rolled up in `mv_joint.ut_weld_length_m_prall`,
-with `weld_length_by_dia` as the reference dimension (98 distinct
-`(dia_inch, weld_length)` rows, R3-07). Two honest-empty gates:
+The pbix keeps **three** distinct length measures and they are not
+interchangeable. Each is implemented exactly as its own DAX reads.
 
-* `weldLengthDimensionLoaded()` — while `weld_length_by_dia` is empty,
-  `[Weld Length "PR all"]` cannot resolve at all, so M33/M35/M36 are *unknown*
-  and the KPIs render `—`;
-* **INCO is blank by the DAX's own guard.** `[Weld Length "PR all"]` gates its
-  Inco branch on `[Manual UT Report No.] <> ""` — a `Weld Dump` column the Inco
-  source never fills — and the fallback `LOOKUPVALUE` needs `Dia inch`, which
-  Inco leaves empty. Reproduced literally per R3-06, never substituted, and the
-  page carries a note saying so for the report owner.
+| measure | gate | filter | our flag | value |
+|---|---|---|---|---|
+| `[UT Weld Length by Joint "PR all"]` (M33) | `[WeldPoint No.1 WP1] = 1` (`weldpoint_seq`) | term 1 `[UT Report] <> ""`, term 2 `[RT/UT] = "UT"`, **ADDED** | `ut_weld_length_prall` | **27,366.4716** |
+| `[UT Inspected Length by Joint "PR all"]` | `[WeldPoint No.] = 1` (`weldpoint_no`) | `[Manual UT Report No.] <> ""` | `ut_inspected_length_prall` | 27,609.5267 |
+| `[UT Defect Length by Joint "PR all"]` (M34) | none | `[Manual UT Report No.] <> ""` and `[Manual UT Status.] = "R"` | `ut_defect_length_prall` | **16.2396** |
+
+Two different WeldPoint columns, one per measure — the pbix's own doing, not a
+transcription slip. A test pins them apart so a future tidy-up cannot collapse
+them.
+
+**M33's two terms are ADDED, not OR-ed.** A row carrying both a `[UT Report]`
+and `[RT/UT] = "UT"` is counted twice. Reproduced literally. Term 1 reads the
+**raw** `[UT Report]`, not the `"PR All"` one, so CCC — whose `ut_report` is
+empty — contributes only through term 2.
+
+| | term 1 | term 2 | total |
+|---|---|---|---|
+| GAC | 4,840.1732 | — | 4,840.1732 |
+| TEKFEN | 4,062.3483 | — | 4,062.3483 |
+| CCC | — | 18,463.9501 | 18,463.9501 |
+| **total** | | | **27,366.4716** → owner's card 27,366.47 ✅ |
+
+### R3-06 settled: Inco carries no weld length — right answer, wrong reason
+
+R3-06 said `[Weld Length "PR all"]` is blank for every Inco row because its
+guard `[Manual UT Report No.] <> ""` never fires, Inco leaving that `Weld Dump`
+column empty.
+
+**That reasoning is wrong.** `[Manual UT Report No.]` is the *calculated* column
+(C-20), and its Inco branch resolves to Inco's **own** `UT Report` — non-blank
+on 441 PAUT rows. Read literally the guard fires and contributes 490.50 m.
+
+**The outcome was right anyway,** and now provably so. The owner's card is
+27,366.47; our total *with* the Inco term is 27,856.97. The difference is
+490.50 to the cent — exactly the Inco term. The model does not carry Inco's
+weld length here, so the honest-empty framing is retired: this is no longer an
+unverified guard-reading but a number that matches the source report exactly.
+
+A caveat for whoever touches the loader: `scripts/load-weld-length.ts` still
+materialises `weld_length_m` with the **imported** `manual_ut_report_no` in that
+guard. It reaches the right answer (NULL for Inco) through the wrong predicate.
+Left alone deliberately — correcting the predicate would make it *wrong*.
+
+### M34's CCC term is row-level, and R2-01 does not apply
+
+```dax
+IF( Sub = "Inco" && [Manual UT Report No.] <> "", [Repair Length (mm)]/1000,
+IF( [Manual UT Report No.] <> "" && [By UT] = "Y", [Rej Length],
+IF( [Manual UT Status.] = "R" && Sub = "CCC", LOOKUPVALUE(tracker BY Joint ID), 0)))
+```
+
+| branch | rows | value |
+|---|---|---|
+| GAC `[Rej Length]` | 169 | 7.7320 |
+| TEKFEN `[Rej Length]` | 233 | 8.0656 |
+| CCC tracker lookup, **row-level** | 204 | 0.4420 |
+| INCO `[Repair Length (mm)]/1000` | 74 | **blocked**, nets to 0 |
+| **total** | | **16.2396** → owner's 16.240 ✅ |
+
+The CCC term is **not** de-duplicated to one row per joint. The measure is a
+`SUM` over `"PR all"` **rows** of a `LOOKUPVALUE`, so a joint with several UT
+rows contributes once per row. The R2-01 dedup gives 0.0890 and misses by 0.353.
+
+This narrows R2-01: de-duplicating a joint-level lookup is licensed only where
+the DAX is **not** already summing per row. Where it is, the row-level sum *is*
+the measure. Same lesson as the WP1 gate in 0017 — an adjustment that looks
+arithmetically necessary is a guess unless the DAX asks for it.
+
+### Both Inco branches are dead in the model, and the owner's figures prove it
+
+The same shape appears twice, in two different measures, and both times the
+literal reading of the DAX produces a number the source report does not have.
+
+| measure | ours without the Inco branch | with it | owner's card |
+|---|---|---|---|
+| `[UT Weld Length by Joint "PR all"]` | **27,366.4716** | 27,856.97 (+490.50) | **27,366.47** ✅ |
+| `[UT Defect Length by Joint "PR all"]` | **16.2396** | ~18.737 (+2.497) | **16.240** ✅ |
+
+`repair_length_mm` landed with migration 0020 — 108 Inco rows, 57 of them
+carrying both a UT report and status `R`, worth ≈ 2.497 m. Writing the branch
+literally would therefore *break* a measure that currently matches to 0.0004.
+
+Both branches are guarded by the same predicate, `[Manual UT Report No.] <> ""`,
+so one explanation covers both: **in the model, Inco's `[Manual UT Report No.]`
+evidently resolves blank**, whatever the C-20 text implies. Two independent
+measures agreeing to the cent is much stronger evidence than either alone.
+
+So the Inco branch of `[Defect Length(MM).]` stays `NULL` — never `0`, which
+would be a fabricated value asserting "Inco has no defect length" rather than
+"we do not include one". `ut_defect_inco_gap_rows` keeps counting the 74 rows
+it would cover, and a test pins that count: if it moves while M34 does not,
+something changed underneath and the branch needs revisiting.
+
+This is deliberately **not** "fix the data to match the report". The DAX text
+and the report's own output disagree; where they do, the report wins, and the
+disagreement is recorded here rather than smoothed away.
+
+### `weldpoint_seq` for `WELD_DUMP`
+
+It was NULL on all 958,615 dump rows for part of this work and was backfilled
+mid-task, which would have silently zeroed M33's term 1 for GAC and TEKFEN.
+Cross-check kept as a guard: `ROW_NUMBER() OVER (PARTITION BY joint_id ORDER BY
+id)` computed inline gives the identical M33 total, so the stored column is
+trustworthy.
 
 ### M90 `Project_Welder` (R3-09, R3-10)
 

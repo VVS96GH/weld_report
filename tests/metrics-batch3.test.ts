@@ -396,6 +396,68 @@ describe.skipIf(Boolean(skipReason))("pbix cross-check (user readings)", () => {
     expect((rate! * 100).toFixed(2)).toBe("0.28");
   });
 
+  it('UT Weld Length by Joint "PR all" = 27,366.47 (owner 27,366.47)', async () => {
+    // Migration 0019. Two CALCULATEs simply ADDED, both gated
+    // [WeldPoint No.1 WP1] = 1 (weldpoint_seq):
+    //   term 1  [UT Report] <> ""  -> GAC 4,840.1732 + TEKFEN 4,062.3483
+    //   term 2  [RT/UT] = "UT"     -> CCC 18,463.9501
+    // Term 1 reads the RAW [UT Report], so CCC contributes only via term 2.
+    // Inco carries NO weld length: adding its 490.50 m gives 27,856.97 and
+    // overshoots the owner's card by exactly that, which is the proof.
+    const all = await utStatsPrAll(measureScope());
+    expect(all.ut_weld_length_m).toBeCloseTo(27_366.4716, 4);
+    expect(all.ut_weld_length_m.toFixed(2)).toBe("27366.47");
+  });
+
+  it('UT Defect Length by Joint "PR all" = 16.240 (owner 16.240)', async () => {
+    // SUM([Defect Length(MM).]) filtered to [Manual UT Report No.] <> ""
+    // AND [Manual UT Status.] = "R", both the C-20 calculated columns.
+    //   GAC     7.7320  (169 rows, [Rej Length] where [By UT] = "Y")
+    //   TEKFEN  8.0656  (233 rows, same branch)
+    //   CCC     0.4420  (204 rows, tracker LOOKUPVALUE, ROW-level)
+    //   INCO    0       ([Repair Length (mm)] branch; see the gap test below)
+    // The CCC term is deliberately NOT de-duplicated to one row per joint: the
+    // DAX sums a LOOKUPVALUE over PR-all ROWS, so a joint with several UT rows
+    // contributes once per row. The R2-01 dedup gives 0.0890 and would miss by
+    // 0.353. R2-01 licenses de-duplication for a joint-level lookup only where
+    // the DAX is not already summing per row -- here it is.
+    const all = await utStatsPrAll(measureScope());
+    expect(all.ut_rej_length_m).toBeCloseTo(16.2396, 4);
+    expect(all.ut_rej_length_m.toFixed(3)).toBe("16.240");
+  });
+
+  it("the blocked Inco [Repair Length (mm)] branch still nets to zero", async () => {
+    // `Repair Length (mm)` has no column in `weld` yet (DB-LANE is adding
+    // `repair_length_mm`), so M34's Inco branch yields NULL, never 0. The
+    // owner's 16.240 proves those rows contribute nothing TODAY. This is a
+    // watchdog, not a gate: if the row count moves while M34 does not, the
+    // column has landed and the branch must be written literally.
+    const all = await utStatsPrAll(measureScope());
+    expect(all.ut_defect_inco_gap_rows).toBe(74);
+    expect(all.ut_rej_length_m).toBeCloseTo(16.2396, 4);
+  });
+
+  it('UT Inspected Length by Joint "PR all" is a DIFFERENT measure from M33', async () => {
+    // The pbix keeps both, and they gate different columns:
+    //   [UT Weld Length by Joint "PR all"]      -> [WeldPoint No.1 WP1]
+    //   [UT Inspected Length by Joint "PR all"] -> [WeldPoint No.]
+    // Pinned so a future "tidy-up" cannot quietly collapse them into one.
+    const all = await utStatsPrAll(measureScope());
+    expect(all.ut_inspected_length_m).toBeCloseTo(27_609.5267, 4);
+    expect(all.ut_inspected_length_m).not.toBeCloseTo(all.ut_weld_length_m, 2);
+  });
+
+  it('page 1 renders the three UT length cards at the owner\'s figures', async () => {
+    const page = await getWeldingPage(1);
+    const kpi = (label: string) =>
+      page.widgets.find((w) => w.kind === "kpi" && w.label === label) as
+        | { value: string }
+        | undefined;
+    expect(kpi("UT Insp Len")?.value).toBe("27,366.47");
+    expect(kpi("UT Def.Length")?.value).toBe("16.240");
+    expect(kpi("UT Rej% Len")?.value).toBe("0.06%");
+  });
+
   it("UT coverage names GAC and TEKFEN as covered, MEDGULF and ACCIONA as not", async () => {
     // The old note blamed the missing GAC/TEKFEN tracker workbooks. That is the
     // wrong premise for this measure: the DAX's GAC and TEKFEN branches never

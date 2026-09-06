@@ -313,6 +313,8 @@ function emptyBundle(): Bundle {
       ut_rejected: 0,
       ut_rejection_rate_joint: null,
       ut_weld_length_m: 0,
+      ut_inspected_length_m: 0,
+      ut_defect_inco_gap_rows: 0,
       ut_rej_length_m: 0,
     },
     pwht: {
@@ -944,12 +946,22 @@ const REGISTER_NOTE =
   "reads ref_wps_register. WPQ RECORD REGISTER.xlsx is still missing, so M91 " +
   "stays blank; a register that is empty renders \u2014, never 0.";
 
+// R3-06, settled. The note used to explain the Inco blank by claiming the
+// guard [Manual UT Report No.] <> "" never fires for Inco. That reasoning was
+// wrong -- [Manual UT Report No.] is the CALCULATED column (C-20) and for Inco
+// resolves to Inco's own UT Report, non-blank on 441 PAUT rows. The OUTCOME was
+// right: the report owner's [UT Weld Length by Joint "PR all"] is 27,366.47,
+// which is our total with the Inco term (490.50 m) LEFT OUT, to the cent. So
+// the model carries no weld length for Inco, and this is now a verified fact
+// rather than an unverified guard-reading. No disclosure note is warranted for
+// a number that matches the source report exactly; see migration 0019 and
+// lib/metrics/README.md.
 const INCO_LENGTH_NOTE =
-  "UT length metrics (M33/M35/M36) are blank for INCO by the DAX's own guard " +
-  "(ruling R3-06): [Weld Length \"PR all\"] gates the Inco branch on " +
-  "[Manual UT Report No.] <> \"\", a Weld Dump column the Inco source never " +
-  "fills, and the fallback LOOKUPVALUE needs Dia inch, which Inco leaves " +
-  "empty. Reproduced literally, not substituted \u2014 flagged for the report owner.";
+  "UT length metrics (M33/M35/M36) carry no weld length for INCO: " +
+  "[Weld Length \"PR all\"] resolves to blank for every Inco row. Verified " +
+  "against the report owner's figure \u2014 27,366.47 m is our total with the " +
+  "Inco term excluded, exactly \u2014 so this matches the source report, and " +
+  "is recorded rather than flagged as a gap.";
 
 
 /**
