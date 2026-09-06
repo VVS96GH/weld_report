@@ -547,11 +547,11 @@ describe.skipIf(Boolean(skipReason))("pbix cross-check (user readings)", () => {
     expect(Math.round(s.films - s.films_rejected)).toBe(81_480);
   });
 
-  it("pages 5 and 10 bind that table to PR all, minus TMCP pipe", async () => {
-    // The owner's matrix carries no TMCP filter; the pbix page-25/30 visual
-    // does (`TMCP Pipe IN {null}`), so our page total is the same measure one
-    // filter further in. Both are right for their own visual -- pinned
-    // together so neither can drift into the other.
+  it("pages 5 and 10 show the owner's matrix figures exactly", async () => {
+    // Owner ruling: no discrepancy between their matrix and the page, so the
+    // PR-all NDE table does NOT take the pbix visual's `TMCP Pipe IN {null}`
+    // filter (the rest of those pages' EP tables still do). The page total is
+    // therefore identical to the measure-level pin above.
     for (const n of [5, 10]) {
       const page = await getWeldingPage(n);
       const table = page.widgets.find(
@@ -567,9 +567,48 @@ describe.skipIf(Boolean(skipReason))("pbix cross-check (user readings)", () => {
       // Films Rej moves 773 -> 807: the "EP" twin is WP1-gated, the "PR all"
       // one is not (migration 0017), and that is the whole difference.
       expect(col("Films Rej")).toBe("807");
-      expect(col("Films Taken")).toBe("81,908");
-      expect(col("Films Acc")).toBe("81,101");
+      expect(col("Films Taken")).toBe("82,287");
+      expect(col("Films Acc")).toBe("81,480");
+      expect(col("Tested Joints")).toBe("23,111");
     }
+  });
+
+  it("page 10's cards agree with the table below them", async () => {
+    // The pbix carries each film card TWICE, once per family:
+    //   card 97e6ec71… RT Total Films by Joint "A" "EP"
+    //   card fd667f0e… RT Total Films by Joint "PR all" "A"
+    //   card bf8a82da… RT Total Films by Joint "R" "EP"
+    //   card 01a3a7e9… RT Total Films by Joint "PR all" "R"
+    // We rendered the "EP" pair (81,187 / 773) under a table showing "PR all"
+    // (81,480 / 807), so the page contradicted itself. Both now read the same
+    // bundle, which is the invariant worth pinning: card == table Total.
+    const page = await getWeldingPage(10);
+    const kpi = (label: string) =>
+      page.widgets.find((w) => w.kind === "kpi" && w.label === label) as
+        | { value: string }
+        | undefined;
+    const table = page.widgets.find(
+      (w) =>
+        w.kind === "table" &&
+        w.columns.includes("Tested Joints") &&
+        w.columns.includes("Films Taken"),
+    );
+    expect(table?.kind).toBe("table");
+    if (!table || table.kind !== "table") return;
+    const total = table.rows[table.rows.length - 1]!;
+    const col = (n: string) => total[table.columns.indexOf(n)];
+
+    expect(kpi("RT Film_Accepted")?.value).toBe("81,480");
+    expect(kpi("No.Rej Film")?.value).toBe("807");
+    expect(kpi("RT Film_Accepted")?.value, "card must equal table").toBe(col("Films Acc"));
+    expect(kpi("No.Rej Film")?.value, "card must equal table").toBe(col("Films Rej"));
+
+    // `Joints Welded` is NOT switched: the pbix has both twins for it, and its
+    // PR-all card carries `TMCP Pipe IN {null}`, under which the two families
+    // agree exactly -- 369,931 either way. Only PR-all WITHOUT that filter
+    // gives 370,089, and that is neither card. Pinned so the ambiguity cannot
+    // be "resolved" by accident later.
+    expect(kpi("Joints Welded")?.value).toBe("369,931");
   });
 
   it("UT coverage names GAC and TEKFEN as covered, MEDGULF and ACCIONA as not", async () => {

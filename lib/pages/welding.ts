@@ -1601,6 +1601,7 @@ async function buildSubconPage(
     ...baseScope(confs[0]!),
     sources: SOURCES_PR_ALL_LOADED,
     weldTypes: RT_WELD_TYPES,
+    tmcpPipe: undefined,
   });
   const blocks = await Promise.all(
     confs.map(async (conf) => {
@@ -1613,6 +1614,13 @@ async function buildSubconPage(
         ...scope,
         sources: SOURCES_PR_ALL_LOADED,
         weldTypes: RT_WELD_TYPES,
+        // Owner ruling: this table must read the same as their
+        // matrix-by-Sub-Contractor, which carries no TMCP filter. The pbix
+        // visual DOES carry `TMCP Pipe IN {null}` — we follow the owner, not
+        // the visual, and say so in lib/metrics/README.md. Only TEKFEN sets
+        // `tmcpPipe` at all, so this is a no-op on the other pages; applied
+        // uniformly so the rule lives in one place.
+        tmcpPipe: undefined,
       };
       const [pivot, thisWeek, byCat, total, prByCat, prTotal, weekly, dist] =
         await Promise.all([
@@ -1652,7 +1660,21 @@ async function buildSubconPage(
   for (const w of spec.widgets) {
     const blk = blocks[Math.min(blockIdx, blocks.length - 1)];
     if (w.kind === "kpi") {
-      out.push(subconKpi(w, blk.total));
+      // The film cards exist TWICE in the pbix, once per family — page 30
+      // carries `RT Total Films by Joint "A" "EP"` AND
+      // `RT Total Films by Joint "PR all" "A"`, likewise for "R". We rendered
+      // the "EP" pair while the table below rendered "PR all", so the page
+      // contradicted itself. They now read the SAME bundle as that table, so
+      // card and Total row cannot disagree — the report owner's ruling.
+      //
+      // `Joints Welded` is deliberately NOT switched. The pbix has both twins
+      // for it too (`Welded Joint ID Uniq "EP"` and
+      // `Joint Uniq "PR all" Welded`), so the binding is genuinely ambiguous,
+      // and it is not part of the NDE table, so nothing on the page
+      // contradicts it. Above all it must not inherit that table's
+      // `Weld Type IN {BW, CLET, GW, MW}` filter, which belongs to the NDE
+      // visual and would cut TEKFEN from 369,931 to 115,558.
+      out.push(subconKpi(w, w.label === "Joints Welded" ? blk.total : blk.prTotal));
     } else if (w.kind === "chart") {
       if (/weldtype|weld_type/i.test(w.canvas_id)) {
         out.push(donutChart(w, blk.dist));
@@ -1711,6 +1733,15 @@ async function buildSubconPage(
   return out;
 }
 
+/**
+ * The sub-contractor pages' KPI cards, bound to the `"PR all"` family.
+ *
+ * The pbix carries each of these cards twice, once per family (see the call
+ * site). The film cards read the `"PR all"` twins, on the SAME bundle as the
+ * NDE table below, so the card and the table's Total row can never disagree —
+ * which is the whole point. `Joints Welded` stays on the page's own family;
+ * see the call site for why.
+ */
 function subconKpi(spec: SpecKpi, b: Bundle): KpiWidget {
   if (!b.present) return emptyKpi(spec);
   switch (spec.label) {

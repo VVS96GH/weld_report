@@ -664,21 +664,61 @@ Switching family alone still misses by 25 films.
 `[RT Total Films by Joint "R" "EP"]` is WP1-gated and the `"PR all"` one is not
 — the same asymmetry migration 0017 settled.
 
-#### The page total is one filter further in
+#### The TMCP filter is dropped here, by owner ruling
 
-The owner's screenshot is a project-level matrix and carries no TMCP filter.
-The pbix page-25/30 visual does (`TMCP Pipe IN {null}`), which our pages already
-apply, so pages 5 and 10 render **81,908 / 81,101 / 807** — the same measure,
-one filter deeper. Both are pinned, so neither can drift into the other.
+The pbix page-25/30 visual carries `TMCP Pipe IN {null}`; the owner's
+matrix-by-Sub-Contractor does not. **Owner ruling: the page must show the
+matrix figures, with no discrepancy** — so this one table drops the TMCP filter
+and reads 82,287 / 81,480 / 807, while the rest of those pages' `"EP"` tables
+keep `tmcpPipe: false` as before. Applied uniformly across the sub-contractor
+pages; only TEKFEN sets `tmcpPipe` at all, so it is a no-op elsewhere.
+
+This is a deliberate divergence from the visual's own filter list, recorded
+here rather than left to be rediscovered.
+
+#### The cards had to move with it
+
+The pbix carries each film card **twice**, once per family — page 30 has
+
+| card | measure |
+|---|---|
+| `97e6ec71…` | `RT Total Films by Joint "A" "EP"` |
+| `fd667f0e…` | `RT Total Films by Joint "PR all" "A"` |
+| `bf8a82da…` | `RT Total Films by Joint "R" "EP"` |
+| `01a3a7e9…` | `RT Total Films by Joint "PR all" "R"` |
+
+We rendered the `"EP"` pair (81,187 / 773) directly above a table showing
+`"PR all"` (81,480 / 807), so **the page contradicted itself**. Both now read
+the *same bundle*, which is the real fix: card and table Total cannot drift
+apart, whatever the scope later becomes. A test pins the equality, not just the
+numbers.
+
+#### `Joints Welded` is deliberately unchanged
+
+The pbix has both twins for it too — `Welded Joint ID Uniq "EP"` (`623e5084…`)
+and `Joint Uniq "PR all" Welded` (`7d2289cf…`) — so the binding is genuinely
+ambiguous. It does not matter, because the PR-all card **carries the TMCP
+filter**, and under it the two families agree exactly:
+
+| binding | TEKFEN |
+|---|---|
+| `"EP"`, what we render | **369,931** |
+| `"PR all"` + `TMCP Pipe IN {null}` | **369,931** |
+| `"PR all"`, no TMCP filter | 370,089 |
+
+So our card already matches the pbix's PR-all card. 370,089 is neither card.
+It also must **not** inherit the NDE table's `Weld Type` filter, which would
+cut it to 115,558 — the card is a different visual with different filters.
 
 #### Before → after, every affected page
 
 | page | before (`"EP"`) | after (`"PR all"` + type) |
 |---|---|---|
 | 3, 7 CCC | 512,328 / 511,722 / 606 | 512,322 / 511,716 / 606 |
+| 10, 11 cards | 81,187 / 773 · 18,739 / 41 | 81,480 / 807 · 18,733 / 44 |
 | 4, 8 GAC non-SG | 132,354 / 131,820 / 534 | 132,328 / 131,732 / 596 |
 | 4, 9 GAC SG | 10,598 / 10,596 / 2 | 10,598 / 10,596 / 2 |
-| 5, 10 TEKFEN | 81,960 / 81,187 / 773 | 81,908 / 81,101 / 807 |
+| 5, 10 TEKFEN | 81,960 / 81,187 / 773 | **82,287 / 81,480 / 807** ✅ |
 | 6, 11 MEDGULF | 18,780 / 18,739 / 41 | 18,777 / 18,733 / 44 |
 
 CCC barely moves because its page was already on `"PR all"`; only the weld-type
