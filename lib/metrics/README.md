@@ -785,6 +785,92 @@ pbix. They are pinned as such and should be flipped to owner-read values when
 those arrive. They already equal what page 2's sub-contractor table renders,
 so M40/M60 needed no change.
 
+### The backlog charts are computed, not read from the workbook
+
+Page 1's "PROJECT RT/UT BACKLOG" and "PROJECT PWHT BACKLOG", and their
+per-sub-contractor twins on pages 7–11, used to read `weld_weekly_snapshot` —
+the hand-typed trend workbook. Its last week said ~680 RT and ~1,850 PWHT while
+the owner's DAX, which page 2 renders, says **672** and **1,042**. Owner ruling:
+the charts must reflect the current calculations.
+
+They are now recomputed from `mv_joint` at each week end (`backlogTrend`), with
+the backlog's `report IS NULL` clause replaced by *"the report did not exist yet
+at W"* — `still_open_today OR report_date > W`.
+
+#### The invariant
+
+For every week W the stack sums to its page-2 measure:
+
+```
+rt_total(W)   = [RT BACKLOG Total Project "PR all"]       at W
+pwht_total(W) = [PWHT All BACKLOG All WELD TYPE "PR all"] at W
+```
+
+and each is split by **intersection**:
+
+| series | value |
+|---|---|
+| `RT/UT+PWHT` | joints in **both** backlogs at W |
+| `RT/UT Only` | `rt_total(W) − both(W)` |
+| `PWHT+RT/UT` | the **same** set — `both(W)` |
+| `PWHT Only` | `pwht_total(W) − both(W)` |
+
+So the two `+` series are one joint set seen from either side, and a test pins
+them equal. The mockup confirms the semantics: at 16-Jan its RT chart reads
+437 + 129 = 566 = page 2's `RT B.LOG Total`, and its PWHT chart
+1,981 + 45 = 2,026 = `PWHT Backlog All`.
+
+Today (project scope): **RT 672 = 76 + 596**, **PWHT 1,042 = 76 + 966**.
+CCC 357 / 546, TEKFEN 0 / 26 — matching page 2's per-party rows.
+
+Pages 7–11's PWHT chart has only a `PWHT Only` series, so that one series
+carries the whole total; the stack still sums to the measure.
+
+#### Why the workbook's own split could not be reused
+
+The trend workbook splits the RT chart with M47
+(`RT BACKLOG & PWHT Not Done`) and M48 (`RT BACKLOG & PWHT "Y" Done + "N"`).
+Today those are **58** and **596** — summing to **654, not 672**, because 18
+backlog joints match *neither* PWHT branch:
+
+```dax
+M47 …  [PWHT Y/N] IN {"Y","25.01"} AND [PWHT Weld Status] IN {"H","HS","NR"}
+       AND [PWHT Report] = ""
+M48 …  ([PWHT Y/N] IN {"Y","25.01"} AND [PWHT Report] <> "")
+       OR ([PWHT Y/N CCC] = "N")   -- plus the CCC-done branch
+```
+
+Those two conditions do not partition the backlog, so no stack built from them
+can total the page-2 figure. The intersection split does, by construction.
+
+#### What is exact and what is not
+
+**Exact:** the weld date and the report dates. Every row carrying an `rt_report`
+also carries an `rt_date` (0 exceptions in the load); only 2 rows in the whole
+load carry a `pwht_report` without a `pwht_date`.
+
+**Approximate, and disclosed on the page:** the status columns.
+`rt_weld_status`, `pwht_weld_status` and `rt_pct` are the **current** snapshot —
+the export carries no status history — so a joint whose status changed in the
+past is counted under today's status across the whole window. There is no way
+to do better with the data we are given, so it is stated rather than hidden.
+
+The workbook's own figures stay on the chart as a dashed
+**"as reported (workbook)"** series wherever they overlap the window, so the two
+are visibly different series rather than one silently replacing the other.
+
+The PWHT second term has no weld-date filter in the DAX; a chart over time still
+needs an entry point, so `pwht_bl_start` uses the weld date.
+
+#### The rejection-rate charts still read the workbook
+
+`% RT Rejection Rate by Film` and `% UT/PAUT Rejection Rate by Length` on page 1
+(and their per-party twins) still read `weld_weekly_snapshot` — metrics M25/M25P
+and M36/M36P. **They are not computed.** `Welding Progress Trend` already comes
+from `mv_weekly_progress` and is unaffected. Flagged for a ruling: giving those
+the same treatment means reconstructing cumulative film/length rejection rates
+per week, which needs RT/UT dates the same way the backlog needed report dates.
+
 ### M91 `WPS Approved` (R4-02, R4-03)
 
 `count(DISTINCT wps_no) FILTER (document_status = 'WPS APPROVED BY CTJV/ CPY')`

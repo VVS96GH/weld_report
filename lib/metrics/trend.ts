@@ -251,3 +251,122 @@ export async function latestWeekEnd(): Promise<string | null> {
     return null;
   }
 }
+
+// ── computed backlog history ────────────────────────────────────────────────
+
+/**
+ * The page-1 / 7-11 backlog charts, recomputed from `mv_joint` at each week end
+ * instead of read from the hand-typed trend workbook.
+ *
+ * WHY. The workbook's last week says ~680 RT and ~1,850 PWHT while the owner's
+ * DAX — which page 2 renders — says 672 and 1,042. Owner ruling: the charts
+ * must reflect the current calculations, and the chart TOTAL is what the owner
+ * reads against the page-2 measures.
+ *
+ * THE INVARIANT (non-negotiable, and tested). For every week W:
+ *
+ * ```
+ *   rt_total(W)   = [RT BACKLOG Total Project "PR all"]      at W
+ *   pwht_total(W) = [PWHT All BACKLOG All WELD TYPE "PR all"] at W
+ * ```
+ *
+ * and each stack is split by INTERSECTION, not by the workbook's own series:
+ *
+ * ```
+ *   "RT/UT+PWHT" = both(W)              "RT/UT Only" = rt_total(W)   - both(W)
+ *   "PWHT+RT/UT" = both(W)              "PWHT Only"  = pwht_total(W) - both(W)
+ * ```
+ *
+ * so the two `+` series are the SAME joint set seen from either side. The
+ * mockup confirms the semantics: at 16-Jan its RT chart reads 437 + 129 = 566,
+ * exactly page 2's `RT B.LOG Total`, and its PWHT chart 1,981 + 45 = 2,026,
+ * exactly `PWHT Backlog All`.
+ *
+ * This is NOT the trend workbook's split. There the two series are M47
+ * (`RT BACKLOG & PWHT Not Done`) and M48 (`RT BACKLOG & PWHT "Y" Done + "N"`),
+ * which today are 58 and 596 — summing to 654, not 672, because 18 backlog
+ * joints match neither PWHT branch. Those measures do not partition the
+ * backlog, so they cannot produce a stack that totals the page-2 figure. The
+ * intersection split does, by construction.
+ *
+ * HOW HISTORY IS RECONSTRUCTED, and what is approximate. The backlog's
+ * `report IS NULL` clause becomes "the report did not exist yet at W":
+ * `still_open_today OR report_date > W`. Dates are exact — every row with an
+ * `rt_report` carries an `rt_date`. **Status is not**: `rt_weld_status`,
+ * `pwht_weld_status` and `rt_pct` are the CURRENT snapshot, because the export
+ * carries no status history, so a joint whose status changed in the past is
+ * counted under today's status across the whole window. The chart says so, and
+ * the workbook series stays available as a dashed "as reported" overlay so the
+ * two are visibly different series rather than one silently replacing the
+ * other.
+ */
+export type BacklogTrendPoint = {
+  week_end_date: string;
+  /** `[RT BACKLOG Total Project "PR all"]` at this week end. */
+  rt_total: number;
+  /** `[PWHT All BACKLOG All WELD TYPE "PR all"]` at this week end. */
+  pwht_total: number;
+  /** Joints in BOTH backlogs at this week end — the shared `+` series. */
+  both: number;
+};
+
+const BacklogTrendRow = z.object({
+  week_end_date: z.string(),
+  rt_total: zCount,
+  pwht_total: zCount,
+  both: zCount,
+});
+
+/** In the RT backlog at week `w`. `wk.w` and alias `j` are fixed by the query. */
+const RT_OPEN =
+  "(j.rt_bl_cand_prall AND j.rt_bl_start <= wk.w" +
+  "  AND (j.rt_backlog_prall OR j.rt_bl_end > wk.w))";
+
+/** In the PWHT backlog at week `w` — the CCC branch OR the status branch. */
+const PWHT_OPEN =
+  "((j.pwht_bl_cand_ccc OR j.pwht_bl_cand_rest) AND j.pwht_bl_start <= wk.w" +
+  "  AND (j.pwht_backlog_ccc OR j.pwht_backlog_rest OR j.pwht_bl_end > wk.w))";
+
+export async function backlogTrend(opts: {
+  /** Week ends run back from the Friday of this date. */
+  asOf: string;
+  weeks: number;
+  /** Page 7-11 pass their party; page 1 passes nothing (project total). */
+  subContractor?: string;
+  sources: readonly string[];
+}): Promise<BacklogTrendPoint[]> {
+  const { asOf, weeks, subContractor, sources } = opts;
+  const p = new Params();
+  const asOfP = p.add(asOf);
+  const weeksP = p.add(String(Math.max(1, weeks)));
+  const srcP = p.any(sources);
+  const subCond = subContractor
+    ? ` AND sub_contractor = ${p.add(subContractor)}`
+    : "";
+  const sql =
+    `WITH wk AS (\n` +
+    `  SELECT (date_trunc('week', ${asOfP}::date)::date + 4 - 7 * g)::date AS w\n` +
+    `    FROM generate_series(0, ${weeksP}::int - 1) g\n` +
+    `), win AS (SELECT min(w) AS from_w FROM wk), j AS (\n` +
+    `  SELECT * FROM mv_joint, win\n` +
+    `   WHERE source::text = ANY(${srcP}::text[])${subCond}\n` +
+    `     AND (rt_bl_cand_prall OR pwht_bl_cand_ccc OR pwht_bl_cand_rest)\n` +
+    // Drop joints that had already left both backlogs before the window opens.
+    // Without this the join scans every joint that was ever in a backlog.
+    `     AND (rt_backlog_prall OR pwht_backlog_ccc OR pwht_backlog_rest\n` +
+    `          OR rt_bl_end > win.from_w OR pwht_bl_end > win.from_w)\n` +
+    `)\n` +
+    `SELECT wk.w::text AS week_end_date,\n` +
+    `       count(*) FILTER (WHERE ${RT_OPEN})   AS rt_total,\n` +
+    `       count(*) FILTER (WHERE ${PWHT_OPEN}) AS pwht_total,\n` +
+    `       count(*) FILTER (WHERE ${RT_OPEN} AND ${PWHT_OPEN}) AS both\n` +
+    `  FROM wk LEFT JOIN j ON true\n` +
+    ` GROUP BY wk.w ORDER BY wk.w`;
+  try {
+    return z.array(BacklogTrendRow).parse(await query(sql, p.list()));
+  } catch {
+    // The history columns arrive with migration 0023; before it the charts
+    // fall back to the workbook rather than rendering a fabricated zero.
+    return [];
+  }
+}

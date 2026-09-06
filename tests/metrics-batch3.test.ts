@@ -679,6 +679,74 @@ describe.skipIf(Boolean(skipReason))("pbix cross-check (user readings)", () => {
     expect(rows.reduce((a, r) => a + Number(r.pc) + Number(r.pr), 0)).toBe(1_042);
   });
 
+  it("every backlog chart stack sums to its page-2 measure", async () => {
+    // The owner reads the chart TOTAL against the page-2 backlog measures, so
+    // this is the invariant, not the individual series. Today: RT 672,
+    // PWHT 1,042 project-wide; CCC 357 / 546; TEKFEN 0 / 26.
+    const want: Record<number, { rt?: number; pwht?: number }> = {
+      1: { rt: 672, pwht: 1_042 },
+      7: { rt: 357, pwht: 546 },
+      10: { rt: 0, pwht: 26 },
+    };
+    for (const [nStr, exp] of Object.entries(want)) {
+      const n = Number(nStr);
+      const page = await getWeldingPage(n);
+      for (const w of page.widgets) {
+        if (w.kind !== "chart" || !/backlog/i.test(w.canvas_id)) continue;
+        const stack = w.datasets.filter(
+          (d) => !/as reported/i.test(d.label ?? ""),
+        );
+        const last = stack.reduce(
+          (a, d) => a + Number(d.data[d.data.length - 1] ?? 0),
+          0,
+        );
+        const target = /pwht/i.test(w.canvas_id) ? exp.pwht : exp.rt;
+        expect(last, `page ${n} ${w.canvas_id} last stack total`).toBe(target);
+
+        // Monotone sanity: a backlog count is never negative, at any week.
+        for (const d of stack) {
+          for (const v of d.data) {
+            expect(Number(v ?? 0), `${w.canvas_id} ${d.label}`).toBeGreaterThanOrEqual(0);
+          }
+        }
+      }
+    }
+  });
+
+  it("the two '+' series are the same joint set from both sides", async () => {
+    // "RT/UT+PWHT" and "PWHT+RT/UT" are both the INTERSECTION of the two
+    // backlogs, so they must be equal week for week. This is what makes each
+    // stack total its own measure -- the workbook's M47/M48 split does not
+    // (58 + 596 = 654, not 672, because 18 backlog joints match neither PWHT
+    // branch), which is why it could not be reused here.
+    const page = await getWeldingPage(1);
+    const series = (id: string, label: string) => {
+      const c = page.widgets.find((w) => w.kind === "chart" && w.canvas_id === id);
+      if (!c || c.kind !== "chart") return null;
+      return c.datasets.find((d) => d.label === label)?.data ?? null;
+    };
+    const rtPlus = series("chart1_rtbacklog", "RT/UT+PWHT");
+    const pwhtPlus = series("chart1_pwhtbacklog", "PWHT+RT/UT");
+    expect(rtPlus).not.toBeNull();
+    expect(rtPlus).toEqual(pwhtPlus);
+  });
+
+  it("the backlog charts keep the workbook series as a labelled overlay", async () => {
+    // The computed series must not silently replace the as-reported one --
+    // they are different series and the page says so.
+    const page = await getWeldingPage(1);
+    const chart = page.widgets.find(
+      (w) => w.kind === "chart" && w.canvas_id === "chart1_rtbacklog",
+    );
+    expect(chart?.kind).toBe("chart");
+    if (!chart || chart.kind !== "chart") return;
+    expect(chart.datasets.map((d) => d.label)).toContain("as reported (workbook)");
+    const note = page.widgets.find(
+      (w) => w.kind === "text" && /COMPUTED from the current data/.test(w.text),
+    );
+    expect(note, "the approximation must be disclosed").toBeDefined();
+  });
+
   it("UT coverage names GAC and TEKFEN as covered, MEDGULF and ACCIONA as not", async () => {
     // The old note blamed the missing GAC/TEKFEN tracker workbooks. That is the
     // wrong premise for this measure: the DAX's GAC and TEKFEN branches never

@@ -104,6 +104,8 @@ import {
   SNAPSHOT_SCOPES,
   weeklyProgress,
   weeklySnapshot,
+  backlogTrend,
+  type BacklogTrendPoint,
 } from "@/lib/metrics/trend";
 import {
   buildGroupedSelect,
@@ -941,6 +943,18 @@ const HA_NOTE =
   "empty for this scope, because the HA l0_abs_guide lookup file is not in " +
   "sources/ and Subsystem Code / System no did not yield a handover area.";
 
+const AS_REPORTED_LABEL = "as reported (workbook)";
+
+const BACKLOG_TREND_NOTE =
+  "The RT/UT and PWHT backlog charts are COMPUTED from the current data at " +
+  "each week end, so their totals match the backlog measures on page 2. " +
+  "Report dates are exact; the status columns (RT/PWHT Weld Status, RT%) are " +
+  "today's snapshot \u2014 the export carries no status history \u2014 so a joint " +
+  "whose status changed in the past is counted under its current status " +
+  "across the whole window. The hand-typed trend workbook's own figures are " +
+  "kept as the dashed \"" + "as reported (workbook)" + "\" series where they " +
+  "overlap, so the two series are visibly different, not one replacing the other.";
+
 const REGISTER_NOTE =
   "Project_Welder (M90) reads ref_qualified_welders and WPS Approved (M91) " +
   "reads ref_wps_register. One of them is unseeded, so its card renders " +
@@ -1319,6 +1333,31 @@ async function buildProjectKpiPage(spec: SpecPage, ctx: Ctx): Promise<Widget[]> 
     } else if (w.kind === "chart" && w.canvas_id === "chart1_weldtype") {
       out.push(donutChart(w, dist));
     } else if (w.kind === "chart") {
+      if (isBacklogChart(w.canvas_id)) {
+        // Owner ruling: these must reflect the current calculations, not the
+        // hand-typed workbook. Each stack sums to its page-2 measure.
+        const [computed, reported] = await Promise.all([
+          backlogTrend({
+            asOf: ctx.asOf,
+            weeks: w.labels.length,
+            sources: SOURCES_PR_ALL_LOADED,
+          }),
+          weeklySnapshot({
+            metrics: snapshotMetricsFor(w),
+            scope: SNAPSHOT_SCOPES.ALL,
+            aggregate: true,
+            weeks: w.labels.length,
+          }),
+        ]);
+        if (computed.length === 0) {
+          out.push(emptyWidget(w));
+          note(ctx, TREND_NOTE);
+        } else {
+          out.push(backlogChart(w, computed, reported));
+          note(ctx, BACKLOG_TREND_NOTE);
+        }
+        continue;
+      }
       const metrics = snapshotMetricsFor(w, { project: true });
       const isRate = metrics.some(
         (m) =>
@@ -1416,6 +1455,71 @@ const RATE_METRICS: ReadonlySet<string> = new Set([
   SNAPSHOT_METRICS.RT_FILM_REJECTION_RATE_PROJECT,
   SNAPSHOT_METRICS.UT_LENGTH_REJECTION_RATE_PROJECT,
 ]);
+
+
+/** Page-1 / 7-11 backlog charts are computed, not read from the workbook. */
+const isBacklogChart = (canvasId: string) => /backlog/i.test(canvasId);
+
+/**
+ * The computed backlog chart.
+ *
+ * Each stack sums to its page-2 measure at every week end — the invariant the
+ * report owner reads — and is split by INTERSECTION: the `+` series is the set
+ * of joints in BOTH backlogs, so it is the same number seen from either chart.
+ * See {@link backlogTrend} for why the workbook's own M47/M48 split cannot be
+ * used (it sums to 654, not 672).
+ *
+ * The workbook series is kept as a dashed "as reported" overlay wherever it
+ * overlaps the window, so the two are visibly different series rather than one
+ * silently replacing the other.
+ */
+function backlogChart(
+  spec: SpecChart,
+  points: BacklogTrendPoint[],
+  reported: Awaited<ReturnType<typeof weeklySnapshot>>,
+): ChartWidget {
+  const weeks = points.map((p) => p.week_end_date);
+  const wantsPlus = spec.datasets.some((d) => /\+/.test(d.label ?? ""));
+  const datasets = spec.datasets.map((d) => {
+    const label = d.label ?? "";
+    const data = points.map((p) => {
+      if (/\+/.test(label)) return p.both;
+      if (/^RT\/UT Only/i.test(label)) return p.rt_total - p.both;
+      // A PWHT chart with no `+` series (pages 7-11) carries the whole total on
+      // its single series, so the stack still sums to the measure.
+      if (/^PWHT Only/i.test(label)) {
+        return wantsPlus ? p.pwht_total - p.both : p.pwht_total;
+      }
+      return null;
+    });
+    return { label, data };
+  });
+
+  // The as-reported workbook line, only where it actually has values.
+  const metrics = snapshotMetricsFor(spec);
+  const reportedData = weeks.map((wk) => {
+    const vals = reported.filter(
+      (r) => r.week_end_date === wk && metrics.includes(r.metric),
+    );
+    const known = vals.filter((r) => r.value !== null);
+    return known.length ? known.reduce((a, r) => a + (r.value ?? 0), 0) : null;
+  });
+  if (reportedData.some((v) => v !== null)) {
+    datasets.push({ label: AS_REPORTED_LABEL, data: reportedData });
+  }
+
+  return {
+    kind: "chart",
+    canvas_id: spec.canvas_id,
+    title: spec.title,
+    chart_type: spec.chart_type,
+    labels: weeks,
+    datasets,
+    options_notes:
+      [...spec.options_notes, `${AS_REPORTED_LABEL}: dashed line`].join(", ") ||
+      undefined,
+  };
+}
 
 function snapshotMetricsFor(
   spec: SpecChart,
@@ -1683,6 +1787,28 @@ async function buildSubconPage(
         if (blk.weekly.length === 0) note(ctx, TREND_NOTE);
         if (w.datasets.some((d) => d.label === "MT+PT Qty")) {
           note(ctx, MT_PT_SERIES_NOTE);
+        }
+      } else if (isBacklogChart(w.canvas_id)) {
+        const [computed, reported] = await Promise.all([
+          backlogTrend({
+            asOf: ctx.asOf,
+            weeks: w.labels.length,
+            subContractor: blk.conf.sub,
+            sources: SOURCES_PR_ALL_LOADED,
+          }),
+          weeklySnapshot({
+            metrics: snapshotMetricsFor(w),
+            subContractor: blk.conf.sub,
+            scope: snapshotScopeFor(blk.conf),
+            weeks: w.labels.length,
+          }),
+        ]);
+        if (computed.length === 0) {
+          out.push(emptyWidget(w));
+          note(ctx, TREND_NOTE);
+        } else {
+          out.push(backlogChart(w, computed, reported));
+          note(ctx, BACKLOG_TREND_NOTE);
         }
       } else {
         const metrics = snapshotMetricsFor(w);
