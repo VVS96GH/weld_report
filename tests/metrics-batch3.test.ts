@@ -40,6 +40,11 @@ import {
 } from "@/lib/metrics/scope";
 import { getWeldingPage } from "@/lib/pages/welding";
 import { approvedWpsCount } from "@/lib/metrics/refs";
+import {
+  rtBacklogCurrent,
+  pwhtBacklogCurrent,
+  weeklySnapshot,
+} from "@/lib/metrics/trend";
 
 /** `analysis/sources3/plan.md` — the delivered populations. */
 const ACCIONA_ROWS = 13_313;
@@ -679,72 +684,169 @@ describe.skipIf(Boolean(skipReason))("pbix cross-check (user readings)", () => {
     expect(rows.reduce((a, r) => a + Number(r.pc) + Number(r.pr), 0)).toBe(1_042);
   });
 
-  it("every backlog chart stack sums to its page-2 measure", async () => {
-    // The owner reads the chart TOTAL against the page-2 backlog measures, so
-    // this is the invariant, not the individual series. Today: RT 672,
-    // PWHT 1,042 project-wide; CCC 357 / 546; TEKFEN 0 / 26.
-    const want: Record<number, { rt?: number; pwht?: number }> = {
-      1: { rt: 672, pwht: 1_042 },
-      7: { rt: 357, pwht: 546 },
-      10: { rt: 0, pwht: 26 },
+  it("page 1's backlog charts reproduce the pbix week for week", async () => {
+    // The pbix chart IS the trend workbook, summed over every sub-contractor
+    // AND every scope (SG/TMCP included), with only the PROJECT sentinel
+    // dropped. Owner's chart, 31-Jul..28-Aug:
+    const want: Record<string, Record<string, number[]>> = {
+      chart1_rtbacklog: {
+        "RT/UT+PWHT": [135, 101, 94, 94, 76], // M47
+        "RT/UT Only": [556, 550, 525, 530, 596], // M48
+      },
+      chart1_pwhtbacklog: {
+        // M64, NOT M62 -- M62 is 354 where the chart shows 3.
+        "PWHT+RT/UT": [3, 3, 3, 3, 3],
+        "PWHT Only": [1_434, 1_394, 1_206, 814, 1_039], // M60
+      },
     };
-    for (const [nStr, exp] of Object.entries(want)) {
-      const n = Number(nStr);
+    const page = await getWeldingPage(1);
+    for (const [id, series] of Object.entries(want)) {
+      const c = page.widgets.find((w) => w.kind === "chart" && w.canvas_id === id);
+      expect(c?.kind, id).toBe("chart");
+      if (!c || c.kind !== "chart") continue;
+      for (const [label, data] of Object.entries(series)) {
+        expect(c.datasets.find((d) => d.label === label)?.data, `${id} ${label}`).toEqual(data);
+      }
+      // Stack totals: 691, 651, 619, 624, 672 and 1437, 1397, 1209, 817, 1042.
+      const totals = c.labels.map((_, i) =>
+        c.datasets.reduce((a, d) => a + Number(d.data[i] ?? 0), 0),
+      );
+      expect(totals[totals.length - 1]).toBe(id === "chart1_rtbacklog" ? 672 : 1_042);
+    }
+  });
+
+  it("PWHT+RT/UT = 3 (SG/TMCP) and PWHT Only = 1,042 - 3 = 1,039", async () => {
+    // [PWHT Backlog Weld Status All Weld Types RT NOT Done "PR all"] -- FOUR
+    // added DISTINCTCOUNTs, a CCC branch and a status branch, each once for
+    // Service Cat = "SG" and once for TMCP Pipe = "TMCP Pipe". NO weld-type
+    // filter, and PWHT Weld Status uses the same 17-code hold list as RT.
+    // Today it is 3, entirely GAC through the SG status branch (0 + 3 + 0 + 0).
+    // Scope columns: `service_cat = 'SG'` -- an equality, never a LIKE, because
+    // 'SGCS' and 'HRSG' also exist -- and the boolean `tmcp_pipe`.
+    const cur = await pwhtBacklogCurrent({ sources: SOURCES_PR_ALL_LOADED });
+    expect(cur).not.toBeNull();
+    expect(cur!.plus_rt).toBe(3);
+    expect(cur!.total).toBe(1_042);
+    expect(cur!.pwht_only).toBe(1_039);
+
+    const gac = await pwhtBacklogCurrent({
+      sources: SOURCES_PR_ALL_LOADED,
+      subContractor: "GAC",
+    });
+    expect(gac!.plus_rt, "all 3 are GAC's").toBe(3);
+    expect(gac!.pwht_only).toBe(gac!.total - 3);
+  });
+
+  it("both charts' current week is computed, and equals the workbook", async () => {
+    // History is the workbook; the LAST week is recomputed from mv_joint so the
+    // chart can never drift from page 2. They agree today -- if they stop, the
+    // computed value is the truthful one and this test fails loudly.
+    const cur = await rtBacklogCurrent({ sources: SOURCES_PR_ALL_LOADED });
+    expect(cur).not.toBeNull();
+    expect(cur!.plus_pwht).toBe(76);
+    expect(cur!.rt_only).toBe(596);
+    expect(cur!.total).toBe(672);
+
+    const pw = await pwhtBacklogCurrent({ sources: SOURCES_PR_ALL_LOADED });
+
+    // The workbook's OWN last week, unmodified -- the agreement check. The
+    // rendered chart carries the computed value, so comparing the chart to the
+    // measure would be circular; this compares measure to workbook.
+    const wb = await weeklySnapshot({
+      metrics: ["M47", "M48", "M60", "M64"],
+      aggregate: true,
+      excludeProject: true,
+      weeks: 1,
+    });
+    const at = (m: string) => Number(wb.find((r) => r.metric === m)?.value ?? -1);
+    expect(at("M47"), "RT/UT+PWHT").toBe(cur!.plus_pwht);
+    expect(at("M48"), "RT/UT Only").toBe(cur!.rt_only);
+    expect(at("M64"), "PWHT+RT/UT").toBe(pw!.plus_rt);
+    expect(at("M60"), "PWHT Only").toBe(pw!.pwht_only);
+
+    const page = await getWeldingPage(1);
+    const lastOf = (id: string, label: string) => {
+      const c = page.widgets.find((w) => w.kind === "chart" && w.canvas_id === id);
+      if (!c || c.kind !== "chart") throw new Error(`no chart ${id}`);
+      const d = c.datasets.find((x) => x.label === label)!.data;
+      return Number(d[d.length - 1] ?? 0);
+    };
+    expect(lastOf("chart1_rtbacklog", "RT/UT+PWHT")).toBe(cur!.plus_pwht);
+    expect(lastOf("chart1_rtbacklog", "RT/UT Only")).toBe(cur!.rt_only);
+    expect(lastOf("chart1_pwhtbacklog", "PWHT+RT/UT")).toBe(pw!.plus_rt);
+    expect(lastOf("chart1_pwhtbacklog", "PWHT Only")).toBe(pw!.pwht_only);
+  });
+
+  it("pages 7-11 carry the same computed current week, per party", async () => {
+    // GAC's PWHT chart is the only per-party one with a `+` series today,
+    // because M64 is entirely GAC's: 427 - 3 = 424.
+    for (const [n, sub] of [[7, "CCC"], [8, "GAC"], [10, "TEKFEN"], [11, "MEDGULF"]] as const) {
       const page = await getWeldingPage(n);
+      const [rt, pw] = await Promise.all([
+        rtBacklogCurrent({ sources: SOURCES_PR_ALL_LOADED, subContractor: sub }),
+        pwhtBacklogCurrent({ sources: SOURCES_PR_ALL_LOADED, subContractor: sub }),
+      ]);
       for (const w of page.widgets) {
         if (w.kind !== "chart" || !/backlog/i.test(w.canvas_id)) continue;
-        const stack = w.datasets.filter(
-          (d) => !/as reported/i.test(d.label ?? ""),
-        );
-        const last = stack.reduce(
-          (a, d) => a + Number(d.data[d.data.length - 1] ?? 0),
-          0,
-        );
-        const target = /pwht/i.test(w.canvas_id) ? exp.pwht : exp.rt;
-        expect(last, `page ${n} ${w.canvas_id} last stack total`).toBe(target);
-
-        // Monotone sanity: a backlog count is never negative, at any week.
-        for (const d of stack) {
-          for (const v of d.data) {
-            expect(Number(v ?? 0), `${w.canvas_id} ${d.label}`).toBeGreaterThanOrEqual(0);
-          }
+        const last = (label: string) => {
+          const d = w.datasets.find((x) => x.label === label)?.data;
+          return d ? Number(d[d.length - 1] ?? 0) : null;
+        };
+        if (/pwht/i.test(w.canvas_id)) {
+          expect(last("PWHT Only"), `page ${n} PWHT Only`).toBe(pw!.pwht_only);
+        } else {
+          expect(last("RT/UT+PWHT"), `page ${n} RT/UT+PWHT`).toBe(rt!.plus_pwht);
+          expect(last("RT/UT Only"), `page ${n} RT/UT Only`).toBe(rt!.rt_only);
         }
       }
     }
   });
 
-  it("the two '+' series are the same joint set from both sides", async () => {
-    // "RT/UT+PWHT" and "PWHT+RT/UT" are both the INTERSECTION of the two
-    // backlogs, so they must be equal week for week. This is what makes each
-    // stack total its own measure -- the workbook's M47/M48 split does not
-    // (58 + 596 = 654, not 672, because 18 backlog joints match neither PWHT
-    // branch), which is why it could not be reused here.
-    const page = await getWeldingPage(1);
-    const series = (id: string, label: string) => {
-      const c = page.widgets.find((w) => w.kind === "chart" && w.canvas_id === id);
-      if (!c || c.kind !== "chart") return null;
-      return c.datasets.find((d) => d.label === label)?.data ?? null;
-    };
-    const rtPlus = series("chart1_rtbacklog", "RT/UT+PWHT");
-    const pwhtPlus = series("chart1_pwhtbacklog", "PWHT+RT/UT");
-    expect(rtPlus).not.toBeNull();
-    expect(rtPlus).toEqual(pwhtPlus);
+  it("M47's CCC branch and M64's SG/TMCP scope (migration 0024)", async () => {
+    // Both were missing terms, found by reading the verbatim DAX:
+    //   M47 = 3 added CALCULATEs; the third (PWHT Y/N CCC = "Y") was absent,
+    //         so this read 58 against the live pbix's 76. 58 + 18 = 76.
+    //   M64 = 4 added CALCULATEs, each scoped to Service Cat = "SG" or
+    //         TMCP Pipe = "TMCP Pipe". Unscoped it read 0 against the pbix's 3.
+    const [r] = await query<Record<string, string>>(
+      "SELECT count(*) FILTER (WHERE rt_backlog_pwht_y_not_done_prall)::text AS a," +
+        " count(*) FILTER (WHERE rt_backlog_pwht_y_not_done_ccc)::text AS ccc," +
+        " (count(*) FILTER (WHERE pwht_bl_rt_nd_sg_ccc)" +
+        "  + count(*) FILTER (WHERE pwht_bl_rt_nd_sg_status)" +
+        "  + count(*) FILTER (WHERE pwht_bl_rt_nd_tmcp_ccc)" +
+        "  + count(*) FILTER (WHERE pwht_bl_rt_nd_tmcp_status))::text AS m64" +
+        " FROM mv_joint WHERE source::text IN " +
+        "('WELD_DUMP','CCC_WELDER_RECORD','CCC_JOINT_RECORD','ACCIONA','INCO')",
+    );
+    expect(Number(r.a)).toBe(58);
+    expect(Number(r.ccc), "the CCC branch M47 was missing").toBe(18);
+    expect(Number(r.a) + Number(r.ccc)).toBe(76);
+    expect(Number(r.m64), "M64 is SG/TMCP-scoped").toBe(3);
   });
 
-  it("the backlog charts keep the workbook series as a labelled overlay", async () => {
-    // The computed series must not silently replace the as-reported one --
-    // they are different series and the page says so.
-    const page = await getWeldingPage(1);
-    const chart = page.widgets.find(
-      (w) => w.kind === "chart" && w.canvas_id === "chart1_rtbacklog",
+  it("the three RT-backlog components partition the 672", async () => {
+    // Owner's verbatim measures, each a SUM of DISTINCTCOUNT branches that are
+    // NOT de-duplicated against one another:
+    //   (C) RT BACKLOG Total Project & PWHT "Y" NOT Done   76  (58 + 18 CCC)
+    //   (A) RT Backlog+PWHT "N"                           507  (GAC 170 +
+    //                                                           MEDGULF 23 +
+    //                                                           CCC 314)
+    //       RT Backlog+PWHT Progress "Y"                   89  (GAC 64, CCC 25)
+    //   (A) + Progress "Y" = 596 = the chart's "RT/UT Only"
+    //   (C) + 596          = 672 = RT BACKLOG Total Project "PR all"
+    const [r] = await query<Record<string, string>>(
+      "SELECT count(*) FILTER (WHERE rt_backlog_pwht_n_prall)::text AS a," +
+        " count(*) FILTER (WHERE rt_backlog_pwht_y_done_prall)::text AS prog," +
+        " count(*) FILTER (WHERE rt_backlog_prall)::text AS total" +
+        " FROM mv_joint WHERE source::text IN " +
+        "('WELD_DUMP','CCC_WELDER_RECORD','CCC_JOINT_RECORD','ACCIONA','INCO')",
     );
-    expect(chart?.kind).toBe("chart");
-    if (!chart || chart.kind !== "chart") return;
-    expect(chart.datasets.map((d) => d.label)).toContain("as reported (workbook)");
-    const note = page.widgets.find(
-      (w) => w.kind === "text" && /COMPUTED from the current data/.test(w.text),
-    );
-    expect(note, "the approximation must be disclosed").toBeDefined();
+    expect(Number(r.a)).toBe(507);
+    expect(Number(r.prog)).toBe(89);
+    expect(Number(r.a) + Number(r.prog)).toBe(596);
+    expect(Number(r.total)).toBe(672);
+    const cur = await rtBacklogCurrent({ sources: SOURCES_PR_ALL_LOADED });
+    expect(cur!.plus_pwht + Number(r.a) + Number(r.prog)).toBe(672);
   });
 
   it("UT coverage names GAC and TEKFEN as covered, MEDGULF and ACCIONA as not", async () => {

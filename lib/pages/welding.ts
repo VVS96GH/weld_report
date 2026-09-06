@@ -104,8 +104,10 @@ import {
   SNAPSHOT_SCOPES,
   weeklyProgress,
   weeklySnapshot,
-  backlogTrend,
-  type BacklogTrendPoint,
+  rtBacklogCurrent,
+  pwhtBacklogCurrent,
+  type RtBacklogCurrent,
+  type PwhtBacklogCurrent,
 } from "@/lib/metrics/trend";
 import {
   buildGroupedSelect,
@@ -943,17 +945,15 @@ const HA_NOTE =
   "empty for this scope, because the HA l0_abs_guide lookup file is not in " +
   "sources/ and Subsystem Code / System no did not yield a handover area.";
 
-const AS_REPORTED_LABEL = "as reported (workbook)";
-
-const BACKLOG_TREND_NOTE =
-  "The RT/UT and PWHT backlog charts are COMPUTED from the current data at " +
-  "each week end, so their totals match the backlog measures on page 2. " +
-  "Report dates are exact; the status columns (RT/PWHT Weld Status, RT%) are " +
-  "today's snapshot \u2014 the export carries no status history \u2014 so a joint " +
-  "whose status changed in the past is counted under its current status " +
-  "across the whole window. The hand-typed trend workbook's own figures are " +
-  "kept as the dashed \"" + "as reported (workbook)" + "\" series where they " +
-  "overlap, so the two series are visibly different, not one replacing the other.";
+const BACKLOG_PROVENANCE_NOTE =
+  "Backlog charts: the history is the weekly trend workbook, summed over every " +
+  "sub-contractor and every scope (SG/TMCP included) \u2014 the pbix chart is that " +
+  "workbook. The CURRENT week of both charts is recomputed from the live data " +
+  "using the report owner\u2019s formulas, so it always agrees with page 2: " +
+  "RT/UT+PWHT = RT BACKLOG Total Project & PWHT \"Y\" NOT Done; RT/UT Only = " +
+  "RT Backlog+PWHT \"N\" plus RT Backlog+PWHT Progress \"Y\"; PWHT+RT/UT = PWHT " +
+  "Backlog All Weld Types RT NOT Done (Service Cat \"SG\" and TMCP Pipe only); " +
+  "PWHT Only = PWHT All BACKLOG All Weld Types minus that.";
 
 const REGISTER_NOTE =
   "Project_Welder (M90) reads ref_qualified_welders and WPS Approved (M91) " +
@@ -1334,28 +1334,25 @@ async function buildProjectKpiPage(spec: SpecPage, ctx: Ctx): Promise<Widget[]> 
       out.push(donutChart(w, dist));
     } else if (w.kind === "chart") {
       if (isBacklogChart(w.canvas_id)) {
-        // Owner ruling: these must reflect the current calculations, not the
-        // hand-typed workbook. Each stack sums to its page-2 measure.
-        const [computed, reported] = await Promise.all([
-          backlogTrend({
-            asOf: ctx.asOf,
-            weeks: w.labels.length,
-            sources: SOURCES_PR_ALL_LOADED,
-          }),
+        // The pbix chart IS the trend workbook, summed over every party AND
+        // every scope (SG/TMCP included), with only the PROJECT sentinel
+        // dropped. Verified week for week against the owner's 31-Jul..28-Aug
+        // chart. RT = M47 vs M48; PWHT = M60 vs M64.
+        const isRt = !/pwht/i.test(w.canvas_id);
+        const src = { sources: SOURCES_PR_ALL_LOADED };
+        const [points, rtCur, pwhtCur] = await Promise.all([
           weeklySnapshot({
             metrics: snapshotMetricsFor(w),
-            scope: SNAPSHOT_SCOPES.ALL,
             aggregate: true,
+            excludeProject: true,
             weeks: w.labels.length,
           }),
+          isRt ? rtBacklogCurrent(src) : Promise.resolve(null),
+          isRt ? Promise.resolve(null) : pwhtBacklogCurrent(src),
         ]);
-        if (computed.length === 0) {
-          out.push(emptyWidget(w));
-          note(ctx, TREND_NOTE);
-        } else {
-          out.push(backlogChart(w, computed, reported));
-          note(ctx, BACKLOG_TREND_NOTE);
-        }
+        out.push(withCurrentWeek(snapshotChart(w, points), rtCur, pwhtCur));
+        if (points.length === 0) note(ctx, TREND_NOTE);
+        else note(ctx, BACKLOG_PROVENANCE_NOTE);
         continue;
       }
       const metrics = snapshotMetricsFor(w, { project: true });
@@ -1426,8 +1423,12 @@ function weeklyCatChart(
 const SNAPSHOT_SERIES = new Map<string, string>([
   ["RT/UT+PWHT", SNAPSHOT_METRICS.RT_BACKLOG_PWHT_NOT_DONE],
   ["RT/UT Only", SNAPSHOT_METRICS.RT_BACKLOG_PWHT_Y_DONE_PLUS_N],
-  ["PWHT+RT/UT", SNAPSHOT_METRICS.PWHT_BACKLOG_FOR_RT],
-  ["PWHT+RT", SNAPSHOT_METRICS.PWHT_BACKLOG_FOR_RT],
+  // M64 `PWHT BACKLOG RT NOT Done`, NOT M62 `PWHT Backlog For RT`. The pbix
+  // chart is the trend workbook, and its "+" series is the SG/TMCP-scoped
+  // measure: 3 every week, where M62 is 354. Verified against the owner's
+  // 31-Jul..28-Aug chart.
+  ["PWHT+RT/UT", SNAPSHOT_METRICS.PWHT_BACKLOG_RT_NOT_DONE],
+  ["PWHT+RT", SNAPSHOT_METRICS.PWHT_BACKLOG_RT_NOT_DONE],
   ["PWHT Only", SNAPSHOT_METRICS.PWHT_BACKLOG_ALL_TYPES],
   ["% RT Rej Film", SNAPSHOT_METRICS.RT_FILM_REJECTION_RATE],
   ["% UT Rej Length", SNAPSHOT_METRICS.UT_LENGTH_REJECTION_RATE],
@@ -1457,67 +1458,58 @@ const RATE_METRICS: ReadonlySet<string> = new Set([
 ]);
 
 
-/** Page-1 / 7-11 backlog charts are computed, not read from the workbook. */
+/**
+ * The backlog charts (page 1 and 7-11). They read the trend workbook — which
+ * is what the pbix chart is — summed over every party AND every scope, with
+ * only the PROJECT sentinel dropped, rather than the per-party/ALL-scope
+ * aggregation the other snapshot charts use.
+ */
 const isBacklogChart = (canvasId: string) => /backlog/i.test(canvasId);
 
 /**
- * The computed backlog chart.
+ * Overwrite a backlog chart's LAST week with values computed from `mv_joint`.
  *
- * Each stack sums to its page-2 measure at every week end — the invariant the
- * report owner reads — and is split by INTERSECTION: the `+` series is the set
- * of joints in BOTH backlogs, so it is the same number seen from either chart.
- * See {@link backlogTrend} for why the workbook's own M47/M48 split cannot be
- * used (it sums to 654, not 672).
+ * History stays the trend workbook — the pbix chart is the workbook — but the
+ * current week is recomputed from the owner's DAX so the chart can never drift
+ * from the measures page 2 renders. Both agree today; if they ever stop, the
+ * computed value is the truthful one and a test fails.
  *
- * The workbook series is kept as a dashed "as reported" overlay wherever it
- * overlaps the window, so the two are visibly different series rather than one
- * silently replacing the other.
+ * | series | measure | today |
+ * |---|---|---|
+ * | `RT/UT+PWHT` | `RT BACKLOG … & PWHT "Y" NOT Done "PR all"` | 76 |
+ * | `RT/UT Only` | `RT Backlog+PWHT "N"` + `RT Backlog+PWHT Progress "Y"` | 596 |
+ * | `PWHT+RT/UT` | `PWHT Backlog … RT NOT Done "PR all"` (SG/TMCP) | 3 |
+ * | `PWHT Only` | `PWHT All BACKLOG All WELD TYPE` − the above | 1,039 |
+ *
+ * A page-7/10 PWHT chart carries only `PWHT Only`; it still gets the
+ * `total − M64` value, which for those parties is the whole total (M64 is GAC's
+ * alone today).
  */
-function backlogChart(
-  spec: SpecChart,
-  points: BacklogTrendPoint[],
-  reported: Awaited<ReturnType<typeof weeklySnapshot>>,
+function withCurrentWeek(
+  chart: ChartWidget,
+  rt: RtBacklogCurrent | null,
+  pwht: PwhtBacklogCurrent | null,
 ): ChartWidget {
-  const weeks = points.map((p) => p.week_end_date);
-  const wantsPlus = spec.datasets.some((d) => /\+/.test(d.label ?? ""));
-  const datasets = spec.datasets.map((d) => {
-    const label = d.label ?? "";
-    const data = points.map((p) => {
-      if (/\+/.test(label)) return p.both;
-      if (/^RT\/UT Only/i.test(label)) return p.rt_total - p.both;
-      // A PWHT chart with no `+` series (pages 7-11) carries the whole total on
-      // its single series, so the stack still sums to the measure.
-      if (/^PWHT Only/i.test(label)) {
-        return wantsPlus ? p.pwht_total - p.both : p.pwht_total;
-      }
-      return null;
-    });
-    return { label, data };
-  });
-
-  // The as-reported workbook line, only where it actually has values.
-  const metrics = snapshotMetricsFor(spec);
-  const reportedData = weeks.map((wk) => {
-    const vals = reported.filter(
-      (r) => r.week_end_date === wk && metrics.includes(r.metric),
-    );
-    const known = vals.filter((r) => r.value !== null);
-    return known.length ? known.reduce((a, r) => a + (r.value ?? 0), 0) : null;
-  });
-  if (reportedData.some((v) => v !== null)) {
-    datasets.push({ label: AS_REPORTED_LABEL, data: reportedData });
-  }
-
+  if (chart.labels.length === 0) return chart;
+  const last = chart.labels.length - 1;
+  const value = (label: string): number | null => {
+    if (/^RT\/UT Only/i.test(label)) return rt?.rt_only ?? null;
+    if (/^PWHT Only/i.test(label)) return pwht?.pwht_only ?? null;
+    // The two `+` series, told apart by which chart they are on.
+    if (/\+/.test(label)) {
+      return /^PWHT/i.test(label) ? (pwht?.plus_rt ?? null) : (rt?.plus_pwht ?? null);
+    }
+    return null;
+  };
   return {
-    kind: "chart",
-    canvas_id: spec.canvas_id,
-    title: spec.title,
-    chart_type: spec.chart_type,
-    labels: weeks,
-    datasets,
-    options_notes:
-      [...spec.options_notes, `${AS_REPORTED_LABEL}: dashed line`].join(", ") ||
-      undefined,
+    ...chart,
+    datasets: chart.datasets.map((d) => {
+      const v = value(d.label ?? "");
+      if (v === null) return d;
+      const data = [...d.data];
+      data[last] = v;
+      return { ...d, data };
+    }),
   };
 }
 
@@ -1789,27 +1781,27 @@ async function buildSubconPage(
           note(ctx, MT_PT_SERIES_NOTE);
         }
       } else if (isBacklogChart(w.canvas_id)) {
-        const [computed, reported] = await Promise.all([
-          backlogTrend({
-            asOf: ctx.asOf,
-            weeks: w.labels.length,
-            subContractor: blk.conf.sub,
-            sources: SOURCES_PR_ALL_LOADED,
-          }),
+        // Same series as page 1, filtered to this party -- every scope it has
+        // (a GAC page sums GAC + GAC SG), the PROJECT sentinel dropped.
+        const isRt = !/pwht/i.test(w.canvas_id);
+        const src = {
+          sources: SOURCES_PR_ALL_LOADED,
+          subContractor: blk.conf.sub,
+        };
+        const [points, rtCur, pwhtCur] = await Promise.all([
           weeklySnapshot({
             metrics: snapshotMetricsFor(w),
             subContractor: blk.conf.sub,
-            scope: snapshotScopeFor(blk.conf),
+            aggregate: true,
+            excludeProject: true,
             weeks: w.labels.length,
           }),
+          isRt ? rtBacklogCurrent(src) : Promise.resolve(null),
+          isRt ? Promise.resolve(null) : pwhtBacklogCurrent(src),
         ]);
-        if (computed.length === 0) {
-          out.push(emptyWidget(w));
-          note(ctx, TREND_NOTE);
-        } else {
-          out.push(backlogChart(w, computed, reported));
-          note(ctx, BACKLOG_TREND_NOTE);
-        }
+        out.push(withCurrentWeek(snapshotChart(w, points), rtCur, pwhtCur));
+        if (points.length === 0) note(ctx, TREND_NOTE);
+        else note(ctx, BACKLOG_PROVENANCE_NOTE);
       } else {
         const metrics = snapshotMetricsFor(w);
         const points = await weeklySnapshot({

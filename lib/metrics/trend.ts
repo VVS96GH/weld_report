@@ -111,6 +111,12 @@ export async function weeklySnapshot(opts: {
   subContractor?: string | null;
   /** R2-08 qualifier: `ALL` | `SG` | `NONSG` | `TMCP`. Omit to take every scope. */
   scope?: string;
+  /**
+   * Drop the `PROJECT` sentinel rows (R2-08: the MPI metrics carry no party).
+   * Pair with `aggregate` and NO `scope` to reproduce a pbix chart that sums
+   * every party AND every scope — which is what the page-1 backlog bars are.
+   */
+  excludeProject?: boolean;
   weeks?: number;
   /**
    * Project-level series: sum `value` across sub-contractors per (week, metric)
@@ -131,6 +137,9 @@ export async function weeklySnapshot(opts: {
   }
   if (opts.scope !== undefined) {
     conds.push(`s.scope = ${p.add(opts.scope)}`);
+  }
+  if (opts.excludeProject) {
+    conds.push(`s.sub_contractor IS DISTINCT FROM ${p.add(SNAPSHOT_PROJECT)}`);
   }
   const limit = p.add(opts.weeks ?? 14);
   const select = opts.aggregate
@@ -368,5 +377,123 @@ export async function backlogTrend(opts: {
     // The history columns arrive with migration 0023; before it the charts
     // fall back to the workbook rather than rendering a fabricated zero.
     return [];
+  }
+}
+
+/**
+ * The page-1 RT backlog chart's CURRENT week, computed from `mv_joint`.
+ *
+ * The chart's history is the trend workbook (the pbix chart *is* the workbook),
+ * but the latest week is recomputed so the page can never drift from the
+ * measures page 2 renders. Verified equal today, and pinned.
+ *
+ * The three owner-supplied measures behind the two series, each a SUM of
+ * DISTINCTCOUNT branches that are **not** de-duplicated against one another:
+ *
+ * | series | measure | today |
+ * |---|---|---|
+ * | `RT/UT+PWHT` | `RT BACKLOG Total Project & PWHT "Y" NOT Done "PR all"` | **76** |
+ * | `RT/UT Only` | `RT Backlog+PWHT "N"` + `RT Backlog+PWHT Progress "Y"` | **596** |
+ * | (their sum) | `RT BACKLOG Total Project "PR all"` | **672** |
+ *
+ * `RT/UT+PWHT` needed migration 0024: its third branch (the CCC one, keyed on
+ * `PWHT Y/N CCC`) was missing, which is why this read 58 against the pbix's 76.
+ */
+export type RtBacklogCurrent = {
+  /** `RT/UT+PWHT` — PWHT required and not yet done. */
+  plus_pwht: number;
+  /** `RT/UT Only` — PWHT not required, or already done. */
+  rt_only: number;
+  /** Their sum; equals `[RT BACKLOG Total Project "PR all"]`. */
+  total: number;
+};
+
+export async function rtBacklogCurrent(opts: {
+  sources: readonly string[];
+  subContractor?: string;
+}): Promise<RtBacklogCurrent | null> {
+  const p = new Params();
+  const srcP = p.any(opts.sources);
+  const sub = opts.subContractor
+    ? ` AND sub_contractor = ${p.add(opts.subContractor)}`
+    : "";
+  const sql =
+    `SELECT count(*) FILTER (WHERE rt_backlog_pwht_y_not_done_prall)\n` +
+    `     + count(*) FILTER (WHERE rt_backlog_pwht_y_not_done_ccc) AS plus_pwht,\n` +
+    `       count(*) FILTER (WHERE rt_backlog_pwht_n_prall)\n` +
+    `     + count(*) FILTER (WHERE rt_backlog_pwht_y_done_prall)   AS rt_only\n` +
+    `  FROM mv_joint WHERE source::text = ANY(${srcP}::text[])${sub}`;
+  try {
+    const rows = z
+      .array(z.object({ plus_pwht: zCount, rt_only: zCount }))
+      .parse(await query(sql, p.list()));
+    const r = rows[0];
+    if (!r) return null;
+    return { ...r, total: r.plus_pwht + r.rt_only };
+  } catch {
+    // `rt_backlog_pwht_y_not_done_ccc` arrives with migration 0024; before it
+    // the chart shows the workbook's own last week rather than a wrong number.
+    return null;
+  }
+}
+
+/**
+ * The page-1 PWHT backlog chart's CURRENT week, computed from `mv_joint`.
+ *
+ * `PWHT+RT/UT` is `[PWHT Backlog Weld Status All Weld Types RT NOT Done
+ * "PR all"]` — FOUR added `DISTINCTCOUNT`s, a CCC branch and a status branch,
+ * each once for `[Service Cat] = "SG"` and once for
+ * `[TMCP Pipe] = "TMCP Pipe"`. **No weld-type filter**, and `PWHT Weld Status`
+ * uses the same 17-code hold list as `RT Weld Status`.
+ *
+ * The scope columns are the schema's own:
+ * `service_cat = 'SG'` (verbatim text — `'SGCS'` and `'HRSG'` also exist, so
+ * this is an equality, never a LIKE) and `tmcp_pipe` (boolean, loaded from
+ * `Weld Dump[TMCP Pipe]` where the DAX's `"TMCP Pipe"` literal is true).
+ *
+ * Today: **3**, entirely GAC through the SG status branch. `PWHT Only` is then
+ * `[PWHT All BACKLOG All WELD TYPE "PR all"]` minus it — 1,042 − 3 = **1,039**,
+ * matching the pbix chart.
+ */
+export type PwhtBacklogCurrent = {
+  /** `PWHT+RT/UT` — M64. */
+  plus_rt: number;
+  /** `PWHT Only` — the all-types backlog minus M64. */
+  pwht_only: number;
+  /** `[PWHT All BACKLOG All WELD TYPE "PR all"]`. */
+  total: number;
+};
+
+export async function pwhtBacklogCurrent(opts: {
+  sources: readonly string[];
+  subContractor?: string;
+}): Promise<PwhtBacklogCurrent | null> {
+  const p = new Params();
+  const srcP = p.any(opts.sources);
+  const sub = opts.subContractor
+    ? ` AND sub_contractor = ${p.add(opts.subContractor)}`
+    : "";
+  const sql =
+    // The DAX ADDS the four branches, so they are summed, not OR-ed: a joint
+    // that is both SG and TMCP, or that matches both branches, counts once per
+    // term. Same rule as M47.
+    `SELECT count(*) FILTER (WHERE pwht_bl_rt_nd_sg_ccc)\n` +
+    `     + count(*) FILTER (WHERE pwht_bl_rt_nd_sg_status)\n` +
+    `     + count(*) FILTER (WHERE pwht_bl_rt_nd_tmcp_ccc)\n` +
+    `     + count(*) FILTER (WHERE pwht_bl_rt_nd_tmcp_status)      AS plus_rt,\n` +
+    // M60 itself is two ADDED counts (the CCC branch and the status branch).
+    `       count(*) FILTER (WHERE pwht_backlog_ccc)\n` +
+    `     + count(*) FILTER (WHERE pwht_backlog_rest)              AS total\n` +
+    `  FROM mv_joint WHERE source::text = ANY(${srcP}::text[])${sub}`;
+  try {
+    const rows = z
+      .array(z.object({ plus_rt: zCount, total: zCount }))
+      .parse(await query(sql, p.list()));
+    const r = rows[0];
+    if (!r) return null;
+    return { ...r, pwht_only: r.total - r.plus_rt };
+  } catch {
+    // The SG/TMCP flags arrive with migration 0024.
+    return null;
   }
 }

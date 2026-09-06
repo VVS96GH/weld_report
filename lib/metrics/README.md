@@ -785,91 +785,112 @@ pbix. They are pinned as such and should be flipped to owner-read values when
 those arrive. They already equal what page 2's sub-contractor table renders,
 so M40/M60 needed no change.
 
-### The backlog charts are computed, not read from the workbook
+### The backlog charts ARE the trend workbook
 
-Page 1's "PROJECT RT/UT BACKLOG" and "PROJECT PWHT BACKLOG", and their
-per-sub-contractor twins on pages 7–11, used to read `weld_weekly_snapshot` —
-the hand-typed trend workbook. Its last week said ~680 RT and ~1,850 PWHT while
-the owner's DAX, which page 2 renders, says **672** and **1,042**. Owner ruling:
-the charts must reflect the current calculations.
+The pbix chart is not a computed visual — it reads `weld_weekly_snapshot`,
+summed over **every sub-contractor and every scope** (SG/TMCP included), with
+only the `PROJECT` sentinel dropped. That aggregation reproduces the owner's
+31-Jul…28-Aug chart week for week:
 
-They are now recomputed from `mv_joint` at each week end (`backlogTrend`), with
-the backlog's `report IS NULL` clause replaced by *"the report did not exist yet
-at W"* — `still_open_today OR report_date > W`.
+| series | metric | 31-Jul | 07-Aug | 14-Aug | 21-Aug | 28-Aug |
+|---|---|---|---|---|---|---|
+| `RT/UT+PWHT` | M47 | 135 | 101 | 94 | 94 | **76** |
+| `RT/UT Only` | M48 | 556 | 550 | 525 | 530 | **596** |
+| stack total | | 691 | 651 | 619 | 624 | **672** |
+| `PWHT+RT/UT` | **M64** | 3 | 3 | 3 | 3 | **3** |
+| `PWHT Only` | M60 | 1,434 | 1,394 | 1,206 | 814 | **1,039** |
+| stack total | | 1,437 | 1,397 | 1,209 | 817 | **1,042** |
 
-#### The invariant
+The PWHT `+` series is **M64** (`PWHT BACKLOG RT NOT Done`), not M62
+(`PWHT Backlog For RT`). M62 is 354 where the chart shows 3 — a mis-binding that
+only a real chart could have caught.
 
-For every week W the stack sums to its page-2 measure:
+Earlier in this work the charts were rebuilt as a computed series with an
+"intersection" split. That was wrong and is reverted: the invariant it enforced
+(each stack totalling its page-2 measure) happens to hold here, but it held for
+the wrong reason. `backlogTrend()` survives in `trend.ts` as an internal
+cross-check and for R-08's future ETL appends; nothing renders it.
 
-```
-rt_total(W)   = [RT BACKLOG Total Project "PR all"]       at W
-pwht_total(W) = [PWHT All BACKLOG All WELD TYPE "PR all"] at W
-```
+#### The current week is computed, so the charts cannot drift
 
-and each is split by **intersection**:
+History is the workbook, but **both** charts' latest week is recomputed from
+`mv_joint` (`rtBacklogCurrent` / `pwhtBacklogCurrent`). They agree today; if
+they ever stop, the computed value is the truthful one and a test fails. The
+agreement test compares the *measure* to the *workbook*, not the chart to the
+measure — the chart carries the computed value, so that would be circular.
 
-| series | value |
-|---|---|
-| `RT/UT+PWHT` | joints in **both** backlogs at W |
-| `RT/UT Only` | `rt_total(W) − both(W)` |
-| `PWHT+RT/UT` | the **same** set — `both(W)` |
-| `PWHT Only` | `pwht_total(W) − both(W)` |
+Owner-supplied measures back the RT chart, each a SUM of `DISTINCTCOUNT` branches that are **not**
+de-duplicated against one another:
 
-So the two `+` series are one joint set seen from either side, and a test pins
-them equal. The mockup confirms the semantics: at 16-Jan its RT chart reads
-437 + 129 = 566 = page 2's `RT B.LOG Total`, and its PWHT chart
-1,981 + 45 = 2,026 = `PWHT Backlog All`.
+| series | measure | value |
+|---|---|---|
+| `RT/UT+PWHT` | `RT BACKLOG Total Project & PWHT "Y" NOT Done "PR all"` | **76** |
+| `RT/UT Only` | `RT Backlog+PWHT "N"` (507) + `RT Backlog+PWHT Progress "Y"` (89) | **596** |
+| total | `RT BACKLOG Total Project "PR all"` | **672** |
 
-Today (project scope): **RT 672 = 76 + 596**, **PWHT 1,042 = 76 + 966**.
-CCC 357 / 546, TEKFEN 0 / 26 — matching page 2's per-party rows.
+Per party: `RT Backlog+PWHT "N"` = GAC 170 + MEDGULF 23 + CCC 314;
+`Progress "Y"` = GAC 64 + CCC 25. `RT/UT+PWHT` = GAC 58 + CCC 18.
 
-Pages 7–11's PWHT chart has only a `PWHT Only` series, so that one series
-carries the whole total; the stack still sums to the measure.
+The PWHT chart is now symmetric — the owner supplied its formula too:
 
-#### Why the workbook's own split could not be reused
+| series | measure | value |
+|---|---|---|
+| `PWHT+RT/UT` | `PWHT Backlog Weld Status All Weld Types RT NOT Done "PR all"` | **3** |
+| `PWHT Only` | `PWHT All BACKLOG All WELD TYPE "PR all"` − the above | **1,039** |
+| total | | **1,042** |
 
-The trend workbook splits the RT chart with M47
-(`RT BACKLOG & PWHT Not Done`) and M48 (`RT BACKLOG & PWHT "Y" Done + "N"`).
-Today those are **58** and **596** — summing to **654, not 672**, because 18
-backlog joints match *neither* PWHT branch:
+M64 is **four** added `DISTINCTCOUNT`s — a CCC branch and a status branch, each
+once for `[Service Cat] = "SG"` and once for `[TMCP Pipe] = "TMCP Pipe"`. It
+carries **no weld-type filter**, and `PWHT Weld Status` uses the same 17-code
+hold list as `RT Weld Status`. Today all 3 are GAC's, through the SG *status*
+branch: `0 + 3 + 0 + 0`.
+
+The scope columns are the schema's own: `service_cat = 'SG'` — an **equality**,
+never a `LIKE`, because `'SGCS'` and `'HRSG'` also exist — and the boolean
+`tmcp_pipe`, loaded from `Weld Dump[TMCP Pipe]` where the DAX's `"TMCP Pipe"`
+literal is true.
+
+Pages 7–11 get the same treatment per party. GAC's is the only per-party PWHT
+chart with a `+` series today, precisely because M64 is entirely GAC's:
+427 − 3 = 424.
+
+#### Two missing terms, found by reading the DAX (migration 0024)
+
+**M47** `[RT BACKLOG Total Project & PWHT "Y" NOT Done "PR all"]` is **three**
+added `CALCULATE`s and we had implemented two. The missing one is the CCC
+branch:
 
 ```dax
-M47 …  [PWHT Y/N] IN {"Y","25.01"} AND [PWHT Weld Status] IN {"H","HS","NR"}
-       AND [PWHT Report] = ""
-M48 …  ([PWHT Y/N] IN {"Y","25.01"} AND [PWHT Report] <> "")
-       OR ([PWHT Y/N CCC] = "N")   -- plus the CCC-done branch
+CALCULATE(DISTINCTCOUNT([Joint ID]),
+    [Weld Type] IN {"BW","GW","CLET","MW"},
+    [RT Weld Status] IN {…17-code hold list…},
+    [PWHT Y/N CCC] = "Y",
+    [PWHT Report No CCC] = "",
+    [RT Report] = "")
 ```
 
-Those two conditions do not partition the backlog, so no stack built from them
-can total the page-2 figure. The intersection split does, by construction.
+No weld-date filter, no RT%=100 branch. 58 + **18** = 76.
 
-#### What is exact and what is not
+**M64** `[PWHT Backlog Weld Status All Weld Types RT NOT Done "PR all"]` is
+**four** added `CALCULATE`s — a CCC branch and a status branch, each once for
+`[Service Cat] = "SG"` and once for `[TMCP Pipe] = "TMCP Pipe"`. We had the
+shape but not the scope restriction, which is the whole measure: unscoped it
+counts a different population and read **0** against the pbix's **3**.
 
-**Exact:** the weld date and the report dates. Every row carrying an `rt_report`
-also carries an `rt_date` (0 exceptions in the load); only 2 rows in the whole
-load carry a `pwht_report` without a `pwht_date`.
+Both use `+`, not `OR`, so each term is its own flag and the metric adds the
+counts — a joint matching two terms is counted twice, deliberately.
 
-**Approximate, and disclosed on the page:** the status columns.
-`rt_weld_status`, `pwht_weld_status` and `rt_pct` are the **current** snapshot —
-the export carries no status history — so a joint whose status changed in the
-past is counted under today's status across the whole window. There is no way
-to do better with the data we are given, so it is stated rather than hidden.
-
-The workbook's own figures stay on the chart as a dashed
-**"as reported (workbook)"** series wherever they overlap the window, so the two
-are visibly different series rather than one silently replacing the other.
-
-The PWHT second term has no weld-date filter in the DAX; a chart over time still
-needs an entry point, so `pwht_bl_start` uses the weld date.
+`[RT BACKLOG Total Project & PWHT"Y" NOT Done FABRICATED "PR all"]` is the same
+three branches plus `[Spool ID Status] = "Fabricated"` and `{H,HS}` without
+`NR`. The spool masters **are** loaded, so it is computable rather than
+honest-empty: **68** (GAC 56 + CCC 12).
 
 #### The rejection-rate charts still read the workbook
 
 `% RT Rejection Rate by Film` and `% UT/PAUT Rejection Rate by Length` on page 1
-(and their per-party twins) still read `weld_weekly_snapshot` — metrics M25/M25P
-and M36/M36P. **They are not computed.** `Welding Progress Trend` already comes
-from `mv_weekly_progress` and is unaffected. Flagged for a ruling: giving those
-the same treatment means reconstructing cumulative film/length rejection rates
-per week, which needs RT/UT dates the same way the backlog needed report dates.
+(and their per-party twins) read M25/M25P and M36/M36P from the workbook. They
+are **not** computed. `Welding Progress Trend` already comes from
+`mv_weekly_progress`.
 
 ### M91 `WPS Approved` (R4-02, R4-03)
 
