@@ -2418,3 +2418,22 @@ result*, so on a miss it would return the joint id as a status string.
 
 **Ruling:** keep tracker-only (faithful to the pbix); the presence of the unused branch is a question
 for the report owner (did they intend row-level results to take precedence?). See db/README.md.
+
+### C-20 — `[Manual UT Report No.]` branches per sub-contractor; R-05 narrowed (2026-09-06)
+
+**What §5 R-05 says:** "UT trackers missing → `Numb UT` at 'PR all' scope … substitute the EP
+definition … until they arrive." **What the DAX does:** `[Manual UT Report No.]` (prall-columns.json)
+has one branch per sub-contractor — GAC and TEKFEN: `MAXX` over the joint's rows of
+`IF(ISBLANK([UT Report "PR All"]), [Manual UT Report No], [UT Report "PR All"])`, i.e. the Weld
+Dump's OWN `ut_report` falling back to its raw `manual_ut_report_no`; Inco: its own `UT Report`;
+CCC: the Talisman tracker; MEDGULF and ACCIONA: no branch → BLANK. The GAC/TEK trackers are never
+read by this column. Reproduced in migration 0016 / `lib/metrics/ut.ts`: GAC 2,034 + TEKFEN 2,545 +
+CCC 9,412 + INCO 223 = **14,214**, equal to the report owner's live pbix reading.
+
+**Consequence:** R-05 stays valid only for measures that genuinely read `UT TRACKER (GAC)/(TEK)`
+tables; the page-1 UT family is fully covered without them. Owner-confirmed measure values now
+pinned in `tests/metrics-batch3.test.ts`: `Joint Uniq "PR all" Welded` 2,209,156 (ours 2,209,169,
++13), `MT + PT "PR all"` 589,065 without Inco (ours 589,067, +2), `Numb UT "PR All"` 14,214,
+`Numb RT/UT "PR all"` 207,682, `Numb RT/UT "PR all" "R"` 1,911 — the last three exact. Page-1
+cards show unfiltered measure values (Inco included) except MT/PT Done (owner ruling); the page-1
+card labelled `RT Acc.Joints` is bound to `Numb RT/UT "PR all"` (tested) on the owner's instruction.
