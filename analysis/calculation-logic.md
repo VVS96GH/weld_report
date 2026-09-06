@@ -2437,3 +2437,18 @@ pinned in `tests/metrics-batch3.test.ts`: `Joint Uniq "PR all" Welded` 2,209,156
 `Numb RT/UT "PR all"` 207,682, `Numb RT/UT "PR all" "R"` 1,911 — the last three exact. Page-1
 cards show unfiltered measure values (Inco included) except MT/PT Done (owner ruling); the page-1
 card labelled `RT Acc.Joints` is bound to `Numb RT/UT "PR all"` (tested) on the owner's instruction.
+
+### C-21 — the WP1 gate is `[WeldPoint No.] = 1` for every source; the "PR all" film family (2026-09-06)
+
+**What the build assumed (phase 2 ruling):** film sums at "PR all" scope gate per source —
+`weldpoint_no = 1` for the dump, `weldpoint_seq = 1` for CCC/Acciona/Inco. **What the DAX does**
+(owner-supplied measures, verified against `analysis/pbix/measures.md`): `RT Total Films by Joint
+"PR all"` = A + B − C with A filtered on the table's own `[WeldPoint No.] = 1` for every source
+(CCC's is the M-mapped `Welded(Weld Point)`, populated on 1,342,473 rows), B on `[Weld Point Code]
+IN {R,H,F,C}`, C on both; `… "PR all" "R"` has NO WeldPoint filter; the two `RT Total Films "PR
+all"` sums are ungated too. Results: 768,100.6 → **768,101** (pbix 768,101; the old CASE gave
+766,287, the 1,813 all Inco), rejected **2,152** (pbix 2,152; was 1,518), ratio 0.28 %. The "EP"
+twins DO carry `'Weld Dump'[WeldPoint No.]=1`, so the 358 reconcile pins were derived correctly and
+`reconcile_results.json` is untouched. Migration 0017 replaces the CASE; `weldpoint_seq` survives
+only where the pbix reads `[WeldPoint No.1 WP1]` (M33) and in the M34 `LOOKUPVALUE` dedup (R2-01).
+Supersedes the phase-2 per-source gate ruling and part of R2-01's "DISTINCT-only" reading for sums.
