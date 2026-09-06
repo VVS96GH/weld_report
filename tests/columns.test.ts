@@ -96,6 +96,9 @@ function mvJointColumns(): Set<string> {
     "0018_ut_lengths_prall.sql",
     "0019_ut_weld_length_no_inco.sql",
     "0021_ut_lengths_with_inco.sql",
+    "0023_backlog_history.sql",
+    "0024_m47_m64.sql",
+    "0025_fabricated_prall.sql",
   ]
     .map((f) => {
       try {

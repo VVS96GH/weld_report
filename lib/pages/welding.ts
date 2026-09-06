@@ -593,8 +593,15 @@ function metricCell(header: string, b: Bundle): string | null {
           : b.rt.tested / b.welding.joints_welded,
       );
     case "Rejection Rate Joint":
-    case "% Rej by Joint":
       return cellPct(b.rt.rejection_rate_joint);
+    // Page 2's sub-contractor column. Despite the name it is the FILM ratio
+    // `RT FILM Ratio % by Joint "PR all"` (films "R" / films), not the joint
+    // rejection rate: the owner's cells are 0.39 / 0.12 / 0.42 / 0.23 / 0.98 /
+    // 0.27, which is the film ratio; the joint rate gives 0.83 / 0.39 / 1.67 /
+    // 0.53 / 2.78 / 0.91. The label is the pbix's; the measure behind it is
+    // what it is.
+    case "% Rej by Joint":
+      return cellPct(b.rt.film_rejection_rate);
     // ── films by joint (M20/M22/M25) ──
     case "Films Taken":
       return cellInt(b.rt.films);
@@ -1256,7 +1263,16 @@ async function buildProjectKpiPage(spec: SpecPage, ctx: Ctx): Promise<Widget[]> 
           out.push(kpi(w.label, kpiInt(b.rt.films_rejected)));
           break;
         case "%RT FILM Rej":
-          out.push(kpi(w.label, kpiPct(b.rt.film_rejection_rate)));
+          // 0.28% = 2,152 / 768,101, Inco INCLUDED — measure scope, like every
+          // other page-1 card (R3-01). Page 2's table shows 0.27%
+          // (2,074 / 761,198.61) because that page is project scope, Inco
+          // excluded. Both are correct; the `sub` says which this one is.
+          out.push({
+            kind: "kpi",
+            label: w.label,
+            value: b.present ? kpiPct(b.rt.film_rejection_rate) : HONEST_EMPTY,
+            sub: "all parties incl. Inco",
+          });
           break;
         case "Project_Welder":
           // R3-10: the register carries no date of its own, so the provenance

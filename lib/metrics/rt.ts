@@ -856,6 +856,77 @@ export function rtBacklogAggsPrAll(p: Params, a = "w"): AggSpec[] {
     { key: "rt100_backlog", sql: count("rt100_backlog_prall") },
     { key: "rt_backlog_pwht_y_done", sql: count("rt_backlog_pwht_y_done_prall") },
     { key: "rt_backlog_pwht_n", sql: count("rt_backlog_pwht_n_prall") },
-    { key: "rt_backlog_pwht_y_not_done", sql: count("rt_backlog_pwht_y_not_done_prall") },
+    // M47 is THREE added CALCULATEs; the CCC branch lives in its own flag
+    // (migration 0024) and must be added, or this reads 58 where the owner's
+    // page-2 cell is 76.
+    {
+      key: "rt_backlog_pwht_y_not_done",
+      sql:
+        `${count("rt_backlog_pwht_y_not_done_prall")}` +
+        ` + ${count("rt_backlog_pwht_y_not_done_ccc")}`,
+    },
   ];
+}
+
+/**
+ * `[RT Backlog+PWHT Progress "Y" Done + PWHT "N" FABRICATED "PR all"]` — the
+ * `"PR all"` FABRICATED backlog, **521** today.
+ *
+ * Six added `DISTINCTCOUNT`s, every branch carrying
+ * `Spool ID Status = "Fabricated"`, `Weld Type IN {BW,GW,CLET,MW}` and
+ * `RT Report = ""`. Materialised by migration 0025 as two flags — the dump
+ * branches (1,2,4,5) and the CCC branches (3,6):
+ *
+ * | | branch | count |
+ * |---|---|---|
+ * | 1 | PWHT Y/N IN {Y,25.01}, PWHT Report <> "", RT status in hold16 | 56 |
+ * | 2 | as 1 + Weld Date > 0, RT% = 100, RT status IN {?,"",S} | 8 |
+ * | 3 | PWHT Y/N CCC = "Y", PWHT Report No CCC <> "", RT% = 100 | 18 |
+ * | 4 | PWHT Y/N IN {N,25.01}, PWHT Weld Status = "", hold16 | 163 |
+ * | 5 | as 4 + Weld Date > 0, RT% = 100, RT status IN {?,""} | 0 |
+ * | 6 | Weld Date > 0, PWHT Y/N CCC = "N", RT% = 100 | 276 |
+ *
+ * By party: GAC 211, MEDGULF 16, CCC 294.
+ *
+ * Two details of the owner's text that read like slips and are not: the hold
+ * list is the **sixteen**-code one (no `'T1-2'`) where the other `"PR all"`
+ * backlog measures use seventeen, and branch 5 admits `{?,""}` but **not**
+ * `'S'` where the parallel branch 2 does. Both reproduced verbatim.
+ *
+ * It partitions the FABRICATED backlog exactly:
+ * `521 + 68 = 589 = [RT BACKLOG Total Project FABRICATED]`, which is also what
+ * independently confirms the 68 of the `"Y" NOT Done` FABRICATED variant — a
+ * figure the owner never quoted.
+ *
+ * The `"EP"` twin `rt_backlog_pwht_ydone_or_n_fabricated` (227, the same shape
+ * without the CCC branches) is untouched.
+ */
+export type FabricatedPrAll = {
+  /** Branches 1, 2, 4, 5 — the dump parties. */
+  dump: number;
+  /** Branches 3, 6 — CCC. */
+  ccc: number;
+  /** Their sum: the measure. */
+  total: number;
+};
+
+export async function fabricatedBacklogPrAll(
+  scope: Scope,
+): Promise<FabricatedPrAll | null> {
+  const p = new Params();
+  const sql =
+    `SELECT count(*) FILTER (WHERE w.rt_bl_ydone_n_fab_prall_dump) AS dump,\n` +
+    `       count(*) FILTER (WHERE w.rt_bl_ydone_n_fab_prall_ccc)  AS ccc\n` +
+    `  FROM ${JOINT_FROM}\n` +
+    ` WHERE ${scopeWhere(scope, p)}`;
+  try {
+    const rows = z
+      .array(z.object({ dump: zCount, ccc: zCount }))
+      .parse(await query(sql, p.list()));
+    const r = rows[0];
+    return r ? { ...r, total: r.dump + r.ccc } : null;
+  } catch {
+    // The flags arrive with migration 0025.
+    return null;
+  }
 }

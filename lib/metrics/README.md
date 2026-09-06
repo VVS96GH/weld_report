@@ -892,6 +892,69 @@ honest-empty: **68** (GAC 56 + CCC 12).
 are **not** computed. `Welding Progress Trend` already comes from
 `mv_weekly_progress`.
 
+### Page 2 reconciled against the owner's pbix, cell for cell
+
+Every cell of the sub-contractor table now matches the owner's screenshot except
+two, both documented below and neither tuned. Three bindings were wrong:
+
+| column | was | is | why |
+|---|---|---|---|
+| `PWHT B.Log RT NOT Done` | 58 | **3** | read the `"EP"`-shaped flag; at `"PR all"` it is the SG/TMCP measure (M64) |
+| `RT B.LOG & PWHT NOT Done` | 58 | **76** | M47's CCC branch was in its own flag and never added |
+| `% Rej by Joint` | 0.91% | **0.27%** | despite the name it is the FILM ratio `RT FILM Ratio % by Joint "PR all"`, not the joint rejection rate |
+
+That last one is worth remembering: the column is called "% Rej **by Joint**" and
+the measure behind it counts **films**. The joint rejection rate gives
+0.83 / 0.39 / 1.67 / 0.53 / 2.78 / 0.91 — plausible-looking numbers that are
+simply the wrong measure. Only the owner's cells could tell them apart.
+
+`[RT Backlog+PWHT Progress "Y" Done + PWHT "N" FABRICATED "PR all"]` = **521**
+(GAC 211, MEDGULF 16, CCC 294) and it partitions the FABRICATED backlog exactly:
+**521 + 68 = 589 = `RT BACKLOG Total Project FABRICATED`**. That arithmetic is
+also what confirms the 68 of the `"Y" NOT Done` FABRICATED variant — a figure
+the owner never quoted, so it is pinned as a derived consequence rather than as
+an owner-read value. The three FAB-D columns have no place in the mockup's
+page-2 table (its 12 columns do not include them), so nothing renders them yet.
+
+#### Two cells that do not match, and are not tuned
+
+**ACCIONA `RT100% Backlog` = 2** in the pbix; we render blank, and the total is
+635 against the owner's 637 — the difference is exactly ACCIONA. Its 945 rows
+with `RT% = 100` **all** carry an RT report, so M43's "RT Date is blank" clause
+can never fire, and its `RT Weld Status` only ever holds `NULL` or `'S'`. No
+reading of the measure over our data produces 2. Left blank.
+
+**TEKFEN `% Rej UT Joint` = 7.74%** (197 / 2,545); we show 7.78% (198 / 2,545).
+The denominator matches, so it is one joint:
+`21010AA-NG7131299R01-SP1-002`. It carries **no `ut_report` and no
+`ut_acc_rej`** — only `manual_ut_report_no` and `manual_ut_status = 'R'` — so it
+qualifies solely through the C-20 fallback that the other 197 never need.
+
+Two mechanisms would exclude it, and **both give exactly 197**: requiring
+`ut_acc_rej` / `ut_report` directly (no fallback), or requiring
+`ut_weld_status = 'NR'`. Neither appears in the verbatim DAX of
+`[Numb UT "R" "PR All"]`, which is simply
+`DISTINCTCOUNT([Joint ID])` filtered on `[Manual UT Report No.] <> ""` and
+`[Manual UT Status.] = "R"`. A third hypothesis — that
+`[Manual UT Status.]`'s `LOOKUPVALUE` needs a non-blank `Welder ID` — was tested
+and **disproved**: `welder_id` is NULL on every GAC and TEKFEN UT row, so that
+rule would zero both parties.
+
+Two numerically-correct hypotheses and no DAX to choose between them is exactly
+the situation where tuning would be wrong. The measure is left alone and the
+one-joint difference is pinned so it cannot drift while the owner rules.
+
+#### The two film-rejection percentages are both right
+
+| where | value | scope |
+|---|---|---|
+| page 1 card `%RT FILM Rej` | **0.28%** = 2,152 / 768,101 | measure scope, **Inco included** |
+| page 2 table total `% Rej by Joint` | **0.27%** = 2,074 / 761,198.61 | project scope, Inco excluded |
+
+Same measure, different scope — the page-1 cards are measure scope by R3-01 and
+page 2 is project scope. The card now carries `sub: "all parties incl. Inco"` so
+a reader comparing the two pages is told why they differ instead of guessing.
+
 ### M91 `WPS Approved` (R4-02, R4-03)
 
 `count(DISTINCT wps_no) FILTER (document_status = 'WPS APPROVED BY CTJV/ CPY')`

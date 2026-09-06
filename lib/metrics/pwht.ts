@@ -223,7 +223,15 @@ export function pwhtAggsPrAll(p: Params, a = "w"): AggSpec[] {
       key: "pwht_backlog_rt100",
       sql: `${count("pwht_backlog_ccc_rt100")} + ${count("pwht_backlog_rest_rt100")}`,
     },
-    { key: "pwht_backlog_rt_not_done", sql: count("pwht_backlog_rt_not_done") },
+    // M64 at `"PR all"` is the SG/TMCP-scoped measure — FOUR added
+    // DISTINCTCOUNTs, not the `"EP"`-shaped flag. Bound to that flag it read
+    // 58 where the owner's page-2 cell is 3 (migrations 0024/0025).
+    {
+      key: "pwht_backlog_rt_not_done",
+      sql:
+        `${count("pwht_bl_rt_nd_sg_ccc")} + ${count("pwht_bl_rt_nd_sg_status")}` +
+        ` + ${count("pwht_bl_rt_nd_tmcp_ccc")} + ${count("pwht_bl_rt_nd_tmcp_status")}`,
+    },
     { key: "pwht_done", sql: count("pwht_done_prall") },
     {
       key: "pwht_required",

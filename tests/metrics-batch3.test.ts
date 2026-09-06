@@ -29,7 +29,7 @@ import {
 } from "@/lib/metrics/scope";
 import { weldingStats } from "@/lib/metrics/welding";
 import { utCoverage, utStatsPrAll } from "@/lib/metrics/ut";
-import { rtStatsPrAll } from "@/lib/metrics/rt";
+import { rtStatsPrAll, fabricatedBacklogPrAll } from "@/lib/metrics/rt";
 import {
   measureScope,
   PWHT_BACKLOG_STATUS_PRALL,
@@ -847,6 +847,185 @@ describe.skipIf(Boolean(skipReason))("pbix cross-check (user readings)", () => {
     expect(Number(r.total)).toBe(672);
     const cur = await rtBacklogCurrent({ sources: SOURCES_PR_ALL_LOADED });
     expect(cur!.plus_pwht + Number(r.a) + Number(r.prog)).toBe(672);
+  });
+
+  it('FABRICATED "PR all" = 521, and 521 + 68 = 589 partitions the total', async () => {
+    // [RT Backlog+PWHT Progress "Y" Done + PWHT "N" FABRICATED "PR all"],
+    // six added DISTINCTCOUNTs (migration 0025), owner-verified at 521:
+    //   1  56   PWHT Y/N IN {Y,25.01}, PWHT Report <> "", RT status hold16
+    //   2   8   as 1 + Weld Date > 0, RT% = 100, RT status IN {?,"",S}
+    //   3  18   PWHT Y/N CCC = "Y", PWHT Report No CCC <> "", RT% = 100
+    //   4 163   PWHT Y/N IN {N,25.01}, PWHT Weld Status = "", hold16
+    //   5   0   as 4 + Weld Date > 0, RT% = 100, RT status IN {?,""} (no "S")
+    //   6 276   Weld Date > 0, PWHT Y/N CCC = "N", RT% = 100
+    // The hold list here is the SIXTEEN-code one (no 'T1-2') and branch 5
+    // omits 'S' where branch 2 admits it -- both verbatim, not slips.
+    const all = await fabricatedBacklogPrAll(projectScope());
+    expect(all).not.toBeNull();
+    expect(all!.dump, "branches 1,2,4,5 -- GAC 211 + MEDGULF 16").toBe(227);
+    expect(all!.ccc, "branches 3,6").toBe(294);
+    expect(all!.total).toBe(521);
+
+    for (const [sub, want] of [["GAC", 211], ["MEDGULF", 16], ["CCC", 294], ["TEKFEN", 0], ["ACCIONA", 0]] as const) {
+      const s = await fabricatedBacklogPrAll({
+        ...projectScope(),
+        subContractor: sub,
+      });
+      expect(s!.total, sub).toBe(want);
+    }
+
+    // The partition. `RT BACKLOG Total Project FABRICATED` is 589, and the two
+    // FABRICATED components add to it exactly -- which independently confirms
+    // the 68 of the "Y NOT Done" variant, a figure the owner never quoted.
+    // That is why 68 is pinned here as a derived consequence rather than as an
+    // owner-read value.
+    const [r] = await query<{ total: string; ynd: string }>(
+      "SELECT count(*) FILTER (WHERE rt_backlog_fabricated)::text AS total," +
+        " (count(*) FILTER (WHERE rt_backlog_fabricated)" +
+        "  - count(*) FILTER (WHERE rt_bl_ydone_n_fab_prall_dump)" +
+        "  - count(*) FILTER (WHERE rt_bl_ydone_n_fab_prall_ccc))::text AS ynd" +
+        " FROM mv_joint WHERE source::text IN " +
+        "('WELD_DUMP','CCC_WELDER_RECORD','CCC_JOINT_RECORD','ACCIONA')",
+    );
+    expect(Number(r.total)).toBe(589);
+    expect(Number(r.ynd), '"Y NOT Done" FABRICATED, by difference').toBe(68);
+    expect(all!.total + Number(r.ynd)).toBe(Number(r.total));
+  });
+
+  it("merging the six FABRICATED branches into two does not undercount", async () => {
+    // The DAX ADDS all six, so collapsing them into two bool_ors would
+    // undercount any joint matching two branches within a group. The only
+    // possible overlap is pwht_y_n = '25.01', which satisfies both the Y and
+    // the N branch. It does not happen today -- pinned so the day it does is
+    // loud rather than silent.
+    const H16 =
+      "('H','HS','HS CCC','SS','T','T1','T1S','T1-1','T1-1S','T1-2S'," +
+      "'T2','T3','T2-1','T2-1S','T2-2S','T2S')";
+    const [r] = await query<{ six: string; merged: string }>(
+      `WITH w AS (
+         SELECT w.*, EXISTS (SELECT 1 FROM spool sp WHERE sp.spool_id = w.spool_id
+                               AND sp.fabricated IS NOT NULL) AS fab,
+                w.weld_type IN ('BW','GW','CLET','MW') AS wt,
+                w.rt_weld_status IN ${H16} AS hold
+           FROM weld w WHERE w.source::text <> 'INCO'
+       ), j AS (
+         SELECT joint_id, source,
+           bool_or(fab AND wt AND pwht_y_n IN ('Y','25.01') AND pwht_report IS NOT NULL AND hold AND rt_report IS NULL) b1,
+           bool_or(fab AND wt AND pwht_y_n IN ('Y','25.01') AND pwht_report IS NOT NULL AND weld_date IS NOT NULL AND rt_pct=100 AND rt_report IS NULL AND (rt_weld_status IS NULL OR rt_weld_status IN ('?','S'))) b2,
+           bool_or(fab AND wt AND pwht_y_n_ccc='Y' AND pwht_report_no_ccc IS NOT NULL AND rt_report IS NULL AND rt_pct=100) b3,
+           bool_or(fab AND wt AND pwht_y_n IN ('N','25.01') AND pwht_weld_status IS NULL AND hold AND rt_report IS NULL) b4,
+           bool_or(fab AND wt AND pwht_y_n IN ('N','25.01') AND pwht_weld_status IS NULL AND weld_date IS NOT NULL AND rt_pct=100 AND rt_report IS NULL AND (rt_weld_status IS NULL OR rt_weld_status='?')) b5,
+           bool_or(fab AND weld_date IS NOT NULL AND wt AND pwht_y_n_ccc='N' AND rt_report IS NULL AND rt_pct=100) b6
+         FROM w GROUP BY 1,2
+       )
+       SELECT (count(*) FILTER (WHERE b1) + count(*) FILTER (WHERE b2)
+             + count(*) FILTER (WHERE b3) + count(*) FILTER (WHERE b4)
+             + count(*) FILTER (WHERE b5) + count(*) FILTER (WHERE b6))::text AS six,
+              (count(*) FILTER (WHERE b1 OR b2 OR b4 OR b5)
+             + count(*) FILTER (WHERE b3 OR b6))::text AS merged
+         FROM j`,
+    );
+    expect(Number(r.six)).toBe(521);
+    expect(Number(r.merged)).toBe(Number(r.six));
+  });
+
+  it("page 2's sub-contractor table matches the owner's pbix, cell for cell", async () => {
+    // Full reconciliation against the owner's screenshot. INCO is not a row
+    // (R3-01). Every cell below is an owner-read value.
+    //
+    // Three bindings were wrong and are fixed:
+    //   "PWHT B.Log RT NOT Done"      read the "EP"-shaped flag  -> 58, is 3
+    //   "RT B.LOG & PWHT NOT Done"    missed M47's CCC branch    -> 58, is 76
+    //   "% Rej by Joint"              read the JOINT rejection rate; despite
+    //                                 the name it is the FILM ratio
+    //                                 (RT FILM Ratio % by Joint "PR all")
+    //
+    // Two cells still differ and are NOT tuned -- see the flags in the README:
+    //   ACCIONA "RT100% Backlog"  owner 2, ours blank (total 637 vs 635)
+    //   TEKFEN  "% Rej UT Joint"  owner 7.74%, ours 7.78% (198 vs 197 joints)
+    const owner: Record<string, Record<string, string>> = {
+      ACCIONA: { "% Rej by Joint": "0.39%" },
+      CCC: {
+        "RT B.LOG Total": "357", "RT100% Backlog": "357",
+        "PWHT Backlog All": "546", "PWHT B.log for RT": "185",
+        "PWHT B.log RT100%": "26", "PWHT B.Log RT NOT Done": "",
+        'RT+PWHT "Y" Done': "25", 'RT+PWHT "N"': "314",
+        "RT B.LOG & PWHT NOT Done": "18",
+        "% Rej by Joint": "0.12%", "% Rej UT Joint": "0.32%",
+      },
+      GAC: {
+        "RT B.LOG Total": "292", "RT100% Backlog": "256",
+        "PWHT Backlog All": "427", "PWHT B.log for RT": "134",
+        "PWHT B.log RT100%": "77", "PWHT B.Log RT NOT Done": "3",
+        'RT+PWHT "Y" Done': "64", 'RT+PWHT "N"': "170",
+        "RT B.LOG & PWHT NOT Done": "58",
+        "% Rej by Joint": "0.42%", "% Rej UT Joint": "5.65%",
+      },
+      MEDGULF: {
+        "RT B.LOG Total": "23", "RT100% Backlog": "22",
+        "PWHT Backlog All": "43", "PWHT B.log for RT": "24",
+        'RT+PWHT "N"': "23", "% Rej by Joint": "0.23%",
+      },
+      TEKFEN: {
+        "PWHT Backlog All": "26", "PWHT B.log for RT": "11",
+        "% Rej by Joint": "0.98%",
+      },
+      Total: {
+        "RT B.LOG Total": "672", "PWHT Backlog All": "1,042",
+        "PWHT B.log for RT": "354", "PWHT B.log RT100%": "103",
+        "PWHT B.Log RT NOT Done": "3", 'RT+PWHT "Y" Done': "89",
+        'RT+PWHT "N"': "507", "RT B.LOG & PWHT NOT Done": "76",
+        "% Rej by Joint": "0.27%",
+      },
+    };
+    const page = await getWeldingPage(2);
+    const table = page.widgets.find(
+      (w) => w.kind === "table" && w.columns[0] === "Sub-Contractor",
+    );
+    expect(table?.kind).toBe("table");
+    if (!table || table.kind !== "table") return;
+    for (const row of table.rows) {
+      const want = owner[row[0]!];
+      if (!want) continue;
+      for (const [col, value] of Object.entries(want)) {
+        const i = table.columns.indexOf(col);
+        expect(i, `column ${col}`).toBeGreaterThan(0);
+        expect(row[i], `${row[0]} / ${col}`).toBe(value);
+      }
+    }
+  });
+
+  it("the two page-2 cells that do not match the owner, pinned as-is", async () => {
+    // Pinned so they cannot drift unnoticed while the owner rules on them.
+    //
+    // 1. ACCIONA "RT100% Backlog" = 2 in the pbix. We render blank: ACCIONA has
+    //    945 rows with RT% = 100 and EVERY one carries an RT report, so M43's
+    //    `RT Date is blank` can never fire. No reading of the measure over our
+    //    data yields 2, so nothing is tuned.
+    // 2. TEKFEN "% Rej UT Joint" = 7.74% (197/2545); we have 7.78% (198/2545).
+    //    The extra joint is 21010AA-NG7131299R01-SP1-002: it has NO ut_report
+    //    and NO ut_acc_rej, only manual_ut_report_no + manual_ut_status = 'R',
+    //    so it qualifies solely through the C-20 fallback. Both candidate
+    //    mechanisms for excluding it (requiring ut_report/ut_acc_rej directly,
+    //    or requiring ut_weld_status = 'NR') give exactly 197, and neither is
+    //    in the verbatim DAX -- so the measure is left alone rather than tuned
+    //    to the target by a guess.
+    const [acc] = await query<{ n: string }>(
+      "SELECT count(*)::text AS n FROM weld" +
+        " WHERE sub_contractor = 'ACCIONA' AND rt_pct = 100 AND rt_report IS NULL",
+    );
+    expect(Number(acc.n), "no ACCIONA RT100% row lacks a report").toBe(0);
+
+    const [tek] = await query<{ ours: string; strict: string }>(
+      "SELECT count(*) FILTER (WHERE ours)::text AS ours," +
+        "       count(*) FILTER (WHERE strict)::text AS strict FROM (" +
+        "  SELECT bool_or(coalesce(ut_acc_rej, manual_ut_status) = 'R'" +
+        "           AND coalesce(ut_report, manual_ut_report_no) IS NOT NULL) AS ours," +
+        "         bool_or(ut_acc_rej = 'R' AND ut_report IS NOT NULL) AS strict" +
+        "    FROM weld WHERE sub_contractor = 'TEKFEN' GROUP BY source, joint_id) t",
+    );
+    expect(Number(tek.ours)).toBe(198);
+    expect(Number(tek.strict), "the owner's 197").toBe(197);
   });
 
   it("UT coverage names GAC and TEKFEN as covered, MEDGULF and ACCIONA as not", async () => {
