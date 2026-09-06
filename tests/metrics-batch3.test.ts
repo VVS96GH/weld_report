@@ -32,6 +32,9 @@ import { utCoverage, utStatsPrAll } from "@/lib/metrics/ut";
 import { rtStatsPrAll } from "@/lib/metrics/rt";
 import {
   measureScope,
+  PWHT_BACKLOG_STATUS_PRALL,
+  RT_BACKLOG_STATUS,
+  RT_BACKLOG_STATUS_PRALL,
   RT_WELD_TYPES,
   SOURCES_PR_ALL_LOADED,
 } from "@/lib/metrics/scope";
@@ -609,6 +612,71 @@ describe.skipIf(Boolean(skipReason))("pbix cross-check (user readings)", () => {
     // gives 370,089, and that is neither card. Pinned so the ambiguity cannot
     // be "resolved" by accident later.
     expect(kpi("Joints Welded")?.value).toBe("369,931");
+  });
+
+  it("the PR-all hold list is the owner's 17 codes, and EP's 16 is not a bug", () => {
+    // [RT BACKLOG Total Project "PR all"] lists 18 entries but "T1S" appears
+    // TWICE, so 17 distinct is the whole list -- ours, exactly:
+    const OWNER = [
+      "H", "HS", "HS CCC", "SS", "T", "T1", "T1-2", "T1S", "T1-1", "T1-1S",
+      "T1-2S", "T2", "T3", "T2-1", "T2-1S", "T2-2S", "T2S",
+    ];
+    expect([...RT_BACKLOG_STATUS_PRALL].sort()).toEqual([...OWNER].sort());
+    expect(new Set(RT_BACKLOG_STATUS_PRALL).size).toBe(17);
+    // [PWHT All BACKLOG All WELD TYPE "PR all"] lists the same 17.
+    expect([...PWHT_BACKLOG_STATUS_PRALL].sort()).toEqual([...OWNER].sort());
+
+    // The "EP" list omits T1-2 DELIBERATELY: all 20 "EP" backlog measures in
+    // measures.md omit it. Pinned in both directions so neither list can be
+    // "harmonised" into the other.
+    expect(RT_BACKLOG_STATUS).not.toContain("T1-2");
+    expect(new Set(RT_BACKLOG_STATUS).size).toBe(16);
+  });
+
+  it("T1-2 matches no row today, so carrying it changes nothing", async () => {
+    // Justifies the claim above rather than asserting it. If this ever fails,
+    // the two families start disagreeing and that is worth knowing.
+    const [r] = await query<{ rt: string; pwht: string }>(
+      "SELECT count(*) FILTER (WHERE rt_weld_status = 'T1-2')::text AS rt," +
+        "       count(*) FILTER (WHERE pwht_weld_status = 'T1-2')::text AS pwht" +
+        "  FROM weld",
+    );
+    expect(Number(r.rt)).toBe(0);
+    expect(Number(r.pwht)).toBe(0);
+  });
+
+  it("RT + PWHT backlog match the owner's DAX (computed, not pbix-read)", async () => {
+    // NOT owner-read values -- these are OUR numbers from the owner's DAX,
+    // to be flipped to pbix-read figures when the owner sends them.
+    //
+    // [RT BACKLOG Total Project "PR all"]      672
+    //   CCC 357 + GAC 292 + MEDGULF 23 + TEKFEN 0 + ACCIONA 0 + INCO 0
+    // [PWHT All BACKLOG All WELD TYPE "PR all"] 1,042 = 546 + 496
+    //   CCC branch  546  (Weld Date > 0, PWHT Y/N CCC = "Y", no report)
+    //   rest branch 496  (GAC 427 + MEDGULF 43 + TEKFEN 26) -- and the second
+    //   term carries NO weld-date filter, per the DAX. mv_joint's flag is
+    //   `pwht_weld_status IN (...) AND pwht_report IS NULL`, nothing more.
+    const rows = await query<{ sub: string; rt: string; pc: string; pr: string }>(
+      "SELECT sub_contractor AS sub," +
+        " count(*) FILTER (WHERE rt_backlog_prall)::text AS rt," +
+        " count(*) FILTER (WHERE pwht_backlog_ccc)::text AS pc," +
+        " count(*) FILTER (WHERE pwht_backlog_rest)::text AS pr" +
+        " FROM mv_joint WHERE source::text IN " +
+        "('WELD_DUMP','CCC_WELDER_RECORD','CCC_JOINT_RECORD','ACCIONA','INCO')" +
+        " GROUP BY 1",
+    );
+    const by = Object.fromEntries(rows.map((r) => [r.sub, r]));
+    expect(Number(by.CCC!.rt)).toBe(357);
+    expect(Number(by.GAC!.rt)).toBe(292);
+    expect(Number(by.MEDGULF!.rt)).toBe(23);
+    expect(Number(by.TEKFEN!.rt)).toBe(0);
+    expect(rows.reduce((a, r) => a + Number(r.rt), 0)).toBe(672);
+
+    expect(Number(by.CCC!.pc)).toBe(546);
+    expect(Number(by.GAC!.pr)).toBe(427);
+    expect(Number(by.MEDGULF!.pr)).toBe(43);
+    expect(Number(by.TEKFEN!.pr)).toBe(26);
+    expect(rows.reduce((a, r) => a + Number(r.pc) + Number(r.pr), 0)).toBe(1_042);
   });
 
   it("UT coverage names GAC and TEKFEN as covered, MEDGULF and ACCIONA as not", async () => {

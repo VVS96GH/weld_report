@@ -732,6 +732,59 @@ has quoted would be tuning. Worth checking with the owner for GAC and MEDGULF.
 Page 2 is untouched: it is a different visual, and its cards are verified
 against the owner's page-1/2 figures directly.
 
+### The backlog hold list: 17 codes at `"PR all"`, 16 at `"EP"`
+
+`[RT BACKLOG Total Project "PR all"]` lists **18** entries — but `"T1S"` appears
+twice, so 17 distinct is the whole list, and `RT_BACKLOG_STATUS_PRALL` already
+matched it exactly. `[PWHT All BACKLOG All WELD TYPE "PR all"]` lists the same
+17 (with the same duplicate).
+
+**The `"EP"` list's 16 codes are not a bug.** It omits `'T1-2'`, and so do
+**all 20** `"EP"` backlog measures in `measures.md`. The families genuinely
+differ; a test pins the difference in both directions so neither list can be
+"harmonised" into the other.
+
+`'T1-2'` matches **no row** in the current load — 0 in `rt_weld_status`, 0 in
+`pwht_weld_status` — so it changes no number today. Carried because the DAX
+carries it, and pinned so that if it ever appears, the divergence is visible.
+
+#### The PWHT second term has no weld-date filter
+
+The DAX adds two `DISTINCTCOUNT`s and only the first is date-filtered:
+
+```dax
+CALCULATE(DISTINCTCOUNT([Joint ID]), [Weld Date]>0,
+          [PWHT Y/N CCC]="Y", [PWHT Report No CCC]="")
++ CALCULATE(DISTINCTCOUNT([Joint ID]),
+          [PWHT Weld Status] IN {…17…}, [PWHT Report]="")
+```
+
+Ours matches — `mv_joint.pwht_backlog_rest` is
+
+```sql
+bool_or(w.pwht_weld_status IN ('H','HS','HS CCC','SS','T','T1','T1S','T1-1',
+                               'T1-1S','T1-2S','T2','T3','T2-1','T2-1S',
+                               'T2-2S','T2S','T1-2')
+        AND w.pwht_report IS NULL)   AS pwht_backlog_rest
+```
+
+with no `weld_date` condition, while `pwht_backlog_ccc` carries
+`w.weld_date IS NOT NULL`. The branches are disjoint by construction (dump rows
+have no `pwht_y_n_ccc`, CCC rows no `pwht_weld_status`), so the DAX's `+` and a
+single `OR` agree; the `+` is kept for literal parity.
+
+#### Computed against the owner's DAX — **not** owner-read
+
+| measure | total | split |
+|---|---|---|
+| `[RT BACKLOG Total Project "PR all"]` | **672** | CCC 357 · GAC 292 · MEDGULF 23 · TEKFEN 0 · ACCIONA 0 · INCO 0 |
+| `[PWHT All BACKLOG All WELD TYPE "PR all"]` | **1,042** | CCC branch 546 + rest 496 (GAC 427 · MEDGULF 43 · TEKFEN 26) |
+
+These are **our** numbers from the owner's DAX text, not figures read off the
+pbix. They are pinned as such and should be flipped to owner-read values when
+those arrive. They already equal what page 2's sub-contractor table renders,
+so M40/M60 needed no change.
+
 ### M91 `WPS Approved` (R4-02, R4-03)
 
 `count(DISTINCT wps_no) FILTER (document_status = 'WPS APPROVED BY CTJV/ CPY')`

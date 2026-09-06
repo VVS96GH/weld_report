@@ -112,7 +112,14 @@ export const PWHT_NO_TOKENS = ["N", PWHT_AMBIGUOUS_TOKEN] as const;
 /** §0.6 — RT weld types, everywhere in the model. */
 export const RT_WELD_TYPES = ["BW", "GW", "CLET", "MW"] as const;
 
-/** §0.6 — the 16-code RT hold list, `"EP"`/`"WD"` flavour. Verbatim, unsorted. */
+/**
+ * §0.6 — the 16-code RT hold list, `"EP"`/`"WD"` flavour. Verbatim, unsorted.
+ *
+ * It deliberately OMITS `'T1-2'`. That is not an oversight to be tidied: all
+ * **20** `"EP"` backlog measures in `analysis/pbix/measures.md` omit it, while
+ * both `"PR all"` measures include it. The two families genuinely differ, and
+ * a test pins the difference in both directions.
+ */
 export const RT_BACKLOG_STATUS = [
   "H",
   "HS",
@@ -132,7 +139,23 @@ export const RT_BACKLOG_STATUS = [
   "T2S",
 ] as const;
 
-/** `"PR all"` flavour = the `"EP"` list + `'T1-2'`. */
+/**
+ * `"PR all"` flavour = the `"EP"` list + `'T1-2'` — the 17 distinct codes of
+ * `[RT BACKLOG Total Project "PR all"]`, verbatim:
+ *
+ * ```dax
+ * [RT Weld Status] IN {
+ *   "H", "HS", "HS CCC", "SS", "T", "T1","T1-2", "T1S", "T1-1", "T1-1S",
+ *   "T1-2S", "T1S", "T2", "T3", "T2-1", "T2-1S", "T2-2S", "T2S" }
+ * ```
+ *
+ * The DAX lists **18** entries because `"T1S"` appears twice — a duplicate in
+ * the source, not a code we are missing. 17 distinct is the whole list.
+ *
+ * `'T1-2'` matches **no row** in the current load (0 in `rt_weld_status`, 0 in
+ * `pwht_weld_status`), so it changes no number today. It is carried because the
+ * DAX carries it, not because it does anything.
+ */
 export const RT_BACKLOG_STATUS_PRALL = [...RT_BACKLOG_STATUS, "T1-2"] as const;
 
 /** Second branch of every RT-backlog measure: `RT% = 100 AND status IN {?,'',S}`. */
@@ -152,7 +175,12 @@ export const PWHT_BACKLOG_STATUS = RT_BACKLOG_STATUS.filter(
   (s) => s !== "HS CCC",
 );
 
-/** `"PR all"` flavour = the `"EP"` list + `'T1-2'` + `'HS CCC'`. */
+/**
+ * `"PR all"` flavour = the `"EP"` list + `'T1-2'` + `'HS CCC'` — the same 17
+ * distinct codes as {@link RT_BACKLOG_STATUS_PRALL}, which is what
+ * `[PWHT All BACKLOG All WELD TYPE "PR all"]` lists (`"T1S"` duplicated there
+ * too).
+ */
 export const PWHT_BACKLOG_STATUS_PRALL = [
   ...RT_BACKLOG_STATUS,
   "T1-2",
