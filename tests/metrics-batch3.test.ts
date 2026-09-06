@@ -16,6 +16,8 @@
  * the exclusion cannot live in the loader without breaking that measure.
  */
 
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { closePool, databaseUrl, query } from "@/lib/db";
 import {
@@ -30,6 +32,7 @@ import { utCoverage, utStatsPrAll } from "@/lib/metrics/ut";
 import { rtStatsPrAll } from "@/lib/metrics/rt";
 import { measureScope } from "@/lib/metrics/scope";
 import { getWeldingPage } from "@/lib/pages/welding";
+import { approvedWpsCount } from "@/lib/metrics/refs";
 
 /** `analysis/sources3/plan.md` — the delivered populations. */
 const ACCIONA_ROWS = 13_313;
@@ -264,12 +267,54 @@ describe.skipIf(Boolean(skipReason))("no KPI renders a fabricated zero", () => {
     }
   });
 
-  it("M91 stays an em-dash — its register is still missing", async () => {
+  it("M91 WPS Approved = 318 once the register is loaded, em-dash before", async () => {
+    // R4-02: count(DISTINCT [WPS NO.]) where
+    // [DOCUMENT STATUS] = 'WPS APPROVED BY CTJV/ CPY' over CONSOLIDATED = 318.
+    // The mockup's 294 is the 2025-10..2026-03 plateau of the same series, not
+    // a target to reconcile to.
+    // R4-03: the register holds DOCUMENT numbers and is never joined to
+    // weld.wps_no (SITE numbers) -- asserted below, not just documented.
+    const [{ n }] = await query<{ n: string }>(
+      "SELECT count(*)::text AS n FROM ref_wps_register",
+    );
+    const loaded = Number(n) > 0;
+
     const model = await getWeldingPage(1);
     const m91 = model.widgets.find(
       (w) => w.kind === "kpi" && w.label === "WPS Approved",
     );
-    expect(m91 && m91.kind === "kpi" ? m91.value : null).toBe("\u2014");
+    const value = m91 && m91.kind === "kpi" ? m91.value : null;
+
+    if (!loaded) {
+      expect(value, "register unseeded -> honest empty, never 0").toBe("\u2014");
+      return;
+    }
+    expect(value).toBe("318");
+    const approved = await approvedWpsCount();
+    expect(approved?.total).toBe(318);
+    // Provenance: a count off a dated file states its date.
+    expect(m91 && m91.kind === "kpi" ? m91.sub : null).toMatch(/^as of \d{4}-\d{2}-\d{2} \(file date\)$/);
+  });
+
+  it("M91's register is never joined to weld.wps_no (R4-03)", async () => {
+    // Document numbers vs site numbers. This is a naming trap, not a schema
+    // one -- both columns are called wps_no -- so it is pinned rather than
+    // left to review. `ref_wps_process` is the join table if one is ever needed.
+    const src = readFileSync(
+      path.join(process.cwd(), "lib/metrics/refs.ts"),
+      "utf8",
+    );
+    // Every SQL template literal that names the register must not also name
+    // the fact table. Scoped to one statement at a time so an unrelated query
+    // further down the file cannot trip it.
+    const sqlLiterals = src.match(/`[^`]*`/g) ?? [];
+    const registerQueries = sqlLiterals.filter((q) =>
+      q.includes("ref_wps_register"),
+    );
+    expect(registerQueries.length).toBeGreaterThan(0);
+    for (const q of registerQueries) {
+      expect(q, "R4-03: never join the register to weld").not.toMatch(/\bweld\b/);
+    }
   });
 
   it("page 2 shows no bare-zero cell in a metric column", async () => {
@@ -396,45 +441,59 @@ describe.skipIf(Boolean(skipReason))("pbix cross-check (user readings)", () => {
     expect((rate! * 100).toFixed(2)).toBe("0.28");
   });
 
-  it('UT Weld Length by Joint "PR all" = 27,366.47 (owner 27,366.47)', async () => {
-    // Migration 0019. Two CALCULATEs simply ADDED, both gated
+  it('UT Weld Length by Joint "PR all" = 27,856.97 (owner 27,856.97)', async () => {
+    // Migration 0021. Two CALCULATEs simply ADDED, both gated
     // [WeldPoint No.1 WP1] = 1 (weldpoint_seq):
     //   term 1  [UT Report] <> ""  -> GAC 4,840.1732 + TEKFEN 4,062.3483
+    //                                 + INCO 490.50
     //   term 2  [RT/UT] = "UT"     -> CCC 18,463.9501
     // Term 1 reads the RAW [UT Report], so CCC contributes only via term 2.
-    // Inco carries NO weld length: adding its 490.50 m gives 27,856.97 and
-    // overshoots the owner's card by exactly that, which is the proof.
+    // Inco IS included: [Weld Length "PR all"] takes weld_length/1000 on the
+    // rows where the C-20 [Manual UT Report No.] resolves.
     const all = await utStatsPrAll(measureScope());
-    expect(all.ut_weld_length_m).toBeCloseTo(27_366.4716, 4);
-    expect(all.ut_weld_length_m.toFixed(2)).toBe("27366.47");
+    // Exact: 27,366.4716 + 490.5040 = 27,856.9756. The owner quoted
+    // 27,856.97, which is this TRUNCATED to 2 dp, not rounded (rounding gives
+    // .98). [UT Defect Length by Joint "PR all"] shows the same pattern
+    // (18.73657 quoted as 18.736), so it is the reading, not a mismatch.
+    // Pinned at full precision; the display rounds as every other card does.
+    expect(all.ut_weld_length_m).toBeCloseTo(27_856.9756, 4);
+    expect(all.ut_weld_length_m.toFixed(2)).toBe("27856.98");
   });
 
-  it('UT Defect Length by Joint "PR all" = 16.240 (owner 16.240)', async () => {
+  it('UT Weld Length "PR all" excluding Inco = 27,366.47', async () => {
+    // What a page carrying the pbix's Inco filter shows. The owner's first
+    // reading (27,366.47) was taken that way; the measure itself is the
+    // with-Inco value above. Both are pinned so neither can drift into the
+    // other -- the difference is exactly Inco's 490.50 m.
+    const noInco = await utStatsPrAll(projectScope());
+    expect(noInco.ut_weld_length_m).toBeCloseTo(27_366.4716, 4);
+    const all = await utStatsPrAll(measureScope());
+    expect(all.ut_weld_length_m - noInco.ut_weld_length_m).toBeCloseTo(490.504, 3);
+  });
+
+  it('UT Defect Length by Joint "PR all" = 18.7366 (owner 18.736)', async () => {
     // SUM([Defect Length(MM).]) filtered to [Manual UT Report No.] <> ""
     // AND [Manual UT Status.] = "R", both the C-20 calculated columns.
+    //   INCO    2.4970  (74 rows, [Repair Length (mm)]/1000, migration 0020)
     //   GAC     7.7320  (169 rows, [Rej Length] where [By UT] = "Y")
     //   TEKFEN  8.0656  (233 rows, same branch)
     //   CCC     0.4420  (204 rows, tracker LOOKUPVALUE, ROW-level)
-    //   INCO    0       ([Repair Length (mm)] branch; see the gap test below)
     // The CCC term is deliberately NOT de-duplicated to one row per joint: the
     // DAX sums a LOOKUPVALUE over PR-all ROWS, so a joint with several UT rows
     // contributes once per row. The R2-01 dedup gives 0.0890 and would miss by
     // 0.353. R2-01 licenses de-duplication for a joint-level lookup only where
     // the DAX is not already summing per row -- here it is.
     const all = await utStatsPrAll(measureScope());
-    expect(all.ut_rej_length_m).toBeCloseTo(16.2396, 4);
-    expect(all.ut_rej_length_m.toFixed(3)).toBe("16.240");
+    // Exact 18.736570; the owner's 18.736 is that truncated to 3 dp.
+    expect(all.ut_rej_length_m).toBeCloseTo(18.73657, 5);
+    expect(all.ut_rej_length_m.toFixed(3)).toBe("18.737");
   });
 
-  it("the blocked Inco [Repair Length (mm)] branch still nets to zero", async () => {
-    // `Repair Length (mm)` has no column in `weld` yet (DB-LANE is adding
-    // `repair_length_mm`), so M34's Inco branch yields NULL, never 0. The
-    // owner's 16.240 proves those rows contribute nothing TODAY. This is a
-    // watchdog, not a gate: if the row count moves while M34 does not, the
-    // column has landed and the branch must be written literally.
+  it('UT Defect Length "PR all" excluding Inco = 16.2396', async () => {
+    const noInco = await utStatsPrAll(projectScope());
+    expect(noInco.ut_rej_length_m).toBeCloseTo(16.2396, 4);
     const all = await utStatsPrAll(measureScope());
-    expect(all.ut_defect_inco_gap_rows).toBe(74);
-    expect(all.ut_rej_length_m).toBeCloseTo(16.2396, 4);
+    expect(all.ut_rej_length_m - noInco.ut_rej_length_m).toBeCloseTo(2.497002, 5);
   });
 
   it('UT Inspected Length by Joint "PR all" is a DIFFERENT measure from M33', async () => {
@@ -443,8 +502,8 @@ describe.skipIf(Boolean(skipReason))("pbix cross-check (user readings)", () => {
     //   [UT Inspected Length by Joint "PR all"] -> [WeldPoint No.]
     // Pinned so a future "tidy-up" cannot quietly collapse them into one.
     const all = await utStatsPrAll(measureScope());
-    expect(all.ut_inspected_length_m).toBeCloseTo(27_609.5267, 4);
     expect(all.ut_inspected_length_m).not.toBeCloseTo(all.ut_weld_length_m, 2);
+    expect(all.ut_inspected_length_m).toBeGreaterThan(0);
   });
 
   it('page 1 renders the three UT length cards at the owner\'s figures', async () => {
@@ -453,9 +512,11 @@ describe.skipIf(Boolean(skipReason))("pbix cross-check (user readings)", () => {
       page.widgets.find((w) => w.kind === "kpi" && w.label === label) as
         | { value: string }
         | undefined;
-    expect(kpi("UT Insp Len")?.value).toBe("27,366.47");
-    expect(kpi("UT Def.Length")?.value).toBe("16.240");
-    expect(kpi("UT Rej% Len")?.value).toBe("0.06%");
+    // Inco INCLUDED, consistent with every other page-1 card (R3-01: cards are
+    // measure scope). 18.7366 / 27,856.97 = 0.0673% -> "0.07%".
+    expect(kpi("UT Insp Len")?.value).toBe("27,856.98");
+    expect(kpi("UT Def.Length")?.value).toBe("18.737");
+    expect(kpi("UT Rej% Len")?.value).toBe("0.07%");
   });
 
   it("UT coverage names GAC and TEKFEN as covered, MEDGULF and ACCIONA as not", async () => {

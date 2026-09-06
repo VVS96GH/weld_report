@@ -83,18 +83,56 @@ export async function qualifiedWelders(
  * `[ DOCUMENT STATUS] IN {WPS APPROVED BY CTJV/ CPY}`.
  * `null` when `ref_wps_register` is absent or empty.
  */
-export async function approvedWpsCount(): Promise<number | null> {
+export type ApprovedWps = {
+  /** M91 `WPS Approved` — 318 on the register as delivered (R4-02). */
+  total: number;
+  /** The register file's own date, for the card's provenance line. */
+  as_of: string | null;
+};
+
+/**
+ * M91 `WPS Approved` (R4-02): distinct `WPS NO.` on the CONSOLIDATED sheet
+ * whose `DOCUMENT STATUS` is exactly {@link WPS_APPROVED_STATUS}.
+ *
+ * The mockup shows 294. That is not a discrepancy to reconcile — it is the
+ * 2025-10…2026-03 plateau of the same series, and the register has moved since.
+ * We render what the register holds today.
+ *
+ * R4-03: `ref_wps_register` carries DOCUMENT numbers and is **never** joined to
+ * `weld.wps_no`, which carries SITE numbers. `ref_wps_process` is the join
+ * table if a future measure needs one. Nothing here joins to `weld` at all.
+ *
+ * Returns `null` — never `0` — while the register is unseeded, so the card
+ * renders `—` and the page discloses why.
+ */
+export async function approvedWpsCount(): Promise<ApprovedWps | null> {
   const p = new Params();
   try {
     const rows = await query(
-      `SELECT count(DISTINCT r.wps_no) AS n FROM ref_wps_register r\n` +
+      `SELECT count(DISTINCT r.wps_no) AS n, max(r.as_of)::text AS as_of\n` +
+        `  FROM ref_wps_register r\n` +
         ` WHERE r.document_status = ${p.add(WPS_APPROVED_STATUS)}`,
       p.list(),
     );
-    const parsed = z.object({ n: zCount }).parse(rows[0] ?? { n: 0 });
-    return parsed.n === 0 ? null : parsed.n;
+    const parsed = z
+      .object({ n: zCount, as_of: zText })
+      .parse(rows[0] ?? { n: 0, as_of: null });
+    return parsed.n === 0 ? null : { total: parsed.n, as_of: parsed.as_of };
   } catch {
-    return null;
+    // Migration-tolerant, the same way qualifiedWelders() is: a register that
+    // predates the `as_of` column still answers the count.
+    const q = new Params();
+    try {
+      const rows = await query(
+        `SELECT count(DISTINCT r.wps_no) AS n FROM ref_wps_register r\n` +
+          ` WHERE r.document_status = ${q.add(WPS_APPROVED_STATUS)}`,
+        q.list(),
+      );
+      const parsed = z.object({ n: zCount }).parse(rows[0] ?? { n: 0 });
+      return parsed.n === 0 ? null : { total: parsed.n, as_of: null };
+    } catch {
+      return null;
+    }
   }
 }
 

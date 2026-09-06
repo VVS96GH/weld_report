@@ -85,15 +85,17 @@ function mvJointColumns(): Set<string> {
   // Each of these re-creates the view (the pattern 0011 used for
   // mv_weekly_progress), so every one of them defines columns that exist:
   // 0016 added the "PR all" NDE flags, 0017 corrected the film WP1 gate,
-  // 0018 added the "PR all" UT length measures and 0019 dropped their Inco
-  // weld-length term. The LAST file to define a name wins at runtime; this
-  // test only needs the union, since it is an allow-list.
+  // 0018 added the "PR all" UT length measures, 0019 dropped their Inco
+  // weld-length term and 0021 put it back (the owner's cards are read WITH
+  // Inco). The LAST file to define a name wins at runtime; this test only
+  // needs the union, since it is an allow-list.
   const sql = [
     "0013_mv_joint.sql",
     "0016_mv_joint_prall_nde.sql",
     "0017_wp1_gate.sql",
     "0018_ut_lengths_prall.sql",
     "0019_ut_weld_length_no_inco.sql",
+    "0021_ut_lengths_with_inco.sql",
   ]
     .map((f) => {
       try {

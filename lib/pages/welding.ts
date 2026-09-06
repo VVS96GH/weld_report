@@ -314,7 +314,6 @@ function emptyBundle(): Bundle {
       ut_rejection_rate_joint: null,
       ut_weld_length_m: 0,
       ut_inspected_length_m: 0,
-      ut_defect_inco_gap_rows: 0,
       ut_rej_length_m: 0,
     },
     pwht: {
@@ -943,25 +942,16 @@ const HA_NOTE =
 
 const REGISTER_NOTE =
   "Project_Welder (M90) reads ref_qualified_welders and WPS Approved (M91) " +
-  "reads ref_wps_register. WPQ RECORD REGISTER.xlsx is still missing, so M91 " +
-  "stays blank; a register that is empty renders \u2014, never 0.";
+  "reads ref_wps_register. One of them is unseeded, so its card renders " +
+  "\u2014, never 0. Both counts state the source file's own date.";
 
-// R3-06, settled. The note used to explain the Inco blank by claiming the
-// guard [Manual UT Report No.] <> "" never fires for Inco. That reasoning was
-// wrong -- [Manual UT Report No.] is the CALCULATED column (C-20) and for Inco
-// resolves to Inco's own UT Report, non-blank on 441 PAUT rows. The OUTCOME was
-// right: the report owner's [UT Weld Length by Joint "PR all"] is 27,366.47,
-// which is our total with the Inco term (490.50 m) LEFT OUT, to the cent. So
-// the model carries no weld length for Inco, and this is now a verified fact
-// rather than an unverified guard-reading. No disclosure note is warranted for
-// a number that matches the source report exactly; see migration 0019 and
-// lib/metrics/README.md.
-const INCO_LENGTH_NOTE =
-  "UT length metrics (M33/M35/M36) carry no weld length for INCO: " +
-  "[Weld Length \"PR all\"] resolves to blank for every Inco row. Verified " +
-  "against the report owner's figure \u2014 27,366.47 m is our total with the " +
-  "Inco term excluded, exactly \u2014 so this matches the source report, and " +
-  "is recorded rather than flagged as a gap.";
+// R3-06 is retired: Inco's weld length is `Length (MM)` / 1000 on the rows
+// where it has a UT report, and the owner's with-Inco cards (27,856.97 /
+// 18.736) match our literal implementation exactly. There is nothing to
+// disclose, so this note is no longer emitted -- kept only as the record of a
+// ruling that was wrong in both its reason and its outcome. See migration 0021
+// and lib/metrics/README.md.
+
 
 
 /**
@@ -1190,11 +1180,6 @@ async function buildProjectKpiPage(spec: SpecPage, ctx: Ctx): Promise<Widget[]> 
   noteIf(ctx, utCoverageNote(av.ut));
   if (!av.spool) note(ctx, FABRICATED_NOTE);
   noteIf(ctx, utLengthNote(av.ut, av.weldLengthDimension));
-  // Only when INCO is actually inside this scope. On the project pages R3-01
-  // excludes it, so a note about INCO's blank length would describe a party the
-  // page does not show. The permanent flag for the report owner lives in
-  // lib/metrics/README.md, which is what R3-06 asks for.
-  if (av.ut.lengthUncovered.includes("INCO")) note(ctx, INCO_LENGTH_NOTE);
   if (!(await sourceHasRows(SOURCES_CCC))) note(ctx, CCC_NOTE);
   if (welders === null || wpsApproved === null) note(ctx, REGISTER_NOTE);
   if (welders?.source_note) note(ctx, `Project_Welder: ${welders.source_note}`);
@@ -1271,7 +1256,16 @@ async function buildProjectKpiPage(spec: SpecPage, ctx: Ctx): Promise<Widget[]> 
           });
           break;
         case "WPS Approved":
-          out.push(kpi(w.label, kpiInt(wpsApproved)));
+          // R4-02. Provenance is the register file's own date, the same
+          // treatment M90 gets: a count off a dated file states its date.
+          out.push({
+            kind: "kpi",
+            label: w.label,
+            value: wpsApproved ? kpiInt(wpsApproved.total) : HONEST_EMPTY,
+            sub: wpsApproved?.as_of
+              ? `as of ${wpsApproved.as_of} (file date)`
+              : undefined,
+          });
           break;
         // M39 / M32 — the UT-tracker overlay columns. Computable only where a
         // tracker was loaded; UT TRACKER (GAC) and (TEK) are still missing, so

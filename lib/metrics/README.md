@@ -174,7 +174,7 @@ would inflate every "above 30 Days" bucket as the file gets older on disk.
 | M80 | `trend.weeklySnapshot()` | `[CUM …]` | the workbook's `RT% Rate`/`UT% Rate` columns ARE the cumulative rates, so plotting them is the CUM line — no re-accumulation |
 | M81 | `trend.TARGET_LINES` | `[% of Target "PR"]` etc. | hard-coded 0.01 / 0.03 / 0.03 / 0.05 |
 | M90 | `refs.qualifiedWelders()` | `Sum(SCTR OVERALL APPLIED WELDERS[…])` | `null` until `ref_qualified_welders` is seeded (R-12) |
-| M91 | `refs.approvedWpsCount()` | `DistinctCount(WPQ RECORD REGISTER[WPS NO.])` | `null` until `ref_wps_register` is seeded (R-12) |
+| M91 | `refs.approvedWpsCount()` | `DistinctCount(WPQ RECORD REGISTER[WPS NO.])` where `DOCUMENT STATUS = 'WPS APPROVED BY CTJV/ CPY'` | **318** (R4-02); `null` until `ref_wps_register` is seeded |
 | M92 | `trend.weeklySnapshot({aggregate:true})` | `Sum(TREND Report[…])` | project charts sum the parties at `scope='ALL'` (so a `GAC SG` row is not added on top of `GAC`); per-subcontractor charts filter by party + scope. M40 is marked provisional (R2-09) |
 | M99 | — | `[Total Scope Dia … Master Table]` ×4 | **dropped** (R-07): references a table that does not exist |
 
@@ -530,9 +530,9 @@ interchangeable. Each is implemented exactly as its own DAX reads.
 
 | measure | gate | filter | our flag | value |
 |---|---|---|---|---|
-| `[UT Weld Length by Joint "PR all"]` (M33) | `[WeldPoint No.1 WP1] = 1` (`weldpoint_seq`) | term 1 `[UT Report] <> ""`, term 2 `[RT/UT] = "UT"`, **ADDED** | `ut_weld_length_prall` | **27,366.4716** |
-| `[UT Inspected Length by Joint "PR all"]` | `[WeldPoint No.] = 1` (`weldpoint_no`) | `[Manual UT Report No.] <> ""` | `ut_inspected_length_prall` | 27,609.5267 |
-| `[UT Defect Length by Joint "PR all"]` (M34) | none | `[Manual UT Report No.] <> ""` and `[Manual UT Status.] = "R"` | `ut_defect_length_prall` | **16.2396** |
+| `[UT Weld Length by Joint "PR all"]` (M33) | `[WeldPoint No.1 WP1] = 1` (`weldpoint_seq`) | term 1 `[UT Report] <> ""`, term 2 `[RT/UT] = "UT"`, **ADDED** | `ut_weld_length_prall` | **27,856.9756** |
+| `[UT Inspected Length by Joint "PR all"]` | `[WeldPoint No.] = 1` (`weldpoint_no`) | `[Manual UT Report No.] <> ""` | `ut_inspected_length_prall` | 28,855.3747 |
+| `[UT Defect Length by Joint "PR all"]` (M34) | none | `[Manual UT Report No.] <> ""` and `[Manual UT Status.] = "R"` | `ut_defect_length_prall` | **18.73657** |
 
 Two different WeldPoint columns, one per measure — the pbix's own doing, not a
 transcription slip. A test pins them apart so a future tidy-up cannot collapse
@@ -547,29 +547,41 @@ empty — contributes only through term 2.
 |---|---|---|---|
 | GAC | 4,840.1732 | — | 4,840.1732 |
 | TEKFEN | 4,062.3483 | — | 4,062.3483 |
+| INCO | 490.5040 | — | 490.5040 |
 | CCC | — | 18,463.9501 | 18,463.9501 |
-| **total** | | | **27,366.4716** → owner's card 27,366.47 ✅ |
+| **total** | | | **27,856.9756** → owner's card 27,856.97 ✅ |
 
-### R3-06 settled: Inco carries no weld length — right answer, wrong reason
+Excluding Inco — what a page carrying the pbix's Inco filter shows — the same
+measure is 27,366.4716. Both are pinned, and the difference is exactly Inco's
+490.504 m.
 
-R3-06 said `[Weld Length "PR all"]` is blank for every Inco row because its
-guard `[Manual UT Report No.] <> ""` never fires, Inco leaving that `Weld Dump`
-column empty.
+### R3-06 fully retired: Inco's weld length is `Length (MM)` / 1000
 
-**That reasoning is wrong.** `[Manual UT Report No.]` is the *calculated* column
-(C-20), and its Inco branch resolves to Inco's **own** `UT Report` — non-blank
-on 441 PAUT rows. Read literally the guard fires and contributes 490.50 m.
+R3-06 said `[Weld Length "PR all"]` is blank for every Inco row, because its
+guard `[Manual UT Report No.] <> ""` never fires — Inco leaving that `Weld Dump`
+column empty. **Both the reason and the outcome are wrong.**
 
-**The outcome was right anyway,** and now provably so. The owner's card is
-27,366.47; our total *with* the Inco term is 27,856.97. The difference is
-490.50 to the cent — exactly the Inco term. The model does not carry Inco's
-weld length here, so the honest-empty framing is retired: this is no longer an
-unverified guard-reading but a number that matches the source report exactly.
+* the reason: `[Manual UT Report No.]` is the *calculated* column (C-20), whose
+  Inco branch resolves to Inco's **own** `UT Report`, non-blank on 441 PAUT rows;
+* the outcome: with Inco the owner's card reads 27,856.97, which is exactly our
+  literal implementation including the Inco term.
 
-A caveat for whoever touches the loader: `scripts/load-weld-length.ts` still
-materialises `weld_length_m` with the **imported** `manual_ut_report_no` in that
-guard. It reaches the right answer (NULL for Inco) through the wrong predicate.
-Left alone deliberately — correcting the predicate would make it *wrong*.
+So Inco's weld length is `weld_length / 1000` on the rows where it has a UT
+report, and the honest-empty note the ruling justified is gone.
+
+**How this was nearly got wrong, twice.** An intermediate reading of the owner's
+card (27,366.47) was taken with a page filter excluding Inco, and matched our
+total *minus* the Inco term to the cent. Migration 0019 dropped the branch on
+that evidence. The defect-length measure then showed the identical pattern
+(16.240 vs our 18.7366), which read as independent confirmation — "two separate
+measures agreeing to the cent". It was not: **both measures are guarded by the
+same predicate**, so one page filter moved them together. Two observations that
+share a cause are one observation. 0021 restores both branches.
+
+A caveat for the loader: `scripts/load-weld-length.ts` materialises
+`weld_length_m` with the **imported** `manual_ut_report_no` in that guard, so it
+is NULL on every Inco row. The Inco branch is therefore corrected inline in the
+matview rather than trusting the column. Worth a DB-LANE fix.
 
 ### M34's CCC term is row-level, and R2-01 does not apply
 
@@ -584,8 +596,11 @@ IF( [Manual UT Status.] = "R" && Sub = "CCC", LOOKUPVALUE(tracker BY Joint ID), 
 | GAC `[Rej Length]` | 169 | 7.7320 |
 | TEKFEN `[Rej Length]` | 233 | 8.0656 |
 | CCC tracker lookup, **row-level** | 204 | 0.4420 |
-| INCO `[Repair Length (mm)]/1000` | 74 | **blocked**, nets to 0 |
-| **total** | | **16.2396** → owner's 16.240 ✅ |
+| INCO `[Repair Length (mm)]/1000` | 74 | 2.497002 |
+| **total** | | **18.73657** → owner's card 18.736 ✅ |
+
+Excluding Inco the same measure is 16.2396; both are pinned.
+`repair_length_mm` arrived with migration 0020.
 
 The CCC term is **not** de-duplicated to one row per joint. The measure is a
 `SUM` over `"PR all"` **rows** of a `LOOKUPVALUE`, so a joint with several UT
@@ -596,34 +611,19 @@ the DAX is **not** already summing per row. Where it is, the row-level sum *is*
 the measure. Same lesson as the WP1 gate in 0017 — an adjustment that looks
 arithmetically necessary is a guess unless the DAX asks for it.
 
-### Both Inco branches are dead in the model, and the owner's figures prove it
+### Reading the owner's figures: they are truncated, not rounded
 
-The same shape appears twice, in two different measures, and both times the
-literal reading of the DAX produces a number the source report does not have.
-
-| measure | ours without the Inco branch | with it | owner's card |
+| measure | ours, exact | owner quoted | at display precision |
 |---|---|---|---|
-| `[UT Weld Length by Joint "PR all"]` | **27,366.4716** | 27,856.97 (+490.50) | **27,366.47** ✅ |
-| `[UT Defect Length by Joint "PR all"]` | **16.2396** | ~18.737 (+2.497) | **16.240** ✅ |
+| `[UT Weld Length by Joint "PR all"]` | 27,856.9756 | 27,856.97 | 27,856.**98** |
+| `[UT Defect Length by Joint "PR all"]` | 18.73657 | 18.736 | 18.**737** |
 
-`repair_length_mm` landed with migration 0020 — 108 Inco rows, 57 of them
-carrying both a UT report and status `R`, worth ≈ 2.497 m. Writing the branch
-literally would therefore *break* a measure that currently matches to 0.0004.
-
-Both branches are guarded by the same predicate, `[Manual UT Report No.] <> ""`,
-so one explanation covers both: **in the model, Inco's `[Manual UT Report No.]`
-evidently resolves blank**, whatever the C-20 text implies. Two independent
-measures agreeing to the cent is much stronger evidence than either alone.
-
-So the Inco branch of `[Defect Length(MM).]` stays `NULL` — never `0`, which
-would be a fabricated value asserting "Inco has no defect length" rather than
-"we do not include one". `ut_defect_inco_gap_rows` keeps counting the 74 rows
-it would cover, and a test pins that count: if it moves while M34 does not,
-something changed underneath and the branch needs revisiting.
-
-This is deliberately **not** "fix the data to match the report". The DAX text
-and the report's own output disagree; where they do, the report wins, and the
-disagreement is recorded here rather than smoothed away.
+Both quoted figures are ours **truncated**, not rounded. The pattern is
+consistent across two independent measures, so it is how the figures were read,
+not a mismatch to chase. Pinned at full precision; the cards round the way every
+other card on the page rounds, which puts them one unit in the last place above
+the quoted values. Flagged rather than special-cased — a bespoke truncation rule
+for two cards would be a guess about the pbix's formatting.
 
 ### `weldpoint_seq` for `WELD_DUMP`
 
@@ -632,6 +632,30 @@ mid-task, which would have silently zeroed M33's term 1 for GAC and TEKFEN.
 Cross-check kept as a guard: `ROW_NUMBER() OVER (PARTITION BY joint_id ORDER BY
 id)` computed inline gives the identical M33 total, so the stored column is
 trustworthy.
+
+### M91 `WPS Approved` (R4-02, R4-03)
+
+`count(DISTINCT wps_no) FILTER (document_status = 'WPS APPROVED BY CTJV/ CPY')`
+over `ref_wps_register` (the CONSOLIDATED sheet) — **318** on the register as
+delivered. Returns `{ total, as_of }`, and the card carries
+`as of <date> (file date)`, the same provenance treatment M90 gets: a count off
+a dated file states its date.
+
+**The mockup's 294 is not a target.** It is the 2025-10…2026-03 plateau of the
+same series; the register has moved since. We render what the register holds,
+and the difference is recorded here rather than reconciled away.
+
+**R4-03 — never join `ref_wps_register` to `weld.wps_no`.** The register holds
+DOCUMENT numbers; `weld.wps_no` holds SITE numbers. Both columns are called
+`wps_no`, so this is a naming trap that would join cleanly and silently produce
+nonsense. `ref_wps_process` (the WELDING PROCESS sheet) is the join table if a
+measure ever needs one — 100 % coverage of in-scope joints with a WPS. A test
+pins it: every SQL literal in `refs.ts` naming the register is checked for
+`weld`, statement by statement.
+
+Until the register is seeded the count is `null`, the card renders `—`, and
+`REGISTER_NOTE` says why. The pin is gated on the ledger, so it asserts the
+em-dash before the load and 318 after, without a test edit in between.
 
 ### M90 `Project_Welder` (R3-09, R3-10)
 

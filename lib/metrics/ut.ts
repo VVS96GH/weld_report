@@ -70,9 +70,8 @@ const UtRow = z.object({
   ut_rejected: zCount,
   ut_weld_length_m: zSum,
   ut_rej_length_m: zSum,
-  // "PR all" only — the `"EP"` agg list does not emit these.
+  // "PR all" only — the `"EP"` agg list does not emit this.
   ut_inspected_length_m: zSum.optional(),
-  ut_defect_inco_gap_rows: zSum.optional(),
 });
 
 export type UtStats = {
@@ -96,12 +95,6 @@ export type UtStats = {
    * `[UT Report]` / `[RT/UT]` pair. 27,609.5267 vs M33's 27,366.4716.
    */
   ut_inspected_length_m: number;
-  /**
-   * Rows the blocked Inco `[Repair Length (mm)]` branch of M34 would cover.
-   * The owner's 16.240 confirms they net to zero today, so this is a watchdog
-   * against silent drift, not an honest-empty gate.
-   */
-  ut_defect_inco_gap_rows: number;
 };
 
 function toStats(r: z.infer<typeof UtRow>): UtStats {
@@ -113,7 +106,6 @@ function toStats(r: z.infer<typeof UtRow>): UtStats {
     ut_weld_length_m: r.ut_weld_length_m ?? 0,
     ut_rej_length_m: r.ut_rej_length_m ?? 0,
     ut_inspected_length_m: r.ut_inspected_length_m ?? 0,
-    ut_defect_inco_gap_rows: r.ut_defect_inco_gap_rows ?? 0,
   };
 }
 
@@ -229,19 +221,15 @@ export function utAggsPrAll(p: Params, a = "w"): AggSpec[] {
     // M33 `[UT Weld Length by Joint "PR all"]` — migration 0019. Two CALCULATEs
     // ADDED (a row with both a UT Report and RT/UT='UT' counts twice), term 1
     // on the RAW `[UT Report]` so CCC contributes only via term 2, both gated
-    // `[WeldPoint No.1 WP1] = 1`. Inco carries no weld length. 27,366.4716.
+    // `[WeldPoint No.1 WP1] = 1`. Inco INCLUDED (`weld_length`/1000 where it has a UT report). 27,856.9716.
     { key: "ut_weld_length_m", sql: `sum(${a}.ut_weld_length_prall)` },     // M33
-    // M34 `[UT Defect Length by Joint "PR all"]`, row-level. 16.2396.
+    // M34 `[UT Defect Length by Joint "PR all"]`, row-level, all four
+    // branches live including Inco's `repair_length_mm`/1000. 18.7366.
     { key: "ut_rej_length_m", sql: `sum(${a}.ut_defect_length_prall)` },    // M34
     // `[UT Inspected Length by Joint "PR all"]` — the OTHER length measure,
     // gated `[WeldPoint No.] = 1` (weldpoint_no), not WP1. Kept distinct
     // because the pbix keeps it distinct. 27,609.5267.
     { key: "ut_inspected_length_m", sql: `sum(${a}.ut_inspected_length_prall)` },
-    // Rows the blocked Inco `[Repair Length (mm)]` branch of M34 would have
-    // covered. The owner's 16.240 says they net to zero, so this is a watchdog,
-    // not a gate: if it moves while M34 does not, the column has landed and the
-    // literal branch below must be written.
-    { key: "ut_defect_inco_gap_rows", sql: `sum(${a}.ut_defect_inco_gap_rows)` },
   ];
 }
 
