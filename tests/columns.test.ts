@@ -82,9 +82,14 @@ function batch2Columns(): Set<string> {
  * for both, so its output columns join the `weld` allow-list.
  */
 function mvJointColumns(): Set<string> {
-  // 0016 re-creates the view with four more flags (the same pattern 0011 used
-  // for mv_weekly_progress), so both files define columns that exist.
-  const sql = ["0013_mv_joint.sql", "0016_mv_joint_prall_nde.sql"]
+  // 0016 re-creates the view with four more flags and 0017 re-creates it again
+  // with the film gate corrected (the same pattern 0011 used for
+  // mv_weekly_progress), so all three files define columns that exist.
+  const sql = [
+    "0013_mv_joint.sql",
+    "0016_mv_joint_prall_nde.sql",
+    "0017_wp1_gate.sql",
+  ]
     .map((f) => {
       try {
         return readFileSync(path.join(ROOT, "db/migrations", f), "utf8");

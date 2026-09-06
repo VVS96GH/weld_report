@@ -129,11 +129,14 @@ describe.skipIf(Boolean(skipReason))("batch-3 load reproduction", () => {
     expect(got.INCO).toEqual({ n: INCO_ROWS, j: INCO_JOINTS });
   });
 
-  it("fills weldpoint_seq for both sources, or every PR-all film sum is zero", async () => {
-    // The WP1 gate is `CASE source WHEN 'WELD_DUMP' THEN weldpoint_no = 1 ELSE
-    // weldpoint_seq = 1 END`. `weldpoint_seq` is loader-materialised; if the
-    // Acciona/Inco loaders leave it NULL the gate never matches and M23/M24/M33
-    // silently drop those sources instead of failing.
+  it("fills weldpoint_seq for both sources, or M33 silently drops them", async () => {
+    // `weldpoint_seq` is the pbix column `[WeldPoint No.1 WP1]` — NOT
+    // `[WeldPoint No.]`, which is `weldpoint_no` and is what the film gate uses
+    // (migration 0017). It survives in one measure: `ut_weld_length_m_prall`
+    // (M33 `[UT Weld Length by Joint "PR all"]`), whose DAX filters that column
+    // by name. It is loader-materialised; if the Acciona/Inco loaders leave it
+    // NULL the gate never matches and M33 silently drops those sources instead
+    // of failing.
     const rows = await query<{ source: string; missing: string }>(
       "SELECT source::text AS source, count(*) FILTER (WHERE weldpoint_seq IS NULL)::text AS missing" +
         "  FROM weld WHERE source::text IN ('ACCIONA','INCO') GROUP BY 1",
@@ -358,6 +361,39 @@ describe.skipIf(Boolean(skipReason))("pbix cross-check (user readings)", () => {
     expect(all.ut_done).toBe(14_214);
     const scoped = await utStatsPrAll(projectScope());
     expect(scoped.ut_done, "page-1 card, Inco excluded").toBe(13_991);
+  });
+
+  it('RT Total Films by Joint "PR all" = 768,101 (pbix 768,101, bit-for-bit)', async () => {
+    // Migration 0017. The gate is `weldpoint_no = 1` for EVERY source — the
+    // DAX's own [WeldPoint No.] column — not the per-source CASE that 0013/0016
+    // used. A + B - C = 365,490.2136 + 512,327.6100 - 109,717.2150
+    //                 = 768,100.6086 -> 768,101.
+    // With the old CASE gate it was 766,287, wrong by 1,813.
+    const all = await rtStatsPrAll(measureScope());
+    expect(Math.round(all.films)).toBe(768_101);
+  });
+
+  it('RT Total Films by Joint "PR all" "R" = 2,152 (pbix 2,152, bit-for-bit)', async () => {
+    // This measure is UNGATED in the DAX — no WeldPoint filter at all, only
+    // <> "Exclude UT Films", <> "RS", <> "U/Review", <> "Exclude Films:Debris".
+    // Page 1's "Rej Films" card is bound to it at measure scope (Inco IN).
+    // ACCIONA 19 + CCC 606 + GAC 598 + INCO 77.9996 + MEDGULF 44 + TEKFEN 807.
+    // The total is genuinely fractional (Inco's source values are); the card
+    // rounds it for display.
+    const all = await rtStatsPrAll(measureScope());
+    expect(all.films_rejected).toBeCloseTo(2_151.9996, 4);
+    expect(Math.round(all.films_rejected)).toBe(2_152);
+  });
+
+  it('%RT FILM Rej "PR all" = 2,152 / 768,101 = 0.28%', async () => {
+    // [RT FILM Ratio % by Joint "PR all"] is literally
+    //   [RT Total Films by Joint "PR all" "R"] / [RT Total Films by Joint "PR all"]
+    // so the card moves from 0.20% to 0.28% with the 0017 gate correction.
+    const all = await rtStatsPrAll(measureScope());
+    const rate = all.film_rejection_rate;
+    expect(rate, "the ratio must not be blank").not.toBeNull();
+    expect(rate!).toBeCloseTo(2_151.9996 / 768_100.6086, 9);
+    expect((rate! * 100).toFixed(2)).toBe("0.28");
   });
 
   it("UT coverage names GAC and TEKFEN as covered, MEDGULF and ACCIONA as not", async () => {

@@ -244,25 +244,104 @@ about 4.06 rows per joint. Every `count(*)` and every ungated `sum()` inflates
   Lenght(MM).]`) is de-duplicated to one row per joint, because adding it on
   every pass is arithmetic nonsense, not a formula choice.
 
-The gate itself is per source, because the two columns mean different things:
+### The WP1 gate is `weldpoint_no = 1`, for every source (migration 0017)
 
 ```sql
-CASE w.source WHEN 'WELD_DUMP' THEN w.weldpoint_no = 1 ELSE w.weldpoint_seq = 1 END
+w.weldpoint_no = 1
 ```
 
-`weldpoint_no` is the dump's repair-attempt sequence (what `WeldPoint No. = 1`
-means in the DAX); `weldpoint_seq` is the `WeldPoint No.1 WP1` row number that
-migration 0010 added **for CCC only** — it is NULL on every dump row, so a
-single `weldpoint_seq = 1` predicate would zero the dump's film totals.
+This is literally the DAX's own column — `'Weld Dump'[WeldPoint No.]` at `"EP"`
+scope, `'Project WD+WR+INCO+Acciona'[WeldPoint No.]` at `"PR all"`.
+
+Migrations 0013 and 0016 instead used a per-source CASE
+(`WHEN 'WELD_DUMP' THEN weldpoint_no = 1 ELSE weldpoint_seq = 1`), on the belief
+that `weldpoint_no` was dump-only. **It is not.** CCC's `WeldPoint No.` is the
+M-mapped column and is populated: 1,342,473 of 5,432,993 `CCC_WELDER_RECORD`
+rows carry `weldpoint_no = 1`. The user's pbix cross-check settled it —
+M23 `[RT Total Films by Joint "PR all"]` = A + B − C:
+
+| gate | A | B | C | total | pbix 768,101 |
+|---|---|---|---|---|---|
+| `weldpoint_no = 1` | 365,490.2136 | 512,327.6100 | 109,717.2150 | **768,100.6086 → 768,101** | ✅ exact |
+| the 0013/0016 CASE | 363,250.0712 | 512,327.6100 | 109,290.4050 | 766,287.2762 → 766,287 | ❌ by 1,813 |
+
+The whole 1,813 is Inco: it is the only source where `weldpoint_seq = 1`
+(7,238 rows) and `weldpoint_no = 1` (10,327 rows) disagree in a way that
+survives the A − C cancellation. CCC's M23 is identical under either gate,
+because every CCC row carries a `weld_point_code` in `{R,H,F,C}`, so A ⊆ C.
+
+This **supersedes the phase-2 mid-flight ruling** *"the film sums at `"PR all"`
+scope must gate per source"*: the gate stays, but it is the DAX's column for all
+sources — and the audit below shows three of the five `"PR all"` film measures
+carry no WeldPoint filter at all.
+
+`weldpoint_seq` (the *different* pbix column `[WeldPoint No.1 WP1]`, added by
+migration 0010) is **not** retired. It survives in exactly two places, neither a
+stand-in for `[WeldPoint No.] = 1`:
+
+* `mv_joint.ut_weld_length_m_prall` — M33 `[UT Weld Length by Joint "PR all"]`
+  filters `'Project WD+WR+INCO+Acciona'[WeldPoint No.1 WP1] = 1` **by name**,
+  and the sibling `[UT Inspected Length by Joint "PR all"]` filters
+  `[WeldPoint No.]`. The pbix genuinely uses both columns, for different
+  measures;
+* the CCC branch of `defectLengthExpr` (M34) — a joint-level `LOOKUPVALUE`
+  de-duplicated to one row per joint under ruling R2-01. Its DAX has no
+  WeldPoint filter at all; the gate is ours, and deliberate.
+
+### Film-family audit — verbatim DAX, per measure
+
+Every row below was read out of `analysis/pbix/measures.md`. A measure is gated
+if and only if its own text says so.
+
+| measure | WeldPoint filter? | other filters | our flag |
+|---|---|---|---|
+| `[RT Total Films by Joint "EP"]` (M20) | **yes** `[WeldPoint No.]=1` | `<> "RS"` | `films_wp1` |
+| `[RT Total Films by Joint "A" "EP"]` (M21) | **yes** | `<> "RS"` | `films_acc_wp1` |
+| `[RT Total Films by Joint "R" "EP"]` (M22) | **yes** | — | `films_rej_wp1` |
+| `[RT Total Films]` (M26 `"EP"`) | no | `<> "RS"` | `films_all` |
+| `[RT Total Films "R"]` (M26 `"EP"`) | no | — | `films_all_rej` |
+| `[RT Total Films by Joint "PR all"]` (M23) | **yes**, in terms A and C | `<> RS`, `<> U/Review`, `<> Exclude UT Films`, `<> Exclude Films:Debris` (term A only) | `films_taken_prall` |
+| `[RT Total Films by Joint "PR all" "R"]` (M24) | **no** | `<> Exclude UT Films`, `<> RS`, `<> U/Review`, `<> Exclude Films:Debris` | `films_rej_prall` |
+| `[RT Total Films "PR all"]` (M26) | **no** | `<> RS`, `<> Exclude Films:Debris`, `<> U/Review` | `films_all_prall` |
+| `[RT Total Films "PR all" "R"]` (M26) | **no** | `<> Exclude Films:Debris` **only** | `films_all_rej_prall` |
+| `[RT FILM Ratio % by Joint "PR all"]` | — | `[… "PR all" "R"] / [… "PR all"]` | `film_rejection_rate` |
+
+**The `"EP"` twins are gated.** All three carry `'Weld Dump'[WeldPoint No.]=1`
+verbatim, so the 358 `reconcile_results.json` assertions were derived from a
+correct reading of the DAX: `analysis/reconcile_check.py` and
+`analysis/reconcile_results.json` are **untouched**, and the `"EP"` pins
+(244,071 films · 1,350 rejected · 338,888 M26) still hold bit-for-bit after 0017.
+
+The `"EP"` and `"PR all"` families are **not** twins of each other, which is why
+M24 could be ungated while M22 stays gated. That asymmetry is the pbix's.
+
+#### What moved (measure scope, Inco included)
+
+| measure | before (0016) | after (0017) | pbix |
+|---|---|---|---|
+| M23 `films_taken_prall` | 766,287.2762 | **768,100.6086 → 768,101** | 768,101 ✅ |
+| M24 `films_rej_prall` | 1,517.5932 → 1,518 | **2,151.9996 → 2,152** | 2,152 ✅ |
+| M26 `films_all_prall` | 363,277.0712 | **862,917.6086** | — |
+| M26 `films_all_rej_prall` | 1,540.5932 | **2,151.9996** | — |
+
+Per sub-contractor, `films_rej_prall` = ACCIONA 19 · CCC 606 · GAC 598 ·
+INCO 77.9996 · MEDGULF 44 · TEKFEN 807. The total is **genuinely fractional** —
+Inco's `Total No of films Rej` carries fractional values — so 2,151.9996 is the
+honest sum and the card rounds it for display. It is not a rounding artefact.
+
+Pages whose numbers move: **1, 2, 3, 7, 41** — the only ones on the `PR_ALL`
+variant. Pages 42/43/44 (GAC/TEKFEN/MEDGULF weld-rejection-by-WPS) read the
+`"EP"` flags `films_all` / `films_all_rej` and are unchanged, even though those
+sub-contractors' `"PR all"` numbers moved.
 
 | measure | before | after | justification |
 |---|---|---|---|
 | M01/M02/M03/M04, M10-M13, M30-M32, M40-M49, M60-M65 | `count(DISTINCT joint_id)` | unchanged | already DISTINCT-safe; grep confirms no `count(*)` over `weld` anywhere in `lib/metrics` |
-| **M23** `[RT Total Films by Joint "PR all"]` | not implemented | 3-term inclusion–exclusion, each term `coalesce(…,0)`, WP1 gated per source | `weld_point_code` is no longer a blank placeholder (project-wd-wr-inco-acciona.md §5.2). The `coalesce` is load-bearing: term B matches nothing while only the dump is loaded, and `x + NULL - NULL` is NULL, which rendered the page-1 card as **0** |
-| **M24** `[… "PR all" "R"]` | ungated `sum(total_no_of_films_rej)` (§7 C-5 flagged it) | WP1 gated per source | ungated gave 1,449 rejected films for the loaded dump where the WP1-gated `"EP"` twin M22 gives 1,350 — the 99 difference is repair passes counted twice |
-| **M26** `[RT Total Films]` ×3 | ungated at both scopes | `"EP"` **unchanged** (ungated, pinned to `reconcile_results.json` at 180,034 films for GAC non-SG); `"PR all"` WP1 gated | §2 documents M26 as deliberately unfiltered and the `"EP"` number is verified against the mockup; at `"PR all"` scope the same sum would count a CCC joint's films ~4x. **Flagged: M26 now differs between the families by design** |
+| **M23** `[RT Total Films by Joint "PR all"]` | not implemented | 3-term inclusion–exclusion, each term `coalesce(…,0)`, WP1 gated `weldpoint_no = 1` (0017) | `weld_point_code` is no longer a blank placeholder (project-wd-wr-inco-acciona.md §5.2). The `coalesce` is load-bearing: term B matches nothing while only the dump is loaded, and `x + NULL - NULL` is NULL, which rendered the page-1 card as **0** |
+| **M24** `[… "PR all" "R"]` | WP1 gated per source (0013/0016) | **ungated** (0017) | the verbatim DAX carries no WeldPoint filter — see the film-family audit above. Ungated = 2,151.9996 → **2,152**, the pbix card exactly; the old gate gave 1,518. Its `"EP"` twin M22 *is* gated and is unaffected |
+| **M26** `[RT Total Films]` ×3 | `"PR all"` WP1 gated per source (0013/0016) | **ungated at both scopes** (0017) | neither family's DAX has a WeldPoint filter. The families still differ, but only in their *exclusion* filters, which is what the DAX says: `"PR all"` adds `<> Debris` / `<> U/Review`, and the `"R"` flavour drops `<> RS` entirely |
 | **M34** `[UT Defect Length by Joint "PR all"]` | not implemented | `Rej Length` term ungated (per-row); CCC tracker term gated `weldpoint_seq = 1` | `[Defect Length(MM).]` is a `LOOKUPVALUE` into `UT TRACKER (CCC)_Talisman` keyed by Joint ID (project-wd-wr-inco-acciona.md:2114-2138) — one value per joint, not per pass |
-| M20/M21/M22/M33 (`"EP"`) | `weldpoint_no = 1` | unchanged | never evaluated over CCC; `weldpoint_no` is the dump's repair-attempt sequence there |
+| M20/M21/M22 (`"EP"`) | `weldpoint_no = 1` | unchanged | all three carry `'Weld Dump'[WeldPoint No.]=1` verbatim; pinned bit-for-bit by `reconcile_results.json` |
 | `weeklyProgress` (M06) | `sum` over `weld_type` within a week | unchanged, documented | `mv_weekly_progress`'s own header warns its joint counts are not additive **across weeks**; summing weld types inside one week is safe because a row has one weld type |
 
 Evidence that the `"EP"` family did not move: `tests/metrics.test.ts` pins
@@ -413,11 +492,11 @@ CONCURRENTLY requires. Measured: 41 s and 6.7 s.
 `mv_joint` needed **no change** for ACCIONA and INCO. Every flag in
 `db/migrations/0013_mv_joint.sql` was re-read against
 `analysis/sources3/{acciona,inco}-column-map.md`; the only source-conditional
-expression is the WP1 gate, and it is already correct:
+expression is the WP1 gate. It was **not** already correct — see the first row:
 
 | concern | verdict |
 |---|---|
-| `wp1Cond` = `CASE source WHEN 'WELD_DUMP' THEN weldpoint_no = 1 ELSE weldpoint_seq = 1 END` | correct for both. Acciona sets `weldpoint_no = 1` on **every** row and is one row per joint; Inco sets `weldpoint_no = 1` on every row but is joint × RT-fragment, so `weldpoint_no` would over-count and `weldpoint_seq` is what dedups it. **This is a loader dependency**, pinned by a test: a NULL `weldpoint_seq` makes the gate never match and silently drops the source from M23/M24/M33 |
+| `wp1Cond` = `weldpoint_no = 1` (was a per-source CASE) | **This row previously said the CASE was "correct for both" — it was not, and the reasoning is worth keeping as a warning.** The argument ran: Acciona is one row per joint so either column works, but Inco is joint × RT-fragment with `weldpoint_no = 1` on *every* one of its 10,327 rows, so `weldpoint_no` over-counts and `weldpoint_seq` (7,238 rows) dedups it. The data shape is real. The conclusion was still wrong, because **the pbix does not dedup Inco either** — it filters `[WeldPoint No.]`, full stop, and its card reads 768,101, which only `weldpoint_no = 1` reproduces (the CASE gave 766,287, short by exactly Inco's 1,813). The lesson: a de-duplication that looks arithmetically necessary is still a *guess* unless the DAX asks for it, and R2-01 licenses de-duplication only for joint-level `LOOKUPVALUE`s, which this is not. Migration 0017. `weldpoint_seq` remains a loader dependency for M33, still pinned by a test |
 | RT backlog hold list (16 codes) | Acciona synthesises its own `RT Weld Status`; its `HS` (RT % = 100, no report yet) is in the list and *should* enter the backlog. Its `S` needs `rt_pct = 100`, and Acciona's `rt_pct` is blank on 87.8 % of rows, so that branch correctly does not fire |
 | PWHT flags | neither source has PWHT (Inco's columns are 100 % empty, Acciona's are added blank), so the flags do not fire and the PWHT pages stay GAC/TEK/MED/CCC-only |
 | `is_fabricated` | neither party's spools are in either master, so it is `false` — correct, not a gap |

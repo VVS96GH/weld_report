@@ -14,15 +14,14 @@
  * distinct joints, ~4.06 rows per joint. So:
  *
  *  • every joint answer is `count(DISTINCT w.joint_id)` — never `count(*)`;
- *  • the film sums are deliberately UNGATED, and that is correct, not a bug.
- *    `RT Film Total` on CCC is a per-weld-point SHARE (0.75 on 296,274 rows,
- *    145 distinct values — §7 C-6 / R2-04), so summing every pass of a joint
- *    reconstitutes that joint's film count. Adding a `weldpoint_seq = 1` gate
- *    would under-count CCC roughly 4x. The pbix agrees: its film ratios
- *    (`RT Film Ratio % "PR all" For Welder`,
- *    analysis/pbix/project-wd-wr-inco-acciona.md:757-767) are
- *    `DIVIDE(SUM([Total No of films Rej]), SUM([RT Film Total]))` with no WP1
- *    filter anywhere;
+ *  • a film sum is gated if and ONLY if its own DAX says so, and the gate is
+ *    always `weldpoint_no = 1` — the DAX's own `[WeldPoint No.]` column, valid
+ *    for every source (see {@link wp1Cond}). Of the `"PR all"` family only
+ *    `[RT Total Films by Joint "PR all"]` carries the filter; the `"R"` twin
+ *    and both `[RT Total Films "PR all"]` flavours are ungated, which is
+ *    correct, not a bug: `RT Film Total` on CCC is a per-weld-point SHARE
+ *    (0.75 on 296,274 rows, 145 distinct values — §7 C-6 / R2-04), so summing
+ *    every pass of a joint reconstitutes that joint's film count;
  *  • the `"EP"` by-joint family (M20/M21/M22/M33) keeps `weldpoint_no = 1`,
  *    which on `Weld Dump` is the repair-attempt sequence — correct there, and
  *    those measures are never evaluated over CCC.
@@ -547,21 +546,36 @@ export function testedCondPrAll(p: Params, a = "w"): string {
 }
 
 /**
- * The "first weld point" gate, per source.
+ * The "first weld point" gate: `weldpoint_no = 1`, for EVERY source.
  *
- * `weldpoint_no` is the dump's repair-attempt sequence and is what the DAX
- * `WeldPoint No. = 1` filter means for `Weld Dump` rows. `weldpoint_seq` is the
- * pbix `WeldPoint No.1 WP1` row number that migration 0010 added, and it is
- * populated for CCC only — it is NULL on every dump row, so a single
- * `weldpoint_seq = 1` predicate would silently zero the dump's film totals.
- * Hence the per-source CASE.
+ * This is literally the DAX's own column — `'Weld Dump'[WeldPoint No.]` at
+ * `"EP"` scope, `'Project WD+WR+INCO+Acciona'[WeldPoint No.]` at `"PR all"`.
  *
- * Orchestrator ruling (phase 2, mid-flight): the `"PR all"` film sums MUST be
- * gated this way. It supersedes the earlier reading that the CCC operand is a
- * per-pass share needing no gate.
+ * It replaces the per-source CASE that 0013/0016 used
+ * (`WHEN 'WELD_DUMP' THEN weldpoint_no = 1 ELSE weldpoint_seq = 1`), which
+ * rested on the belief that `weldpoint_no` was dump-only. It is not: CCC's
+ * `WeldPoint No.` is the M-mapped column and is populated (1,342,473 of
+ * 5,432,993 `CCC_WELDER_RECORD` rows carry `weldpoint_no = 1`).
+ *
+ * Proof — M23 `[RT Total Films by Joint "PR all"]` = A + B − C:
+ *
+ * | gate | A | B | C | total | pbix |
+ * |---|---|---|---|---|---|
+ * | `weldpoint_no = 1` | 365,490.21 | 512,327.61 | 109,717.22 | **768,100.61** | 768,101 ✓ |
+ * | the old CASE | 363,250.07 | 512,327.61 | 109,290.41 | 766,287.28 | ✗ by 1,813 |
+ *
+ * This supersedes the phase-2 mid-flight ruling "the film sums at `"PR all"`
+ * scope must gate per source": the gate stays, but it is the DAX's column for
+ * all sources. See migration 0017 and lib/metrics/README.md.
+ *
+ * `weldpoint_seq` (the *different* pbix column `[WeldPoint No.1 WP1]`) is NOT
+ * retired — it still backs `ut_weld_length_m_prall`, whose DAX
+ * (`[UT Weld Length by Joint "PR all"]`) filters that column by name, and the
+ * CCC branch of {@link defectLengthExpr} (a joint-level LOOKUPVALUE
+ * de-duplicated per ruling R2-01, with no DAX WeldPoint filter at all).
  */
 export function wp1Cond(a = "w"): string {
-  return `(CASE ${a}.source::text WHEN 'WELD_DUMP' THEN ${a}.weldpoint_no = 1 ELSE ${a}.weldpoint_seq = 1 END)`;
+  return `${a}.weldpoint_no = 1`;
 }
 
 /**
@@ -592,17 +606,34 @@ export function filmsTakenPrAllExpr(p: Params, a = "w"): string {
 }
 
 /**
- * M24 `[RT Total Films by Joint "PR all" "R"]`.
+ * M24 `[RT Total Films by Joint "PR all" "R"]` — **ungated**.
  *
- * DISTINCT audit (R2-01 / §7 C-5): the DAX writes this ungated, which at
- * weld-pass grain counts a joint's rejected films once per welder pass. Per the
- * orchestrator's mid-flight ruling it carries the same per-source WP1 gate as
- * M23, which also restores the `"EP"`-scope answer (1,350 rejected films for
- * the loaded dump, vs 1,449 ungated).
+ * The verbatim DAX carries no WeldPoint filter, only four exclusions:
+ *
+ * ```dax
+ * CALCULATE(
+ * SUM('Project WD+WR+INCO+Acciona'[Total No of films Rej]),
+ * 'Project WD+WR+INCO+Acciona'[Exlude RT Films from UT] <> "Exclude UT Films",
+ * 'Project WD+WR+INCO+Acciona'[RT Acc/Rej] <> "RS",
+ * 'Project WD+WR+INCO+Acciona'[RT Acc/Rej] <> "U/Review",
+ * 'Project WD+WR+INCO+Acciona'[Exlude Full Cut & Debris] <> "Exclude Films:Debris"
+ * )
+ * ```
+ *
+ * It is *not* the `"EP"` measure's twin: `[RT Total Films by Joint "R" "EP"]`
+ * does filter `'Weld Dump'[WeldPoint No.]=1` (and nothing else), which is why
+ * the `"EP"` pin of 1,350 is unaffected by this correction.
+ *
+ * Ungated, over the loaded union, this is 2,151.9996 → **2,152**, the pbix card
+ * exactly (ACCIONA 19 · CCC 606 · GAC 598 · INCO 77.9996 · MEDGULF 44 ·
+ * TEKFEN 807). The old per-source WP1 gate gave 1,517.59 → 1,518.
+ *
+ * The fractional total is the source data's, not a rounding artefact: INCO's
+ * `Total No of films Rej` carries fractional values (77.9996), so the honest
+ * sum is 2,151.9996 and the card rounds it for display.
  */
 export function filmsRejectedPrAllExpr(p: Params, a = "w"): string {
   return `coalesce(sum(${a}.total_no_of_films_rej) ${filterWhere([
-    wp1Cond(a),
     `NOT ${a}.exclude_ut_films`,
     notEq(`${a}.rt_acc_rej`, "RS", p),
     notEq(`${a}.rt_acc_rej`, "U/Review", p),
@@ -650,9 +681,9 @@ export function rtAggsPrAll(p: Params, a = "w"): AggSpec[] {
     { key: "rejected", sql: `count(*) ${filterWhere([`${a}.is_rejected`])}` },    // M12
     { key: "films", sql: `sum(${a}.films_taken_prall)` },                         // M23
     { key: "films_rejected", sql: `sum(${a}.films_rej_prall)` },                  // M24
-    // M26 — the `"EP"` flavour is ungated and pinned to reconcile_results.json;
-    // the `"PR all"` flavour is WP1-gated per source so a CCC joint's films are
-    // not counted once per welder pass.
+    // M26 — both flavours are ungated, each matching its own DAX:
+    // `[RT Total Films "PR all"]`     <> RS, <> Debris, <> U/Review
+    // `[RT Total Films "PR all" "R"]` <> Debris ONLY (no RS / U/Review filter)
     { key: "films_all", sql: `sum(${a}.films_all_prall)` },
     { key: "films_all_rejected", sql: `sum(${a}.films_all_rej_prall)` },
   ];
