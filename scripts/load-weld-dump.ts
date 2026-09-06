@@ -424,6 +424,27 @@ async function liveLoad(opts: Options): Promise<void> {
     console.log(
       `insert  ${(ins.rowCount ?? 0).toLocaleString()} rows into weld in ${((Date.now() - tIns) / 1000).toFixed(1)} s`,
     );
+    // `WeldPoint No.1 WP1` — the pbix computes it for EVERY source:
+    //   COUNTROWS(rows of the same Joint ID with a smaller Index) + 1
+    // and `UT Weld Length by Joint "PR all"` filters on it, so a NULL here drops
+    // the whole source out of that measure. The dump's `id` is assigned in COPY
+    // order, which is file order, which is exactly what the pbix's Index column is.
+    //
+    // Done as one UPDATE rather than at COPY time (the CCC/Inco loaders count it
+    // in the stream) because this loader goes through a staging table: the rows
+    // are not built in JS, so there is nothing to count during the pass.
+    const tSeq = Date.now();
+    const seq = await client.query(`
+      WITH s AS (
+        SELECT id, row_number() OVER (PARTITION BY joint_id ORDER BY id) AS rn
+          FROM weld WHERE source = $1
+      )
+      UPDATE weld w SET weldpoint_seq = s.rn
+        FROM s WHERE w.id = s.id AND w.weldpoint_seq IS DISTINCT FROM s.rn`, [SOURCE]);
+    console.log(
+      `wp1     weldpoint_seq set on ${(seq.rowCount ?? 0).toLocaleString()} rows in ` +
+      `${((Date.now() - tSeq) / 1000).toFixed(1)} s`,
+    );
     await client.query("COMMIT");
 
     const tPost = Date.now();

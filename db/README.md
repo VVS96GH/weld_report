@@ -796,6 +796,29 @@ which codes exist — the fact tables are. 73 rows: `rework_code` 32, `defect_co
 `nde_status` 9, `weld_type` 14.
 
 
+### `weldpoint_seq` — the WP1 flag, on every source
+
+`WeldPoint No.1 WP1` in the pbix is
+`COUNTROWS(rows of the same Joint ID with a smaller Index) + 1`, computed for **every**
+source, and `UT Weld Length by Joint "PR all"` filters on it — so a source whose
+`weldpoint_seq` is NULL drops out of that measure entirely and silently. Every loader that
+writes to `weld` must set it; `check-sql-columns.ts` fails if one stops.
+
+Three mechanisms, one requirement:
+
+| loader | how | why that one |
+|---|---|---|
+| `load-weld-dump.ts` | `UPDATE … row_number() OVER (PARTITION BY joint_id ORDER BY id)` after the INSERT | it goes through a staging table, so there is no JS pass to count in. `weld.id` is assigned in COPY order = file order = the pbix's `Index` |
+| `load-ccc-welder-record.ts`, `load-inco.ts` | counted in the stream, in the COPY list | rows are built in JS in file order, so a per-joint counter is free and saves a rewrite of 5.4 M rows |
+| `load-acciona.ts` | constant `1` in the COPY list | one row per joint by construction |
+| `load-ccc-joint-record.ts` | `UPDATE … SET weldpoint_seq = 1` | the NOT-WELDED slice is one row per joint |
+
+Do not confuse it with `weldpoint_no`, the **sourced** `WeldPoint No.` column: that one carries
+values up to 2,180 and is the repair/attempt number the source system recorded.
+`weldpoint_seq` is our own row-number within a joint. Measured on the dump after the load
+filters: max **15**, and `count(*) WHERE weldpoint_seq = 1` equals `count(DISTINCT joint_id)`
+exactly (900,335) — the invariant that proves the partition is right.
+
 ### The CCC UT overlay — `ref_ut_tracker_ccc` into the six `*_all` columns
 
 CCC's welder record has **no UT columns at all**: `ut_report`, `ut_acc_rej`, `ut_date` and

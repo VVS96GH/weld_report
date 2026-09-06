@@ -413,6 +413,36 @@ function main(): void {
     check(`${label}: writes weldpoint_seq (the mv_joint WP1 gate)`,
       (cols as readonly string[]).includes("weldpoint_seq"));
   }
+  // `WeldPoint No.1 WP1` is computed for EVERY source in the pbix, and
+  // `UT Weld Length by Joint "PR all"` filters on it, so a loader that leaves
+  // weldpoint_seq NULL silently drops its whole source out of that measure.
+  // Every loader that writes to `weld` must set it — in the COPY list if it
+  // builds rows in JS, or by a post-INSERT UPDATE if it goes through staging.
+  const weldWriters: [string, readonly string[] | null][] = [
+    ["load-weld-dump.ts", null],
+    ["load-ccc-welder-record.ts", CCC_WELDER_WELD_COLUMNS],
+    ["load-ccc-joint-record.ts", CCC_JOINT_WELD_COLUMNS],
+    ["load-acciona.ts", ACCIONA_WELD_COLUMNS],
+    ["load-inco.ts", INCO_WELD_COLUMNS],
+  ];
+  for (const [f, cols] of weldWriters) {
+    const src = readFileSync(path.join(REPO_ROOT, "scripts", f), "utf8");
+    // Three legitimate mechanisms, one requirement: the column must not be left NULL.
+    //  - in the COPY list (loaders that build rows in JS and can count as they stream)
+    //  - a row_number() UPDATE (the dump: it goes through staging, so there is no
+    //    JS pass to count in)
+    //  - a constant UPDATE (the NOT-WELDED joint record: one row per joint, so 1)
+    const inCopy = cols !== null && (cols as readonly string[]).includes("weldpoint_seq");
+    const byUpdate = /SET weldpoint_seq/.test(src);
+    check(`${f} sets weldpoint_seq (COPY list or UPDATE) — a NULL drops the source from WP1`,
+      inCopy || byUpdate,
+      inCopy || byUpdate ? "" : "neither a COPY column nor a SET weldpoint_seq");
+  }
+  check("load-weld-dump.ts materialises WP1 as row_number() over joint_id in file order",
+    /UPDATE weld w SET weldpoint_seq = s\.rn/.test(
+      readFileSync(path.join(REPO_ROOT, "scripts/load-weld-dump.ts"), "utf8"))
+      && /row_number\(\) OVER \(PARTITION BY joint_id ORDER BY id\)/.test(
+        readFileSync(path.join(REPO_ROOT, "scripts/load-weld-dump.ts"), "utf8")));
   check("load-inco.ts writes manual_ut_report_no_all (the DAX's Inco branch)",
     (INCO_WELD_COLUMNS as readonly string[]).includes("manual_ut_report_no_all"));
   check("CCC_WELDER_WELD_COLUMNS also writes weldpoint_seq",
