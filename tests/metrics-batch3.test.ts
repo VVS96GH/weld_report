@@ -26,7 +26,9 @@ import {
   scopeWhere,
 } from "@/lib/metrics/scope";
 import { weldingStats } from "@/lib/metrics/welding";
-import { utCoverage } from "@/lib/metrics/ut";
+import { utCoverage, utStatsPrAll } from "@/lib/metrics/ut";
+import { rtStatsPrAll } from "@/lib/metrics/rt";
+import { measureScope } from "@/lib/metrics/scope";
 import { getWeldingPage } from "@/lib/pages/welding";
 
 /** `analysis/sources3/plan.md` — the delivered populations. */
@@ -197,10 +199,14 @@ describe.skipIf(Boolean(skipReason))("page 2's sub-contractor table", () => {
 // project scope, so the KPIs computed over nothing and rendered 0.
 
 describe.skipIf(Boolean(skipReason))("UT coverage is per source, not existence", () => {
-  it("partitions every in-scope source into covered / uncovered", async () => {
+  it("partitions every in-scope sub-contractor into covered / uncovered", async () => {
+    // Coverage is keyed on SUB-CONTRACTOR, because that is what the DAX
+    // branches key on: GAC / TEKFEN / MEDGULF all live in WELD_DUMP and only
+    // MEDGULF lacks a branch.
     const cov = await utCoverage(projectScope());
     const inScope = await query<{ source: string }>(
-      "SELECT DISTINCT source::text AS source FROM mv_joint ORDER BY 1",
+      "SELECT DISTINCT sub_contractor AS source FROM mv_joint" +
+        " WHERE sub_contractor IS NOT NULL ORDER BY 1",
     );
     const all = inScope
       .map((r) => r.source)
@@ -290,5 +296,77 @@ describe.skipIf(Boolean(skipReason))("the welding-status pivots filter Weld Cat 
       if (w.kind !== "table" || !/Welding Status/.test(w.title)) continue;
       expect(w.rows.map((r) => r[0]), w.title).not.toContain("J");
     }
+  });
+});
+
+
+// ── the user's pbix readings ────────────────────────────────────────────────
+//
+// Three figures a user read out of the live pbix. They are pinned here because
+// they are the only external check this layer has on the "PR all" family, and
+// two of them caught real bugs: M70 was reading the imported MT/PT columns
+// instead of the calculated `* Report "PR All"` coalesce, and M32 was reading
+// only the CCC tracker overlay instead of the DAX's per-sub-contractor
+// branches.
+//
+// NOTE the differing Inco treatment, reported not tuned: our MT+PT matches the
+// pbix only with Inco EXCLUDED, while our UT matches it only with Inco
+// INCLUDED. Both cannot be the same filter context, so at least one of the
+// user's readings was taken on a page carrying the Inco filter.
+
+describe.skipIf(Boolean(skipReason))("pbix cross-check (user readings)", () => {
+  it('MT + PT "PR all": 595,251 with Inco, 589,067 without (pbix 589,065)', async () => {
+    const all = await weldingStats(measureScope(), "PR_ALL");
+    const noInco = await weldingStats(projectScope(), "PR_ALL");
+    expect(all.mt_pt_done, "all sources").toBe(595_251);
+    // The CARD's value: the report owner ruled Inco is not counted in this
+    // measure, so this is the one page-1 card that excludes it.
+    expect(noInco.mt_pt_done, "the card's value, Inco excluded").toBe(589_067);
+    // THE ODD ONE OUT, reported not tuned. The other three user readings match
+    // with Inco INCLUDED; this one matches only with Inco EXCLUDED. The gap is
+    // exactly Inco's own contribution:
+    //   595,251 - 589,067 = 6,184 = 2 x 3,092 Inco joints (one source column,
+    //   `PT/MT Report`, feeds BOTH mt_report and pt_report —
+    //   analysis/sources3/inco-column-map.md row 32, 4,912 non-blank rows).
+    // The report owner ruled that Inco is simply not counted in this measure,
+    // which closes the question; the remaining +2 against the pbix is
+    // unexplained and deliberately not tuned away.
+    expect(all.mt_pt_done - noInco.mt_pt_done).toBe(6_184);
+  });
+
+  it('Numb RT/UT "PR all" = 207,682 (pbix 207,682, bit-for-bit)', async () => {
+    // ACCIONA 1,572 + CCC 135,007 + GAC 38,761 + INCO 3,122 + MEDGULF 6,090
+    // + TEKFEN 23,130. This is the measure page 1's "RT Acc.Joints" card is
+    // bound to — the label says "Acc." but the pbix shows the TESTED count.
+    const all = await rtStatsPrAll(measureScope());
+    expect(all.tested).toBe(207_682);
+    const noInco = await rtStatsPrAll(projectScope());
+    expect(noInco.tested, "Inco excluded").toBe(204_560);
+  });
+
+  it('Joint Uniq "PR all" Welded over ALL sources = 2,209,169 (pbix 2,209,156)', async () => {
+    const s = await weldingStats({ sources: projectScope().sources }, "PR_ALL");
+    // +13 against the pbix. Documented, not tuned: the register has moved since
+    // the pbix's last refresh and this layer counts what is loaded.
+    expect(s.joints_welded).toBe(2_209_169);
+  });
+
+  it('Numb UT "PR All" = 14,214 (pbix 14,214, bit-for-bit)', async () => {
+    // GAC 2,034 + TEKFEN 2,545 + CCC 9,412 + INCO 223. The measure-level value
+    // includes Inco; page 1 applies project scope and shows 13,991.
+    const all = await utStatsPrAll({ sources: projectScope().sources });
+    expect(all.ut_done).toBe(14_214);
+    const scoped = await utStatsPrAll(projectScope());
+    expect(scoped.ut_done, "page-1 card, Inco excluded").toBe(13_991);
+  });
+
+  it("UT coverage names GAC and TEKFEN as covered, MEDGULF and ACCIONA as not", async () => {
+    // The old note blamed the missing GAC/TEKFEN tracker workbooks. That is the
+    // wrong premise for this measure: the DAX's GAC and TEKFEN branches never
+    // read a tracker — they read the dump's own ut_report / manual_ut_report_no.
+    const cov = await utCoverage(projectScope());
+    expect(cov.covered).toEqual(expect.arrayContaining(["GAC", "TEKFEN", "CCC"]));
+    expect(cov.uncovered).toEqual(expect.arrayContaining(["MEDGULF", "ACCIONA"]));
+    expect(cov.covered).not.toContain("MEDGULF");
   });
 });

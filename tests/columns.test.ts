@@ -82,10 +82,17 @@ function batch2Columns(): Set<string> {
  * for both, so its output columns join the `weld` allow-list.
  */
 function mvJointColumns(): Set<string> {
-  const sql = readFileSync(
-    path.join(ROOT, "db/migrations/0013_mv_joint.sql"),
-    "utf8",
-  );
+  // 0016 re-creates the view with four more flags (the same pattern 0011 used
+  // for mv_weekly_progress), so both files define columns that exist.
+  const sql = ["0013_mv_joint.sql", "0016_mv_joint_prall_nde.sql"]
+    .map((f) => {
+      try {
+        return readFileSync(path.join(ROOT, "db/migrations", f), "utf8");
+      } catch {
+        return "";
+      }
+    })
+    .join("\n");
   const out = new Set<string>();
   for (const m of sql.matchAll(/\bAS\s+([a-z][a-z0-9_]*)\s*,?\s*$/gim)) out.add(m[1]);
   for (const m of sql.matchAll(/^\s*w\.([a-z][a-z0-9_]*),\s*$/gim)) out.add(m[1]);

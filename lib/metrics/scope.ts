@@ -74,6 +74,16 @@ export const SOURCES_PR_ALL_LOADED = [
 export const PROJECT_EXCLUDED_SUBCONTRACTORS = ["INCO", "Inco"] as const;
 
 /**
+ * The unfiltered `"PR all"` measure scope — the whole loaded union, Inco
+ * included. This is what a pbix CARD shows: a measure with no visual filter on
+ * it. Pinned against three of the user's readings in
+ * `tests/metrics-batch3.test.ts`.
+ */
+export function measureScope(extra: Scope = {}): Scope {
+  return { sources: SOURCES_PR_ALL_LOADED, ...extra };
+}
+
+/**
  * The project ("PR all") scope: the loaded union minus INCO.
  *
  * Every page-1/page-2 widget and every project-scope metric goes through this

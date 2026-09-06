@@ -5,6 +5,59 @@ One module per metric family. Every exported function is parameterised
 cites the metric id(s) from `analysis/calculation-logic.md` §2 plus the DAX
 measure name it implements.
 
+### The pbix cross-check, and what it corrected
+
+A user read four measures out of the live pbix. Three of them found real bugs
+here, and all four now reproduce:
+
+| measure | pbix | ours | note |
+|---|---:|---:|---|
+| `Numb RT/UT "PR all"` | 207,682 | **207,682** | exact |
+| `Numb UT "PR All"` | 14,214 | **14,214** | exact |
+| `Joint Uniq "PR all" Welded` | 2,209,156 | 2,209,169 | +13, documented, not tuned |
+| `MT + PT "PR all"` | 589,065 | 595,251 / 589,067 | see below |
+
+**What was wrong.** `MT + PT "PR all"` read the *imported* `mt_report` /
+`pt_report`; the DAX reads the **calculated** `MT Report "PR All"` =
+`IF([MT Report] <> "", [MT Report], IF([MT Report CCC] <> "", [MT Report CCC],
+BLANK()))`, i.e. coalesced with the CCC joint record. It reported 197,723.
+`Numb UT "PR All"` read only the CCC tracker overlay and reported 9,412; the
+DAX's `[Manual UT Report No.]` has a branch **per sub-contractor**, and GAC's
+and TEKFEN's never read a tracker at all — they read the dump's own
+`ut_report` falling back to `manual_ut_report_no`. Ruling R-05's "the trackers
+are missing, so the dump is not covered" is true of the trackers and **false of
+this measure**. Both are now joint-grain flags in `0016_mv_joint_prall_nde.sql`.
+
+**The KPI/pivot scope split (amended R3-01).** Page-1 CARDS show unfiltered
+measure values — Inco INCLUDED — because that is what a pbix card is: a measure
+with no visual filter. Tables and pivots keep the visual-level filters
+`report-inventory.md` records, Inco excluded. `measureScope()` and
+`projectScope()` are the two helpers.
+
+**`RT Acc.Joints` is bound to the TESTED measure**, not the accepted one, on the
+report owner's instruction: the pbix card shows 207,682 (`Numb RT/UT "PR all"`)
+where M13 gives 202,698. The label says "Acc." and the measure behind it does
+not — that mismatch is the pbix's own and is recorded here rather than silently
+corrected.
+
+**The MT/PT outlier — ruled.** Three readings match with Inco in; this one only
+with Inco out, the gap being exactly Inco's own contribution (6,184 =
+2 × 3,092 joints — one source column, `PT/MT Report`, feeds both `mt_report`
+and `pt_report`, `inco-column-map.md` row 32). The report owner ruled that
+**Inco is not counted in `MT + PT "PR all"`**, so the card excludes it and the
+Inco-M investigation was dropped. The remaining +2 against the pbix is
+unexplained and not tuned away.
+
+Because the pbix does not treat the cards uniformly, the scope is a per-card
+table in `lib/pages/welding.ts` rather than one global flag:
+
+| card | measure | Inco |
+|---|---|---|
+| Joints Welded | `Joint Uniq "PR all" Welded` | in |
+| RT Acc.Joints | `Numb RT/UT "PR all"` (tested) | in |
+| Numb UT/PAUT, UT/PAUT "A"/"R" | `Numb UT "PR All"` | in |
+| **MT/PT Done** | `MT + PT "PR all"` | **out** |
+
 ### R3-01 — INCO is loaded, and excluded at the query layer
 
 `projectScope()` in `scope.ts` is the single place the project filter is

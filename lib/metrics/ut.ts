@@ -194,15 +194,19 @@ export function defectLengthExpr(p: Params, a = "w"): string {
 export function utAggsPrAll(p: Params, a = "w"): AggSpec[] {
   void p;
   return [
-    { key: "ut_done", sql: `count(*) ${filterWhere([`${a}.ut_done_prall`])}` },
+    // `ut_report_prall` / `ut_rejected_prall_v2` are the DAX's own per
+    // sub-contractor branches of `[Manual UT Report No.]` / `[Manual UT
+    // Status.]` (migration 0016), NOT the tracker overlay alone: GAC and TEKFEN
+    // resolve through their own `ut_report` / `manual_ut_report_no`.
+    { key: "ut_done", sql: `count(*) ${filterWhere([`${a}.ut_report_prall`])}` },
     // [Numb UT "A" "PR All"] = [Numb UT "PR All"] - [Numb UT "R" "PR All"]
     {
       key: "ut_accepted",
       sql:
-        `count(*) ${filterWhere([`${a}.ut_done_prall`])}` +
-        ` - count(*) ${filterWhere([`${a}.ut_rejected_prall`])}`,
+        `count(*) ${filterWhere([`${a}.ut_report_prall`])}` +
+        ` - count(*) ${filterWhere([`${a}.ut_rejected_prall_v2`])}`,
     },
-    { key: "ut_rejected", sql: `count(*) ${filterWhere([`${a}.ut_rejected_prall`])}` },
+    { key: "ut_rejected", sql: `count(*) ${filterWhere([`${a}.ut_rejected_prall_v2`])}` },
     { key: "ut_weld_length_m", sql: `sum(${a}.ut_weld_length_m_prall)` },   // M33
     { key: "ut_rej_length_m", sql: `sum(${a}.ut_defect_length_prall)` },    // M34
   ];
@@ -272,9 +276,12 @@ export const EMPTY_UT_COVERAGE: UtCoverage = {
 
 export async function utCoverage(scope: Scope): Promise<UtCoverage> {
   const p = new Params();
+  // Per SUB-CONTRACTOR, not per source: the DAX branches are keyed on
+  // `[Sub-Contractor]`, and GAC / TEKFEN / MEDGULF all live in WELD_DUMP —
+  // MEDGULF has no branch at all and so is blank by construction.
   const sql =
-    `SELECT w.source::text AS source,\n` +
-    `       count(*) FILTER (WHERE w.ut_done_prall) AS ut_joints,\n` +
+    `SELECT coalesce(w.sub_contractor, '(blank)') AS source,\n` +
+    `       count(*) FILTER (WHERE w.ut_report_prall) AS ut_joints,\n` +
     `       count(*) FILTER (WHERE w.ut_weld_length_m_prall IS NOT NULL) AS len_joints\n` +
     `  FROM ${JOINT_FROM}\n` +
     ` WHERE ${scopeWhere(scope, p)}\n` +

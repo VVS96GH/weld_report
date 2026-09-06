@@ -110,6 +110,7 @@ import {
   type GroupSpec,
   JOINT_FROM,
   Params,
+  measureScope,
   PROJECT_EXCLUDED_SUBCONTRACTORS,
   projectScope,
   type Scope,
@@ -353,7 +354,7 @@ function bundleFromRow(raw: unknown, variant: Variant, withFabricated: boolean):
 
 function allAggs(p: Params, variant: Variant, withFabricated: boolean) {
   return [
-    ...weldingAggs(p),
+    ...weldingAggs(p, "w", variant),
     ...(variant === "EP" ? rtAggs(p) : rtAggsPrAll(p)),
     ...(variant === "EP" ? utAggs(p) : utAggsPrAll(p)),
     ...(variant === "EP" ? rtBacklogAggs(p) : rtBacklogAggsPrAll(p)),
@@ -878,20 +879,22 @@ const TREND_NOTE =
  */
 function utCoverageNote(ut: UtCoverage): string | null {
   const label = (s: string) => SOURCE_LABELS[s] ?? s;
+  void label;
   if (ut.covered.length === 0) {
     return (
-      "UT metrics (Numb UT/PAUT, UT \"A\"/\"R\", UT Insp Len, UT Def.Length, " +
-      "% Rej UT Len) are unavailable: no source in this scope has the UT-tracker " +
-      "overlay materialised. UT TRACKER (GAC)_Master.xlsx and UT TRACKER (TEK).xlsx " +
-      "are still missing (ruling R-05); the CCC tracker is loaded but its overlay " +
-      "is written by the CCC loader. The cards show \u2014, never 0."
+      "UT metrics (Numb UT/PAUT, UT \"A\"/\"R\", UT Def.Length) are unavailable: " +
+      "no sub-contractor in this scope resolves [Manual UT Report No.]. " +
+      "The cards show \u2014, never 0."
     );
   }
   if (ut.uncovered.length === 0) return null;
+  // Verbatim per the orchestrator's ruling. The earlier wording blamed the
+  // missing GAC/TEKFEN tracker workbooks, which is the wrong premise for this
+  // measure: the DAX's GAC and TEKFEN branches never read a tracker.
   return (
-    `UT is a PARTIAL total. Covered: ${ut.covered.map(label).join(", ")}. ` +
-    `Not covered: ${ut.uncovered.map(label).join(", ")} \u2014 their UT-tracker ` +
-    `overlay is not materialised (UT TRACKER (GAC)/(TEK) are still missing, ruling R-05).`
+    `UT coverage: covered ${ut.covered.join(", ")} \u2014 GAC and TEKFEN through ` +
+    `their own columns, CCC through the tracker, INCO through its own; ` +
+    `not covered: ${ut.uncovered.join(", ")} (no DAX branch).`
   );
 }
 
@@ -1149,10 +1152,16 @@ export async function getWeldingPage(
 async function buildProjectKpiPage(spec: SpecPage, ctx: Ctx): Promise<Widget[]> {
   // §3.1 / R3-01: every visual on pbix page 21 carries `SC <> Inco`, one of the
   // 69 filters that keep INCO out of project scope. ACCIONA is inside it.
+  // Amended R3-01, per card. Most page-1 cards are unfiltered measure values
+  // (Inco INCLUDED) — that is what a pbix card is, and it is what reproduces
+  // the user's readings to the unit. MT/PT is the documented exception. The
+  // CHARTS keep the visual filter the pbix records (`SC <> Inco`).
+  const cardScope: Scope = measureScope();
   const scope: Scope = projectScope();
-  const av = await availability("PR_ALL", SOURCES_PR_ALL_LOADED, scope);
-  const [b, welders, wpsApproved, weekly, dist] = await Promise.all([
-    bundleTotal(scope, av),
+  const av = await availability("PR_ALL", SOURCES_PR_ALL_LOADED, cardScope);
+  const [b, bNoInco, welders, wpsApproved, weekly, dist] = await Promise.all([
+    bundleTotal(cardScope, av),
+    bundleTotal(projectScope(), av),
     qualifiedWelders(),
     approvedWpsCount(),
     weeklyProgress({
@@ -1178,6 +1187,27 @@ async function buildProjectKpiPage(spec: SpecPage, ctx: Ctx): Promise<Widget[]> 
   if (welders === null || wpsApproved === null) note(ctx, REGISTER_NOTE);
   if (welders?.source_note) note(ctx, `Project_Welder: ${welders.source_note}`);
 
+  /**
+   * Which scope each page-1 card is measured in.
+   *
+   * Not one global flag: the pbix does not treat them uniformly, and the report
+   * owner's readings settle each one individually. `measure` = the unfiltered
+   * "PR all" value, Inco included; `project` = Inco excluded (R3-01).
+   *
+   * | card | measure | Inco | source of the ruling |
+   * |---|---|---|---|
+   * | Joints Welded | `Joint Uniq "PR all" Welded` | in | user reading 2,209,156 |
+   * | RT Acc.Joints | `Numb RT/UT "PR all"` (TESTED, not accepted) | in | user reading 207,682 |
+   * | Numb UT/PAUT, UT/PAUT "A"/"R" | `Numb UT "PR All"` | in | user reading 14,214 |
+   * | **MT/PT Done** | `MT + PT "PR all"` | **out** | user ruling: Inco is not counted here |
+   * | everything else | — | in | default |
+   */
+  const CARD_SCOPE: Record<string, "measure" | "project"> = {
+    "MT/PT Done": "project",
+  };
+  const cardBundle = (label: string): Bundle =>
+    CARD_SCOPE[label] === "project" ? bNoInco : b;
+
   const kpi = (label: string, value: string): KpiWidget => ({
     kind: "kpi",
     label,
@@ -1192,10 +1222,17 @@ async function buildProjectKpiPage(spec: SpecPage, ctx: Ctx): Promise<Widget[]> 
           out.push(kpi(w.label, kpiInt(b.welding.joints_welded)));
           break;
         case "MT/PT Done":
-          out.push(kpi(w.label, kpiInt(b.welding.mt_pt_done)));
+          out.push(
+            kpi(w.label, kpiInt(cardBundle(w.label).welding.mt_pt_done)),
+          );
           break;
         case "RT Acc.Joints":
-          out.push(kpi(w.label, kpiInt(b.rt.accepted)));
+          // Rebound to M10/M11 `Numb RT/UT "PR all"` (tested joints), NOT M13
+          // (accepted), on the report owner's instruction: the pbix card shows
+          // 207,682 and M13 gives 202,698. The LABEL says "Acc." and the
+          // measure behind it does not — that mismatch is the pbix's, and it is
+          // recorded in lib/metrics/README.md rather than silently "corrected".
+          out.push(kpi(w.label, kpiInt(b.rt.tested)));
           break;
         case "RT/UT Rej.Jts":
           out.push(kpi(w.label, kpiInt(b.rt.rejected)));

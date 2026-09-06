@@ -47,8 +47,18 @@ export function weldedInclRepairCond(a = "w"): string {
  * the row-level predicate above, so `count(*) FILTER (WHERE flag)` is exactly
  * the DAX's `DISTINCTCOUNT(Joint ID)` with that filter.
  */
-export function weldingAggs(p: Params, a = "w"): AggSpec[] {
+export function weldingAggs(
+  p: Params,
+  a = "w",
+  variant: "EP" | "PR_ALL" = "EP",
+): AggSpec[] {
   void p;
+  // M70/M71 read `MT Report "PR All"` / `PT Report "PR All"`, which are
+  // CALCULATED columns — `IF([X Report] <> "", [X Report], IF([X Report CCC]
+  // <> "", [X Report CCC], BLANK()))` — not the imported ones. Reading only the
+  // imported column reported 197,723 where the pbix reports 589,065.
+  const mt = variant === "EP" ? "mt_done" : "mt_done_prall";
+  const pt = variant === "EP" ? "pt_done" : "pt_done_prall";
   return [
     // M01 Joints Welded
     { key: "joints_welded", sql: `count(*) ${filterWhere([`${a}.is_welded_norepair`])}` },
@@ -61,11 +71,11 @@ export function weldingAggs(p: Params, a = "w"): AggSpec[] {
     {
       key: "mt_pt_done",
       sql:
-        `count(*) ${filterWhere([`${a}.mt_done`])}` +
-        ` + count(*) ${filterWhere([`${a}.pt_done`])}`,
+        `count(*) ${filterWhere([`${a}.${mt}`])}` +
+        ` + count(*) ${filterWhere([`${a}.${pt}`])}`,
     },
     // M71 MT Qty / MPI Done
-    { key: "mt_done", sql: `count(*) ${filterWhere([`${a}.mt_done`])}` },
+    { key: "mt_done", sql: `count(*) ${filterWhere([`${a}.${mt}`])}` },
     { key: "dia_inch", sql: `sum(${a}.dia_inch_welded)` },
   ];
 }
@@ -80,12 +90,22 @@ const WeldingRow = z.object({
 
 export type WeldingStats = z.infer<typeof WeldingRow>;
 
-/** M01, M03, M70, M71 for one scope. */
-export async function weldingStats(scope: Scope): Promise<WeldingStats> {
+/**
+ * M01, M03, M70, M71 for one scope.
+ *
+ * `variant` picks the MT/PT family: `"EP"` reads the imported `mt_report` /
+ * `pt_report`, `"PR_ALL"` reads the calculated `* Report "PR All"` coalesce
+ * with the CCC joint record. Defaults to `"EP"` so every existing pin is
+ * untouched; project-scope callers must ask for `"PR_ALL"`.
+ */
+export async function weldingStats(
+  scope: Scope,
+  variant: "EP" | "PR_ALL" = "EP",
+): Promise<WeldingStats> {
   const p = new Params();
   const sql = buildGroupedSelect({
     groups: [],
-    aggs: weldingAggs(p),
+    aggs: weldingAggs(p, "w", variant),
     where: scopeWhere(scope, p),
   });
   const rows = await query(sql, p.list());
