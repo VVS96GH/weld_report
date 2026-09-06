@@ -425,6 +425,72 @@ the three files still missing.
 
 ---
 
+## The flange dashboard (`flange.ts`)
+
+A different fact from `weld` and it never touches it: one row per **register
+line**, not per flange and not per weld. `flange` holds 363,245 rows over
+357,787 distinct Joint IDs — `Flange Progress.xlsx` contributes 136,741 rows
+for 131,283 joints (5,458 repeats, the same flange re-jointed) and
+`ovAssets_1619` contributes 226,504 rows for 226,504 joints. The two Joint-ID
+namespaces are **disjoint** (intersection 0), so the pbix `Table.Combine` is a
+plain `UNION ALL`.
+
+**RF-06: every measure is `count(DISTINCT joint_id)`.** A `count(*)` here
+over-reports by 5,458.
+
+| measure | DAX | note |
+|---|---|---|
+| Total Register | `Total Flanges ID` | `DISTINCTCOUNT([Joint ID])` |
+| Inspected | `Total Flanges ID Jointed` | `[Joint Date] > 0` |
+| % | `Flanges ID Jointed %` | inspected / total |
+| Const-n | `… Tightening Constraction "CCC no cat"` | see RF-07 below |
+| PCC | `… Tightening PCC "CCC no cat"` | see the `+` vs `OR` note below |
+| Remains | `Total Flanges ID Remainder` | `ISBLANK([Joint Date])` |
+| Leaked | `Flanges ID BreakDown` | `[Reason for De-Tightening] = "FLANGE LEAKAGE"` |
+| Leaked % | `Flange Break Down Rate %` | leaked / inspected |
+| Repaired / To be Repaired | `Repaired FLG` / `To be Repaired FLG` | **honest-empty** (RF-02) |
+
+**RF-07 — the `"CCC no cat"` pair, not the plain trio.** `ovAssets_1619[Cat.]`
+is only 75.3 % filled, so applying the `Cat.` test to CCC drives CCC's const-n
+to ~0. The mockup's numbers are the pair that exempts CCC.
+
+**One deliberate divergence from the literal DAX.** `Tightening PCC` adds two
+`DISTINCTCOUNT`s; a non-CCC joint with both a PCC date and `Cat. IN {Z,A,B}`
+would be counted **twice**. This layer uses `OR` — once — which is what the
+recon that produced `analysis/flange/metrics.json` did and therefore what the
+pins assert. `Const-n`'s two branches are disjoint by construction (a row is
+CCC or it is not), so there `+` and `OR` are the same set.
+
+**`remains` is `bool_or(joint_date IS NULL)`, not `NOT inspected`.** A flange
+re-jointed once can carry a dated and an undated row and the register counts it
+in both — which is why total (357,787) is *less* than inspected + remains
+(358,151) by 364 joints. Faithful, and the pins depend on it.
+
+### Honest-empty and provenance on this page
+
+| what | why |
+|---|---|
+| the repair trio | all five repair logs are absent and `ovAssets_1619[Flange Repair Record]` is 0 non-blank of 226,504 — no partial substitute exists (RF-02) |
+| the `(blank)` HA row | 6,593 Joint IDs, 1.84 %, that the absent `HA l0_abs_guide` would have resolved. Its own visible row, never folded into HA1 (RF-03) |
+| the leak timeline | labelled "recomputed from records — the as-reported weekly file is missing". It is the cumulative rate with each leak back-dated to its own Joint Date, a genuinely different number from the weekly series published at the time (RF-04) |
+| `meta.as_of` | the latest joint/inspection date **that is not in the future**. RF-05 keeps the register's dirty rows, one of which carries `2027-02-22`; a plain `max()` would label the page "data as of Feb 2027". The excluded rows are still counted in every measure, and the page says so |
+
+### Performance (RF-09: measure, do not assume)
+
+Same lesson as `mv_joint`: `count(DISTINCT)` under `GROUPING SETS` is the trap.
+The unfiltered page went 1.5 s (13 separate scans) → 3.7 s (one GROUPING SETS
+pass with six `count(DISTINCT)` per set) → **441 ms** by collapsing to joint
+grain in a CTE first (`bool_or` per joint, then plain `count(*)`), so the page
+is four scans instead of thirteen. The filter dropdowns are memoised for 60 s —
+they are dimension lists that do not depend on the selection, and a stale one
+can only offer a filter value that matches nothing, never a wrong number.
+
+Measured through `/api/flange`: no filter 441 ms · subco 288 ms · HA 212 ms ·
+method 354 ms · all three 36 ms · `(blank)` HA 38 ms. No materialised view was
+needed; no single query exceeds 419 ms.
+
+---
+
 ## Batching
 
 Page assemblers call `bundleTotal()` / `bundleBy()` in `lib/pages/welding.ts`,

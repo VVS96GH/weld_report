@@ -43,7 +43,8 @@ project (subcontractors CCC / GAC / Tekfen / Medgulf). The repo holds:
 Current scope: all six weld sources are loaded (Weld Dump for GAC/TEKFEN/MEDGULF, CCC welder +
 joint records, Acciona, Inco — INCO excluded from project scope at the query layer). Still
 missing: UT TRACKER (GAC)/(TEK), WPQ RECORD REGISTER (honest-empty KPIs) and the flange repair
-logs; the flange dashboard is a separate, unbuilt package (`analysis/flange/`).
+logs; the flange dashboard is built (`/flange`, table `flange`, `analysis/flange/` rulings RF-01..RF-09)
+with its three repair widgets honest-empty until the repair logs arrive.
 
 ## The mockups (design contract)
 
@@ -140,7 +141,8 @@ db:migrate` then the loaders in order: `db:load` (Weld Dump → `weld`, 958,615 
 `db:seed:snapshot` / `db:load:ut-ccc` / `db:load:exclusions` (workbooks), `db:load:spool`
 (two spool masters), `db:load:ccc-joints` then `db:load:ccc` (CCC Talisman exports, 5.43 M
 rows, ~7 min), `db:load:ut-ccc` (tracker + the CCC UT overlay), `db:load:acciona`,
-`db:load:inco`, `db:load:weld-length`, `db:load:welders`. `weld` holds every source at weld-pass grain with a `source` enum; metrics
+`db:load:inco`, `db:load:weld-length`, `db:load:welders`, `db:load:flange` (a separate
+`flange` fact at flanged-joint grain — never joined to `weld`). `weld` holds every source at weld-pass grain with a `source` enum; metrics
 read the joint-grain materialised views `mv_joint` / `mv_joint_wps` (migration 0013),
 refreshed by the loaders — never `count(*)` over `weld` for a joint metric.
 Column names are `analysis/dump/profile.md` §8.1 verbatim — the contract between the DB and

@@ -1594,3 +1594,120 @@ html {
   font-size: 0.7rem;
   opacity: 0.7;
 }
+
+/* ============================================================
+   Report switcher (nav row) + filter bar (flange dashboard)
+   ============================================================ */
+.report-switcher {
+  display: inline-flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: var(--pill, 999px);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+}
+.report-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding-inline: 14px;
+  border-radius: var(--pill, 999px);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color 150ms ease-out, color 150ms ease-out;
+}
+.report-pill:hover {
+  color: var(--text-primary);
+  background: var(--bg-card-hover);
+}
+.report-pill[aria-current="page"] {
+  background: var(--accent-primary);
+  color: white;
+}
+[data-mood="ten"] .report-switcher {
+  background: rgb(255 255 255 / 0.08);
+  border-color: rgb(255 255 255 / 0.18);
+}
+[data-mood="ten"] .report-pill {
+  min-height: 38px;
+  color: var(--chrome-fg);
+  font-family: var(--font-display);
+}
+[data-mood="ten"] .report-pill:hover {
+  background: rgb(255 255 255 / 0.12);
+}
+[data-mood="ten"] .report-pill[aria-current="page"] {
+  background: var(--accent);
+  color: white;
+}
+
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+}
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1 1 150px;
+}
+.filter-group label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.filter-select {
+  width: 100%;
+  min-height: 44px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding-block: 8px;
+  padding-inline: 12px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-family: inherit;
+}
+.filter-reset {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+[data-mood="ten"] .filter-bar {
+  border-radius: var(--r);
+  background: var(--surface);
+  border-color: var(--border);
+  box-shadow: var(--shadow-card);
+}
+[data-mood="ten"] .filter-group label {
+  font-size: 11px;
+  letter-spacing: 0.13em;
+  color: var(--muted);
+}
+[data-mood="ten"] .filter-select {
+  border-radius: 10px;
+  border: 1.5px solid var(--border);
+  background: var(--surface-2);
+  color: var(--fg);
+}
+[data-mood="ten"] .filter-select:focus {
+  border-color: var(--accent);
+}
+[data-mood="ten"] .filter-reset {
+  border-radius: var(--pill);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  background: transparent;
+  padding-inline: 16px;
+}

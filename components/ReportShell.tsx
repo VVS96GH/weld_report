@@ -36,8 +36,9 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [subtitle, setSubtitle] = useState<string>(WELDING_REPORT_SUBTITLE);
 
+  const isFlange = pathname?.startsWith("/flange") ?? false;
   const current = currentPageFromPathname(pathname) ?? 1;
-  const title = WELDING_PAGE_TITLES[current - 1] ?? "";
+  const title = isFlange ? "Flange Inspection Dashboard" : (WELDING_PAGE_TITLES[current - 1] ?? "");
 
   const goTo = useCallback(
     (n: number) => {
@@ -47,13 +48,15 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
   );
 
   useEffect(() => {
+    if (isFlange) return; // ← → paging is a welding-report affordance only
     function onKeyDown(e: KeyboardEvent) {
+      if (e.target instanceof HTMLSelectElement || e.target instanceof HTMLInputElement) return;
       if (e.key === "ArrowLeft") goTo(current - 1);
       if (e.key === "ArrowRight") goTo(current + 1);
     }
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [current, goTo]);
+  }, [current, goTo, isFlange]);
 
   return (
     <SubtitleContext.Provider value={{ setSubtitle }}>
@@ -84,46 +87,61 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <nav className="page-nav">
-        <span className="page-indicator">
-          Page {current} / {WELDING_TOTAL_PAGES}
-        </span>
-        <span className="page-title-display">{title}</span>
-        <div className="nav-controls">
-          {current > 1 ? (
-            <Link href={`/welding/${current - 1}`} className="nav-btn" aria-label="Previous page">
-              &#9664; Prev
-            </Link>
-          ) : (
-            <button type="button" className="nav-btn" disabled aria-label="Previous page">
-              &#9664; Prev
-            </button>
-          )}
-          <label htmlFor="page-select" className="sr-only">
-            Jump to page
-          </label>
-          <select
-            id="page-select"
-            className="page-select"
-            value={current}
-            onChange={(e) => goTo(Number(e.target.value))}
-          >
-            {WELDING_PAGE_TITLES.map((t, i) => (
-              <option key={i} value={i + 1}>
-                {`${i + 1}. ${t}`}
-              </option>
-            ))}
-          </select>
-          {current < WELDING_TOTAL_PAGES ? (
-            <Link href={`/welding/${current + 1}`} className="nav-btn" aria-label="Next page">
-              Next &#9654;
-            </Link>
-          ) : (
-            <button type="button" className="nav-btn" disabled aria-label="Next page">
-              Next &#9654;
-            </button>
-          )}
+      <nav className="page-nav" aria-label="Report navigation">
+        {/* Report switcher: two pill links; the current report carries aria-current. */}
+        <div className="report-switcher" role="group" aria-label="Report">
+          <Link href="/welding/1" className="report-pill" aria-current={isFlange ? undefined : "page"}>
+            Welding
+          </Link>
+          <Link href="/flange" className="report-pill" aria-current={isFlange ? "page" : undefined}>
+            Flange
+          </Link>
         </div>
+        {isFlange ? (
+          <span className="page-title-display">{title}</span>
+        ) : (
+          <>
+            <span className="page-indicator">
+              Page {current} / {WELDING_TOTAL_PAGES}
+            </span>
+            <span className="page-title-display">{title}</span>
+            <div className="nav-controls">
+              {current > 1 ? (
+                <Link href={`/welding/${current - 1}`} className="nav-btn" aria-label="Previous page">
+                  &#9664; Prev
+                </Link>
+              ) : (
+                <button type="button" className="nav-btn" disabled aria-label="Previous page">
+                  &#9664; Prev
+                </button>
+              )}
+              <label htmlFor="page-select" className="sr-only">
+                Jump to page
+              </label>
+              <select
+                id="page-select"
+                className="page-select"
+                value={current}
+                onChange={(e) => goTo(Number(e.target.value))}
+              >
+                {WELDING_PAGE_TITLES.map((t, i) => (
+                  <option key={i} value={i + 1}>
+                    {`${i + 1}. ${t}`}
+                  </option>
+                ))}
+              </select>
+              {current < WELDING_TOTAL_PAGES ? (
+                <Link href={`/welding/${current + 1}`} className="nav-btn" aria-label="Next page">
+                  Next &#9654;
+                </Link>
+              ) : (
+                <button type="button" className="nav-btn" disabled aria-label="Next page">
+                  Next &#9654;
+                </button>
+              )}
+            </div>
+          </>
+        )}
       </nav>
 
       <main className="main-content">{children}</main>

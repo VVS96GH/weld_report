@@ -1,5 +1,8 @@
 import type { PageModel } from "@/lib/page-model";
 import { getFixturePage } from "@/lib/fixture/welding-spec";
+import { getFlangeFixturePage, type FlangeFilters } from "@/lib/fixture/flange-spec";
+
+export type { FlangeFilters };
 
 /**
  * Where a rendered PageModel's data comes from.
@@ -50,4 +53,50 @@ export async function getPage(n: number, source: PageSource = resolvePageSource(
     return getDatabasePage(n);
   }
   return getFixturePage(n);
+}
+
+// ── Flange dashboard (single page, filter-driven; ruling RF-08) ──────────────
+
+type FlangePagesModule = {
+  getFlangePage: (filters: FlangeFilters) => Promise<PageModel>;
+};
+
+// Same dynamic-import arrangement as the welding pages: lib/pages/flange.ts is the
+// metrics lane's file and may not exist yet.
+const FLANGE_PAGES_MODULE = "@/lib/pages/flange";
+
+async function getDatabaseFlangePage(filters: FlangeFilters): Promise<PageModel> {
+  let mod: Partial<FlangePagesModule>;
+  try {
+    mod = (await import(FLANGE_PAGES_MODULE)) as Partial<FlangePagesModule>;
+  } catch (err) {
+    // The flange data layer is being built concurrently. While the module is simply
+    // ABSENT, serve the mockup fixture with an honest provenance note instead of a
+    // 500 (the welding pages keep their strict behaviour). Any other failure —
+    // the module exists but throws — still surfaces as an error.
+    if (/Cannot find module/.test((err as Error).message)) {
+      const page = getFlangeFixturePage(filters);
+      page.widgets.push({
+        kind: "text",
+        text: "Database source not available yet: lib/pages/flange.ts is not present, so this page shows the mockup snapshot (fixture). It switches to live Postgres data automatically once that module lands.",
+      });
+      return page;
+    }
+    throw new Error(`PAGE_SOURCE=database but lib/pages/flange.ts could not be loaded: ${(err as Error).message}`);
+  }
+  if (typeof mod.getFlangePage !== "function") {
+    throw new Error("PAGE_SOURCE=database but lib/pages/flange.ts does not export getFlangePage(filters)");
+  }
+  return mod.getFlangePage(filters);
+}
+
+/** Load the flange PageModel for the applied filters (ha / subco / method) from the selected source. */
+export async function getFlangePage(
+  filters: FlangeFilters = {},
+  source: PageSource = resolvePageSource(),
+): Promise<PageModel> {
+  if (source === "database") {
+    return getDatabaseFlangePage(filters);
+  }
+  return getFlangeFixturePage(filters);
 }

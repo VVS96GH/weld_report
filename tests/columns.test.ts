@@ -155,6 +155,14 @@ const WEEKLY_SNAPSHOT = new Set([
   "label_raw",
 ]);
 
+/**
+ * `lib/metrics/flange.ts` queries a different fact table under the alias `f`,
+ * and uses `m`/`r`/`s`/`w` freely as JavaScript identifiers. Scanning it with
+ * the `weld` alias patterns produces only false positives, so it is scanned on
+ * its own terms below.
+ */
+const FLANGE_FILE = "lib/metrics/flange.ts";
+
 function readLib(): Array<{ file: string; text: string }> {
   const dirs = ["lib/metrics", "lib"];
   const files: Array<{ file: string; text: string }> = [];
@@ -162,6 +170,7 @@ function readLib(): Array<{ file: string; text: string }> {
     for (const f of readdirSync(path.join(ROOT, d), { withFileTypes: true })) {
       if (!f.isFile() || !f.name.endsWith(".ts")) continue;
       const rel = path.join(d, f.name);
+      if (rel === FLANGE_FILE) continue;
       files.push({ file: rel, text: readFileSync(path.join(ROOT, rel), "utf8") });
     }
   }
@@ -201,6 +210,45 @@ function collectRefs(): Ref[] {
   }
   return refs;
 }
+
+/** `flange` (migration 0015), aliased `f` in lib/metrics/flange.ts. */
+function flangeColumns(): Set<string> {
+  const file = path.join(ROOT, "db/migrations/0015_flange.sql");
+  const out = new Set<string>();
+  try {
+    const sql = readFileSync(file, "utf8");
+    const block = sql.slice(sql.indexOf("CREATE TABLE IF NOT EXISTS flange ("));
+    const body = block.slice(0, block.indexOf("\n);"));
+    for (const m of body.matchAll(/^\s{2}([a-z][a-z0-9_]*)\s+[a-z]/gim)) out.add(m[1]);
+  } catch {
+    /* migration not shipped yet */
+  }
+  return out;
+}
+
+describe("flange column names exist in migration 0015", () => {
+  it("references no unknown flange column", () => {
+    const allowed = flangeColumns();
+    if (allowed.size === 0) {
+      console.log("[columns.test] 0015_flange.sql not present — flange scan skipped");
+      return;
+    }
+    const text = readFileSync(path.join(ROOT, FLANGE_FILE), "utf8");
+    const refs = [
+      ...[...text.matchAll(/\bf\.([a-z][a-z0-9_]*)\b/g)].map((m) => m[1]),
+      // The `${C.x}` interpolations resolve through FLANGE_COLUMNS; check the
+      // literal values that object holds.
+      ...[...text.matchAll(/^\s{2}[a-zA-Z]+:\s*"([a-z][a-z0-9_]*)",$/gm)].map((m) => m[1]),
+    ];
+    const distinct = [...new Set(refs)];
+    const unknown = distinct.filter((c) => !allowed.has(c));
+    console.log(
+      `[columns.test] flange: ${refs.length} references, ${distinct.length} distinct, ` +
+        `${unknown.length} unknown${unknown.length ? `: ${unknown.join(", ")}` : ""}`,
+    );
+    expect(unknown).toEqual([]);
+  });
+});
 
 describe("SQL column names exist in the schema contract", () => {
   it("references no unknown column", () => {
