@@ -118,6 +118,7 @@ import {
   SOURCES_CCC,
   SOURCES_EP,
   SOURCES_PR_ALL_LOADED,
+  RT_WELD_TYPES,
 } from "@/lib/metrics/scope";
 import { query } from "@/lib/db";
 
@@ -1559,6 +1560,32 @@ async function buildProjectStatusPage(
 
 // ── pages 4–6, 8–11 — per-subcontractor status ──────────────────────────────
 
+/**
+ * The pbix gives every sub-contractor page TWO similar tables:
+ *
+ *   "Cumulative RT Joints Tested and Accepted"     -> the `"EP"` family
+ *   "Cumulative RT/UT Joints Tested and Accepted"  -> the `"PR all"` family
+ *
+ * Our mockup reproduces the second: its 14 columns map one-for-one onto that
+ * visual's 14 Values. Every instance of it in report-inventory.md — GAC,
+ * TEKFEN and MEDGULF alike — binds `"PR all"`, and not one binds `"EP"`. We
+ * were rendering it from the page's own `"EP"` bundle, i.e. from the OTHER
+ * table's measures.
+ *
+ * The visual also carries `Weld Type IN {BW, CLET, GW, MW}` (= RT_WELD_TYPES).
+ * Verified against the report owner's screenshot, TEKFEN films:
+ *
+ * | binding | Taken | Acc | Rej |
+ * |---|---|---|---|
+ * | `"EP"`, as we rendered it | 82,339 | 81,566 | 773 |
+ * | `"PR all"`, no type filter | 82,312 | 81,505 | 807 |
+ * | **`"PR all"` + type filter** | **82,287** | **81,480** | **807** |
+ *
+ * Both changes are needed: switching family alone still misses by 25 films.
+ */
+const isPrAllNdeTable = (cols: readonly string[]) =>
+  cols.includes("Tested Joints") && cols.includes("Films Taken");
+
 async function buildSubconPage(
   spec: SpecPage,
   confs: SubconConf[],
@@ -1570,17 +1597,33 @@ async function buildSubconPage(
     sourcesFor(confs[0]!.sub),
     baseScope(confs[0]!),
   );
+  const prAv = await availability("PR_ALL", SOURCES_PR_ALL_LOADED, {
+    ...baseScope(confs[0]!),
+    sources: SOURCES_PR_ALL_LOADED,
+    weldTypes: RT_WELD_TYPES,
+  });
   const blocks = await Promise.all(
     confs.map(async (conf) => {
       const scope = baseScope(conf);
       const statusScope = { ...scope, weldCats: WELD_STATUS_CATS };
-      const [pivot, thisWeek, byCat, total, weekly, dist] = await Promise.all([
+      // The "Cumulative RT/UT Joints Tested and Accepted" table reads the
+      // "PR all" family with `Weld Type IN {BW, CLET, GW, MW}` — see
+      // {@link isPrAllNdeTable}. Every other table keeps the page's family.
+      const prScope: Scope = {
+        ...scope,
+        sources: SOURCES_PR_ALL_LOADED,
+        weldTypes: RT_WELD_TYPES,
+      };
+      const [pivot, thisWeek, byCat, total, prByCat, prTotal, weekly, dist] =
+        await Promise.all([
         weldTypePivot(statusScope),
         weekEnd
           ? weldTypePivot(statusScope, { thisWeekEnding: weekEnd })
           : Promise.resolve(null),
         bundleBy(scope, GROUP_WELD_CAT, av),
         bundleTotal(scope, av),
+        bundleBy(prScope, GROUP_WELD_CAT, prAv),
+        bundleTotal(prScope, prAv),
         weeklyProgress({
           subContractor: conf.sub,
           weeks: 8,
@@ -1589,7 +1632,7 @@ async function buildSubconPage(
         }),
         weldTypeDistribution({ ...scope, excludeWeldTypes: ["THD"] }),
       ]);
-      return { conf, pivot, thisWeek, byCat, total, weekly, dist };
+      return { conf, pivot, thisWeek, byCat, total, prByCat, prTotal, weekly, dist };
     }),
   );
   if (!weekEnd) note(ctx, TREND_NOTE);
@@ -1644,14 +1687,16 @@ async function buildSubconPage(
             : weldTypeTable(w, blk.pivot),
         );
       } else {
+        const prAll = isPrAllNdeTable(w.columns);
+        const src = prAll ? blk.prByCat : blk.byCat;
         out.push(
           metricTable(
             w,
-            orderedCats(blk.byCat.keys()).map((c) => ({
+            orderedCats(src.keys()).map((c) => ({
               label: c,
-              bundle: blk.byCat.get(c)!,
+              bundle: src.get(c)!,
             })),
-            blk.total,
+            prAll ? blk.prTotal : blk.total,
           ),
         );
       }
@@ -1826,16 +1871,18 @@ async function buildNdePage(
     const key = w.columns[0];
     if (key === "Service Class+Weld Cat" || key === "Weld Cat") {
       // Hierarchical detail table: weld cat, then its service classes.
+      const srcByCat = byCat;
+      const srcByClass = byClass;
       const rows: RowSpec[] = [];
-      for (const c of orderedCats(byCat.keys())) {
-        rows.push({ label: c, bundle: attach(byCat.get(c)!, agingByCat.get(c)) });
+      for (const c of orderedCats(srcByCat.keys())) {
+        rows.push({ label: c, bundle: attach(srcByCat.get(c)!, agingByCat.get(c)) });
       }
-      for (const cls of [...byClass.keys()]
+      for (const cls of [...srcByClass.keys()]
         .filter((k): k is string => k !== null)
         .sort()) {
         rows.push({
           label: cls,
-          bundle: attach(byClass.get(cls)!, agingByClass.get(cls), gapByGroup.get(cls) ?? 0),
+          bundle: attach(srcByClass.get(cls)!, agingByClass.get(cls), gapByGroup.get(cls) ?? 0),
         });
       }
       out.push(metricTable(w, rows, totalB));

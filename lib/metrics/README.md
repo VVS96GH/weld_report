@@ -633,6 +633,65 @@ Cross-check kept as a guard: `ROW_NUMBER() OVER (PARTITION BY joint_id ORDER BY
 id)` computed inline gives the identical M33 total, so the stored column is
 trustworthy.
 
+### The sub-contractor NDE table binds `"PR all"`, not `"EP"`
+
+Each sub-contractor page in the pbix carries **two** similarly-named tables:
+
+| pbix visual | family |
+|---|---|
+| `"Cumulative RT Joints Tested and Accepted"` | `"EP"` |
+| `"Cumulative RT/UT Joints Tested and Accepted"` | **`"PR all"`** |
+
+Our mockup reproduces the **second** — its 14 columns map one-for-one onto that
+visual's 14 Values (`Tested Joints` … `% of Rej UT by Length`). We were
+rendering it from the page's own `"EP"` bundle, i.e. from the *other* table's
+measures. Every instance of the PR-all visual in `report-inventory.md` — GAC,
+TEKFEN and MEDGULF alike — binds `"PR all"`; **not one binds `"EP"`**.
+
+The visual also carries `Weld Type IN {BW, CLET, GW, MW}` (= `RT_WELD_TYPES`).
+Both changes are load-bearing — the report owner's matrix-by-Sub-Contractor
+screenshot for TEKFEN:
+
+| binding | Films Taken | Films Acc | Films Rej |
+|---|---|---|---|
+| `"EP"`, as we rendered it | 82,339 | 81,566 | 773 |
+| `"PR all"`, no type filter | 82,312 | 81,505 | 807 |
+| **`"PR all"` + type filter** | **82,287** | **81,480** | **807** ✅ |
+
+Switching family alone still misses by 25 films.
+
+`Films Rej` moves 773 → 807 because the `"EP"` twin
+`[RT Total Films by Joint "R" "EP"]` is WP1-gated and the `"PR all"` one is not
+— the same asymmetry migration 0017 settled.
+
+#### The page total is one filter further in
+
+The owner's screenshot is a project-level matrix and carries no TMCP filter.
+The pbix page-25/30 visual does (`TMCP Pipe IN {null}`), which our pages already
+apply, so pages 5 and 10 render **81,908 / 81,101 / 807** — the same measure,
+one filter deeper. Both are pinned, so neither can drift into the other.
+
+#### Before → after, every affected page
+
+| page | before (`"EP"`) | after (`"PR all"` + type) |
+|---|---|---|
+| 3, 7 CCC | 512,328 / 511,722 / 606 | 512,322 / 511,716 / 606 |
+| 4, 8 GAC non-SG | 132,354 / 131,820 / 534 | 132,328 / 131,732 / 596 |
+| 4, 9 GAC SG | 10,598 / 10,596 / 2 | 10,598 / 10,596 / 2 |
+| 5, 10 TEKFEN | 81,960 / 81,187 / 773 | 81,908 / 81,101 / 807 |
+| 6, 11 MEDGULF | 18,780 / 18,739 / 41 | 18,777 / 18,733 / 44 |
+
+CCC barely moves because its page was already on `"PR all"`; only the weld-type
+filter applies there.
+
+**Not applied, and flagged:** the same visual also carries
+`Weld Cat NOT IN {blank, J}`. It is a no-op for TEKFEN (only `F` and `S` exist),
+so it is not implemented — adding an unverified filter to reach a number nobody
+has quoted would be tuning. Worth checking with the owner for GAC and MEDGULF.
+
+Page 2 is untouched: it is a different visual, and its cards are verified
+against the owner's page-1/2 figures directly.
+
 ### M91 `WPS Approved` (R4-02, R4-03)
 
 `count(DISTINCT wps_no) FILTER (document_status = 'WPS APPROVED BY CTJV/ CPY')`

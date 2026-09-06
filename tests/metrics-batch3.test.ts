@@ -30,7 +30,11 @@ import {
 import { weldingStats } from "@/lib/metrics/welding";
 import { utCoverage, utStatsPrAll } from "@/lib/metrics/ut";
 import { rtStatsPrAll } from "@/lib/metrics/rt";
-import { measureScope } from "@/lib/metrics/scope";
+import {
+  measureScope,
+  RT_WELD_TYPES,
+  SOURCES_PR_ALL_LOADED,
+} from "@/lib/metrics/scope";
 import { getWeldingPage } from "@/lib/pages/welding";
 import { approvedWpsCount } from "@/lib/metrics/refs";
 
@@ -517,6 +521,55 @@ describe.skipIf(Boolean(skipReason))("pbix cross-check (user readings)", () => {
     expect(kpi("UT Insp Len")?.value).toBe("27,856.98");
     expect(kpi("UT Def.Length")?.value).toBe("18.737");
     expect(kpi("UT Rej% Len")?.value).toBe("0.07%");
+  });
+
+  it('TEKFEN films, "PR all" + Weld Type filter = 82,287 / 81,480 / 807', async () => {
+    // The report owner's matrix-by-Sub-Contractor screenshot. It settles two
+    // things at once about the "Cumulative RT/UT Joints Tested and Accepted"
+    // visual, which report-inventory.md shows binding the "PR all" family on
+    // every sub-contractor page (and "EP" on none):
+    //
+    //   "EP", as we rendered it   82,339 / 81,566 / 773
+    //   "PR all", no type filter  82,312 / 81,505 / 807
+    //   "PR all" + type filter    82,287 / 81,480 / 807   <- the screenshot
+    //
+    // Switching family alone still misses by 25 films, so both the family and
+    // `Weld Type IN {BW, CLET, GW, MW}` are load-bearing. Acc is Taken - Rej.
+    const s = await rtStatsPrAll({
+      sources: SOURCES_PR_ALL_LOADED,
+      subContractor: "TEKFEN",
+      weldTypes: RT_WELD_TYPES,
+      temporaryLines: false,
+    });
+    expect(Math.round(s.films)).toBe(82_287);
+    expect(Math.round(s.films_accepted)).toBe(81_480);
+    expect(Math.round(s.films_rejected)).toBe(807);
+    expect(Math.round(s.films - s.films_rejected)).toBe(81_480);
+  });
+
+  it("pages 5 and 10 bind that table to PR all, minus TMCP pipe", async () => {
+    // The owner's matrix carries no TMCP filter; the pbix page-25/30 visual
+    // does (`TMCP Pipe IN {null}`), so our page total is the same measure one
+    // filter further in. Both are right for their own visual -- pinned
+    // together so neither can drift into the other.
+    for (const n of [5, 10]) {
+      const page = await getWeldingPage(n);
+      const table = page.widgets.find(
+        (w) =>
+          w.kind === "table" &&
+          w.columns.includes("Tested Joints") &&
+          w.columns.includes("Films Taken"),
+      );
+      expect(table, `page ${n} NDE table`).toBeDefined();
+      if (!table || table.kind !== "table") continue;
+      const total = table.rows[table.rows.length - 1]!;
+      const col = (name: string) => total[table.columns.indexOf(name)];
+      // Films Rej moves 773 -> 807: the "EP" twin is WP1-gated, the "PR all"
+      // one is not (migration 0017), and that is the whole difference.
+      expect(col("Films Rej")).toBe("807");
+      expect(col("Films Taken")).toBe("81,908");
+      expect(col("Films Acc")).toBe("81,101");
+    }
   });
 
   it("UT coverage names GAC and TEKFEN as covered, MEDGULF and ACCIONA as not", async () => {
