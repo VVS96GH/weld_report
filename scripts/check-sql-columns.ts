@@ -118,8 +118,8 @@ function main(): void {
 
   check("stg_weld_dump has 223 data columns + load_id + line_no", stg.size === 225, `got ${stg.size}`);
   check(
-    "weld effective column count = 247 (219 after 0008; +23 in 0010, +4 in 0012, +1 in 0014)",
-    weld.size === 247,
+    "weld effective column count = 248 (219 after 0008; +23 in 0010, +4 in 0012, +1 in 0014, +1 in 0020)",
+    weld.size === 248,
     `got ${weld.size}`,
   );
 
@@ -443,6 +443,20 @@ function main(): void {
       readFileSync(path.join(REPO_ROOT, "scripts/load-weld-dump.ts"), "utf8"))
       && /row_number\(\) OVER \(PARTITION BY joint_id ORDER BY id\)/.test(
         readFileSync(path.join(REPO_ROOT, "scripts/load-weld-dump.ts"), "utf8")));
+  // M34's Inco branch: [Defect Length(MM).] = [Repair Length (mm)]/1000 for Inco.
+  // 0019 leaves that branch NULL and counts the gap; this column is what unblocks
+  // it, so the column must exist AND the Inco loader must actually write it.
+  check("weld.repair_length_mm exists (the Inco branch of [Defect Length(MM).])",
+    weld.has("repair_length_mm"), weldTypes.get("repair_length_mm") ?? "ABSENT");
+  check("weld.repair_length_mm is numeric(12,3)",
+    weldTypes.get("repair_length_mm") === "numeric(12,3)",
+    weldTypes.get("repair_length_mm") ?? "ABSENT");
+  check("load-inco.ts writes repair_length_mm",
+    (INCO_WELD_COLUMNS as readonly string[]).includes("repair_length_mm"));
+  check("only the Inco loader writes repair_length_mm — no other source carries one",
+    ![ACCIONA_WELD_COLUMNS, CCC_WELDER_WELD_COLUMNS, CCC_JOINT_WELD_COLUMNS]
+      .some((c) => (c as readonly string[]).includes("repair_length_mm")));
+
   check("load-inco.ts writes manual_ut_report_no_all (the DAX's Inco branch)",
     (INCO_WELD_COLUMNS as readonly string[]).includes("manual_ut_report_no_all"));
   check("CCC_WELDER_WELD_COLUMNS also writes weldpoint_seq",

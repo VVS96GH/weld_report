@@ -59,6 +59,7 @@ rules are right; the pbix stores 958,634 for its own (19 days older) snapshot.
 | `0013_mv_joint.sql` | **metrics lane** — `mv_joint` / `mv_joint_wps`, the joint-grain rollups |
 | `0014_batch3_schema.sql` | `weld.sub_contractor_tier`; `weld_length`/`rej_length` widened for Inco's millimetres; `weld_length_by_dia` precision; `ref_code_label`; the three welder tables |
 | `0015_flange.sql` | the `flange` register (83 cols) + `ref_ha` (empty by design) — the flange dashboard's fact table, separate from `weld` |
+| `0020_inco_repair_length.sql` | `weld.repair_length_mm` — the Inco branch of `[Defect Length(MM).]` (0016-0019 are the metrics lane's) |
 | `0013_mv_joint.sql` | **metrics lane** — `mv_joint` (2,370,428 rows) and `mv_joint_wps` (2,194,756), the joint-grain rollups the project pages read |
 
 `0002` and `0003` are produced by `scripts/gen-schema-columns.ts` from
@@ -795,6 +796,29 @@ display labels only, never a join key, never a filter, and never a source of tru
 which codes exist — the fact tables are. 73 rows: `rework_code` 32, `defect_code` 18,
 `nde_status` 9, `weld_type` 14.
 
+
+### `repair_length_mm` — the last input M34's Inco branch needed
+
+`[UT Defect Length by Joint "PR all"]` (M34) sums `[Defect Length(MM).]`, whose first branch
+is `Inco && [Manual UT Report No.] <> "" -> [Repair Length (mm)] / 1000`. That branch was
+blocked from batch 3 to migration 0019: `Repair Length (mm)` is column 27 of the Inco sheet
+and had no `weld` column, so `0019_ut_weld_length_no_inco.sql` leaves it **NULL — never 0**,
+and counts the affected rows in `mv_joint.ut_defect_inco_gap_rows` so the page can say the
+measure is incomplete. Migration `0020` adds the column and `load-inco.ts` fills it.
+
+* **MILLIMETRES**, as the source column's name says and as `weld.weld_length` already is for
+  Inco. The DAX divides by 1000 at READ time, so the loader stores the source's value
+  unchanged.
+* **NULL for every other source** — none carries a repair length. That is absence. `0` is a
+  different thing and means a recorded zero, which is what 10,219 of the 10,327 Inco rows say.
+* **Not** `defect_length_mm` (0012), which is the materialised DAX result across all four
+  branches. This is a raw source column feeding it.
+
+Measured live: **108 rows** carry a value greater than zero, totalling **3,562.002 mm** over
+**40 distinct** non-zero values. Of those, **57 rows (2,497.002 mm)** are also gap-eligible —
+they have a UT report and `UT Acc/Rej = 'R'` — against `ut_defect_inco_gap_rows` = 74, so the
+metrics lane can now unblock that branch and see 57 of the 74 gap rows resolve. The remaining
+17 genuinely have no repair length recorded.
 
 ### `weldpoint_seq` — the WP1 flag, on every source
 

@@ -47,13 +47,14 @@ interface Stats {
   rtAccRej: Map<string, number>;
   paut: number;
   manualUtAll: number;
+  repairLengthRows: number;
   filmMismatch: number;
 }
 
 function newStats(): Stats {
   return {
     rows: 0, headerWidth: 0, distinctJointIds: 0, maxSeq: 0,
-    weldTypes: new Map(), rtAccRej: new Map(), paut: 0, manualUtAll: 0, filmMismatch: 0,
+    weldTypes: new Map(), rtAccRej: new Map(), paut: 0, manualUtAll: 0, repairLengthRows: 0, filmMismatch: 0,
   };
 }
 
@@ -147,6 +148,9 @@ async function* rows(
 
     // `PT/MT Report` and `PT/MT Date` each feed TWO targets: the M duplicates the
     // column, so MT and PT carry identical values for every Inco row.
+    const repairLen = num(g("Repair Length (mm)"));
+    if (repairLen !== null && Number(repairLen) > 0) stats.repairLengthRows += 1;
+
     const ptMtReport = txt(g("PT/MT Report"));
     const ptMtDate = txt(g("PT/MT Date"));
 
@@ -167,6 +171,11 @@ async function* rows(
       rtReport === "" ? null : rtReport, rtDate,
       rtAcc === "" ? null : rtAcc,
       num(g("RT LENGTH (MM)")),             // the INSPECTED length, filed under rej_length by the M
+      // `Repair Length (mm)`, in MILLIMETRES. The Inco branch of
+      // [Defect Length(MM).] divides it by 1000 at READ time, so it is stored
+      // as the source has it. 0 on 10,219 of the 10,327 rows — a recorded zero,
+      // not an absence, which is why it is 0 and not NULL here.
+      num(g("Repair Length (mm)")),
       filmsAcc, filmsRej, txt(g("Type of Repair")),
       ptMtReport, ptMtDate, ptMtReport === null ? null : "NR",
       ptMtReport, ptMtDate,
@@ -199,6 +208,7 @@ function report(stats: Stats, t0: number): boolean {
   console.log(`  rt_acc_rej            ${[...stats.rtAccRej].sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k}=${fmt(v)}`).join(", ")}`);
   console.log(`  PAUT rows             ${String(stats.paut).padStart(11)}  -> by_ut / ut_* fabricated from Remarks`);
   console.log(`  manual_ut_report_no_all ${String(stats.manualUtAll).padStart(9)}  (the DAX's Inco branch)`);
+  console.log(`  repair_length_mm > 0  ${String(stats.repairLengthRows).padStart(11)}  (the Inco branch of [Defect Length(MM).])`);
   console.log(`  films acc+rej <> source ${String(stats.filmMismatch).padStart(9)}  (rt_film_total is GENERATED acc+rej)`);
   console.log(`  runtime               ${secs(t0)}`);
   const ok = stats.rows === EXPECTED.rows && stats.headerWidth === WIDTH

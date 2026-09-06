@@ -135,7 +135,7 @@ export const INCO_WELD_COLUMNS = [
   "material_type", "thickness", "weld_length", "wps_no", "welder", "welder_id",
   "sub_contractor", "original_joint", "weldpoint_no", "weldpoint_seq",
   "fitup_date", "weld_date",
-  "rt_report", "rt_date", "rt_acc_rej", "rej_length",
+  "rt_report", "rt_date", "rt_acc_rej", "rej_length", "repair_length_mm",
   "total_no_of_films_acc", "total_no_of_films_rej", "defect_code",
   "mt_report", "mt_date", "mt_weld_status", "pt_report", "pt_date",
   "pwht_report", "pwht_date", "ht_report", "ht_date", "ht_remarks",
