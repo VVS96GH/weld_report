@@ -18,7 +18,10 @@ npm run db:up && npm run db:migrate      # Postgres 17 in Docker + all migration
 npm run db:load                          # sources/Weld Dump.txt -> weld (~2.5 min, 958,615 rows)
 npm run db:seed:snapshot                 # weekly trend workbooks -> weld_weekly_snapshot
 npm run db:load:spool                    # Spool Dump.txt + Spool.csv -> spool
-npm run db:load:ccc-joints && npm run db:load:ccc   # CCC joint + welder records (~15 min)
+npm run db:load:ccc-joints && npm run db:load:ccc   # CCC joint + welder records (~7 min)
+npm run db:load:ut-ccc && npm run db:load:exclusions # CCC UT tracker (+ overlay), exclusion list
+npm run db:load:acciona && npm run db:load:inco      # Acciona / Inco workbooks
+npm run db:load:weld-length && npm run db:load:welders   # dia->length lookup, welder registers
 npm run dev                              # http://localhost:3000/welding/1
 ```
 
@@ -34,7 +37,7 @@ them; the list of files each page needs is in `analysis/calculation-logic.md` §
 | Path | Contents |
 |---|---|
 | `analysis/` | The recon that drives everything: `pbix/` (448 DAX measures, 62 Power Query scripts, 145 report pages → visuals, extracted from the `.pbix`), `dump/` and `sources2/` (column profiles of every source file), `mockups/` (machine‑readable spec of the HTML mockups), **`calculation-logic.md`** (172 mockup metrics → DAX → SQL, the 44‑page build sheet, rulings R‑01…R‑12 and the batch‑2 corrections §7) |
-| `db/` | Migrations (`0001`–`0012`) and `db/README.md` — the column‑name contract, null/date rules, the DAX‑derived columns, indexes, loaders |
+| `db/` | Migrations (`0001`–`0014`) and `db/README.md` — the column‑name contract, null/date rules, the DAX‑derived columns, indexes, loaders |
 | `scripts/` | Streaming loaders (`load-weld-dump.ts`, `load-ccc-*.ts`, `load-spool-dump.ts`), workbook seeders, `migrate.ts`, the offline schema checker `check-sql-columns.ts`, `token-lint.mjs` |
 | `lib/metrics/` | Parameterised SQL, one function per DAX measure family (`M##` ids cited in every doc comment); `lib/pages/welding.ts` assembles the 44 `PageModel`s |
 | `app/` | App Router: `/welding/[page]`, `/api/welding/[page]`, `/api/health`; `app/styles/tokens.css` (T.EN tokens) and `app/globals.css` |

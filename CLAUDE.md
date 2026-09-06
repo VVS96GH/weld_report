@@ -40,9 +40,10 @@ project (subcontractors CCC / GAC / Tekfen / Medgulf). The repo holds:
 - `db/`, `scripts/`, `lib/`, `app/`, `components/`, `tests/` — the working app (see
   "Backend architecture" below).
 
-Current scope (user ruling 2026-09-05): GAC / TEKFEN / MEDGULF from `Weld Dump.txt`. CCC,
-Acciona/Inco, the flange dashboard and the weekly trend workbooks need source files that are
-not in `sources/` yet; the schema carries a `source` discriminator so they plug in later.
+Current scope: all six weld sources are loaded (Weld Dump for GAC/TEKFEN/MEDGULF, CCC welder +
+joint records, Acciona, Inco — INCO excluded from project scope at the query layer). Still
+missing: UT TRACKER (GAC)/(TEK), WPQ RECORD REGISTER (honest-empty KPIs) and the flange repair
+logs; the flange dashboard is a separate, unbuilt package (`analysis/flange/`).
 
 ## The mockups (design contract)
 
@@ -138,7 +139,8 @@ Postgres 17 in Docker (`docker-compose.yml`, volume `weld_pgdata`). `npm run db:
 db:migrate` then the loaders in order: `db:load` (Weld Dump → `weld`, 958,615 rows),
 `db:seed:snapshot` / `db:load:ut-ccc` / `db:load:exclusions` (workbooks), `db:load:spool`
 (two spool masters), `db:load:ccc-joints` then `db:load:ccc` (CCC Talisman exports, 5.43 M
-rows, ~7 min). `weld` holds every source at weld-pass grain with a `source` enum; metrics
+rows, ~7 min), `db:load:ut-ccc` (tracker + the CCC UT overlay), `db:load:acciona`,
+`db:load:inco`, `db:load:weld-length`, `db:load:welders`. `weld` holds every source at weld-pass grain with a `source` enum; metrics
 read the joint-grain materialised views `mv_joint` / `mv_joint_wps` (migration 0013),
 refreshed by the loaders — never `count(*)` over `weld` for a joint metric.
 Column names are `analysis/dump/profile.md` §8.1 verbatim — the contract between the DB and
