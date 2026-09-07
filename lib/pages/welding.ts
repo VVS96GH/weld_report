@@ -1157,6 +1157,8 @@ export type WeldingPageOpts = {
  * that silently ignores the filter the reader just set.
  */
 const FILTER_SPECS = [
+  { id: "ha", label: "HA" },
+  { id: "area", label: "Area Classification" },
   { id: "subco", label: "Sub-Contractor" },
   { id: "wtype", label: "Weld Type" },
   { id: "wcat", label: "Weld Cat" },
@@ -1214,11 +1216,15 @@ export async function getWeldingPage(
   // Only values that actually exist are applied — an unknown one is reported
   // as "All" in the widget AND dropped from the query, so the page can never
   // show a filter it did not honour.
+  const applied = (i: number) =>
+    bar && bar.widgets[i]!.value !== FILTER_ALL ? bar.widgets[i]!.value : undefined;
   const filters: WeldingFilters = bar
     ? {
-        subco: bar.widgets[0]!.value === FILTER_ALL ? undefined : bar.widgets[0]!.value,
-        wtype: bar.widgets[1]!.value === FILTER_ALL ? undefined : bar.widgets[1]!.value,
-        wcat: bar.widgets[2]!.value === FILTER_ALL ? undefined : bar.widgets[2]!.value,
+        ha: applied(0),
+        area: applied(1),
+        subco: applied(2),
+        wtype: applied(3),
+        wcat: applied(4),
       }
     : {};
   const ctx: Ctx = { asOf: as_of, asOfOrigin: origin, notes: new Set(), filters };
@@ -1257,9 +1263,11 @@ export async function getWeldingPage(
     ...(bar
       ? {
           filters: {
-            subco: bar.widgets[0]!.value,
-            wtype: bar.widgets[1]!.value,
-            wcat: bar.widgets[2]!.value,
+            ha: bar.widgets[0]!.value,
+            area: bar.widgets[1]!.value,
+            subco: bar.widgets[2]!.value,
+            wtype: bar.widgets[3]!.value,
+            wcat: bar.widgets[4]!.value,
           },
         }
       : {}),

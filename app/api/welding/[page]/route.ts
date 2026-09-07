@@ -1,6 +1,6 @@
 /**
- * `GET /api/welding/{1..44}?as_of=YYYY-MM-DD&subco=GAC&wtype=BW&wcat=F` — one
- * `PageModel` as JSON. `subco` / `wtype` / `wcat` are the page-1 slicers (raw column
+ * `GET /api/welding/{1..44}?as_of=YYYY-MM-DD&ha=HA1&area=…&subco=GAC&wtype=BW&wcat=F` —
+ * one `PageModel` as JSON. `ha` / `area` / `subco` / `wtype` / `wcat` are the page-1 slicers (raw column
  * values; omitted = All); other pages ignore them.
  *
  * `params` is a Promise in Next 16 (see
@@ -13,7 +13,7 @@
 import type { NextRequest } from "next/server";
 import { getWeldingPage, TOTAL_PAGES, type WeldingFilters } from "@/lib/pages/welding";
 
-const FILTER_PARAMS = ["subco", "wtype", "wcat"] as const;
+const FILTER_PARAMS = ["ha", "area", "subco", "wtype", "wcat"] as const;
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 

@@ -1033,23 +1033,25 @@ describe.skipIf(Boolean(skipReason))("pbix cross-check (user readings)", () => {
     // on it. Compared after stripping the filter bar itself.
     const bare = await getWeldingPage(1);
     const withAll = await getWeldingPage(1, {
-      filters: { subco: "All", wtype: "All", wcat: "All" },
+      filters: { ha: "All", area: "All", subco: "All", wtype: "All", wcat: "All" },
     });
     const strip = (p: Awaited<ReturnType<typeof getWeldingPage>>) =>
       JSON.stringify({ ...p, widgets: p.widgets.filter((w) => w.kind !== "filter") });
     expect(strip(withAll)).toBe(strip(bare));
-    expect(bare.filters).toEqual({ subco: "All", wtype: "All", wcat: "All" });
+    expect(bare.filters).toEqual({
+      ha: "All", area: "All", subco: "All", wtype: "All", wcat: "All",
+    });
 
     // The bar itself: three widgets, FIRST, with these exact ids and labels.
-    const first3 = bare.widgets.slice(0, 3);
-    expect(first3.map((w) => w.kind)).toEqual(["filter", "filter", "filter"]);
-    expect(first3.map((w) => (w.kind === "filter" ? w.id : ""))).toEqual([
-      "subco", "wtype", "wcat",
+    const bar = bare.widgets.slice(0, 5);
+    expect(bar.map((w) => w.kind)).toEqual(Array(5).fill("filter"));
+    expect(bar.map((w) => (w.kind === "filter" ? w.id : ""))).toEqual([
+      "ha", "area", "subco", "wtype", "wcat",
     ]);
-    expect(first3.map((w) => (w.kind === "filter" ? w.label : ""))).toEqual([
-      "Sub-Contractor", "Weld Type", "Weld Cat",
+    expect(bar.map((w) => (w.kind === "filter" ? w.label : ""))).toEqual([
+      "HA", "Area Classification", "Sub-Contractor", "Weld Type", "Weld Cat",
     ]);
-    for (const w of first3) {
+    for (const w of bar) {
       if (w.kind !== "filter") continue;
       expect(w.options[0], "All comes first").toBe("All");
       expect(w.options.slice(1).every((o) => o.trim() !== ""), "no blanks").toBe(true);
@@ -1067,7 +1069,7 @@ describe.skipIf(Boolean(skipReason))("pbix cross-check (user readings)", () => {
     };
     const total = jw(bare);
     const bar = bare.widgets.filter((w) => w.kind === "filter");
-    for (const [i, key] of [[0, "subco"], [2, "wcat"]] as const) {
+    for (const [i, key] of [[2, "subco"], [4, "wcat"]] as const) {
       const widget = bar[i]!;
       if (widget.kind !== "filter") continue;
       let sum = 0;
@@ -1171,6 +1173,57 @@ describe.skipIf(Boolean(skipReason))("pbix cross-check (user readings)", () => {
       (w) => w.kind === "chart" && w.canvas_id === "chart7_welding",
     );
     if (sub?.kind === "chart") expect(sub.labels).toHaveLength(8);
+  });
+
+  it("HA is derived per the pbix column and partitions with a blank remainder", async () => {
+    // `weld.ha` is NULL on all 6.5 M rows, so mv_joint.ha is DERIVED (migration
+    // 0026): second character of Subsystem Code, else of System No, when the
+    // code is valid (not blank, not 'System-NA - Not Applicable', no 'NON') and
+    // the character is 1-4. Branch 3 of the DAX -- LOOKUPVALUE into
+    // `HA l0_abs_guide` by PDS Area -- is NOT implemented: that workbook is not
+    // in sources/, so those joints stay NULL rather than get a guessed area.
+    //
+    // Subsystem Code / System No exist ONLY on WELD_DUMP rows, so every CCC,
+    // ACCIONA and INCO joint is blank. That is the data, not a gap in the rule,
+    // and it is why HA cannot be expected to partition on its own.
+    const bare = await getWeldingPage(1);
+    const jw = (p: Awaited<ReturnType<typeof getWeldingPage>>) => {
+      const w = p.widgets.find((x) => x.kind === "kpi" && x.label === "Joints Welded");
+      return w && w.kind === "kpi" ? Number(w.value.replace(/,/g, "")) : NaN;
+    };
+    const total = jw(bare);
+    let sum = 0;
+    for (const v of ["HA1", "HA2", "HA3", "HA4"]) {
+      sum += jw(await getWeldingPage(1, { filters: { ha: v } }));
+    }
+    const [r] = await query<{ blank: string }>(
+      "SELECT count(*)::text AS blank FROM mv_joint" +
+        " WHERE ha IS NULL AND is_welded_norepair" +
+        "   AND source::text IN ('WELD_DUMP','CCC_WELDER_RECORD'," +
+        "'CCC_JOINT_RECORD','ACCIONA','INCO')",
+    );
+    expect(sum + Number(r.blank), "HA values + blank remainder").toBe(total);
+    expect(sum).toBeGreaterThan(0);
+  });
+
+  it("the Area slicer uses the label column, not the sparse integer one", async () => {
+    // area_classification is NULL on 5,587,627 of 6,546,242 rows and offers six
+    // numeric codes; area_classification_label is populated everywhere and
+    // falls back to the raw code, so it is a strict superset. Scope already
+    // mandates the label column for exactly this reason.
+    const page = await getWeldingPage(1);
+    const area = page.widgets.find((w) => w.kind === "filter" && w.id === "area");
+    expect(area?.kind).toBe("filter");
+    if (area?.kind !== "filter") return;
+    expect(area.options).toContain("Train-8 Process");
+    expect(area.options.length).toBeGreaterThan(6);
+    const filtered = await getWeldingPage(1, {
+      filters: { area: "Train-8 Process" },
+    });
+    const w = filtered.widgets.find(
+      (x) => x.kind === "kpi" && x.label === "Joints Welded",
+    );
+    expect(w && w.kind === "kpi" ? w.value : null).toBe("363,630");
   });
 
   it("UT coverage names GAC and TEKFEN as covered, MEDGULF and ACCIONA as not", async () => {

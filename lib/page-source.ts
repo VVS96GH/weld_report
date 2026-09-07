@@ -5,12 +5,12 @@ import { getFlangeFixturePage, type FlangeFilters } from "@/lib/fixture/flange-s
 export type { FlangeFilters };
 
 /**
- * Page-1 slicers (owner request 2026-09-07): Sub-Contractor / Weld Type / Weld Cat as
- * URL search params `subco` / `wtype` / `wcat`. Raw column values; absent = "All".
+ * Page-1 slicers (owner request 2026-09-07): HA / Area Classification / Sub-Contractor /
+ * Weld Type / Weld Cat as URL search params `ha` / `area` / `subco` / `wtype` / `wcat`. Raw column values; absent = "All".
  * The database source applies them as an extra WHERE on every page-1 measure
  * (lib/pages/welding.ts); the fixture source has no filterable data and ignores them.
  */
-export type WeldingFilters = { subco?: string; wtype?: string; wcat?: string };
+export type WeldingFilters = { ha?: string; area?: string; subco?: string; wtype?: string; wcat?: string };
 export type WeldingPageOpts = { as_of?: string; filters?: WeldingFilters };
 
 /**

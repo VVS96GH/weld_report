@@ -263,6 +263,13 @@ export type Scope = {
    * NULL for every CCC row.
    */
   areaClassificationLabel?: string;
+  /**
+   * `HA` (handover area) as `HA1`..`HA4`. Derived in `mv_joint` from
+   * `Subsystem Code` / `System No` per the pbix calculated column (migration
+   * 0026) — it exists on WELD_DUMP rows only, so CCC, ACCIONA and INCO joints
+   * are NULL and a HA filter excludes them by construction.
+   */
+  ha?: string;
 };
 
 /**
@@ -338,6 +345,9 @@ export function scopeConditions(
   if (scope.pwhtStatusPresent) {
     // `has_pwht_status` is the joint-grain form of `pwht_weld_status IS NOT NULL`.
     c.push(`${a}.has_pwht_status`);
+  }
+  if (scope.ha !== undefined) {
+    c.push(`${a}.ha = ${p.add(scope.ha)}`);
   }
   if (scope.areaClassificationLabel !== undefined) {
     c.push(`${a}.area_classification_label = ${p.add(scope.areaClassificationLabel)}`);
@@ -523,6 +533,8 @@ export function fabricatedCond(a = "w"): string {
  * filter", so a UI can round-trip its own sentinel without translating.
  */
 export type WeldingFilters = {
+  ha?: string;
+  area?: string;
   subco?: string;
   wtype?: string;
   wcat?: string;
@@ -536,12 +548,18 @@ export function normaliseFilters(f: WeldingFilters | undefined): WeldingFilters 
     const t = v?.trim();
     return !t || t === FILTER_ALL ? undefined : t;
   };
-  return { subco: clean(f?.subco), wtype: clean(f?.wtype), wcat: clean(f?.wcat) };
+  return {
+    ha: clean(f?.ha),
+    area: clean(f?.area),
+    subco: clean(f?.subco),
+    wtype: clean(f?.wtype),
+    wcat: clean(f?.wcat),
+  };
 }
 
 /** `true` when nothing is filtered — the page must then be byte-identical. */
 export function noFilters(f: WeldingFilters): boolean {
-  return !f.subco && !f.wtype && !f.wcat;
+  return !f.ha && !f.area && !f.subco && !f.wtype && !f.wcat;
 }
 
 /**
@@ -555,6 +573,8 @@ export function noFilters(f: WeldingFilters): boolean {
  */
 export function withFilters(scope: Scope, f: WeldingFilters): Scope {
   const out: Scope = { ...scope };
+  if (f.ha) out.ha = f.ha;
+  if (f.area) out.areaClassificationLabel = f.area;
   if (f.subco) out.subContractor = f.subco;
   if (f.wtype) out.weldTypes = [f.wtype];
   if (f.wcat) out.weldCats = [f.wcat];
@@ -575,8 +595,21 @@ export function resetFilterOptionsCache(): void {
 
 export async function filterOptions(): Promise<Record<string, string[]>> {
   filterOptionsCache ??= (async () => {
-    const cols = { subco: "sub_contractor", wtype: "weld_type", wcat: "weld_cat" };
-    const out: Record<string, string[]> = { subco: [], wtype: [], wcat: [] };
+    // `area_classification_label`, not `area_classification`: the raw column is
+    // NULL on 85 % of rows (5,587,627 of 6,546,242) and offers six numeric
+    // codes, so a slicer on it would filter almost nothing. The label column is
+    // populated everywhere and falls back to the raw code where no label
+    // exists, so it is a strict superset and reads as the pbix's own values.
+    const cols = {
+      ha: "ha",
+      area: "area_classification_label",
+      subco: "sub_contractor",
+      wtype: "weld_type",
+      wcat: "weld_cat",
+    };
+    const out: Record<string, string[]> = {
+      ha: [], area: [], subco: [], wtype: [], wcat: [],
+    };
     for (const [key, col] of Object.entries(cols)) {
       try {
         const p = new Params();

@@ -958,13 +958,13 @@ a reader comparing the two pages is told why they differ instead of guessing.
 ### Page 1's filter bar (Sub-Contractor / Weld Type / Weld Cat)
 
 `getWeldingPage(n, { as_of?, filters? })` with
-`WeldingFilters = { subco?, wtype?, wcat? }`, re-exported from
-`lib/pages/welding.ts`. Values are raw column values; `undefined` and `"All"`
+`WeldingFilters = { ha?, area?, subco?, wtype?, wcat? }`, re-exported from
+`lib/pages/welding.ts`. The bar renders in that order, HA first. Values are raw column values; `undefined` and `"All"`
 both mean no filter, so a UI can round-trip its own sentinel.
 
-Page 1 returns `filters: { subco, wtype, wcat }` (applied values, `"All"` when
-none) and three `FilterWidget`s **first** in `widgets`, ids `subco` / `wtype` /
-`wcat`. Options are `"All"` plus distinct values from `mv_joint` ordered by
+Page 1 returns `filters: { ha, area, subco, wtype, wcat }` (applied values,
+`"All"` when none) and five `FilterWidget`s **first** in `widgets`, ids `ha` /
+`area` / `subco` / `wtype` / `wcat`. Options are `"All"` plus distinct values from `mv_joint` ordered by
 joint count descending, blanks excluded, **memoised per process**
 (`resetFilterOptionsCache()` exists for tests).
 
@@ -1005,6 +1005,45 @@ so the Welding Progress Trend follows all three filters exactly.
 An unknown filter value is treated as `"All"` — dropped from the query *and*
 reported as `"All"` in the widget, so the page can never display a filter it did
 not honour — and a note says one was ignored.
+
+#### `HA` is derived, and `Area` uses the label column
+
+**`HA`** is not imported — `weld.ha` is NULL on all 6,546,242 rows, so
+`max(w.ha)` gave a column that was NULL for every one of the 2,390,978 joints.
+The pbix derives it, and migration 0026 derives it the same way:
+
+1. second character of `Subsystem Code`, when that code is valid and the
+   character is `1`–`4` → `HA<d>`;
+2. else the same test on `System No` → `HA<d>`;
+3. else `LOOKUPVALUE('HA l0_abs_guide'[Handover Area])` by `PDS Area`.
+
+"Valid" means not blank, not `System-NA - Not Applicable`, and not containing
+`NON` — all three verbatim. **Branch 3 is not implemented**: that workbook is
+not in `sources/` (the same gap M52's coverage note records), so those joints
+stay NULL rather than receive a guessed area.
+
+`Subsystem Code` / `System No` exist on **WELD_DUMP rows only**, so every CCC,
+ACCIONA and INCO joint is blank. Distribution:
+
+| party | HA1 | HA2 | HA3 | HA4 | blank | total |
+|---|---|---|---|---|---|---|
+| GAC | 249,251 | 31,778 | 134,828 | 27,422 | 89 | 443,368 |
+| TEKFEN | 306,126 | 85 | 67,177 | 81 | 317 | 373,786 |
+| MEDGULF | 41,230 | 304 | 16,309 | 1,726 | 23,612 | 83,181 |
+| CCC | — | — | — | — | 1,470,093 | 1,470,093 |
+| ACCIONA | — | — | — | — | 13,312 | 13,312 |
+| INCO | — | — | — | — | 7,238 | 7,238 |
+| **all** | 596,607 | 32,167 | 218,314 | 29,229 | 1,514,661 | 2,390,978 |
+
+HA therefore **cannot partition on its own**; the test asserts
+`Σ HA1..HA4 + blank remainder == unfiltered` instead of a bare sum.
+
+**`Area Classification`** slices `area_classification_label`, not the integer
+`area_classification`. The raw column is NULL on 5,587,627 of 6,546,242 rows and
+offers six numeric codes, so a slicer on it would filter almost nothing; the
+label column is populated everywhere and falls back to the raw code where no
+label exists, making it a strict superset. `Scope` already mandated the label
+column for the same reason (it is NULL for every CCC row).
 
 #### Page 1's trend window is 10 weeks
 

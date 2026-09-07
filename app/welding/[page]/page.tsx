@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 
 // Page-1 slicers travel as URL search params (same mechanism as the flange
 // dashboard, ruling RF-08): the server re-renders the PageModel with them applied.
-const FILTER_PARAMS = ["subco", "wtype", "wcat"] as const;
+const FILTER_PARAMS = ["ha", "area", "subco", "wtype", "wcat"] as const;
 
 function readFilters(params: Record<string, string | string[] | undefined>): WeldingFilters {
   const filters: WeldingFilters = {};
