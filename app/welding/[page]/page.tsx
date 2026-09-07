@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import { getPage } from "@/lib/page-source";
+import type { FilterWidget } from "@/lib/page-model";
+import { getPage, type WeldingFilters } from "@/lib/page-source";
+import { FilterBar } from "@/components/FilterBar";
 import { WELDING_PAGE_TITLES, WELDING_REPORT_SUBTITLE, WELDING_TOTAL_PAGES } from "@/lib/welding-pages";
 import { PageView } from "@/components/PageView";
 
@@ -9,6 +11,20 @@ import { PageView } from "@/components/PageView";
 // and there's no fixed set of params to prerender for it — so this route is dynamic
 // rather than statically generated. No `generateStaticParams` on purpose.
 export const dynamic = "force-dynamic";
+
+// Page-1 slicers travel as URL search params (same mechanism as the flange
+// dashboard, ruling RF-08): the server re-renders the PageModel with them applied.
+const FILTER_PARAMS = ["subco", "wtype", "wcat"] as const;
+
+function readFilters(params: Record<string, string | string[] | undefined>): WeldingFilters {
+  const filters: WeldingFilters = {};
+  for (const key of FILTER_PARAMS) {
+    const raw = params[key];
+    const value = Array.isArray(raw) ? raw[0] : raw;
+    if (value && value.trim() !== "") filters[key] = value.trim();
+  }
+  return filters;
+}
 
 function parsePageNumber(raw: string): number | null {
   const n = Number(raw);
@@ -32,11 +48,18 @@ export default async function WeldingReportPage(props: PageProps<"/welding/[page
     notFound();
   }
 
-  const model = await getPage(n);
+  const filters = readFilters(await props.searchParams);
+  const model = await getPage(n, undefined, { filters });
+  const filterWidgets = model.widgets.filter((w): w is FilterWidget => w.kind === "filter");
   const subtitle =
     model.meta?.source === "database"
       ? `Data as of ${model.meta.as_of ?? "unknown"}`
       : WELDING_REPORT_SUBTITLE;
 
-  return <PageView model={model} subtitle={subtitle} />;
+  return (
+    <>
+      <FilterBar widgets={filterWidgets} />
+      <PageView model={model} subtitle={subtitle} />
+    </>
+  );
 }

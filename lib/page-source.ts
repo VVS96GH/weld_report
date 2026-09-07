@@ -5,6 +5,15 @@ import { getFlangeFixturePage, type FlangeFilters } from "@/lib/fixture/flange-s
 export type { FlangeFilters };
 
 /**
+ * Page-1 slicers (owner request 2026-09-07): Sub-Contractor / Weld Type / Weld Cat as
+ * URL search params `subco` / `wtype` / `wcat`. Raw column values; absent = "All".
+ * The database source applies them as an extra WHERE on every page-1 measure
+ * (lib/pages/welding.ts); the fixture source has no filterable data and ignores them.
+ */
+export type WeldingFilters = { subco?: string; wtype?: string; wcat?: string };
+export type WeldingPageOpts = { as_of?: string; filters?: WeldingFilters };
+
+/**
  * Where a rendered PageModel's data comes from.
  * - "fixture": analysis/mockups/welding-spec.json, mapped by lib/fixture/welding-spec.ts.
  * - "database": lib/pages/welding.ts (METRICS-LANE), loaded dynamically so this module
@@ -18,7 +27,7 @@ export function resolvePageSource(): PageSource {
 }
 
 type WeldingPagesModule = {
-  getWeldingPage: (n: number) => Promise<PageModel>;
+  getWeldingPage: (n: number, opts?: WeldingPageOpts) => Promise<PageModel>;
 };
 
 // lib/pages/welding.ts is METRICS-LANE's file and doesn't exist yet (or may be
@@ -32,7 +41,7 @@ type WeldingPagesModule = {
 // regardless of whether the file exists yet.
 const WELDING_PAGES_MODULE = "@/lib/pages/welding";
 
-async function getDatabasePage(n: number): Promise<PageModel> {
+async function getDatabasePage(n: number, opts: WeldingPageOpts): Promise<PageModel> {
   let mod: Partial<WeldingPagesModule>;
   try {
     mod = (await import(WELDING_PAGES_MODULE)) as Partial<WeldingPagesModule>;
@@ -44,13 +53,17 @@ async function getDatabasePage(n: number): Promise<PageModel> {
   if (typeof mod.getWeldingPage !== "function") {
     throw new Error("PAGE_SOURCE=database but lib/pages/welding.ts does not export getWeldingPage(n)");
   }
-  return mod.getWeldingPage(n);
+  return mod.getWeldingPage(n, opts);
 }
 
 /** Load page `n` (1-based) as a PageModel from the selected (or given) source. */
-export async function getPage(n: number, source: PageSource = resolvePageSource()): Promise<PageModel> {
+export async function getPage(
+  n: number,
+  source: PageSource = resolvePageSource(),
+  opts: WeldingPageOpts = {},
+): Promise<PageModel> {
   if (source === "database") {
-    return getDatabasePage(n);
+    return getDatabasePage(n, opts);
   }
   return getFixturePage(n);
 }

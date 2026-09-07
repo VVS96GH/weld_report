@@ -39,6 +39,7 @@ import path from "node:path";
 import { withAsOf } from "@/lib/db";
 import type {
   ChartWidget,
+  FilterWidget,
   KpiWidget,
   PageModel,
   TableWidget,
@@ -115,6 +116,11 @@ import {
   JOINT_FROM,
   Params,
   measureScope,
+  filterOptions,
+  normaliseFilters,
+  withFilters,
+  FILTER_ALL,
+  type WeldingFilters,
   PROJECT_EXCLUDED_SUBCONTRACTORS,
   projectScope,
   type Scope,
@@ -862,6 +868,8 @@ type Ctx = {
   asOf: string;
   asOfOrigin: string;
   notes: Set<string>;
+  /** Page-1 slicer; `{}` everywhere else. */
+  filters: WeldingFilters;
 };
 
 function note(ctx: Ctx, msg: string): void {
@@ -961,6 +969,14 @@ const BACKLOG_PROVENANCE_NOTE =
   "RT Backlog+PWHT \"N\" plus RT Backlog+PWHT Progress \"Y\"; PWHT+RT/UT = PWHT " +
   "Backlog All Weld Types RT NOT Done (Service Cat \"SG\" and TMCP Pipe only); " +
   "PWHT Only = PWHT All BACKLOG All Weld Types minus that.";
+
+const PROJECT_EXCLUDED_FILTER_NOTE =
+  "This page\u2019s MT/PT Done card and its two project charts (Welding " +
+  "Progress Trend, Weld Type Distribution) are measured with Inco excluded " +
+  "(ruling R3-01 \u2014 every pbix visual on this page carries SC <> Inco). " +
+  "Filtering to Inco therefore leaves them nothing to measure, so they render " +
+  "empty rather than 0. Every other card on this page includes Inco and does " +
+  "follow the filter.";
 
 const REGISTER_NOTE =
   "Project_Welder (M90) reads ref_qualified_welders and WPS Approved (M91) " +
@@ -1118,7 +1134,64 @@ function baseScope(conf: SubconConf): Scope {
 
 // ── the assembler ───────────────────────────────────────────────────────────
 
-export type WeldingPageOpts = { as_of?: string };
+export type { WeldingFilters } from "@/lib/metrics/scope";
+
+export type WeldingPageOpts = {
+  as_of?: string;
+  /** Page-1 slicer bar. Ignored on every other page. */
+  filters?: WeldingFilters;
+};
+
+/**
+ * The page-1 filter bar.
+ *
+ * A pbix slicer on the fact table: one extra `WHERE` AND-ed onto every widget's
+ * own scope. Per-card rules survive it — `MT/PT Done` still excludes Inco, so
+ * `subco=INCO` renders honest-empty with the note that already says why, never
+ * a fabricated 0.
+ *
+ * The workbook-sourced charts cannot follow a weld-type or weld-cat slicer:
+ * `weld_weekly_snapshot` is keyed per party only. With either of those set the
+ * history is genuinely unavailable, so only the computed current week is shown
+ * and {@link FILTER_NO_HISTORY_NOTE} says so — the alternative would be a line
+ * that silently ignores the filter the reader just set.
+ */
+const FILTER_SPECS = [
+  { id: "subco", label: "Sub-Contractor" },
+  { id: "wtype", label: "Weld Type" },
+  { id: "wcat", label: "Weld Cat" },
+] as const;
+
+const FILTER_NO_HISTORY_NOTE =
+  "Weld Type / Weld Cat filter: the weekly trend workbook is recorded per " +
+  "sub-contractor only, so no history can be filtered by weld type or weld " +
+  "cat. The backlog and rejection-rate charts therefore show only the current " +
+  "week, computed from the live data under the filters you set.";
+
+const FILTER_UNKNOWN_NOTE =
+  "One or more filter values are not present in the data and were ignored " +
+  "(treated as \u201cAll\u201d).";
+
+async function filterWidgets(
+  applied: WeldingFilters,
+): Promise<{ widgets: FilterWidget[]; unknown: boolean }> {
+  const options = await filterOptions();
+  let unknown = false;
+  const widgets = FILTER_SPECS.map((f) => {
+    const opts = options[f.id] ?? [];
+    const raw = applied[f.id as keyof WeldingFilters];
+    const ok = raw !== undefined && opts.includes(raw);
+    if (raw !== undefined && !ok) unknown = true;
+    return {
+      kind: "filter" as const,
+      id: f.id,
+      label: f.label,
+      options: [FILTER_ALL, ...opts],
+      value: ok ? raw! : FILTER_ALL,
+    };
+  });
+  return { widgets, unknown };
+}
 
 /**
  * Build one of the 44 welding pages.
@@ -1134,7 +1207,22 @@ export async function getWeldingPage(
   }
   const spec = specPage(n);
   const { as_of, origin } = await withAsOf(opts.as_of ?? null);
-  const ctx: Ctx = { asOf: as_of, asOfOrigin: origin, notes: new Set() };
+  // Page 1 owns the slicer; every other page ignores it, so its output is
+  // untouched no matter what a caller passes.
+  const requested = n === 1 ? normaliseFilters(opts.filters) : {};
+  const bar = n === 1 ? await filterWidgets(requested) : null;
+  // Only values that actually exist are applied — an unknown one is reported
+  // as "All" in the widget AND dropped from the query, so the page can never
+  // show a filter it did not honour.
+  const filters: WeldingFilters = bar
+    ? {
+        subco: bar.widgets[0]!.value === FILTER_ALL ? undefined : bar.widgets[0]!.value,
+        wtype: bar.widgets[1]!.value === FILTER_ALL ? undefined : bar.widgets[1]!.value,
+        wcat: bar.widgets[2]!.value === FILTER_ALL ? undefined : bar.widgets[2]!.value,
+      }
+    : {};
+  const ctx: Ctx = { asOf: as_of, asOfOrigin: origin, notes: new Set(), filters };
+  if (bar?.unknown) note(ctx, FILTER_UNKNOWN_NOTE);
 
   let widgets: Widget[];
   const unavailable = UNAVAILABLE_PAGES.get(n);
@@ -1157,6 +1245,8 @@ export async function getWeldingPage(
   }
 
   for (const msg of ctx.notes) widgets.push(textWidget(msg));
+  // The bar goes FIRST, ahead of every data widget.
+  if (bar) widgets = [...bar.widgets, ...widgets];
 
   return {
     page: spec.page,
@@ -1164,6 +1254,15 @@ export async function getWeldingPage(
     title: spec.title,
     subtitle: spec.subtitle ?? undefined,
     widgets,
+    ...(bar
+      ? {
+          filters: {
+            subco: bar.widgets[0]!.value,
+            wtype: bar.widgets[1]!.value,
+            wcat: bar.widgets[2]!.value,
+          },
+        }
+      : {}),
     meta: {
       source: "database",
       as_of: ctx.asOf,
@@ -1180,22 +1279,40 @@ async function buildProjectKpiPage(spec: SpecPage, ctx: Ctx): Promise<Widget[]> 
   // (Inco INCLUDED) — that is what a pbix card is, and it is what reproduces
   // the user's readings to the unit. MT/PT is the documented exception. The
   // CHARTS keep the visual filter the pbix records (`SC <> Inco`).
-  const cardScope: Scope = measureScope();
-  const scope: Scope = projectScope();
+  // The slicer is AND-ed onto every scope below; with no filters set,
+  // `withFilters` is the identity and the page is byte-identical to before.
+  const f = ctx.filters;
+  const cardScope: Scope = withFilters(measureScope(), f);
+  const scope: Scope = withFilters(projectScope(), f);
   const av = await availability("PR_ALL", SOURCES_PR_ALL_LOADED, cardScope);
   const [b, bNoInco, welders, wpsApproved, weekly, dist] = await Promise.all([
     bundleTotal(cardScope, av),
-    bundleTotal(projectScope(), av),
+    bundleTotal(withFilters(projectScope(), f), av),
     qualifiedWelders(),
     approvedWpsCount(),
     weeklyProgress({
-      weeks: 14,
+      // Owner: page 1's Welding Progress Trend shows the LAST 10 WEEKS. The
+      // mockup snapshot declares 14 labels; pages 7-11 keep their own window.
+      weeks: 10,
       excludeWeldCats: ["J"],
       excludeSubContractors: PROJECT_EXCLUDED_SUBCONTRACTORS,
       sources: SOURCES_PR_ALL_LOADED,
+      // mv_weekly_progress carries all three columns, so the trend follows the
+      // slicer exactly rather than being dropped.
+      subContractor: f.subco,
+      weldType: f.wtype,
+      weldCat: f.wcat,
     }),
     weldTypeDistribution({ ...scope, excludeWeldTypes: ["THD"] }),
   ]);
+  if (
+    f.subco !== undefined &&
+    PROJECT_EXCLUDED_SUBCONTRACTORS.some(
+      (x) => x.toUpperCase() === f.subco!.toUpperCase(),
+    )
+  ) {
+    note(ctx, PROJECT_EXCLUDED_FILTER_NOTE);
+  }
   const sources = await loadedSources();
   const scopeNote = projectScopeNote(sources);
   if (scopeNote) note(ctx, scopeNote);
@@ -1240,11 +1357,26 @@ async function buildProjectKpiPage(spec: SpecPage, ctx: Ctx): Promise<Widget[]> 
         case "Joints Welded":
           out.push(kpi(w.label, kpiInt(b.welding.joints_welded)));
           break;
-        case "MT/PT Done":
+        case "MT/PT Done": {
+          // R3-01 keeps Inco out of this card. Filtering TO Inco therefore
+          // leaves it measuring nothing — and "nothing" must render as `—`,
+          // not as a 0 that reads like "Inco did no MT/PT".
+          const excluded =
+            CARD_SCOPE[w.label] === "project" &&
+            f.subco !== undefined &&
+            PROJECT_EXCLUDED_SUBCONTRACTORS.some(
+              (x) => x.toUpperCase() === f.subco!.toUpperCase(),
+            );
+          if (excluded) {
+            out.push(emptyKpi(w));
+            note(ctx, PROJECT_EXCLUDED_FILTER_NOTE);
+            break;
+          }
           out.push(
             kpi(w.label, kpiInt(cardBundle(w.label).welding.mt_pt_done)),
           );
           break;
+        }
         case "RT Acc.Joints":
           // Rebound to M10/M11 `Numb RT/UT "PR all"` (tested joints), NOT M13
           // (accepted), on the report owner's instruction: the pbix card shows
@@ -1355,17 +1487,30 @@ async function buildProjectKpiPage(spec: SpecPage, ctx: Ctx): Promise<Widget[]> 
         // dropped. Verified week for week against the owner's 31-Jul..28-Aug
         // chart. RT = M47 vs M48; PWHT = M60 vs M64.
         const isRt = !/pwht/i.test(w.canvas_id);
-        const src = { sources: SOURCES_PR_ALL_LOADED };
+        const src = { sources: SOURCES_PR_ALL_LOADED, subContractor: f.subco };
+        // The workbook is keyed per PARTY only. A sub-contractor filter picks
+        // that party's rows, exactly as pages 7-11 do; a weld-type or weld-cat
+        // filter has no counterpart there, so the history is genuinely
+        // unavailable and only the computed current week is shown.
+        const historyOk = !f.wtype && !f.wcat;
         const [points, rtCur, pwhtCur] = await Promise.all([
-          weeklySnapshot({
-            metrics: snapshotMetricsFor(w),
-            aggregate: true,
-            excludeProject: true,
-            weeks: w.labels.length,
-          }),
+          historyOk
+            ? weeklySnapshot({
+                metrics: snapshotMetricsFor(w),
+                subContractor: f.subco,
+                aggregate: true,
+                excludeProject: true,
+                weeks: w.labels.length,
+              })
+            : Promise.resolve([]),
           isRt ? rtBacklogCurrent(src) : Promise.resolve(null),
           isRt ? Promise.resolve(null) : pwhtBacklogCurrent(src),
         ]);
+        if (!historyOk) {
+          out.push(currentWeekOnlyChart(w, ctx.asOf, rtCur, pwhtCur));
+          note(ctx, FILTER_NO_HISTORY_NOTE);
+          continue;
+        }
         out.push(withCurrentWeek(snapshotChart(w, points), rtCur, pwhtCur));
         if (points.length === 0) note(ctx, TREND_NOTE);
         else note(ctx, BACKLOG_PROVENANCE_NOTE);
@@ -1382,8 +1527,14 @@ async function buildProjectKpiPage(spec: SpecPage, ctx: Ctx): Promise<Widget[]> 
       // `scope: ALL` keeps a `GAC SG` row from being added on top of `GAC`.
       // The two rejection-rate lines are already project-wide values repeated
       // on every party row, so they are deduplicated, never summed.
+      if (!historyAvailable(f)) {
+        out.push(emptyWidget(w));
+        note(ctx, FILTER_NO_HISTORY_NOTE);
+        continue;
+      }
       const points = await weeklySnapshot({
         metrics,
+        subContractor: f.subco,
         // The project rate lines (M25P/M36P) are written once per PARTY with
         // the same project-wide value — the seeder has no PROJECT row for them
         // (that sentinel carries only the MPI metrics) — so they are
@@ -1526,6 +1677,45 @@ function withCurrentWeek(
       data[last] = v;
       return { ...d, data };
     }),
+  };
+}
+
+/** The workbook has no weld-type / weld-cat dimension. */
+const historyAvailable = (f: WeldingFilters) => !f.wtype && !f.wcat;
+
+/**
+ * A backlog chart reduced to its current week, for when a weld-type or
+ * weld-cat filter makes the workbook history inapplicable.
+ *
+ * One labelled point rather than a blank widget: the number is still true and
+ * still answers "what is the backlog under this filter", and the accompanying
+ * note explains why there is no line behind it.
+ */
+function currentWeekOnlyChart(
+  spec: SpecChart,
+  asOf: string,
+  rt: RtBacklogCurrent | null,
+  pwht: PwhtBacklogCurrent | null,
+): ChartWidget {
+  const value = (label: string): number | null => {
+    if (/^RT\/UT Only/i.test(label)) return rt?.rt_only ?? null;
+    if (/^PWHT Only/i.test(label)) return pwht?.pwht_only ?? null;
+    if (/\+/.test(label)) {
+      return /^PWHT/i.test(label) ? (pwht?.plus_rt ?? null) : (rt?.plus_pwht ?? null);
+    }
+    return null;
+  };
+  return {
+    kind: "chart",
+    canvas_id: spec.canvas_id,
+    title: spec.title,
+    chart_type: spec.chart_type,
+    labels: [asOf],
+    datasets: spec.datasets.map((d) => ({
+      label: d.label ?? "",
+      data: [value(d.label ?? "")],
+    })),
+    options_notes: spec.options_notes.join(", ") || undefined,
   };
 }
 

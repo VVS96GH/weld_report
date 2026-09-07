@@ -20,6 +20,7 @@
  */
 
 import { z } from "zod";
+import { query } from "@/lib/db";
 
 /** §0.3 — the fact-table scope discriminator. */
 export const SOURCES_EP = ["WELD_DUMP"] as const;
@@ -506,4 +507,92 @@ export function divide(a: number | null, b: number | null): number | null {
  */
 export function fabricatedCond(a = "w"): string {
   return `EXISTS (SELECT 1 FROM spool sp WHERE sp.spool_id = ${a}.spool_id AND sp.fabricated IS NOT NULL)`;
+}
+
+// ── page-1 slicers ──────────────────────────────────────────────────────────
+
+/**
+ * The page-1 filter bar: Sub-Contractor, Weld Type, Weld Cat.
+ *
+ * Semantics are a pbix **slicer on the fact table** — one extra `WHERE` AND-ed
+ * on top of whatever scope a widget already has. It never replaces a per-card
+ * rule: `MT/PT Done` still excludes Inco, so `subco=INCO` renders honest-empty
+ * with the note that already explains why, rather than a fabricated 0.
+ *
+ * Values are the raw column values. `undefined` and `"All"` both mean "no
+ * filter", so a UI can round-trip its own sentinel without translating.
+ */
+export type WeldingFilters = {
+  subco?: string;
+  wtype?: string;
+  wcat?: string;
+};
+
+export const FILTER_ALL = "All";
+
+/** Normalise: drop `"All"`, empty strings and whitespace-only values. */
+export function normaliseFilters(f: WeldingFilters | undefined): WeldingFilters {
+  const clean = (v: string | undefined) => {
+    const t = v?.trim();
+    return !t || t === FILTER_ALL ? undefined : t;
+  };
+  return { subco: clean(f?.subco), wtype: clean(f?.wtype), wcat: clean(f?.wcat) };
+}
+
+/** `true` when nothing is filtered — the page must then be byte-identical. */
+export function noFilters(f: WeldingFilters): boolean {
+  return !f.subco && !f.wtype && !f.wcat;
+}
+
+/**
+ * AND the slicer onto an existing scope.
+ *
+ * `subContractor` is overwritten rather than merged: page 1 has no
+ * sub-contractor of its own, and a page that does would be filtering itself.
+ * `weldTypes` / `weldCats` are likewise set, not intersected — the slicer picks
+ * exactly one value and any page-level list that disagreed would empty the
+ * page silently.
+ */
+export function withFilters(scope: Scope, f: WeldingFilters): Scope {
+  const out: Scope = { ...scope };
+  if (f.subco) out.subContractor = f.subco;
+  if (f.wtype) out.weldTypes = [f.wtype];
+  if (f.wcat) out.weldCats = [f.wcat];
+  return out;
+}
+
+/**
+ * Distinct slicer values, ordered by joint count descending, blanks excluded.
+ *
+ * Memoised for the life of the process: these are dimension values over a
+ * static load, and re-deriving them costs a `mv_joint` scan per page render.
+ */
+let filterOptionsCache: Promise<Record<string, string[]>> | null = null;
+
+export function resetFilterOptionsCache(): void {
+  filterOptionsCache = null;
+}
+
+export async function filterOptions(): Promise<Record<string, string[]>> {
+  filterOptionsCache ??= (async () => {
+    const cols = { subco: "sub_contractor", wtype: "weld_type", wcat: "weld_cat" };
+    const out: Record<string, string[]> = { subco: [], wtype: [], wcat: [] };
+    for (const [key, col] of Object.entries(cols)) {
+      try {
+        const p = new Params();
+        const rows = await query<{ v: string }>(
+          `SELECT ${col} AS v FROM ${JOINT_FROM}\n` +
+            ` WHERE ${scopeWhere({ sources: SOURCES_PR_ALL_LOADED }, p)}\n` +
+            `   AND ${col} IS NOT NULL AND btrim(${col}) <> ''\n` +
+            ` GROUP BY 1 ORDER BY count(*) DESC, 1`,
+          p.list(),
+        );
+        out[key] = rows.map((r: { v: string }) => r.v);
+      } catch {
+        out[key] = [];
+      }
+    }
+    return out;
+  })();
+  return filterOptionsCache;
 }

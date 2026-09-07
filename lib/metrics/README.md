@@ -955,6 +955,63 @@ Same measure, different scope — the page-1 cards are measure scope by R3-01 an
 page 2 is project scope. The card now carries `sub: "all parties incl. Inco"` so
 a reader comparing the two pages is told why they differ instead of guessing.
 
+### Page 1's filter bar (Sub-Contractor / Weld Type / Weld Cat)
+
+`getWeldingPage(n, { as_of?, filters? })` with
+`WeldingFilters = { subco?, wtype?, wcat? }`, re-exported from
+`lib/pages/welding.ts`. Values are raw column values; `undefined` and `"All"`
+both mean no filter, so a UI can round-trip its own sentinel.
+
+Page 1 returns `filters: { subco, wtype, wcat }` (applied values, `"All"` when
+none) and three `FilterWidget`s **first** in `widgets`, ids `subco` / `wtype` /
+`wcat`. Options are `"All"` plus distinct values from `mv_joint` ordered by
+joint count descending, blanks excluded, **memoised per process**
+(`resetFilterOptionsCache()` exists for tests).
+
+Semantics are a **pbix slicer on the fact table**: one extra `WHERE` AND-ed onto
+every widget's own scope (`withFilters`). Every page is unaffected but page 1 —
+`n === 1` is the only place the filters are read, so no other page's output can
+move no matter what a caller passes. **With no filters set the page is
+byte-identical to before**, which a test asserts by comparing the two renders
+after stripping the bar; every existing pin depends on that.
+
+`as_of` handling is unchanged.
+
+#### Per-card rules survive the slicer
+
+`MT/PT Done` is measured with Inco excluded (R3-01). Filtering **to** Inco
+therefore leaves it measuring nothing, and it renders `—`, **not `0`** — a zero
+there would read as "Inco did no MT/PT". The same applies to the two project
+charts (Welding Progress Trend, Weld Type Distribution), whose pbix visuals all
+carry `SC <> Inco`; one note explains all three. Every other card includes Inco
+and does follow the filter (`Joints Welded` → 7,238).
+
+#### The workbook charts cannot follow a weld-type or weld-cat filter
+
+`weld_weekly_snapshot` is keyed **per party only**. So:
+
+* **`subco`** — the backlog and rejection-rate charts show that party's workbook
+  series, exactly as pages 7–11 do (ACCIONA and INCO have rows). A party with no
+  rows renders honest-empty.
+* **`wtype` or `wcat`** — no history exists that honours the filter. Rather than
+  draw a line that silently ignores what the reader just set, the backlog charts
+  collapse to a **single point, the current week computed from `mv_joint` under
+  the filters**, and one note says why. The rejection-rate charts, which have no
+  computed equivalent, render empty under the same note.
+
+`mv_weekly_progress` *does* carry `sub_contractor`, `weld_type` and `weld_cat`,
+so the Welding Progress Trend follows all three filters exactly.
+
+An unknown filter value is treated as `"All"` — dropped from the query *and*
+reported as `"All"` in the widget, so the page can never display a filter it did
+not honour — and a note says one was ignored.
+
+#### Page 1's trend window is 10 weeks
+
+Owner ruling: the Welding Progress Trend shows the **last 10 weeks**. The mockup
+snapshot declares 14 labels and pages 7–11 keep their own 8-week window, so the
+difference is pinned rather than left to drift.
+
 ### M91 `WPS Approved` (R4-02, R4-03)
 
 `count(DISTINCT wps_no) FILTER (document_status = 'WPS APPROVED BY CTJV/ CPY')`

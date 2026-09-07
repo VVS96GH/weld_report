@@ -1,5 +1,7 @@
 /**
- * `GET /api/welding/{1..44}?as_of=YYYY-MM-DD` — one `PageModel` as JSON.
+ * `GET /api/welding/{1..44}?as_of=YYYY-MM-DD&subco=GAC&wtype=BW&wcat=F` — one
+ * `PageModel` as JSON. `subco` / `wtype` / `wcat` are the page-1 slicers (raw column
+ * values; omitted = All); other pages ignore them.
  *
  * `params` is a Promise in Next 16 (see
  * `node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/route.md`
@@ -9,7 +11,9 @@
  */
 
 import type { NextRequest } from "next/server";
-import { getWeldingPage, TOTAL_PAGES } from "@/lib/pages/welding";
+import { getWeldingPage, TOTAL_PAGES, type WeldingFilters } from "@/lib/pages/welding";
+
+const FILTER_PARAMS = ["subco", "wtype", "wcat"] as const;
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -35,7 +39,12 @@ export async function GET(
   }
 
   try {
-    const model = await getWeldingPage(n, asOf ? { as_of: asOf } : {});
+    const filters: WeldingFilters = {};
+    for (const key of FILTER_PARAMS) {
+      const value = request.nextUrl.searchParams.get(key)?.trim();
+      if (value) filters[key] = value;
+    }
+    const model = await getWeldingPage(n, { ...(asOf ? { as_of: asOf } : {}), filters });
     return Response.json(model);
   } catch (err) {
     return Response.json(

@@ -114,6 +114,10 @@
   --chart-7: #3a7ebe;
   --chart-8: #b75b55;
   --chart-attention: #e24131; /* coral re-stepped for the navy surface: rejections / backlog ("look here") */
+  /* The pbix's own "Weld Qty" pair (owner request 2026-09-07): F = gold, S = navy, kept
+     across moods so the welding-progress chart reads like the source report. */
+  --series-f: #e0b84e;
+  --series-s: #2f6fd6;
   --chart-grid-line: rgba(188, 211, 232, 0.12);
 
   /* ---- Brand assets (docs/brand-README.md): the file follows the SURFACE the logo lands on.
@@ -172,6 +176,8 @@
   --chart-7: #045591;
   --chart-8: #89312e;
   --chart-attention: #c21b0f;
+  --series-f: #d4a63a;
+  --series-s: #1f4e9c;
   --chart-grid-line: rgba(10, 28, 46, 0.08);
   --brand-lockup: url("/brand/ten-lockup-colour.png");
 }

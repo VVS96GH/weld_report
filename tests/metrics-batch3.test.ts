@@ -1028,6 +1028,151 @@ describe.skipIf(Boolean(skipReason))("pbix cross-check (user readings)", () => {
     expect(Number(tek.strict), "the owner's 197").toBe(197);
   });
 
+  it("page 1 with no filters is byte-identical to page 1 without the option", async () => {
+    // The whole feature must be inert when unused: every existing pin depends
+    // on it. Compared after stripping the filter bar itself.
+    const bare = await getWeldingPage(1);
+    const withAll = await getWeldingPage(1, {
+      filters: { subco: "All", wtype: "All", wcat: "All" },
+    });
+    const strip = (p: Awaited<ReturnType<typeof getWeldingPage>>) =>
+      JSON.stringify({ ...p, widgets: p.widgets.filter((w) => w.kind !== "filter") });
+    expect(strip(withAll)).toBe(strip(bare));
+    expect(bare.filters).toEqual({ subco: "All", wtype: "All", wcat: "All" });
+
+    // The bar itself: three widgets, FIRST, with these exact ids and labels.
+    const first3 = bare.widgets.slice(0, 3);
+    expect(first3.map((w) => w.kind)).toEqual(["filter", "filter", "filter"]);
+    expect(first3.map((w) => (w.kind === "filter" ? w.id : ""))).toEqual([
+      "subco", "wtype", "wcat",
+    ]);
+    expect(first3.map((w) => (w.kind === "filter" ? w.label : ""))).toEqual([
+      "Sub-Contractor", "Weld Type", "Weld Cat",
+    ]);
+    for (const w of first3) {
+      if (w.kind !== "filter") continue;
+      expect(w.options[0], "All comes first").toBe("All");
+      expect(w.options.slice(1).every((o) => o.trim() !== ""), "no blanks").toBe(true);
+    }
+  });
+
+  it("filtered Joints Welded sums back to the unfiltered total", async () => {
+    // The slicer must partition, not reshape. Checked over both dimensions
+    // that have complete coverage; weld_type is skipped because THD and other
+    // types are excluded from some widgets by page rules, not by the slicer.
+    const bare = await getWeldingPage(1);
+    const jw = (p: Awaited<ReturnType<typeof getWeldingPage>>) => {
+      const w = p.widgets.find((x) => x.kind === "kpi" && x.label === "Joints Welded");
+      return w && w.kind === "kpi" ? Number(w.value.replace(/,/g, "")) : NaN;
+    };
+    const total = jw(bare);
+    const bar = bare.widgets.filter((w) => w.kind === "filter");
+    for (const [i, key] of [[0, "subco"], [2, "wcat"]] as const) {
+      const widget = bar[i]!;
+      if (widget.kind !== "filter") continue;
+      let sum = 0;
+      for (const v of widget.options.slice(1)) {
+        sum += jw(await getWeldingPage(1, { filters: { [key]: v } }));
+      }
+      expect(sum, `sum over ${key}`).toBe(total);
+    }
+  });
+
+  it("two filtered combinations match independently computed SQL", async () => {
+    // Computed straight off mv_joint here, not through the metric layer, so a
+    // shared bug in the scope builder cannot make both sides agree.
+    for (const [filters, sub, wt, wc] of [
+      [{ subco: "GAC", wtype: "BW", wcat: "F" }, "GAC", "BW", "F"],
+      [{ subco: "CCC", wtype: "SW" }, "CCC", "SW", null],
+    ] as const) {
+      const page = await getWeldingPage(1, { filters });
+      const card = page.widgets.find(
+        (w) => w.kind === "kpi" && w.label === "Joints Welded",
+      );
+      const rendered = card && card.kind === "kpi"
+        ? Number(card.value.replace(/,/g, ""))
+        : NaN;
+
+      const p = new Params();
+      // M01 is `is_welded_norepair` — welded EXCLUDING repairs and rewelds,
+      // not merely `weld_date IS NOT NULL` (which gives 54,801 here). Naming
+      // the right flag is the point of the independent check.
+      const conds = [
+        `source::text = ANY(${p.any(SOURCES_PR_ALL_LOADED)}::text[])`,
+        `is_welded_norepair`,
+        `sub_contractor = ${p.add(sub)}`,
+        `weld_type = ${p.add(wt)}`,
+      ];
+      if (wc) conds.push(`weld_cat = ${p.add(wc)}`);
+      const [r] = await query<{ n: string }>(
+        `SELECT count(*)::text AS n FROM mv_joint WHERE ${conds.join(" AND ")}`,
+        p.list(),
+      );
+      expect(rendered, JSON.stringify(filters)).toBe(Number(r.n));
+    }
+  });
+
+  it("filtering to Inco renders MT/PT empty, never 0", async () => {
+    // R3-01 keeps Inco out of that card, so filtering TO Inco leaves it
+    // measuring nothing. A 0 there would read as "Inco did no MT/PT".
+    const page = await getWeldingPage(1, { filters: { subco: "INCO" } });
+    const mtpt = page.widgets.find(
+      (w) => w.kind === "kpi" && w.label === "MT/PT Done",
+    );
+    expect(mtpt && mtpt.kind === "kpi" ? mtpt.value : null).toBe("\u2014");
+    expect(
+      page.widgets.some((w) => w.kind === "text" && /Inco excluded/.test(w.text)),
+      "and the page says why",
+    ).toBe(true);
+    // Every other card still follows the filter.
+    const jw = page.widgets.find(
+      (w) => w.kind === "kpi" && w.label === "Joints Welded",
+    );
+    expect(jw && jw.kind === "kpi" ? jw.value : null).toBe("7,238");
+  });
+
+  it("a weld-type filter drops the workbook history and says so", async () => {
+    // weld_weekly_snapshot is keyed per party only, so no history can honour a
+    // weld-type filter. Showing the old line would silently ignore the filter.
+    const page = await getWeldingPage(1, { filters: { wtype: "BW" } });
+    const backlog = page.widgets.find(
+      (w) => w.kind === "chart" && w.canvas_id === "chart1_rtbacklog",
+    );
+    expect(backlog?.kind).toBe("chart");
+    if (backlog?.kind === "chart") expect(backlog.labels).toHaveLength(1);
+    expect(
+      page.widgets.some((w) => w.kind === "text" && /only the current week/.test(w.text)),
+    ).toBe(true);
+  });
+
+  it("an unknown filter value is ignored and reported", async () => {
+    const page = await getWeldingPage(1, { filters: { subco: "NOT-A-PARTY" } });
+    expect(page.filters?.subco).toBe("All");
+    expect(
+      page.widgets.some((w) => w.kind === "text" && /not present in the data/.test(w.text)),
+    ).toBe(true);
+  });
+
+  it("page 1's Welding Progress Trend shows the last 10 weeks", async () => {
+    // Owner ruling. The mockup snapshot declares 14 labels; pages 7-11 keep
+    // their own 8-week window, so this pins the difference rather than letting
+    // one page's change drift into the others.
+    const p1 = await getWeldingPage(1);
+    const trend = p1.widgets.find(
+      (w) => w.kind === "chart" && w.canvas_id === "chart1_progress",
+    );
+    expect(trend?.kind).toBe("chart");
+    if (trend?.kind === "chart") {
+      expect(trend.labels).toHaveLength(10);
+      expect(trend.labels).toEqual([...trend.labels].sort());
+    }
+    const p7 = await getWeldingPage(7);
+    const sub = p7.widgets.find(
+      (w) => w.kind === "chart" && w.canvas_id === "chart7_welding",
+    );
+    if (sub?.kind === "chart") expect(sub.labels).toHaveLength(8);
+  });
+
   it("UT coverage names GAC and TEKFEN as covered, MEDGULF and ACCIONA as not", async () => {
     // The old note blamed the missing GAC/TEKFEN tracker workbooks. That is the
     // wrong premise for this measure: the DAX's GAC and TEKFEN branches never

@@ -200,6 +200,9 @@ export async function weeklyProgress(opts: {
   excludeWeldCats?: readonly string[];
   excludeSubContractors?: readonly string[];
   sources?: readonly string[];
+  /** Page-1 slicer: `mv_weekly_progress` carries both columns. */
+  weldType?: string;
+  weldCat?: string;
 }): Promise<WeeklyProgressPoint[]> {
   const p = new Params();
   const conds: string[] = [
@@ -217,6 +220,12 @@ export async function weeklyProgress(opts: {
     conds.push(
       `(m.weld_cat IS NULL OR NOT (m.weld_cat = ANY(${p.any(opts.excludeWeldCats)})))`,
     );
+  }
+  if (opts.weldType !== undefined) {
+    conds.push(`m.weld_type = ${p.add(opts.weldType)}`);
+  }
+  if (opts.weldCat !== undefined) {
+    conds.push(`m.weld_cat = ${p.add(opts.weldCat)}`);
   }
   const where = conds.join(" AND ");
   const limit = p.add(opts.weeks ?? 14);

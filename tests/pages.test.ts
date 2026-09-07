@@ -107,8 +107,24 @@ describe("getWeldingPage — structure equals analysis/mockups/welding-spec.json
       expect(model.id).toBe(spec.id);
       expect(model.title).toBe(spec.title);
 
+      // Page 1 carries a three-widget filter bar ahead of everything the
+      // mockup declares (Sub-Contractor / Weld Type / Weld Cat). It is server
+      // chrome, not a mockup widget, so it is checked here and then skipped —
+      // the position-for-position comparison below is unchanged.
+      let body = model.widgets;
+      if (n === 1) {
+        const bar = body.slice(0, 3);
+        expect(bar.map((w) => w.kind)).toEqual(["filter", "filter", "filter"]);
+        expect(bar.map((w) => (w.kind === "filter" ? w.id : ""))).toEqual([
+          "subco",
+          "wtype",
+          "wcat",
+        ]);
+        body = body.slice(3);
+      }
+
       // Everything the mockup declares, position for position.
-      const declared = model.widgets.slice(0, spec.widgets.length);
+      const declared = body.slice(0, spec.widgets.length);
       expect(declared).toHaveLength(spec.widgets.length);
       for (let i = 0; i < spec.widgets.length; i++) {
         widgetsCompared++;
@@ -119,7 +135,7 @@ describe("getWeldingPage — structure equals analysis/mockups/welding-spec.json
       }
 
       // Anything extra must be a provenance note.
-      for (const extra of model.widgets.slice(spec.widgets.length)) {
+      for (const extra of body.slice(spec.widgets.length)) {
         extraNotes++;
         expect(extra.kind).toBe("text");
       }

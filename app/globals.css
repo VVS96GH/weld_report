@@ -1012,6 +1012,12 @@ body {
 .chart-small {
   height: 180px;
 }
+/* Many-category trend charts span two tracks of the auto-fit grid (single column on narrow screens). */
+@media (min-width: 900px) {
+  .dashboard-grid > .card--wide {
+    grid-column: span 2;
+  }
+}
 .chart-empty {
   height: 100%;
   width: 100%;
@@ -1451,6 +1457,7 @@ html {
 [data-mood="ten"] .stat-box {
   flex: 1 1 150px;
   min-width: 0;
+  container-type: inline-size;
   border-radius: var(--r);
   border: 1px solid var(--border);
   background: var(--surface);
@@ -1461,12 +1468,17 @@ html {
 }
 [data-mood="ten"] .stat-value {
   font-family: var(--font-display);
-  font-weight: 800;
-  font-size: clamp(22px, 2.2vw, 34px);
-  line-height: 1.1;
+  /* owner request 2026-09-07: lighter and smaller so a seven-digit figure ("2,209,169")
+     stays inside a 150px tile; the size follows the tile via container query units */
+  font-weight: 600;
+  font-size: clamp(16px, 13.5cqi, 26px);
+  line-height: 1.15;
   letter-spacing: -0.01em;
   color: var(--attention);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 [data-mood="ten"] .stat-value.num {
   font-family: var(--font-display);

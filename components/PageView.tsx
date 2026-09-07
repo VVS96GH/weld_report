@@ -71,7 +71,10 @@ export function PageView({ model, subtitle }: { model: PageModel; subtitle: stri
             return (
               <div className="dashboard-grid" key={i}>
                 {g.items.map((c, j) => (
-                  <div className="card" key={j}>
+                  // A trend with many categories (the 14-week welding progress) needs
+                  // two grid tracks so its value labels don't collide (owner request
+                  // 2026-09-07: totals on every chart).
+                  <div className={c.labels.length >= 10 ? "card card--wide" : "card"} key={j}>
                     <div className="card-header">{c.title}</div>
                     <div className="chart-container">
                       <ChartCard widget={c} />
