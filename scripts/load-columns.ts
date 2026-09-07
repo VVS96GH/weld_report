@@ -83,6 +83,12 @@ export const CCC_JOINT_WELD_COLUMNS = [
   "dwir_ccc_from_jr", "thickness_from_jr", "rework_code_all",
   "repair_reweld", "service_class_cat_wd", "service_class_cat_ndt",
   "temporary_lines", "tmcp_pipe", "exclude_ut_films", "exclude_debris_films",
+  // `RT/UT(%)` -> `rt_pct`, the same rename the welder record does
+  // (analysis/sources2/ccc-column-map.md:60). These rows are the NOT-WELDED
+  // CCC joints, and RT% is what the forecast backlog is weighted by; without
+  // it CCC contributed 0 to a measure the pbix reads as 11,732.
+  // `weld_date` stays NULL — being unwelded is the point of this slice.
+  "rt_pct",
 ] as const;
 
 /** `weld` columns the welder record writes (source CCC_WELDER_RECORD). */

@@ -1696,6 +1696,10 @@ html {
   display: inline-flex;
   align-items: center;
 }
+/* the HA ▸ Area grouped control is wider than a flat slicer: it holds "HA2 — all areas" rows */
+.filter-group--tree {
+  flex: 1.4 1 260px;
+}
 [data-mood="ten"] .filter-bar {
   border-radius: var(--r);
   background: var(--surface);

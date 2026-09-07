@@ -120,6 +120,8 @@ import {
   normaliseFilters,
   withFilters,
   FILTER_ALL,
+  FILTER_BLANK,
+  areaOptionsByHa,
   type WeldingFilters,
   PROJECT_EXCLUDED_SUBCONTRACTORS,
   projectScope,
@@ -1177,20 +1179,36 @@ const FILTER_UNKNOWN_NOTE =
 async function filterWidgets(
   applied: WeldingFilters,
 ): Promise<{ widgets: FilterWidget[]; unknown: boolean }> {
-  const options = await filterOptions();
+  const [options, areaByHa] = await Promise.all([
+    filterOptions(),
+    areaOptionsByHa(),
+  ]);
   let unknown = false;
   const widgets = FILTER_SPECS.map((f) => {
-    const opts = options[f.id] ?? [];
+    // `ha` additionally offers the pbix slicer's own "(Blank)" group, which is
+    // `ha IS NULL` — 45,206 joints that resolve to no handover area.
+    const opts =
+      f.id === "ha"
+        ? [...(options.ha ?? []), FILTER_BLANK]
+        : (options[f.id] ?? []);
     const raw = applied[f.id as keyof WeldingFilters];
     const ok = raw !== undefined && opts.includes(raw);
     if (raw !== undefined && !ok) unknown = true;
-    return {
-      kind: "filter" as const,
+    const w: FilterWidget = {
+      kind: "filter",
       id: f.id,
       label: f.label,
       options: [FILTER_ALL, ...opts],
       value: ok ? raw! : FILTER_ALL,
     };
+    // The pbix renders "HA, Area Classification" as one two-field slicer, so
+    // `area` declares `ha` as its parent and carries the per-HA option lists.
+    // The flat `options` stays the full list, for a UI that ignores hierarchy.
+    if (f.id === "area") {
+      w.parent = "ha";
+      w.options_by_parent = areaByHa;
+    }
+    return w;
   });
   return { widgets, unknown };
 }

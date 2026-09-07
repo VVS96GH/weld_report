@@ -1175,35 +1175,47 @@ describe.skipIf(Boolean(skipReason))("pbix cross-check (user readings)", () => {
     if (sub?.kind === "chart") expect(sub.labels).toHaveLength(8);
   });
 
-  it("HA is derived per the pbix column and partitions with a blank remainder", async () => {
-    // `weld.ha` is NULL on all 6.5 M rows, so mv_joint.ha is DERIVED (migration
-    // 0026): second character of Subsystem Code, else of System No, when the
-    // code is valid (not blank, not 'System-NA - Not Applicable', no 'NON') and
-    // the character is 1-4. Branch 3 of the DAX -- LOOKUPVALUE into
-    // `HA l0_abs_guide` by PDS Area -- is NOT implemented: that workbook is not
-    // in sources/, so those joints stay NULL rather than get a guessed area.
-    //
-    // Subsystem Code / System No exist ONLY on WELD_DUMP rows, so every CCC,
-    // ACCIONA and INCO joint is blank. That is the data, not a gap in the rule,
-    // and it is why HA cannot be expected to partition on its own.
+  it("HA partitions exactly, blank group included", async () => {
+    // `weld.ha` is NULL on all 6.5 M rows, so mv_joint.ha is DERIVED:
+    //   1. 2nd char of Subsystem Code, 2. else of System No, when valid and 1-4
+    //      (migration 0026)
+    //   3. else from area_classification_label (migration 0027) -- a STAND-IN
+    //      for the `HA l0_abs_guide` lookup, which is not in sources/, inferred
+    //      from the owner's slicer screenshot and flagged for confirmation.
+    // With branch 3 the blank group falls from 1,514,661 joints to 45,206, and
+    // HA partitions exactly once "(Blank)" is counted as its own value -- which
+    // is how the pbix slicer presents it.
     const bare = await getWeldingPage(1);
     const jw = (p: Awaited<ReturnType<typeof getWeldingPage>>) => {
       const w = p.widgets.find((x) => x.kind === "kpi" && x.label === "Joints Welded");
       return w && w.kind === "kpi" ? Number(w.value.replace(/,/g, "")) : NaN;
     };
-    const total = jw(bare);
     let sum = 0;
-    for (const v of ["HA1", "HA2", "HA3", "HA4"]) {
+    for (const v of ["HA1", "HA2", "HA3", "HA4", "(Blank)"]) {
       sum += jw(await getWeldingPage(1, { filters: { ha: v } }));
     }
-    const [r] = await query<{ blank: string }>(
-      "SELECT count(*)::text AS blank FROM mv_joint" +
-        " WHERE ha IS NULL AND is_welded_norepair" +
-        "   AND source::text IN ('WELD_DUMP','CCC_WELDER_RECORD'," +
-        "'CCC_JOINT_RECORD','ACCIONA','INCO')",
+    expect(sum).toBe(jw(bare));
+    // "(Blank)" must mean `ha IS NULL`, not a literal match on the string.
+    expect(jw(await getWeldingPage(1, { filters: { ha: "(Blank)" } }))).toBe(37_069);
+  });
+
+  it("the Area slicer is a child of HA, with per-HA option lists", async () => {
+    // The pbix renders "HA, Area Classification" as ONE two-field slicer. HA2's
+    // list is the owner's screenshot exactly.
+    const page = await getWeldingPage(1);
+    const area = page.widgets.find((w) => w.kind === "filter" && w.id === "area");
+    expect(area?.kind).toBe("filter");
+    if (area?.kind !== "filter") return;
+    expect(area.parent).toBe("ha");
+    expect(area.options_by_parent).toBeDefined();
+    expect([...(area.options_by_parent!.HA2 ?? [])].sort()).toEqual([
+      "3000000", "5000000", "7000000", "Intercon PR HA-2", "Train-9 Process",
+    ]);
+    // "" is the blank-HA group, and the flat list stays the full one.
+    expect(Object.keys(area.options_by_parent!)).toContain("");
+    expect(area.options.length).toBeGreaterThan(
+      (area.options_by_parent!.HA2 ?? []).length,
     );
-    expect(sum + Number(r.blank), "HA values + blank remainder").toBe(total);
-    expect(sum).toBeGreaterThan(0);
   });
 
   it("the Area slicer uses the label column, not the sparse integer one", async () => {

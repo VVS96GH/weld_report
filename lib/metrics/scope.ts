@@ -270,6 +270,8 @@ export type Scope = {
    * are NULL and a HA filter excludes them by construction.
    */
   ha?: string;
+  /** The pbix slicer's "(Blank)" group — `ha IS NULL`, not a literal match. */
+  haIsNull?: boolean;
 };
 
 /**
@@ -345,6 +347,9 @@ export function scopeConditions(
   if (scope.pwhtStatusPresent) {
     // `has_pwht_status` is the joint-grain form of `pwht_weld_status IS NOT NULL`.
     c.push(`${a}.has_pwht_status`);
+  }
+  if (scope.haIsNull) {
+    c.push(`${a}.ha IS NULL`);
   }
   if (scope.ha !== undefined) {
     c.push(`${a}.ha = ${p.add(scope.ha)}`);
@@ -542,6 +547,13 @@ export type WeldingFilters = {
 
 export const FILTER_ALL = "All";
 
+/**
+ * The pbix slicer's own label for the blank group. Sent as the `ha` value when
+ * the reader picks "(Blank)", and translated to `ha IS NULL` — a literal
+ * comparison would match nothing, since blank HA is NULL in `mv_joint`.
+ */
+export const FILTER_BLANK = "(Blank)";
+
 /** Normalise: drop `"All"`, empty strings and whitespace-only values. */
 export function normaliseFilters(f: WeldingFilters | undefined): WeldingFilters {
   const clean = (v: string | undefined) => {
@@ -573,7 +585,10 @@ export function noFilters(f: WeldingFilters): boolean {
  */
 export function withFilters(scope: Scope, f: WeldingFilters): Scope {
   const out: Scope = { ...scope };
-  if (f.ha) out.ha = f.ha;
+  // "(Blank)" is the pbix slicer's own label for the blank group; it means
+  // `ha IS NULL`, not `ha = '(Blank)'`.
+  if (f.ha === FILTER_BLANK) out.haIsNull = true;
+  else if (f.ha) out.ha = f.ha;
   if (f.area) out.areaClassificationLabel = f.area;
   if (f.subco) out.subContractor = f.subco;
   if (f.wtype) out.weldTypes = [f.wtype];
@@ -591,6 +606,39 @@ let filterOptionsCache: Promise<Record<string, string[]>> | null = null;
 
 export function resetFilterOptionsCache(): void {
   filterOptionsCache = null;
+  areaByHaCache = null;
+}
+
+/**
+ * `area` options grouped by their `ha` — the pbix's two-field slicer
+ * "HA, Area Classification". Key `""` is the blank-HA group. Memoised with the
+ * flat lists.
+ */
+let areaByHaCache: Promise<Record<string, string[]>> | null = null;
+
+export async function areaOptionsByHa(): Promise<Record<string, string[]>> {
+  areaByHaCache ??= (async () => {
+    try {
+      const p = new Params();
+      const rows = await query<{ ha: string; lbl: string }>(
+        `SELECT coalesce(w.ha, '') AS ha, w.area_classification_label AS lbl\n` +
+          `  FROM ${JOINT_FROM}\n` +
+          ` WHERE ${scopeWhere({ sources: SOURCES_PR_ALL_LOADED }, p)}\n` +
+          `   AND w.area_classification_label IS NOT NULL\n` +
+          `   AND btrim(w.area_classification_label) <> ''\n` +
+          ` GROUP BY 1, 2 ORDER BY 1, count(*) DESC, 2`,
+        p.list(),
+      );
+      const out: Record<string, string[]> = {};
+      for (const r of rows as { ha: string; lbl: string }[]) {
+        (out[r.ha] ??= []).push(r.lbl);
+      }
+      return out;
+    } catch {
+      return {};
+    }
+  })();
+  return areaByHaCache;
 }
 
 export async function filterOptions(): Promise<Record<string, string[]>> {

@@ -1022,21 +1022,48 @@ The pbix derives it, and migration 0026 derives it the same way:
 not in `sources/` (the same gap M52's coverage note records), so those joints
 stay NULL rather than receive a guessed area.
 
-`Subsystem Code` / `System No` exist on **WELD_DUMP rows only**, so every CCC,
-ACCIONA and INCO joint is blank. Distribution:
+**Branch 3 now has a stand-in** (migration 0027). The owner's slicer screenshot
+shows the pbix *does* resolve those joints — its "HA, Area Classification"
+hierarchy puts `Train-9 Process` and `Intercon PR HA-2` under HA2, beside the
+numeric codes 3000000 / 5000000 / 7000000 that our Subsystem-derived HA2 already
+held. That agreement is how we know branches 1–2 match the pbix and only
+branch 3 was missing. The stand-in maps `area_classification_label`:
+
+| label | → |
+|---|---|
+| `Train-8/9/10/11 Process` | HA1 / HA2 / HA3 / HA4 |
+| anything ending `HA-<1..4>` (`Intercon PR HA-2`, `Utilities HA-1`, `Offsites W2/w3 HA-3`) | HA*n* |
+| everything else (Retention Ponds, bare numeric codes, ACCIONA, INCO) | blank |
+
+It is **inferred from a screenshot, not from the guide**, and is flagged for the
+owner to confirm. It is deliberately narrow — only labels that name their own
+handover area are mapped — because inventing a handover area is worse than
+admitting we cannot resolve one. Blank falls from 1,514,661 joints to 45,206.
+
+Distribution after 0027:
 
 | party | HA1 | HA2 | HA3 | HA4 | blank | total |
 |---|---|---|---|---|---|---|
+| CCC | 370,681 | 368,309 | 366,660 | 363,805 | 638 | 1,470,093 |
 | GAC | 249,251 | 31,778 | 134,828 | 27,422 | 89 | 443,368 |
 | TEKFEN | 306,126 | 85 | 67,177 | 81 | 317 | 373,786 |
 | MEDGULF | 41,230 | 304 | 16,309 | 1,726 | 23,612 | 83,181 |
-| CCC | — | — | — | — | 1,470,093 | 1,470,093 |
 | ACCIONA | — | — | — | — | 13,312 | 13,312 |
 | INCO | — | — | — | — | 7,238 | 7,238 |
-| **all** | 596,607 | 32,167 | 218,314 | 29,229 | 1,514,661 | 2,390,978 |
+| **all** | 967,288 | 400,476 | 584,974 | 393,034 | 45,206 | 2,390,978 |
 
-HA therefore **cannot partition on its own**; the test asserts
-`Σ HA1..HA4 + blank remainder == unfiltered` instead of a bare sum.
+#### The slicer is a hierarchy, and `(Blank)` is a value
+
+`area` declares `parent: "ha"` and carries `options_by_parent` — per HA value,
+the area labels that occur under it, ordered by joint count (key `""` is the
+blank-HA group). `options` stays the flat list for any UI that ignores the
+hierarchy. HA2's list is the owner's screenshot exactly:
+`Train-9 Process, 3000000, 7000000, Intercon PR HA-2, 5000000`.
+
+`ha` also offers **`(Blank)`**, the pbix slicer's own label for the blank group,
+which means `ha IS NULL` — a literal comparison would match nothing. With it
+counted as a value, HA partitions exactly: `Σ HA1..HA4 + (Blank) == unfiltered`
+(37,069 welded joints in the blank group).
 
 **`Area Classification`** slices `area_classification_label`, not the integer
 `area_classification`. The raw column is NULL on 5,587,627 of 6,546,242 rows and
@@ -1050,6 +1077,43 @@ column for the same reason (it is NULL for every CCC row).
 Owner ruling: the Welding Progress Trend shows the **last 10 weeks**. The mockup
 snapshot declares 14 labels and pages 7–11 keep their own 8-week window, so the
 difference is pinned rather than left to drift.
+
+### CCC's unwelded joints carry RT%, and the forecast needs it
+
+`AllTrain_CSVExport_Joint Record.csv` is, by design, the **not-yet-welded** CCC
+joints — `weld_date` NULL is correct, and that population *is* what the RT
+backlog forecast is computed over. The loader mapped 51 columns but not
+`RT/UT(%)`, so every CCC joint had a NULL `rt_pct` and contributed **0** to a
+measure the pbix reads as **11,732**.
+
+It is a plain rename to `rt_pct`, exactly as the welder record does it
+(`analysis/sources2/ccc-column-map.md:60`) — **not** a lookup into the welder
+record, which holds welded passes only and therefore has no row for any of
+these joints.
+
+**Verified, not assumed, that this cannot leak.** Every RT and PWHT measure
+gates on `weld_date`, a report, or a hold status. On these 130,994 rows all four
+of `weld_date`, `rt_report`, `rt_weld_status` and `pwht_weld_status` are NULL,
+and the joints appear in **zero** measure flags (`rt_backlog_prall`,
+`rt100_backlog_prall`, `is_tested_prall`, `pwht_backlog_ccc/rest`,
+`is_welded_norepair` — all 0 before and after). The full suite is unchanged.
+
+The loader is safe to re-run standalone: it deletes only
+`source = 'CCC_JOINT_RECORD'` from `weld`, rebuilds `ccc_joint_pwht` wholly from
+the same file, never touches the welder record, and refreshes the matviews
+itself.
+
+Result — the forecast backlog now matches the owner's card for **every party**:
+
+| party | ours | owner |
+|---|---|---|
+| CCC | 11,732.20 | **11,732** ✅ |
+| GAC | 1,335.15 | **1,335** ✅ |
+| MEDGULF | 526.40 | **526** ✅ |
+| TEKFEN | 11.90 | **12** ✅ |
+| **total** | **13,605.65** | **13,606** ✅ |
+
+with RT 100% = 10,158 and RT 5% = 18,228 × 0.05 = 911, both exact.
 
 ### M91 `WPS Approved` (R4-02, R4-03)
 

@@ -151,6 +151,12 @@ async function* rows(loadId: number, stats: Stats, jointIds: Set<string> | null)
           `${serviceClass ?? ""}  ${ndt ?? ""} `,
           iso.toUpperCase().endsWith("-PCC") ? "t" : "f",
           "f", "f", "f",
+          // rt_pct. The forecast backlog weights UNWELDED joints by RT%, so
+          // this column is the whole of CCC's contribution to it. It is a plain
+          // rename of `RT/UT(%)`, exactly as the welder record does it — NOT a
+          // lookup into the welder record, which holds welded passes only and
+          // therefore has no row for any of these joints.
+          num(g("RT/UT(%)")),
         ];
       }
     }

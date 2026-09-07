@@ -58,6 +58,16 @@ export type FilterWidget = {
   label: string;
   options: string[];
   value: string;
+  /**
+   * Hierarchy (pbix two-field slicer "HA, Area Classification", owner request
+   * 2026-09-07): this filter is the CHILD of the filter whose id is `parent`, and
+   * `options_by_parent` lists, per parent value, the child options that actually
+   * occur under it in the data (key "" = rows whose parent value is blank). The filter
+   * bar renders the pair as ONE grouped control; both ids still travel as their own
+   * search params.
+   */
+  parent?: string;
+  options_by_parent?: Record<string, string[]>;
 };
 
 export type Widget = KpiWidget | TableWidget | ChartWidget | TextWidget | FilterWidget;
