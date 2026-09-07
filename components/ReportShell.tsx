@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
 import { WELDING_PAGE_TITLES, WELDING_REPORT_SUBTITLE, WELDING_TOTAL_PAGES } from "@/lib/welding-pages";
+import { SCREENS } from "@/lib/screens";
 import { ThemeMoodControls } from "@/components/ThemeMoodControls";
 
 type SubtitleApi = { setSubtitle: (s: string) => void };
@@ -37,8 +38,15 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
   const [subtitle, setSubtitle] = useState<string>(WELDING_REPORT_SUBTITLE);
 
   const isFlange = pathname?.startsWith("/flange") ?? false;
+  // Consolidation option A: /report/<screen> — 7 screens with filters instead of 44 pages.
+  const screenId = pathname?.match(/^\/report\/([a-z]+)/)?.[1] ?? null;
+  const isScreens = screenId !== null;
   const current = currentPageFromPathname(pathname) ?? 1;
-  const title = isFlange ? "Flange Inspection Dashboard" : (WELDING_PAGE_TITLES[current - 1] ?? "");
+  const title = isFlange
+    ? "Flange Inspection Dashboard"
+    : isScreens
+      ? (SCREENS.find((sc) => sc.id === screenId)?.title ?? "")
+      : (WELDING_PAGE_TITLES[current - 1] ?? "");
 
   const goTo = useCallback(
     (n: number) => {
@@ -48,7 +56,7 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
   );
 
   useEffect(() => {
-    if (isFlange) return; // ← → paging is a welding-report affordance only
+    if (isFlange || isScreens) return; // ← → paging is a 44-page-report affordance only
     function onKeyDown(e: KeyboardEvent) {
       if (e.target instanceof HTMLSelectElement || e.target instanceof HTMLInputElement) return;
       if (e.key === "ArrowLeft") goTo(current - 1);
@@ -56,7 +64,7 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
     }
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [current, goTo, isFlange]);
+  }, [current, goTo, isFlange, isScreens]);
 
   return (
     <SubtitleContext.Provider value={{ setSubtitle }}>
@@ -90,15 +98,29 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
       <nav className="page-nav" aria-label="Report navigation">
         {/* Report switcher: two pill links; the current report carries aria-current. */}
         <div className="report-switcher" role="group" aria-label="Report">
-          <Link href="/welding/1" className="report-pill" aria-current={isFlange ? undefined : "page"}>
+          <Link href="/welding/1" className="report-pill" aria-current={isFlange || isScreens ? undefined : "page"}>
             Welding
           </Link>
           <Link href="/flange" className="report-pill" aria-current={isFlange ? "page" : undefined}>
             Flange
           </Link>
+          <Link href="/report/overview" className="report-pill" aria-current={isScreens ? "page" : undefined}>
+            Screens
+          </Link>
         </div>
         {isFlange ? (
           <span className="page-title-display">{title}</span>
+        ) : isScreens ? (
+          <div className="screen-tabs" role="group" aria-label="Screens">
+            {SCREENS.map((sc) => (
+              <Link key={sc.id} href={`/report/${sc.id}`} className="report-pill" aria-current={sc.id === screenId ? "page" : undefined}>
+                {sc.nav}
+              </Link>
+            ))}
+            <Link href="/flange" className="report-pill">
+              Flange
+            </Link>
+          </div>
         ) : (
           <>
             <span className="page-indicator">

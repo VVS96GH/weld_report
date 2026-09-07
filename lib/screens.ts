@@ -1,0 +1,158 @@
+/**
+ * Consolidation option A ("filters instead of pages", proposal 2026-09-07, owner:
+ * "сделай вариант A — посмотрим как это будет выглядеть"): the 44 mockup pages
+ * regrouped into 7 screens whose sub-contractor / RT% / weld-cat axes are FILTERS in
+ * the URL rather than separate pages. Nothing is recomputed — every screen is one or
+ * more of the existing PageModels (lib/pages/welding.ts, pinned by tests) merged
+ * verbatim, so the numbers are exactly the 44-page report's. The 44-page route stays
+ * as the print form.
+ *
+ * Pure data + pure functions: imported by both the server route and the client
+ * shell, so nothing here may touch the DB or React.
+ */
+
+export type ScreenFilterOption = { value: string; label: string };
+export type ScreenFilterDef = { id: string; label: string; options: ScreenFilterOption[]; default: string };
+
+export type ScreenDef = {
+  id: string;
+  title: string;
+  /** Short chip label in the screen nav. */
+  nav: string;
+  filters: ScreenFilterDef[];
+  /**
+   * Mockup page numbers (1..44) this screen shows for the given filter values, in
+   * render order; `null` when the report has no page for that combination (the
+   * screen then says so instead of showing another combination's numbers).
+   */
+  pages: (values: Record<string, string>) => number[] | null;
+  /** The screen forwards these search params to page 1's own slicers. */
+  passthrough?: readonly string[];
+};
+
+const SUBCOS = ["CCC", "GAC", "TEKFEN", "MEDGULF"] as const;
+const subcoFilter = (options: ScreenFilterOption[] = SUBCOS.map((s) => ({ value: s, label: s }))): ScreenFilterDef => ({
+  id: "subco",
+  label: "Sub-Contractor",
+  options,
+  default: options[0]?.value ?? "CCC",
+});
+const rtFilter = (pcts: readonly number[]): ScreenFilterDef => ({
+  id: "rt",
+  label: "RT %",
+  options: pcts.map((p) => ({ value: String(p), label: `${p} %` })),
+  default: String(pcts[0]),
+});
+
+/** Sub-contractor status: the "PR all" table page (3-6) followed by the chart page (7-11). */
+const STATUS_PAGES: Record<string, number[]> = {
+  CCC: [7, 3],
+  GAC: [8, 4],
+  "GAC-SLG": [9],
+  TEKFEN: [10, 5],
+  MEDGULF: [11, 6],
+};
+
+/** NDE status by RT coverage: sub-contractor → RT% → mockup page. */
+const NDE_PAGES: Record<string, Record<string, number>> = {
+  CCC: { "100": 12, "5": 14, "10": 16, "20": 18 },
+  GAC: { "100": 19, "5": 21, "10": 23, "20": 25, "30": 26 },
+  TEKFEN: { "100": 27, "5": 29, "10": 31, "20": 33 },
+  MEDGULF: { "100": 34, "5": 36, "10": 38, "20": 40 },
+};
+
+/** PWHT status by RT coverage. */
+const PWHT_PAGES: Record<string, Record<string, number>> = {
+  CCC: { "100": 13, "5": 15, "10": 17 },
+  GAC: { "100": 20, "5": 22, "10": 24 },
+  TEKFEN: { "100": 28, "5": 30, "10": 32 },
+  MEDGULF: { "100": 35, "5": 37, "10": 39 },
+};
+
+const WPS_PAGES: Record<string, number> = { CCC: 41, GAC: 42, TEKFEN: 43, MEDGULF: 44 };
+
+export const SCREENS: readonly ScreenDef[] = [
+  {
+    id: "overview",
+    title: "Welding Progress (Project)",
+    nav: "Overview",
+    filters: [],
+    pages: () => [1],
+    passthrough: ["ha", "area", "subco", "wtype", "wcat"],
+  },
+  {
+    id: "status",
+    title: "Project Welding & NDE Status",
+    nav: "Project status",
+    filters: [],
+    pages: () => [2],
+  },
+  {
+    id: "subco",
+    title: "Sub-Contractor Welding Status",
+    nav: "Sub-contractor",
+    filters: [
+      subcoFilter([
+        { value: "CCC", label: "CCC" },
+        { value: "GAC", label: "GAC (other than Slug Catcher)" },
+        { value: "GAC-SLG", label: "GAC (Slug Catcher Area)" },
+        { value: "TEKFEN", label: "TEKFEN" },
+        { value: "MEDGULF", label: "MEDGULF" },
+      ]),
+    ],
+    pages: (v) => STATUS_PAGES[v.subco] ?? null,
+  },
+  {
+    id: "nde",
+    title: "NDE Status by RT %",
+    nav: "NDE by RT %",
+    filters: [subcoFilter(), rtFilter([100, 30, 20, 10, 5])],
+    pages: (v) => {
+      const n = NDE_PAGES[v.subco]?.[v.rt];
+      return n ? [n] : null;
+    },
+  },
+  {
+    id: "pwht",
+    title: "PWHT Status by RT %",
+    nav: "PWHT by RT %",
+    filters: [subcoFilter(), rtFilter([100, 10, 5])],
+    pages: (v) => {
+      const n = PWHT_PAGES[v.subco]?.[v.rt];
+      return n ? [n] : null;
+    },
+  },
+  {
+    id: "wps",
+    title: "Weld Rejection Detail as per WPS",
+    nav: "Rejection by WPS",
+    filters: [subcoFilter()],
+    pages: (v) => {
+      const n = WPS_PAGES[v.subco];
+      return n ? [n] : null;
+    },
+  },
+];
+
+export const SCREEN_IDS = SCREENS.map((s) => s.id);
+
+export function screenById(id: string): ScreenDef | undefined {
+  return SCREENS.find((s) => s.id === id);
+}
+
+/** Applied filter values for a screen: the search param when it is a known option, else the default. */
+export function screenValues(screen: ScreenDef, params: Record<string, string | undefined>): Record<string, string> {
+  const values: Record<string, string> = {};
+  for (const f of screen.filters) {
+    const raw = params[f.id];
+    values[f.id] = raw !== undefined && f.options.some((o) => o.value === raw) ? raw : f.default;
+  }
+  return values;
+}
+
+/** Human title for the applied combination, e.g. "GAC · RT 100 %". */
+export function screenVariantLabel(screen: ScreenDef, values: Record<string, string>): string {
+  return screen.filters
+    .map((f) => f.options.find((o) => o.value === values[f.id])?.label ?? values[f.id])
+    .join(" · ");
+}

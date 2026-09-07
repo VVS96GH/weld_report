@@ -1630,6 +1630,14 @@ html {
   text-decoration: none;
   transition: background-color 150ms ease-out, color 150ms ease-out;
 }
+/* option A: the 7 screen chips sit where the 44-page indicator/controls normally are */
+.screen-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+}
 .report-pill:hover {
   color: var(--text-primary);
   background: var(--bg-card-hover);
