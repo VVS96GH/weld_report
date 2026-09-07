@@ -113,3 +113,50 @@ export async function getFlangePage(
   }
   return getFlangeFixturePage(filters);
 }
+
+// ── RT Backlog Forecast (single page, filter-driven; pbix page 20) ────────────
+
+/** Forecast slicers as URL search params; absent = "All". */
+export type ForecastFilters = Partial<
+  Record<"ha" | "area" | "subco" | "byut" | "wcat" | "rt" | "dia" | "wy" | "wm" | "ry" | "rm", string>
+>;
+export const FORECAST_FILTER_IDS = ["ha", "area", "subco", "byut", "wcat", "rt", "dia", "wy", "wm", "ry", "rm"] as const;
+
+type ForecastPagesModule = {
+  getForecastPage: (filters: ForecastFilters, opts?: { as_of?: string }) => Promise<PageModel>;
+};
+
+const FORECAST_PAGES_MODULE = "@/lib/pages/forecast";
+
+/** The forecast page has no mockup fixture: while the data layer is absent, say so. */
+function forecastPlaceholder(reason: string): PageModel {
+  return {
+    page: 0,
+    id: "forecast",
+    title: "RT Backlog Forecast",
+    widgets: [{ kind: "text", text: reason }],
+    meta: { source: resolvePageSource() },
+  };
+}
+
+/** Load the RT Backlog Forecast PageModel for the applied filters from the database source. */
+export async function getForecastPage(filters: ForecastFilters = {}, opts: { as_of?: string } = {}): Promise<PageModel> {
+  if (resolvePageSource() !== "database") {
+    return forecastPlaceholder(
+      "The RT Backlog Forecast page is computed from the database only (pbix page 20 has no mockup snapshot); PAGE_SOURCE=fixture shows this note instead.",
+    );
+  }
+  let mod: Partial<ForecastPagesModule>;
+  try {
+    mod = (await import(FORECAST_PAGES_MODULE)) as Partial<ForecastPagesModule>;
+  } catch (err) {
+    if (/Cannot find module/.test((err as Error).message)) {
+      return forecastPlaceholder("Database source not available yet: lib/pages/forecast.ts is not present. The page fills in automatically once that module lands.");
+    }
+    throw new Error(`PAGE_SOURCE=database but lib/pages/forecast.ts could not be loaded: ${(err as Error).message}`);
+  }
+  if (typeof mod.getForecastPage !== "function") {
+    throw new Error("PAGE_SOURCE=database but lib/pages/forecast.ts does not export getForecastPage(filters)");
+  }
+  return mod.getForecastPage(filters, opts);
+}

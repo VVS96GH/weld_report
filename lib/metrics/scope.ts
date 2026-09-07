@@ -272,7 +272,29 @@ export type Scope = {
   ha?: string;
   /** The pbix slicer's "(Blank)" group — `ha IS NULL`, not a literal match. */
   haIsNull?: boolean;
+  /**
+   * Forecast page slicers. Both are pbix CALCULATED columns with no stored
+   * equivalent, so they are expressed here as SQL over the underlying columns
+   * — and, like every other scope value, BOUND as parameters. They are never
+   * interpolated: these come from a query string.
+   */
+  byUtAll?: string;
+  diaBand?: string;
 };
+
+/**
+ * `[By UT All]` — materialised on `mv_joint` by migration 0033, because the
+ * four columns it reads (`by_ut`, `rt_ut`, `ht_remarks`,
+ * `manual_ut_report_no_all`) live at row grain and are not on the joint view.
+ */
+export const byUtAllExpr = (a = "w") => `${a}.by_ut_all`;
+
+/**
+ * `[Dia Inch >20<]` — materialised on `mv_joint` by migration 0033. The band
+ * is LABELLED `20-199` but its upper bound is 200; that is the DAX's own
+ * inconsistency, reproduced there rather than corrected.
+ */
+export const diaBandExpr = (a = "w") => `${a}.dia_band`;
 
 /**
  * Render a scope as a list of SQL conditions over alias `a` (default `w`).
@@ -350,6 +372,12 @@ export function scopeConditions(
   }
   if (scope.haIsNull) {
     c.push(`${a}.ha IS NULL`);
+  }
+  if (scope.byUtAll !== undefined) {
+    c.push(`(${byUtAllExpr(a)}) = ${p.add(scope.byUtAll)}`);
+  }
+  if (scope.diaBand !== undefined) {
+    c.push(`(${diaBandExpr(a)}) = ${p.add(scope.diaBand)}`);
   }
   if (scope.ha !== undefined) {
     c.push(`${a}.ha = ${p.add(scope.ha)}`);

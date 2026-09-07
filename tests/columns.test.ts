@@ -99,6 +99,10 @@ function mvJointColumns(): Set<string> {
     "0023_backlog_history.sql",
     "0024_m47_m64.sql",
     "0025_fabricated_prall.sql",
+    "0026_ha_column.sql",
+    "0027_ha_from_area_label.sql",
+    "0032_ha_from_l0_guide.sql",
+    "0033_forecast_columns.sql",
   ]
     .map((f) => {
       try {
@@ -252,6 +256,11 @@ function collectRefs(): Ref[] {
     for (const m of text.matchAll(/\bmj\.([a-z][a-z0-9_]*)\b/g)) {
       refs.push({ file, alias: "weld", column: m[1] });
     }
+    // `ref_talisman_joint` (migration 0029), aliased `tj` in
+    // lib/metrics/forecast.ts.
+    for (const m of text.matchAll(/\btj\.([a-z][a-z0-9_]*)\b/g)) {
+      refs.push({ file, alias: "ref_talisman_joint", column: m[1] });
+    }
   }
   return refs;
 }
@@ -314,6 +323,11 @@ describe("SQL column names exist in the schema contract", () => {
       // `ref_ha_area` (migration 0028) — the pbix (HA, Area Classification)
       // slicer hierarchy, sources/HA.csv.
       ref_ha_area: new Set(["ha", "area_classification", "load_id"]),
+      // `ref_talisman_joint` (migration 0029) — the pbix 'TALISMAN DATA'.
+      ref_talisman_joint: new Set([
+        "joint_id", "load_id", "subcon_code", "weld_date", "rt1_date",
+        "rt1_rep_no", "rt1_result", "orig_repair_delete_flag", "source_rows",
+      ]),
     };
 
     const refs = collectRefs();

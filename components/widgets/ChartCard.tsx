@@ -201,7 +201,7 @@ type DatalabelCtx = { dataset: { data: unknown[] }; dataIndex: number; chart: Ch
 
 /** Per-type chartjs-plugin-datalabels config; `display: false` is the registered default. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function valueLabels(type: string, stacked: boolean, percent: boolean, circular: boolean, palette: Palette, seriesCount: number, categoryCount: number): any {
+function valueLabels(type: string, stacked: boolean, percent: boolean, circular: boolean, palette: Palette, seriesCount: number, categoryCount: number, horizontal = false): any {
   const font = { size: 10, family: palette.font, weight: 600 };
   if (circular) {
     // Slice values outside the ring; slivers under 2 % of the total stay unlabelled
@@ -275,6 +275,22 @@ function valueLabels(type: string, stacked: boolean, percent: boolean, circular:
   }
   // Grouped bars: the value above each bar — rotated upright when three or more series
   // share a category, because the bars are then too narrow for horizontal text.
+  if (horizontal) {
+    // value to the right of each bar; the 0.0 of an empty bar is noise, not data
+    return {
+      display: (ctx: DatalabelCtx) => {
+        const v = ctx.dataset.data[ctx.dataIndex];
+        return typeof v === "number" && v !== 0;
+      },
+      formatter: (v: unknown) => fmtValue(v, percent),
+      color: palette.fg,
+      anchor: "end",
+      align: "end",
+      offset: 2,
+      clamp: true,
+      font: { ...font, size: 9 },
+    };
+  }
   const rotated = seriesCount > 2;
   return {
     display: true,
@@ -394,12 +410,14 @@ export function ChartCard({ widget }: { widget: ChartWidget }) {
       layout: {
         padding: circular
           ? { top: 18, bottom: 18, left: 24, right: 24 }
-          : { top: widget.chart_type === "bar" && !(stackedX || stackedY) && widget.datasets.length > 2 ? 34 : 16 },
+          : horizontal
+            ? { right: 48, top: 8 }
+            : { top: widget.chart_type === "bar" && !(stackedX || stackedY) && widget.datasets.length > 2 ? 34 : 16 },
       },
       plugins: {
         legend: { display: true, labels: { color: palette.text, boxWidth: 12, font: { size: 10, family: palette.font } } },
         tooltip: { enabled: true },
-        datalabels: valueLabels(widget.chart_type, stackedX || stackedY, percentAxis, circular, palette, widget.datasets.length, widget.labels.length),
+        datalabels: valueLabels(widget.chart_type, stackedX || stackedY, percentAxis, circular, palette, widget.datasets.length, widget.labels.length, horizontal),
         stackTotals:
           widget.chart_type === "bar" && (stackedX || stackedY)
             ? { color: palette.fg, font: palette.font ?? "sans-serif", percent: percentAxis }
@@ -407,8 +425,11 @@ export function ChartCard({ widget }: { widget: ChartWidget }) {
       },
       scales: circular
         ? undefined
-        : {
-            x: {
+        : (() => {
+            // The category axis is x for vertical charts and y for horizontal ones
+            // ("indexAxis y", e.g. the forecast's per-sub-contractor bar); the value
+            // axis is the other one.
+            const category = {
               stacked: stackedX,
               ticks: {
                 color: palette.text,
@@ -418,8 +439,8 @@ export function ChartCard({ widget }: { widget: ChartWidget }) {
                 },
               },
               grid: { color: palette.grid },
-            },
-            y: {
+            };
+            const value = {
               stacked: stackedY,
               beginAtZero: true,
               // headroom so stack totals / line-point labels never sit on the legend;
@@ -429,11 +450,14 @@ export function ChartCard({ widget }: { widget: ChartWidget }) {
               ticks: {
                 color: palette.text,
                 font: { size: 10, family: palette.font },
-                callback: percentAxis ? (value: number | string) => `${value}%` : undefined,
+                callback: percentAxis
+                  ? (v: number | string) => `${v}%`
+                  : (v: number | string) => (typeof v === "number" ? v.toLocaleString("en-US") : v),
               },
               grid: { color: palette.grid },
-            },
-          },
+            };
+            return horizontal ? { x: value, y: category } : { x: category, y: value };
+          })(),
     }),
     [palette, stackedX, stackedY, percentAxis, horizontal, circular, widget.chart_type, widget.datasets.length, widget.labels.length, thresholds],
   );

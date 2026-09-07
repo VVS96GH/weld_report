@@ -21,6 +21,7 @@
     "db:load:exclusions": "node --env-file-if-exists=.env --import tsx scripts/load-exclusion-list.ts",
     "db:load:spool": "node --env-file-if-exists=.env --import tsx scripts/load-spool-dump.ts",
     "db:load:ha": "node --env-file-if-exists=.env --import tsx scripts/load-ha-guide.ts",
+    "db:load:talisman": "node --env-file-if-exists=.env --import tsx scripts/load-talisman-joint.ts",
     "db:load:ha-guide": "node --env-file-if-exists=.env --import tsx scripts/load-ha-guide.ts",
     "db:load:ccc-joints": "node --env-file-if-exists=.env --import tsx scripts/load-ccc-joint-record.ts",
     "db:load:ccc": "node --env-file-if-exists=.env --max-old-space-size=4096 --import tsx scripts/load-ccc-welder-record.ts",
