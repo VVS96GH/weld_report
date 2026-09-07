@@ -1174,11 +1174,54 @@ So the measure is right and the month labels in the screenshot cannot be taken
 positionally. Pinned as *our* series plus the alignment, with nothing tuned to
 the owner's labels.
 
-#### Near-miss, reported not tuned
+#### `PWHT Y/N CCC (NEW)` — a 16-branch rule where order is the measure
 
-`[RT BACKLOG RT100% Talisman]` = **357**, owner **358**. 356 of the 357 are
-`CCC_WELDER_RECORD` joints. The gap is one joint whose RT% lookup does not
-resolve to 100 in our union; the join has not been relaxed to reach the target.
+`[PWHT All BACKLOG All WELD TYPE "PR all" (New PBI Rule)]` differs from the
+measure page 2 renders in exactly one way: its CCC term reads
+`[PWHT Y/N CCC (NEW)]` instead of `[PWHT Y/N CCC]`. That calculated column is a
+nested `IF` over Joint ID, Weld Type, WPS No., Service class, Material Type and
+Thickness — CCC only, blank elsewhere — and its **branch order is load-bearing**:
+
+* branch 1 is a **13-joint whitelist** (the DAX's own *"АБСОЛЮТНЫЙ ПРИОРИТЕТ"*)
+  that wins outright over every rule below it;
+* branch 8, `Material SS + WPS DS-04 → Y`, is tested **before** the general
+  SS/DSS group in branch 9 (the DAX's *"ПРИОРИТЕТНОЕ ИСКЛЮЧЕНИЕ"*). Swapping
+  the two flips those rows;
+* branch 11 lists `'6PIA'` — the DAX's typo for `'6P1A'`, letter I for digit 1.
+  Reproduced, not corrected.
+
+The new rule's CCC term is **542** where the standard one gives 546; the non-CCC
+term (496) is untouched. **542 + 496 = 1,038**, the owner's card exactly.
+Materialised on `mv_joint` (migration 0034) per the union-is-the-base ruling.
+
+#### Exact against the owner
+
+| card | value |
+|---|---|
+| RT Total Forecast B.log | **13,606** |
+| RT Dia Total Forecast B.log | **124,613** |
+| Total RT/UT Done | **204,560** |
+| RT B.Log | **672** |
+| RT Avrg Prod-on 2024-26 per Month | **5,324** |
+| QTY Years | **0.21** |
+| Months to keep RT B.log / Dia | **0.13** / **0.13** |
+| PWHT B.Log PBI Rule | **1,038** |
+
+#### Five near-misses, reported and not tuned
+
+Each says so **on the card itself**, so a reader cannot mistake one for
+agreement.
+
+| card | ours | owner | Δ | reading |
+|---|---|---|---|---|
+| RT B.Log Talisman | 357 | 358 | −1 | 356 of the 357 are `CCC_WELDER_RECORD` joints. One Talisman joint's RT% lookup does not resolve to 100 in our union. The join has not been relaxed to reach the target. |
+| Numb RT/UT 2024 | 172,153 | 172,520 | −367 | Ours is `rt_year >= 2024`. The `{2024,2025}` reading gives 157,083 and `rt_date > 2024-01-01` gives 171,960, so no variant of the date filter reaches 172,520 — the gap is in the population, not the window. **Note the average built on this same numerator is exact at 5,324**, which says our numerator is right and the *card* is a different variant. |
+| RT Dia B.Log | 6,958 | 6,832 | +126 | `sum(dia_inch)` at `weldpoint_seq = 1` over `rt_backlog_prall` joints. The DAX (`[RT BACKLOG Dia Total Project "PR all"]`) is a two-term sum with its own hold list and an RT%=100 branch; ours takes the joint flag instead. That is the likeliest source and is the next thing to test. |
+| Total Welded RT Dia | 1,705,849 | 1,712,883 | −7,034 (0.41 %) | All five filters are verbatim. The residual is small and one-directional, consistent with a slightly different `Repair & Reweld` or WP1 reading rather than a wrong measure. |
+| RT Dia Avrg Prod-on | 52,758 | 50,954 | +1,804 (3.5 %) | `welded_dia / 970 days × 30`. Reaching 50,954 needs either a numerator of 1,647,180 (neither ours nor the owner's dia total) or ~1,004 days instead of 970. Since the *joint* average is exact on the same 970-day divisor, the divisor is right and the numerator differs — the same gap as the row above, amplified. |
+
+The last two are one issue, not two: the dia average is the dia total divided by
+a divisor already proven correct elsewhere.
 
 ### M91 `WPS Approved` (R4-02, R4-03)
 

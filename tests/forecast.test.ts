@@ -117,20 +117,70 @@ describe.skipIf(Boolean(skipReason))("forecast page — slice 1", () => {
     expect(subco?.kind === "filter" ? subco.options : []).not.toContain("INCO");
   });
 
-  it("cards slice 1 does not compute show an em dash, never a zero", async () => {
+  it("every card is computed, and the exact ones match the owner", async () => {
     const p = await getForecastPage();
-    for (const label of [
-      "RT Dia Total Forecast B.log", "Numb RT/UT 2024", "QTY Years",
-      "PWHT B.Log PBI Rule", "RT Dia B.Log", "Total Welded RT Dia",
-    ]) {
-      expect(kpi(p, label), label).toBe("\u2014");
+    // Exact against the owner's screenshot.
+    expect(kpi(p, "RT Dia Total Forecast B.log")).toBe("124,613");
+    expect(kpi(p, "RT Avrg Prod-on 2024-26 per Month")).toBe("5,324");
+    expect(kpi(p, "QTY Years")).toBe("0.21");
+    expect(kpi(p, "Months to keep RT B.log")).toBe("0.13");
+    expect(kpi(p, "Months to keep Dia RT B.log")).toBe("0.13");
+    expect(kpi(p, "PWHT B.Log PBI Rule")).toBe("1,038");
+    // Nothing is left as a placeholder any more.
+    for (const w of p.widgets) {
+      if (w.kind !== "kpi") continue;
+      expect(w.sub ?? "", `${w.label} still a placeholder`).not.toMatch(/slice \d/);
     }
-    // ...and each carries its target, so the shape is complete and the gap
-    // explicit rather than looking like a broken widget.
-    const w = p.widgets.find(
-      (x) => x.kind === "kpi" && x.label === "Total Welded RT Dia",
+  });
+
+  it("the four near-misses say so ON THE CARD, and are not tuned", async () => {
+    // Reported, never adjusted to hit the target. The branch split behind each
+    // is in lib/metrics/README.md.
+    const p = await getForecastPage();
+    const cases: Array<[string, string, string]> = [
+      ["Numb RT/UT 2024", "172,153", "172,520"],
+      ["RT Dia B.Log", "6,958", "6,832"],
+      ["Total Welded RT Dia", "1,705,849", "1,712,883"],
+      ["RT Dia Avrg Prod-on", "52,758", "50,954"],
+    ];
+    for (const [label, ours, owner] of cases) {
+      expect(kpi(p, label), label).toBe(ours);
+      const w = p.widgets.find((x) => x.kind === "kpi" && x.label === label);
+      expect(
+        w && w.kind === "kpi" ? w.sub : null,
+        `${label} must disclose the difference`,
+      ).toContain(owner);
+    }
+  });
+
+  it("PWHT (New PBI Rule) differs from the standard rule by exactly 4 joints", async () => {
+    // The NEW rule's CCC term is 542 where [PWHT Y/N CCC] gives 546; the
+    // non-CCC term (496) is identical. 542 + 496 = 1,038, the owner's card.
+    // Branch order in the 16-branch IF is load-bearing -- the 13-joint
+    // whitelist wins outright and DS-04 for SS precedes the general SS group.
+    const [r] = await query<Record<string, string>>(
+      "SELECT count(*) FILTER (WHERE pwht_backlog_ccc_new)::text AS ccc_new," +
+        " count(*) FILTER (WHERE pwht_backlog_ccc)::text AS ccc_old," +
+        " count(*) FILTER (WHERE pwht_backlog_rest)::text AS rest" +
+        " FROM mv_joint WHERE source::text IN " +
+        "('WELD_DUMP','CCC_WELDER_RECORD','CCC_JOINT_RECORD','ACCIONA')" +
+        "   AND sub_contractor IS DISTINCT FROM 'INCO' AND NOT temporary_lines",
     );
-    expect(w && w.kind === "kpi" ? w.sub : null).toMatch(/owner target 1,712,883/);
+    expect(Number(r.ccc_new)).toBe(542);
+    expect(Number(r.ccc_old)).toBe(546);
+    expect(Number(r.rest)).toBe(496);
+    expect(Number(r.ccc_new) + Number(r.rest)).toBe(1_038);
+  });
+
+  it("the monthly charts declare both stacking axes", async () => {
+    // Without "stacked (y)" ChartCard draws grouped bars; the pbix stacks F+S.
+    const p = await getForecastPage();
+    for (const id of ["forecast_joint_monthly", "forecast_dia_monthly"]) {
+      const c = p.widgets.find((w) => w.kind === "chart" && w.canvas_id === id);
+      expect(c?.kind === "chart" ? c.options_notes : null, id).toBe(
+        "stacked (x), stacked (y)",
+      );
+    }
   });
 
   it("the monthly charts run from Jan 2024, stacked F/S, every month shown", async () => {

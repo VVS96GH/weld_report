@@ -34,6 +34,7 @@ import {
   forecastBacklog,
   forecastBacklogBySubcon,
   forecastOptions,
+  forecastTotals,
   diaMonthlyProgress,
   jointMonthlyProgress,
   monthLabel,
@@ -98,16 +99,6 @@ function kpi(label: string, value: string, sub?: string): KpiWidget {
   return { kind: "kpi", label, value, ...(sub ? { sub } : {}) };
 }
 
-/**
- * A card slice 1 does not compute yet. It carries the OWNER'S TARGET in its
- * `sub`, so the page shows what it will show and the gap is explicit — far
- * better than an empty box that looks like a bug, and impossible to mistake
- * for a computed value because the value itself is an em dash.
- */
-function pending(label: string, target: string): KpiWidget {
-  return kpi(label, HONEST_EMPTY, `slice 3 — owner target ${target}`);
-}
-
 async function filterWidgets(
   applied: ForecastFilters,
   scope: Scope,
@@ -145,10 +136,9 @@ async function filterWidgets(
 }
 
 const SLICE_NOTE =
-  "Slices 1-2 of 3. The forecast backlog, the RT/UT totals and the Talisman " +
-  "backlog are computed; the remaining cards are present in shape and carry " +
-  "their target value in the subtitle until slices 2 and 3 land. A card " +
-  "showing \u2014 has not been computed \u2014 it is never a zero.";
+  "Every card and chart on this page is computed. Four cards differ from the " +
+  "report owner\u2019s screenshot and say so on the card; none has been tuned to " +
+  "match. A card showing \u2014 is one this data cannot support, never a zero.";
 
 const FORECAST_NOTE =
   "The forecast backlog counts joints that are NOT YET WELDED, weighted by RT " +
@@ -160,6 +150,15 @@ const TALISMAN_NOTE =
   "RT B.Log Talisman reads sources/Joint.csv (1,548,056 rows, DELETE-flagged " +
   "rows dropped as the pbix does). Its RT% is looked up from the union by " +
   "Joint ID rather than stored, so the two cannot drift.";
+
+// Cards whose value differs from the owner's screenshot. Each says so on the
+// card itself rather than only in a report, so nobody reads a near-miss as
+// agreement. None of them is tuned; see lib/metrics/README.md for the branch
+// split behind each.
+const NEAR_MISS_2024 = "owner reads 172,520 \u2014 see README";
+const NEAR_MISS_DIA_BACKLOG = "owner reads 6,832 \u2014 see README";
+const NEAR_MISS_WELDED_DIA = "owner reads 1,712,883 \u2014 see README";
+const NEAR_MISS_DIA_AVG = "owner reads 50,954 \u2014 see README";
 
 const MONTHLY_NOTE =
   "The two monthly charts group by RT DATE, from January 2024, stacked by Weld " +
@@ -202,6 +201,11 @@ export async function getForecastPage(
       jointMonthlyProgress(scope),
       diaMonthlyProgress(scope),
     ]);
+  const totals = await forecastTotals(scope);
+
+  /** `x / y`, rendered to 2 dp, honest-empty when the denominator is absent. */
+  const ratio = (a: number, b: number | null, dp = 2) =>
+    b === null || b === 0 ? HONEST_EMPTY : (a / b).toFixed(dp);
 
   const notes: string[] = [
     SLICE_NOTE, FORECAST_NOTE, TALISMAN_NOTE, DONUT_TOTAL_NOTE, MONTHLY_NOTE,
@@ -272,7 +276,9 @@ export async function getForecastPage(
       { label: "F", data: points.map((p) => (round ? Math.round(p.f) : p.f)) },
       { label: "S", data: points.map((p) => (round ? Math.round(p.s) : p.s)) },
     ],
-    options_notes: "stacked",
+    // ChartCard draws grouped bars without this: the pbix column charts stack
+    // F and S with the total on top.
+    options_notes: "stacked (x), stacked (y)",
   });
 
   const widgets: Widget[] = [
@@ -287,18 +293,32 @@ export async function getForecastPage(
       talisman === null ? "sources/Joint.csv not loaded" : undefined,
     ),
     kpi("RT Total Forecast B.log", num(fc.total)),
-    pending("RT Dia Total Forecast B.log", "124,613"),
-    pending("Numb RT/UT 2024", "172,520"),
-    pending("RT Avrg Prod-on 2024-26 per Month", "5,324"),
-    pending("QTY Years", "0.21"),
+    kpi("RT Dia Total Forecast B.log", num(totals.dia_forecast)),
+    kpi("Numb RT/UT 2024", num(totals.numb_rt_2024), NEAR_MISS_2024),
+    kpi(
+      "RT Avrg Prod-on 2024-26 per Month",
+      totals.avg_prod_month === null ? HONEST_EMPTY : num(totals.avg_prod_month),
+    ),
+    // [QTY Years for RT Backlog Forecast] = forecast / avg per month / 12.
+    kpi("QTY Years", ratio(fc.total, (totals.avg_prod_month ?? 0) * 12)),
     kpi("RT B.Log", num(backlogTotal)),
-    pending("Numb RT/UT_", "172,520"),
-    pending("Months to keep RT B.log", "0.13"),
-    pending("PWHT B.Log PBI Rule", "1,038"),
-    pending("RT Dia B.Log", "6,832"),
-    pending("Total Welded RT Dia", "1,712,883"),
-    pending("RT Dia Avrg Prod-on", "50,954"),
-    pending("Months to keep Dia RT B.log", "0.13"),
+    // The pbix shows the same measure twice, once per Calendar relationship.
+    kpi("Numb RT/UT_", num(totals.numb_rt_2024), NEAR_MISS_2024),
+    kpi("Months to keep RT B.log", ratio(backlogTotal, totals.avg_prod_month)),
+    kpi("PWHT B.Log PBI Rule", num(totals.pwht_backlog_pbi)),
+    kpi("RT Dia B.Log", num(totals.dia_backlog), NEAR_MISS_DIA_BACKLOG),
+    kpi("Total Welded RT Dia", num(totals.welded_dia), NEAR_MISS_WELDED_DIA),
+    kpi(
+      "RT Dia Avrg Prod-on",
+      totals.dia_avg_prod_month === null
+        ? HONEST_EMPTY
+        : num(totals.dia_avg_prod_month),
+      NEAR_MISS_DIA_AVG,
+    ),
+    kpi(
+      "Months to keep Dia RT B.log",
+      ratio(totals.dia_backlog, totals.dia_avg_prod_month),
+    ),
     monthlyChart(
       "forecast_joint_monthly",
       "Joint RT/UT Monthly Progress (Project)",

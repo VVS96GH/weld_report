@@ -103,6 +103,7 @@ function mvJointColumns(): Set<string> {
     "0027_ha_from_area_label.sql",
     "0032_ha_from_l0_guide.sql",
     "0033_forecast_columns.sql",
+    "0034_pwht_new_pbi_rule.sql",
   ]
     .map((f) => {
       try {

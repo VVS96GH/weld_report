@@ -326,3 +326,110 @@ export async function diaMonthlyProgress(scope: Scope): Promise<MonthlyPoint[]> 
     return [];
   }
 }
+
+// ── slice 3: the dia family, the averages and the PBI-rule PWHT backlog ─────
+
+/** 2024-01-01, the epoch every "2024" measure counts from. */
+export const FORECAST_EPOCH = "2024-01-01";
+
+export type ForecastTotals = {
+  /** `[RT Dia Total Forecast Backlog]` — the dia twin of the joint forecast. */
+  dia_forecast: number;
+  /** `[Numb RT 2024 "PR all"]`, RT year >= 2024. */
+  numb_rt_2024: number;
+  /** `[RT Average Production 2024-2026 per Month]`. */
+  avg_prod_month: number | null;
+  /** `[Total Welded RT Dia WP1 2024 "PR all"]`. */
+  welded_dia: number;
+  /** `[RT Dia Average Production 2024-26 per Month]`. */
+  dia_avg_prod_month: number | null;
+  /** `[RT BACKLOG Dia Total Project "PR all"]`. */
+  dia_backlog: number;
+  /** `[PWHT All BACKLOG All WELD TYPE "PR all" (New PBI Rule)]`. */
+  pwht_backlog_pbi: number;
+  /** Days from 2024-01-01 to the latest RT date — both averages' divisor. */
+  days_since_2024: number;
+};
+
+/**
+ * Everything slice 3 adds, in one round trip.
+ *
+ * The two averages share the DAX's shape:
+ * `IF(days > 0, (value / days) * 30, 0)` where `days = DATEDIFF(2024-01-01,
+ * MAX([RT Date]), DAY)`. `QTY Years` and both `Months to keep` are ratios of
+ * measures already here, so they are derived in the page rather than queried.
+ */
+export async function forecastTotals(scope: Scope): Promise<ForecastTotals> {
+  const p = new Params();
+  const w = scopeWhere(scope, p);
+  const rt = `w.weld_type = ANY(${p.any(RT_WELD_TYPES)})`;
+  const jointSql =
+    `SELECT\n` +
+    FORECAST_WEIGHTS.map(
+      ([pct]) =>
+        `  sum(w.dia_inch) FILTER (WHERE w.weld_date IS NULL AND ${rt}` +
+        ` AND w.rt_pct = ${pct}) AS d${pct},`,
+    ).join("\n") +
+    `\n  count(*) FILTER (WHERE w.is_tested_prall AND w.rt_year >= 2024) AS numb_2024,\n` +
+    `  count(*) FILTER (WHERE w.pwht_backlog_ccc_new) AS pbi_ccc,\n` +
+    `  count(*) FILTER (WHERE w.pwht_backlog_rest) AS pbi_rest\n` +
+    `  FROM ${JOINT_FROM} WHERE ${w}`;
+
+  const p2 = new Params();
+  const w2 = scopeWhere(scope, p2, "w");
+  const rowSql =
+    `SELECT\n` +
+    `  sum(w.dia_inch) FILTER (\n` +
+    `    WHERE w.weldpoint_seq = 1 AND coalesce(w.repair_reweld, '') = ''\n` +
+    `      AND w.weld_type = ANY(${p2.any(RT_WELD_TYPES)})\n` +
+    `      AND w.rt_report IS NOT NULL AND w.weld_date IS NOT NULL\n` +
+    `      AND w.rt_date > DATE '${FORECAST_EPOCH}') AS welded_dia,\n` +
+    `  sum(w.dia_inch) FILTER (\n` +
+    `    WHERE w.weldpoint_seq = 1 AND EXISTS (\n` +
+    `      SELECT 1 FROM mv_joint mj WHERE mj.source = w.source\n` +
+    `        AND mj.joint_id = w.joint_id AND mj.rt_backlog_prall)) AS dia_backlog,\n` +
+    `  (max(w.rt_date) - DATE '${FORECAST_EPOCH}') AS days\n` +
+    `  FROM weld w WHERE ${w2}`;
+
+  const empty: ForecastTotals = {
+    dia_forecast: 0, numb_rt_2024: 0, avg_prod_month: null, welded_dia: 0,
+    dia_avg_prod_month: null, dia_backlog: 0, pwht_backlog_pbi: 0,
+    days_since_2024: 0,
+  };
+  try {
+    const [j, r] = await Promise.all([
+      query(jointSql, p.list()),
+      query(rowSql, p2.list()),
+    ]);
+    const jr = z
+      .object({
+        d100: zSum, d5: zSum, d10: zSum, d20: zSum, d30: zSum,
+        numb_2024: zCount, pbi_ccc: zCount, pbi_rest: zCount,
+      })
+      .parse(j[0] ?? {});
+    const rr = z
+      .object({ welded_dia: zSum, dia_backlog: zSum, days: zSum })
+      .parse(r[0] ?? {});
+    const dia: Record<number, number> = {
+      100: jr.d100 ?? 0, 5: jr.d5 ?? 0, 10: jr.d10 ?? 0,
+      20: jr.d20 ?? 0, 30: jr.d30 ?? 0,
+    };
+    const days = rr.days ?? 0;
+    const perMonth = (v: number) => (days > 0 ? (v / days) * 30 : 0);
+    return {
+      dia_forecast: FORECAST_WEIGHTS.reduce(
+        (a, [pct, wt]) => a + (dia[pct] ?? 0) * wt,
+        0,
+      ),
+      numb_rt_2024: jr.numb_2024,
+      avg_prod_month: days > 0 ? perMonth(jr.numb_2024) : null,
+      welded_dia: rr.welded_dia ?? 0,
+      dia_avg_prod_month: days > 0 ? perMonth(rr.welded_dia ?? 0) : null,
+      dia_backlog: rr.dia_backlog ?? 0,
+      pwht_backlog_pbi: jr.pbi_ccc + jr.pbi_rest,
+      days_since_2024: days,
+    };
+  } catch {
+    return empty;
+  }
+}
