@@ -1022,35 +1022,41 @@ The pbix derives it, and migration 0026 derives it the same way:
 not in `sources/` (the same gap M52's coverage note records), so those joints
 stay NULL rather than receive a guessed area.
 
-**Branch 3 now has a stand-in** (migration 0027). The owner's slicer screenshot
-shows the pbix *does* resolve those joints — its "HA, Area Classification"
-hierarchy puts `Train-9 Process` and `Intercon PR HA-2` under HA2, beside the
-numeric codes 3000000 / 5000000 / 7000000 that our Subsystem-derived HA2 already
-held. That agreement is how we know branches 1–2 match the pbix and only
-branch 3 was missing. The stand-in maps `area_classification_label`:
+**Branch 3 is the real lookup** (migration 0032). `sources/l0_abs_guide.csv`
+arrived — 912 rows, 906 carrying HA1..HA4 (428 / 148 / 175 / 155) — so branch 3
+is now implemented verbatim: `Handover Area` looked up by
+`Location Number = PDS Area`, from `ref_ha_guide` (migration 0031).
 
-| label | → |
-|---|---|
-| `Train-8/9/10/11 Process` | HA1 / HA2 / HA3 / HA4 |
-| anything ending `HA-<1..4>` (`Intercon PR HA-2`, `Utilities HA-1`, `Offsites W2/w3 HA-3`) | HA*n* |
-| everything else (Retention Ponds, bare numeric codes, ACCIONA, INCO) | blank |
+*History, one line:* 0026 did branches 1–2 and left 3 NULL; 0027 stood in for 3
+by mapping area labels; 0032 replaced that with the guide and **deleted** the
+stand-in rather than keeping it as a fallback. `HA.csv` had already proved the
+stand-in could only ever be an approximation — the (HA, Area Classification)
+mapping is many-to-many, so a label alone cannot choose between HA2 and HA3.
+`PDS Area` can.
 
-It is **inferred from a screenshot, not from the guide**, and is flagged for the
-owner to confirm. It is deliberately narrow — only labels that name their own
-handover area are mapped — because inventing a handover area is worse than
-admitting we cannot resolve one. Blank falls from 1,514,661 joints to 45,206.
-
-Distribution after 0027:
+Branch 3 resolves **100 % of CCC** (1,470,093) and **100 % of ACCIONA**
+(13,312), and every remaining blank of the dump parties. Distribution:
 
 | party | HA1 | HA2 | HA3 | HA4 | blank | total |
 |---|---|---|---|---|---|---|
-| CCC | 370,681 | 368,309 | 366,660 | 363,805 | 638 | 1,470,093 |
-| GAC | 249,251 | 31,778 | 134,828 | 27,422 | 89 | 443,368 |
-| TEKFEN | 306,126 | 85 | 67,177 | 81 | 317 | 373,786 |
-| MEDGULF | 41,230 | 304 | 16,309 | 1,726 | 23,612 | 83,181 |
-| ACCIONA | — | — | — | — | 13,312 | 13,312 |
-| INCO | — | — | — | — | 7,238 | 7,238 |
-| **all** | 967,288 | 400,476 | 584,974 | 393,034 | 45,206 | 2,390,978 |
+| CCC | 370,681 | 368,309 | 367,298 | 363,805 | 0 | 1,470,093 |
+| GAC | 249,290 | 31,786 | 134,870 | 27,422 | 0 | 443,368 |
+| TEKFEN | 306,434 | 85 | 67,186 | 81 | 0 | 373,786 |
+| MEDGULF | 43,592 | 362 | 16,583 | 22,644 | 0 | 83,181 |
+| ACCIONA | 13,312 | — | — | — | 0 | 13,312 |
+| INCO | — | — | — | — | **7,238** | 7,238 |
+| **all** | 983,309 | 400,542 | 585,937 | 413,952 | **7,238** | 2,390,978 |
+
+**The blank group is now exactly INCO.** It has no `pds_area` in our load, and
+the pbix's own derivation for it — `Text.BeforeDelimiter(Iso Number, "-")` —
+yields a 2-digit code (`65`, `60`, … 6 distinct values) that cannot match the
+guide's 7-character Location Numbers. Deriving the column would resolve nothing,
+so it is not added; the blank is real and reported rather than papered over.
+
+**Six of `HA.csv`'s 41 pairs produce no joints**, all of them the second HA of a
+many-to-many area: HA3 × {Intercon PR HA-2, Intercon PR HA-4, Train-9 Process}
+and HA4 × {Intercon PR HA-3, Train-10 Process, Utilities HA-3}. Each stays
+selectable and renders 0.
 
 #### The slicer is a hierarchy, and `(Blank)` is a value
 

@@ -610,33 +610,68 @@ export function resetFilterOptionsCache(): void {
 }
 
 /**
- * `area` options grouped by their `ha` — the pbix's two-field slicer
- * "HA, Area Classification". Key `""` is the blank-HA group. Memoised with the
- * flat lists.
+ * `area` options grouped by their `ha` — the pbix two-field slicer
+ * "HA, Area Classification".
+ *
+ * The lists come from **`ref_ha_area`** (`sources/HA.csv`, 41 pairs), not from
+ * the observed cross-tab in `mv_joint`. The file is the report's own hierarchy;
+ * the cross-tab can only show pairings our data happens to contain and would
+ * silently drop any the report offers but we have no joints for.
+ *
+ * The mapping is MANY-TO-MANY — `Train-9 Process` sits under both HA2 and HA3,
+ * `Train-10 Process` under HA3 and HA4 — which no single-valued `ha` column can
+ * express. So a pair may be selectable and yield **zero joints** under our
+ * derived `ha` (HA3 ▸ Train-9 Process is exactly that). That is deliberate: the
+ * report offers the combination, so the page must too, and an honest zero is a
+ * truer answer than an option quietly withheld.
+ *
+ * Key `""` is the blank-HA group and stays DATA-driven — the file has no row
+ * for it, and what it should contain is precisely "areas we could not resolve".
+ *
+ * Memoised with the flat lists.
  */
 let areaByHaCache: Promise<Record<string, string[]>> | null = null;
 
 export async function areaOptionsByHa(): Promise<Record<string, string[]>> {
   areaByHaCache ??= (async () => {
+    const out: Record<string, string[]> = {};
     try {
-      const p = new Params();
+      // The file's own lists, ordered by how many joints each area actually has
+      // so the busiest sit first, then alphabetically for the empty ones.
       const rows = await query<{ ha: string; lbl: string }>(
-        `SELECT coalesce(w.ha, '') AS ha, w.area_classification_label AS lbl\n` +
-          `  FROM ${JOINT_FROM}\n` +
-          ` WHERE ${scopeWhere({ sources: SOURCES_PR_ALL_LOADED }, p)}\n` +
-          `   AND w.area_classification_label IS NOT NULL\n` +
-          `   AND btrim(w.area_classification_label) <> ''\n` +
-          ` GROUP BY 1, 2 ORDER BY 1, count(*) DESC, 2`,
-        p.list(),
+        // Aliases are two letters on purpose: a single-letter alias collides
+        // with ordinary TypeScript (`agg.sql`, `arg.key`) in the column-contract
+        // test's regex scan.
+        `SELECT hg.ha, hg.area_classification AS lbl\n` +
+          `  FROM ref_ha_area hg\n` +
+          `  LEFT JOIN mv_joint mj\n` +
+          `    ON mj.area_classification_label = hg.area_classification\n` +
+          ` GROUP BY hg.ha, hg.area_classification\n` +
+          ` ORDER BY hg.ha, count(mj.joint_id) DESC, hg.area_classification`,
       );
-      const out: Record<string, string[]> = {};
       for (const r of rows as { ha: string; lbl: string }[]) {
         (out[r.ha] ??= []).push(r.lbl);
       }
-      return out;
     } catch {
-      return {};
+      // Guide not loaded yet — fall through to the data-driven groups only.
     }
+    try {
+      const p = new Params();
+      const blanks = await query<{ lbl: string }>(
+        `SELECT w.area_classification_label AS lbl\n` +
+          `  FROM ${JOINT_FROM}\n` +
+          ` WHERE ${scopeWhere({ sources: SOURCES_PR_ALL_LOADED }, p)}\n` +
+          `   AND w.ha IS NULL\n` +
+          `   AND w.area_classification_label IS NOT NULL\n` +
+          `   AND btrim(w.area_classification_label) <> ''\n` +
+          ` GROUP BY 1 ORDER BY count(*) DESC, 1`,
+        p.list(),
+      );
+      out[""] = (blanks as { lbl: string }[]).map((r) => r.lbl);
+    } catch {
+      out[""] ??= [];
+    }
+    return out;
   })();
   return areaByHaCache;
 }
@@ -661,11 +696,22 @@ export async function filterOptions(): Promise<Record<string, string[]>> {
     for (const [key, col] of Object.entries(cols)) {
       try {
         const p = new Params();
+        // `area` offers the union of the data's labels and the guide's, so a
+        // label the report knows about stays selectable even with no joints.
+        // The guide rows sort last (count 0) but keep their own order.
+        const guide =
+          key === "area"
+            ? `  UNION ALL\n` +
+              `  SELECT area_classification AS v, 0 AS n FROM ref_ha_area\n`
+            : "";
         const rows = await query<{ v: string }>(
-          `SELECT ${col} AS v FROM ${JOINT_FROM}\n` +
-            ` WHERE ${scopeWhere({ sources: SOURCES_PR_ALL_LOADED }, p)}\n` +
-            `   AND ${col} IS NOT NULL AND btrim(${col}) <> ''\n` +
-            ` GROUP BY 1 ORDER BY count(*) DESC, 1`,
+          `SELECT v FROM (\n` +
+            `  SELECT ${col} AS v, count(*) AS n FROM ${JOINT_FROM}\n` +
+            `   WHERE ${scopeWhere({ sources: SOURCES_PR_ALL_LOADED }, p)}\n` +
+            `     AND ${col} IS NOT NULL AND btrim(${col}) <> ''\n` +
+            `   GROUP BY 1\n` +
+            guide +
+            `) t GROUP BY v ORDER BY max(n) DESC, v`,
           p.list(),
         );
         out[key] = rows.map((r: { v: string }) => r.v);

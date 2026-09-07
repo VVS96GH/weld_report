@@ -200,9 +200,13 @@ export async function weeklyProgress(opts: {
   excludeWeldCats?: readonly string[];
   excludeSubContractors?: readonly string[];
   sources?: readonly string[];
-  /** Page-1 slicer: `mv_weekly_progress` carries both columns. */
+  /** Page-1 slicer: `mv_weekly_progress` carries all four columns (0030). */
   weldType?: string;
   weldCat?: string;
+  ha?: string;
+  /** The pbix slicer's "(Blank)" group — `ha IS NULL`. */
+  haIsNull?: boolean;
+  area?: string;
 }): Promise<WeeklyProgressPoint[]> {
   const p = new Params();
   const conds: string[] = [
@@ -226,6 +230,15 @@ export async function weeklyProgress(opts: {
   }
   if (opts.weldCat !== undefined) {
     conds.push(`m.weld_cat = ${p.add(opts.weldCat)}`);
+  }
+  if (opts.haIsNull) {
+    conds.push(`m.ha IS NULL`);
+  }
+  if (opts.ha !== undefined) {
+    conds.push(`m.ha = ${p.add(opts.ha)}`);
+  }
+  if (opts.area !== undefined) {
+    conds.push(`m.area_classification_label = ${p.add(opts.area)}`);
   }
   const where = conds.join(" AND ");
   const limit = p.add(opts.weeks ?? 14);

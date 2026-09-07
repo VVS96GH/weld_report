@@ -140,13 +140,19 @@ function utTrackerColumns(): Set<string> {
   return out;
 }
 
-/** §6.5 `mv_weekly_progress`, per db/migrations/0006_views.sql. */
+/**
+ * §6.5 `mv_weekly_progress`. Read the HIGHEST-numbered definition: 0006, 0007,
+ * 0011, then 0030, which added the `ha` / `area_classification_label` grouping
+ * columns so the page-1 trend can follow those two slicers.
+ */
 const MV_WEEKLY_PROGRESS = new Set([
   "week_end_date",
   "source",
   "sub_contractor",
   "weld_cat",
   "weld_type",
+  "ha",
+  "area_classification_label",
   "joints_welded",
   "joints_welded_incl_repairs",
   "tested",
@@ -185,6 +191,14 @@ const WEEKLY_SNAPSHOT = new Set([
  */
 const FLANGE_FILE = "lib/metrics/flange.ts";
 
+/**
+ * Files in `lib/` that build no SQL. The alias scan below is regex-based and
+ * one letter wide, so ordinary TypeScript like `SCREENS.map((s) => s.id)` reads
+ * as `weld_weekly_snapshot.id`. Listing the exceptions is safer than widening
+ * the regex, which would start missing real references.
+ */
+const NON_SQL_LIB_FILES = new Set(["lib/screens.ts", "lib/page-model.ts"]);
+
 function readLib(): Array<{ file: string; text: string }> {
   const dirs = ["lib/metrics", "lib"];
   const files: Array<{ file: string; text: string }> = [];
@@ -192,7 +206,7 @@ function readLib(): Array<{ file: string; text: string }> {
     for (const f of readdirSync(path.join(ROOT, d), { withFileTypes: true })) {
       if (!f.isFile() || !f.name.endsWith(".ts")) continue;
       const rel = path.join(d, f.name);
-      if (rel === FLANGE_FILE) continue;
+      if (rel === FLANGE_FILE || NON_SQL_LIB_FILES.has(rel)) continue;
       files.push({ file: rel, text: readFileSync(path.join(ROOT, rel), "utf8") });
     }
   }
@@ -228,6 +242,15 @@ function collectRefs(): Ref[] {
     }
     for (const m of text.matchAll(/\bt\.([a-z][a-z0-9_]*)\b/g)) {
       refs.push({ file, alias: "ref_ut_tracker_ccc", column: m[1] });
+    }
+    // `ref_ha_area` (migration 0028), aliased `hg` in lib/metrics/scope.ts,
+    // and `mv_joint` aliased `mj` beside it. Two-letter aliases: a single
+    // letter would match ordinary TypeScript here (`agg.sql`, `arg.key`).
+    for (const m of text.matchAll(/\bhg\.([a-z][a-z0-9_]*)\b/g)) {
+      refs.push({ file, alias: "ref_ha_area", column: m[1] });
+    }
+    for (const m of text.matchAll(/\bmj\.([a-z][a-z0-9_]*)\b/g)) {
+      refs.push({ file, alias: "weld", column: m[1] });
     }
   }
   return refs;
@@ -288,6 +311,9 @@ describe("SQL column names exist in the schema contract", () => {
       weld_weekly_snapshot: WEEKLY_SNAPSHOT,
       spool: spoolColumns(),
       ref_ut_tracker_ccc: utTrackerColumns(),
+      // `ref_ha_area` (migration 0028) — the pbix (HA, Area Classification)
+      // slicer hierarchy, sources/HA.csv.
+      ref_ha_area: new Set(["ha", "area_classification", "load_id"]),
     };
 
     const refs = collectRefs();

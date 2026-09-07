@@ -1179,12 +1179,15 @@ describe.skipIf(Boolean(skipReason))("pbix cross-check (user readings)", () => {
     // `weld.ha` is NULL on all 6.5 M rows, so mv_joint.ha is DERIVED:
     //   1. 2nd char of Subsystem Code, 2. else of System No, when valid and 1-4
     //      (migration 0026)
-    //   3. else from area_classification_label (migration 0027) -- a STAND-IN
-    //      for the `HA l0_abs_guide` lookup, which is not in sources/, inferred
-    //      from the owner's slicer screenshot and flagged for confirmation.
-    // With branch 3 the blank group falls from 1,514,661 joints to 45,206, and
-    // HA partitions exactly once "(Blank)" is counted as its own value -- which
-    // is how the pbix slicer presents it.
+    //   3. else LOOKUPVALUE('HA l0_abs_guide'[Handover Area]) by PDS Area --
+    //      the DAX verbatim, from sources/l0_abs_guide.csv (migration 0032).
+    //      Migration 0027's label-based stand-in is deleted, not kept as a
+    //      fallback.
+    // Branch 3 resolves 100% of CCC and ACCIONA and every remaining blank of
+    // the dump parties, so the blank group is now exactly INCO: it has no
+    // pds_area, and the pbix's own derivation for it
+    // (Text.BeforeDelimiter(Iso Number, "-")) yields a 2-digit code that cannot
+    // match the guide's 7-character Location Numbers.
     const bare = await getWeldingPage(1);
     const jw = (p: Awaited<ReturnType<typeof getWeldingPage>>) => {
       const w = p.widgets.find((x) => x.kind === "kpi" && x.label === "Joints Welded");
@@ -1196,7 +1199,87 @@ describe.skipIf(Boolean(skipReason))("pbix cross-check (user readings)", () => {
     }
     expect(sum).toBe(jw(bare));
     // "(Blank)" must mean `ha IS NULL`, not a literal match on the string.
-    expect(jw(await getWeldingPage(1, { filters: { ha: "(Blank)" } }))).toBe(37_069);
+    expect(jw(await getWeldingPage(1, { filters: { ha: "(Blank)" } }))).toBe(7_238);
+  });
+
+  it("a file pair with no joints stays selectable and renders zero", async () => {
+    // HA.csv puts Train-9 Process under both HA2 and HA3; the l0_abs_guide
+    // lookup puts those joints in HA2. Six of the file's 41 pairs produce no
+    // joints at all: HA3 x {Intercon PR HA-2, Intercon PR HA-4, Train-9
+    // Process} and HA4 x {Intercon PR HA-3, Train-10 Process, Utilities HA-3}.
+    // Each must still be selectable and answer 0 -- hiding the option would
+    // misrepresent the report, and erroring would be worse.
+    const page = await getWeldingPage(1, {
+      filters: { ha: "HA3", area: "Train-9 Process" },
+    });
+    const jw = page.widgets.find(
+      (w) => w.kind === "kpi" && w.label === "Joints Welded",
+    );
+    expect(jw && jw.kind === "kpi" ? jw.value : null).toBe("0");
+    expect(page.filters).toMatchObject({ ha: "HA3", area: "Train-9 Process" });
+  });
+
+  it("the Welding Progress Trend follows HA and Area", async () => {
+    // Migration 0030 put ha / area_classification_label into
+    // mv_weekly_progress. Before it the KPIs moved under an HA filter and the
+    // trend did not -- filtered cards above an unfiltered chart, which is the
+    // fabricated-consistency failure this project rules out everywhere else.
+    const weeks = (
+      p: Awaited<ReturnType<typeof getWeldingPage>>,
+      labels?: string[],
+    ) => {
+      const c = p.widgets.find(
+        (w) => w.kind === "chart" && w.canvas_id === "chart1_progress",
+      );
+      if (!c || c.kind !== "chart") throw new Error("no trend chart");
+      // A group with no rows renders no weeks at all -- "(Blank)" is INCO only,
+      // and this chart excludes INCO (R3-01), so it is legitimately empty.
+      // Align it to the reference weeks as zeros rather than reading NaN.
+      const base = labels ?? c.labels;
+      return base.map((wk) => {
+        const i = c.labels.indexOf(wk);
+        return i < 0 ? 0 : c.datasets.reduce((a, d) => a + Number(d.data[i] ?? 0), 0);
+      });
+    };
+    const bareModel = await getWeldingPage(1);
+    const bareChart = bareModel.widgets.find(
+      (w) => w.kind === "chart" && w.canvas_id === "chart1_progress",
+    );
+    const labels = bareChart?.kind === "chart" ? bareChart.labels : [];
+    const bare = weeks(bareModel);
+
+    // Every HA group's week is <= the unfiltered week...
+    const ha2 = weeks(await getWeldingPage(1, { filters: { ha: "HA2" } }), labels);
+    expect(ha2).toHaveLength(bare.length);
+    for (let i = 0; i < bare.length; i++) expect(ha2[i]!).toBeLessThanOrEqual(bare[i]!);
+
+    // ...and the groups plus "(Blank)" add back up to it, week by week.
+    const sums = new Array<number>(bare.length).fill(0);
+    for (const v of ["HA1", "HA2", "HA3", "HA4", "(Blank)"]) {
+      const w = weeks(await getWeldingPage(1, { filters: { ha: v } }), labels);
+      for (let i = 0; i < sums.length; i++) sums[i]! += w[i]!;
+    }
+    expect(sums).toEqual(bare);
+  });
+
+  it("an HA or Area filter drops the workbook history, like wtype/wcat", async () => {
+    // The workbook is keyed per party only -- it has no HA or area dimension --
+    // so its history cannot honour these filters either.
+    for (const filters of [{ ha: "HA2" }, { area: "Train-9 Process" }]) {
+      const page = await getWeldingPage(1, { filters });
+      const backlog = page.widgets.find(
+        (w) => w.kind === "chart" && w.canvas_id === "chart1_rtbacklog",
+      );
+      if (backlog?.kind === "chart") {
+        expect(backlog.labels, JSON.stringify(filters)).toHaveLength(1);
+      }
+      expect(
+        page.widgets.some(
+          (w) => w.kind === "text" && /only the current week/.test(w.text),
+        ),
+        JSON.stringify(filters),
+      ).toBe(true);
+    }
   });
 
   it("the Area slicer is a child of HA, with per-HA option lists", async () => {
@@ -1208,9 +1291,17 @@ describe.skipIf(Boolean(skipReason))("pbix cross-check (user readings)", () => {
     if (area?.kind !== "filter") return;
     expect(area.parent).toBe("ha");
     expect(area.options_by_parent).toBeDefined();
+    // The lists come from ref_ha_area (sources/HA.csv), not from the observed
+    // cross-tab: the file is the report's own hierarchy and includes pairings
+    // our data has no joints for.
     expect([...(area.options_by_parent!.HA2 ?? [])].sort()).toEqual([
       "3000000", "5000000", "7000000", "Intercon PR HA-2", "Train-9 Process",
     ]);
+    expect(area.options_by_parent!.HA1).toHaveLength(11);
+    expect(area.options_by_parent!.HA3).toHaveLength(14);
+    expect(area.options_by_parent!.HA4).toHaveLength(11);
+    // MANY-TO-MANY: Train-9 Process is under HA2 AND HA3.
+    expect(area.options_by_parent!.HA3).toContain("Train-9 Process");
     // "" is the blank-HA group, and the flat list stays the full one.
     expect(Object.keys(area.options_by_parent!)).toContain("");
     expect(area.options.length).toBeGreaterThan(

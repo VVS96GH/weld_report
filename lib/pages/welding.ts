@@ -1167,10 +1167,11 @@ const FILTER_SPECS = [
 ] as const;
 
 const FILTER_NO_HISTORY_NOTE =
-  "Weld Type / Weld Cat filter: the weekly trend workbook is recorded per " +
-  "sub-contractor only, so no history can be filtered by weld type or weld " +
-  "cat. The backlog and rejection-rate charts therefore show only the current " +
-  "week, computed from the live data under the filters you set.";
+  "HA / Area / Weld Type / Weld Cat filter: the weekly trend workbook is " +
+  "recorded per sub-contractor only, so no history can be filtered by any of " +
+  "them. The backlog and rejection-rate charts therefore show only the current " +
+  "week, computed from the live data under the filters you set. The Welding " +
+  "Progress Trend is unaffected \u2014 it is computed, and follows every filter.";
 
 const FILTER_UNKNOWN_NOTE =
   "One or more filter values are not present in the data and were ignored " +
@@ -1328,6 +1329,11 @@ async function buildProjectKpiPage(spec: SpecPage, ctx: Ctx): Promise<Widget[]> 
       subContractor: f.subco,
       weldType: f.wtype,
       weldCat: f.wcat,
+      // 0030 put HA and Area into mv_weekly_progress precisely so the trend
+      // cannot show unfiltered weeks beside filtered cards.
+      ha: f.ha === FILTER_BLANK ? undefined : f.ha,
+      haIsNull: f.ha === FILTER_BLANK,
+      area: f.area,
     }),
     weldTypeDistribution({ ...scope, excludeWeldTypes: ["THD"] }),
   ]);
@@ -1518,7 +1524,7 @@ async function buildProjectKpiPage(spec: SpecPage, ctx: Ctx): Promise<Widget[]> 
         // that party's rows, exactly as pages 7-11 do; a weld-type or weld-cat
         // filter has no counterpart there, so the history is genuinely
         // unavailable and only the computed current week is shown.
-        const historyOk = !f.wtype && !f.wcat;
+        const historyOk = historyAvailable(f);
         const [points, rtCur, pwhtCur] = await Promise.all([
           historyOk
             ? weeklySnapshot({
@@ -1706,8 +1712,14 @@ function withCurrentWeek(
   };
 }
 
-/** The workbook has no weld-type / weld-cat dimension. */
-const historyAvailable = (f: WeldingFilters) => !f.wtype && !f.wcat;
+/**
+ * The workbook is keyed per PARTY only: it has no weld-type, weld-cat, HA or
+ * area dimension. Under any of those four the history cannot honour the filter,
+ * so it is not drawn — a line that ignored the filter just set would be worse
+ * than none.
+ */
+const historyAvailable = (f: WeldingFilters) =>
+  !f.wtype && !f.wcat && !f.ha && !f.area;
 
 /**
  * A backlog chart reduced to its current week, for when a weld-type or
