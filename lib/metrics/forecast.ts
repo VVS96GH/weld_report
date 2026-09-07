@@ -377,17 +377,37 @@ export async function forecastTotals(scope: Scope): Promise<ForecastTotals> {
 
   const p2 = new Params();
   const w2 = scopeWhere(scope, p2, "w");
+  // `[RT BACKLOG Dia Total Project "PR all"]` is TWO added row-level sums, and
+  // both differ from the joint-flag shortcut this first used (6,958):
+  //
+  //   1  Weld Type in the RT four, Weld Date > 0, RT Report = "",
+  //      [WeldPoint No.1 WP1] = 1, RT Weld Status in the SIXTEEN-code hold
+  //      list -- no 'T1-2', unlike the "PR all" backlog measures
+  //   2  the same plus RT% = 100, with RT Weld Status IN {"?", ""} -- and NO
+  //      'S', unlike the joint backlog's own RT%=100 branch
+  //
+  // 6,811.00 + 20.50 = 6,831.50 -> 6,832, the owner's card exactly.
+  const hold16 = p2.any([
+    "H", "HS", "HS CCC", "SS", "T", "T1", "T1S", "T1-1", "T1-1S", "T1-2S",
+    "T2", "T3", "T2-1", "T2-1S", "T2-2S", "T2S",
+  ]);
+  const rtTypes = p2.any(RT_WELD_TYPES);
   const rowSql =
     `SELECT\n` +
     `  sum(w.dia_inch) FILTER (\n` +
     `    WHERE w.weldpoint_seq = 1 AND coalesce(w.repair_reweld, '') = ''\n` +
-    `      AND w.weld_type = ANY(${p2.any(RT_WELD_TYPES)})\n` +
+    `      AND w.weld_type = ANY(${rtTypes})\n` +
     `      AND w.rt_report IS NOT NULL AND w.weld_date IS NOT NULL\n` +
     `      AND w.rt_date > DATE '${FORECAST_EPOCH}') AS welded_dia,\n` +
-    `  sum(w.dia_inch) FILTER (\n` +
-    `    WHERE w.weldpoint_seq = 1 AND EXISTS (\n` +
-    `      SELECT 1 FROM mv_joint mj WHERE mj.source = w.source\n` +
-    `        AND mj.joint_id = w.joint_id AND mj.rt_backlog_prall)) AS dia_backlog,\n` +
+    `  coalesce(sum(w.dia_inch) FILTER (\n` +
+    `    WHERE w.weld_type = ANY(${rtTypes}) AND w.weld_date IS NOT NULL\n` +
+    `      AND w.rt_report IS NULL AND w.weldpoint_seq = 1\n` +
+    `      AND w.rt_weld_status = ANY(${hold16})), 0)\n` +
+    `  + coalesce(sum(w.dia_inch) FILTER (\n` +
+    `    WHERE w.weld_type = ANY(${rtTypes}) AND w.weld_date IS NOT NULL\n` +
+    `      AND w.rt_pct = 100 AND w.rt_report IS NULL AND w.weldpoint_seq = 1\n` +
+    `      AND (w.rt_weld_status IS NULL OR w.rt_weld_status = '?')), 0)\n` +
+    `    AS dia_backlog,\n` +
     `  (max(w.rt_date) - DATE '${FORECAST_EPOCH}') AS days\n` +
     `  FROM weld w WHERE ${w2}`;
 

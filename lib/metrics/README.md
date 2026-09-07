@@ -1207,21 +1207,75 @@ Materialised on `mv_joint` (migration 0034) per the union-is-the-base ruling.
 | Months to keep RT B.log / Dia | **0.13** / **0.13** |
 | PWHT B.Log PBI Rule | **1,038** |
 
-#### Five near-misses, reported and not tuned
+#### The dia backlog: solved by reading the DAX, not by tuning
 
-Each says so **on the card itself**, so a reader cannot mistake one for
-agreement.
+`[RT BACKLOG Dia Total Project "PR all"]` first read 6,958 against the owner's
+6,832, because it took the joint-level `rt_backlog_prall` flag. The DAX is
+**two added row-level sums**, and both differ from that flag:
 
-| card | ours | owner | Δ | reading |
-|---|---|---|---|---|
-| RT B.Log Talisman | 357 | 358 | −1 | 356 of the 357 are `CCC_WELDER_RECORD` joints. One Talisman joint's RT% lookup does not resolve to 100 in our union. The join has not been relaxed to reach the target. |
-| Numb RT/UT 2024 | 172,153 | 172,520 | −367 | Ours is `rt_year >= 2024`. The `{2024,2025}` reading gives 157,083 and `rt_date > 2024-01-01` gives 171,960, so no variant of the date filter reaches 172,520 — the gap is in the population, not the window. **Note the average built on this same numerator is exact at 5,324**, which says our numerator is right and the *card* is a different variant. |
-| RT Dia B.Log | 6,958 | 6,832 | +126 | `sum(dia_inch)` at `weldpoint_seq = 1` over `rt_backlog_prall` joints. The DAX (`[RT BACKLOG Dia Total Project "PR all"]`) is a two-term sum with its own hold list and an RT%=100 branch; ours takes the joint flag instead. That is the likeliest source and is the next thing to test. |
-| Total Welded RT Dia | 1,705,849 | 1,712,883 | −7,034 (0.41 %) | All five filters are verbatim. The residual is small and one-directional, consistent with a slightly different `Repair & Reweld` or WP1 reading rather than a wrong measure. |
-| RT Dia Avrg Prod-on | 52,758 | 50,954 | +1,804 (3.5 %) | `welded_dia / 970 days × 30`. Reaching 50,954 needs either a numerator of 1,647,180 (neither ours nor the owner's dia total) or ~1,004 days instead of 970. Since the *joint* average is exact on the same 970-day divisor, the divisor is right and the numerator differs — the same gap as the row above, amplified. |
+```dax
+CALCULATE(SUM([Dia inch]), [Weld Type] IN {BW,GW,CLET,MW}, [Weld Date] > 0,
+          [RT Report] = "", [WeldPoint No.1 WP1] = 1,
+          [RT Weld Status] IN {…16 codes…})
++ CALCULATE(SUM([Dia inch]), …same…, [RT%] = 100, [RT Weld Status] IN {"?", ""})
+```
 
-The last two are one issue, not two: the dia average is the dia total divided by
-a divisor already proven correct elsewhere.
+Two details carry the whole difference:
+
+* the hold list is the **sixteen**-code one — **no `'T1-2'`**, unlike every
+  other `"PR all"` backlog measure;
+* the RT%=100 branch admits `{"?", ""}` and **not `'S'`**, unlike the joint
+  backlog's own RT%=100 branch.
+
+6,811.00 + 20.50 = **6,831.50 → 6,832**, exact. Pinned.
+
+#### Four near-misses that remain, and what was ruled out
+
+| card | ours | owner | Δ |
+|---|---|---|---|
+| RT B.Log Talisman | 357 | 358 | −1 |
+| Numb RT/UT 2024 | 172,153 | 172,520 | −367 |
+| Total Welded RT Dia | 1,705,849 | 1,712,883 | −7,034 |
+| RT Dia Avrg Prod-on | 52,758 | 50,954 | +1,804 |
+
+**Talisman — every reading gives 357.** Blank-or-empty `RT1 REP NO`, admitting
+`RT1 DATE` as well as `WELD DATE`, matching RT% on any `weld` row rather than
+the joint, restricting to repair-flagged rows: 357 each time. **19,627**
+Talisman joints with a weld date and no RT1 report have **no union row at all**,
+and the 358th is almost certainly among them — a joint the report has and our
+union does not. Nothing to fix on our side without that joint.
+
+**Numb RT/UT 2024 — no filter reaches 172,520.** By RT year ≥ 2024: 172,153. By
+**weld** year ≥ 2024 (the card's other Calendar relationship): 167,770 — further
+away, so that hypothesis is disproved. Dropping the Temporary Lines filter
+changes nothing (172,153); including Inco overshoots to 174,850; `{2024,2025}`
+gives 157,083 and `rt_date > 2024-01-01` gives 171,960. The gap is in the
+population, not the date window. **The average built on our 172,153 is exact at
+5,324**, which says the numerator is right and the card is a variant we have not
+identified.
+
+**Total Welded RT Dia — the DAX-justified variant is the one we ship.**
+
+| WP1 column | Repair & Reweld | value |
+|---|---|---|
+| `weldpoint_seq` (= `[WeldPoint No.1 WP1]`) | `= ""` | **1,705,849** ← shipped |
+| `weldpoint_no` | `= ""` | 1,715,293 |
+| `weldpoint_seq` | no filter | 1,750,352 |
+| `weldpoint_no` | no filter | 1,760,263 |
+
+`weldpoint_no` + the repair filter lands closer to the owner (Δ +2,410 vs
+−7,034) — and is **not** what the measure says. The DAX names
+`[WeldPoint No.1 WP1]`, which is `weldpoint_seq`. Choosing the closer number
+over the specified column is exactly the tuning this project refuses, so it is
+recorded here and not shipped.
+
+**RT Dia Avrg Prod-on — the owner's own two cards disagree.** The measure is the
+dia total over days since 2024-01-01, × 30. On the owner's *own* dia total,
+1,712,883 / 970 × 30 = **52,976**, not the 50,954 their average card shows.
+Reaching 50,954 needs either a numerator of 1,647,180 — neither ours nor
+theirs — or ~1,008 days instead of 970. Since the *joint* average is exact on
+that same 970-day divisor, the divisor is right. **Both owner cards cannot be
+reproduced at once**, so neither is chased; the card discloses both figures.
 
 ### M91 `WPS Approved` (R4-02, R4-03)
 

@@ -136,7 +136,7 @@ async function filterWidgets(
 }
 
 const SLICE_NOTE =
-  "Every card and chart on this page is computed. Four cards differ from the " +
+  "Every card and chart on this page is computed. Three cards differ from the " +
   "report owner\u2019s screenshot and say so on the card; none has been tuned to " +
   "match. A card showing \u2014 is one this data cannot support, never a zero.";
 
@@ -156,9 +156,12 @@ const TALISMAN_NOTE =
 // agreement. None of them is tuned; see lib/metrics/README.md for the branch
 // split behind each.
 const NEAR_MISS_2024 = "owner reads 172,520 \u2014 see README";
-const NEAR_MISS_DIA_BACKLOG = "owner reads 6,832 \u2014 see README";
 const NEAR_MISS_WELDED_DIA = "owner reads 1,712,883 \u2014 see README";
-const NEAR_MISS_DIA_AVG = "owner reads 50,954 \u2014 see README";
+// The owner's own two dia cards are inconsistent with each other under the
+// DAX's formula: 1,712,883 / 970 days x 30 = 52,976, not the 50,954 their
+// average card shows. Both cannot be reproduced at once, so neither is chased.
+const NEAR_MISS_DIA_AVG =
+  "owner reads 50,954, but their own dia total implies 52,976 \u2014 see README";
 
 const MONTHLY_NOTE =
   "The two monthly charts group by RT DATE, from January 2024, stacked by Weld " +
@@ -306,7 +309,7 @@ export async function getForecastPage(
     kpi("Numb RT/UT_", num(totals.numb_rt_2024), NEAR_MISS_2024),
     kpi("Months to keep RT B.log", ratio(backlogTotal, totals.avg_prod_month)),
     kpi("PWHT B.Log PBI Rule", num(totals.pwht_backlog_pbi)),
-    kpi("RT Dia B.Log", num(totals.dia_backlog), NEAR_MISS_DIA_BACKLOG),
+    kpi("RT Dia B.Log", num(totals.dia_backlog)),
     kpi("Total Welded RT Dia", num(totals.welded_dia), NEAR_MISS_WELDED_DIA),
     kpi(
       "RT Dia Avrg Prod-on",

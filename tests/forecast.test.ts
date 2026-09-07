@@ -126,6 +126,11 @@ describe.skipIf(Boolean(skipReason))("forecast page — slice 1", () => {
     expect(kpi(p, "Months to keep RT B.log")).toBe("0.13");
     expect(kpi(p, "Months to keep Dia RT B.log")).toBe("0.13");
     expect(kpi(p, "PWHT B.Log PBI Rule")).toBe("1,038");
+    // Solved in slice 4: [RT BACKLOG Dia Total Project "PR all"] is TWO added
+    // row-level sums -- a 16-code hold list (no 'T1-2') plus an RT%=100 branch
+    // admitting only {?, ""} (no 'S') -- not the joint backlog flag, which gave
+    // 6,958. 6,811.00 + 20.50 = 6,831.50.
+    expect(kpi(p, "RT Dia B.Log")).toBe("6,832");
     // Nothing is left as a placeholder any more.
     for (const w of p.widgets) {
       if (w.kind !== "kpi") continue;
@@ -139,7 +144,6 @@ describe.skipIf(Boolean(skipReason))("forecast page — slice 1", () => {
     const p = await getForecastPage();
     const cases: Array<[string, string, string]> = [
       ["Numb RT/UT 2024", "172,153", "172,520"],
-      ["RT Dia B.Log", "6,958", "6,832"],
       ["Total Welded RT Dia", "1,705,849", "1,712,883"],
       ["RT Dia Avrg Prod-on", "52,758", "50,954"],
     ];
