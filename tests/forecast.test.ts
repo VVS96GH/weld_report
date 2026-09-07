@@ -8,7 +8,13 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { closePool, databaseUrl, query } from "@/lib/db";
 import { getForecastPage } from "@/lib/pages/forecast";
-import { forecastBacklogBySubcon, talismanRt100Backlog } from "@/lib/metrics/forecast";
+import {
+  diaMonthlyProgress,
+  forecastBacklogBySubcon,
+  jointMonthlyProgress,
+  monthLabel,
+  talismanRt100Backlog,
+} from "@/lib/metrics/forecast";
 import { PROJECT_EXCLUDED_SUBCONTRACTORS, SOURCES_PR_ALL_LOADED } from "@/lib/metrics/scope";
 
 let skipReason: string | null = null;
@@ -125,5 +131,81 @@ describe.skipIf(Boolean(skipReason))("forecast page — slice 1", () => {
       (x) => x.kind === "kpi" && x.label === "Total Welded RT Dia",
     );
     expect(w && w.kind === "kpi" ? w.sub : null).toMatch(/owner target 1,712,883/);
+  });
+
+  it("the monthly charts run from Jan 2024, stacked F/S, every month shown", async () => {
+    const p = await getForecastPage();
+    for (const id of ["forecast_joint_monthly", "forecast_dia_monthly"]) {
+      const c = p.widgets.find((w) => w.kind === "chart" && w.canvas_id === id);
+      expect(c?.kind, id).toBe("chart");
+      if (!c || c.kind !== "chart") continue;
+      expect(c.labels[0]).toBe("Jan 2024");
+      expect(c.datasets.map((d) => d.label)).toEqual(["F", "S"]);
+      expect(c.options_notes).toContain("stacked");
+      // Consecutive months, no gaps -- the owner's screenshot labels alternate
+      // months, but the measure has a value for every one.
+      expect(c.labels.length).toBeGreaterThanOrEqual(30);
+    }
+  });
+
+  it("the joint series carries the owner's values, at alternate months", async () => {
+    // KEY FINDING. The owner's transcription samples EVERY SECOND month -- the
+    // chart's axis labels alternate -- so a position-by-position comparison
+    // fails while the values themselves match. Ours, from Jan 2024:
+    //   7211 5962 6584 5379 5496 4891 6246 6287 6556 6640 8188 8581 9606 ...
+    // and the owner's Feb..Jul 2024 list (6584 5496 6247 6556 8188 9606) is
+    // exactly our Mar, May, Jul, Sep, Nov 2024 and Jan 2025.
+    //
+    // Pinned as OUR series (a regression pin), plus the alignment itself, so
+    // neither can drift. Nothing is tuned to the owner's month labels.
+    const scope = {
+      sources: SOURCES_PR_ALL_LOADED,
+      excludeSubContractors: PROJECT_EXCLUDED_SUBCONTRACTORS,
+      temporaryLines: false,
+    };
+    const pts = await jointMonthlyProgress(scope);
+    const by = Object.fromEntries(pts.map((x) => [x.month, x.total]));
+    expect(by["2024-01"]).toBe(7_211);
+    expect(by["2024-03"]).toBe(6_584);
+    expect(by["2024-05"]).toBe(5_496);
+    expect(by["2024-09"]).toBe(6_556);
+    expect(by["2024-11"]).toBe(8_188);
+    expect(by["2025-01"]).toBe(9_606);
+    expect(by["2025-02"]).toBe(7_164);
+    expect(by["2025-12"]).toBe(3_210);
+
+    // Every owner value the alternate-month reading predicts, within 4 joints.
+    const owner: Array<[string, number]> = [
+      ["2024-03", 6_584], ["2024-05", 5_496], ["2024-07", 6_247],
+      ["2024-09", 6_556], ["2024-11", 8_188], ["2025-01", 9_606],
+      ["2025-03", 5_419], ["2025-05", 7_110], ["2025-07", 7_684],
+      ["2025-09", 6_031], ["2025-11", 5_315], ["2026-02", 1_960],
+      ["2026-06", 2_119], ["2026-08", 1_086],
+    ];
+    for (const [month, want] of owner) {
+      expect(Math.abs((by[month] ?? 0) - want), `${month}`).toBeLessThanOrEqual(4);
+    }
+    expect(monthLabel("2024-01")).toBe("Jan 2024");
+  });
+
+  it("the dia series matches the owner's to better than 0.05 %", async () => {
+    // Same alternate-month reading. The residuals are 1-30 on values near
+    // 70,000, consistent with reading data labels off a chart rather than with
+    // a different measure.
+    const pts = await diaMonthlyProgress({
+      sources: SOURCES_PR_ALL_LOADED,
+      excludeSubContractors: PROJECT_EXCLUDED_SUBCONTRACTORS,
+      temporaryLines: false,
+    });
+    const by = Object.fromEntries(pts.map((x) => [x.month, Math.round(x.total)]));
+    expect(by["2024-01"]).toBe(72_433);
+    expect(by["2025-01"]).toBe(88_282);
+    for (const [month, want] of [
+      ["2024-01", 72_432], ["2024-03", 73_855], ["2024-11", 87_726],
+      ["2025-01", 88_282], ["2025-03", 55_281], ["2025-05", 60_637],
+    ] as Array<[string, number]>) {
+      const got = by[month] ?? 0;
+      expect(Math.abs(got - want) / want, `${month}`).toBeLessThan(0.0005);
+    }
   });
 });

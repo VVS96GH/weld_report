@@ -34,6 +34,10 @@ import {
   forecastBacklog,
   forecastBacklogBySubcon,
   forecastOptions,
+  diaMonthlyProgress,
+  jointMonthlyProgress,
+  monthLabel,
+  type MonthlyPoint,
   rtBacklogTotal,
   talismanRt100Backlog,
 } from "@/lib/metrics/forecast";
@@ -141,7 +145,7 @@ async function filterWidgets(
 }
 
 const SLICE_NOTE =
-  "Slice 1 of 3. The forecast backlog, the RT/UT totals and the Talisman " +
+  "Slices 1-2 of 3. The forecast backlog, the RT/UT totals and the Talisman " +
   "backlog are computed; the remaining cards are present in shape and carry " +
   "their target value in the subtitle until slices 2 and 3 land. A card " +
   "showing \u2014 has not been computed \u2014 it is never a zero.";
@@ -156,6 +160,13 @@ const TALISMAN_NOTE =
   "RT B.Log Talisman reads sources/Joint.csv (1,548,056 rows, DELETE-flagged " +
   "rows dropped as the pbix does). Its RT% is looked up from the union by " +
   "Joint ID rather than stored, so the two cannot drift.";
+
+const MONTHLY_NOTE =
+  "The two monthly charts group by RT DATE, from January 2024, stacked by Weld " +
+  "Cat F and S (J excluded). Every month is shown; the owner\u2019s screenshot " +
+  "labels alternate months, and our values match the labelled ones to within " +
+  "4 joints and 0.05 % of dia \u2014 see lib/metrics/README.md for the " +
+  "point-by-point alignment.";
 
 const DONUT_TOTAL_NOTE =
   "The \u201cTotal Forecast Backlog\u201d doughnut includes the TOTAL as a slice " +
@@ -181,15 +192,20 @@ export async function getForecastPage(
     ...scope,
     weldCats: applied.wcat ? [applied.wcat] : ["F", "S"],
   };
-  const [fc, bySub, talisman, rt, backlogTotal] = await Promise.all([
-    forecastBacklog(scope),
-    forecastBacklogBySubcon(scope),
-    talismanRt100Backlog(),
-    rtStatsPrAll(rtScope),
-    rtBacklogTotal(rtScope),
-  ]);
+  const [fc, bySub, talisman, rt, backlogTotal, jointMonths, diaMonths] =
+    await Promise.all([
+      forecastBacklog(scope),
+      forecastBacklogBySubcon(scope),
+      talismanRt100Backlog(),
+      rtStatsPrAll(rtScope),
+      rtBacklogTotal(rtScope),
+      jointMonthlyProgress(scope),
+      diaMonthlyProgress(scope),
+    ]);
 
-  const notes: string[] = [SLICE_NOTE, FORECAST_NOTE, TALISMAN_NOTE, DONUT_TOTAL_NOTE];
+  const notes: string[] = [
+    SLICE_NOTE, FORECAST_NOTE, TALISMAN_NOTE, DONUT_TOTAL_NOTE, MONTHLY_NOTE,
+  ];
   if (bar.unknown) {
     notes.push(
       "One or more filter values are not present in the data and were ignored " +
@@ -240,6 +256,25 @@ export async function getForecastPage(
     ],
   };
 
+  /** Both monthly charts are the same shape: F and S stacked, by RT month. */
+  const monthlyChart = (
+    id: string,
+    title: string,
+    points: MonthlyPoint[],
+    round: boolean,
+  ): ChartWidget => ({
+    kind: "chart",
+    canvas_id: id,
+    title,
+    chart_type: "bar",
+    labels: points.map((p) => monthLabel(p.month)),
+    datasets: [
+      { label: "F", data: points.map((p) => (round ? Math.round(p.f) : p.f)) },
+      { label: "S", data: points.map((p) => (round ? Math.round(p.s) : p.s)) },
+    ],
+    options_notes: "stacked",
+  });
+
   const widgets: Widget[] = [
     ...bar.widgets,
     bar1,
@@ -264,6 +299,18 @@ export async function getForecastPage(
     pending("Total Welded RT Dia", "1,712,883"),
     pending("RT Dia Avrg Prod-on", "50,954"),
     pending("Months to keep Dia RT B.log", "0.13"),
+    monthlyChart(
+      "forecast_joint_monthly",
+      "Joint RT/UT Monthly Progress (Project)",
+      jointMonths,
+      false,
+    ),
+    monthlyChart(
+      "forecast_dia_monthly",
+      "Dia RT/UT Monthly Progress (Project)",
+      diaMonths,
+      true,
+    ),
     ...notes.map((text): TextWidget => ({ kind: "text", text })),
   ];
 

@@ -213,3 +213,116 @@ export async function rtBacklogTotal(scope: Scope): Promise<number> {
 }
 
 export const zForecastSum = zSum;
+
+// ── slice 2: the two monthly progress charts ────────────────────────────────
+
+/**
+ * `Joint RT/UT Monthly Progress (Project)` and `Dia RT/UT Monthly Progress`.
+ *
+ * Both are grouped by **RT date** year+month (`rt_year` / `rt_month`,
+ * materialised by migration 0033 — the pbix's `YearRT` / `MonthRT`), from
+ * 2024-01 onward, and stacked by Weld Cat F / S.
+ *
+ * * joints — `[Numb RT/UT "PR all" 2]`: `DISTINCTCOUNT([Joint ID])` with
+ *   Weld Date > 0, RT Report <> "", RT Acc/Rej ∉ {RS, U/Review}, related to the
+ *   Calendar through RT Date. That is `mv_joint.is_tested_prall`, which is the
+ *   same predicate; the `USERELATIONSHIP` is what the RT-date grouping does.
+ * * dia — `[Total Welded RT Dia WP1 2024 "PR all"]`:
+ *   `SUM([Total Welded Dia "PR all" Table])` with Repair & Reweld = "",
+ *   Weld Type in the RT four, `[WeldPoint No.1 WP1] = 1`, RT Report <> "" and
+ *   RT Date > 1/1/2024. `[Total Welded Dia "PR all" Table]` is
+ *   `CALCULATE(SUM([Dia inch]), [Weld Date] > 0)`, i.e. the row's dia inch on a
+ *   welded row — so this sums `dia_inch` at row grain, not joint grain, and it
+ *   reads `weld`, not `mv_joint`.
+ *
+ * Weld Cat `J` is excluded, as the visual does.
+ */
+export type MonthlyPoint = {
+  /** `2024-01` — sortable, and the label is formatted from it. */
+  month: string;
+  f: number;
+  s: number;
+  total: number;
+};
+
+const MonthlyRow = z.object({
+  y: zCount,
+  m: zCount,
+  f: zSum,
+  s: zSum,
+});
+
+const MONTHS = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+/** `2024-01` -> `Jan 2024`, the mockup's label form. */
+export function monthLabel(month: string): string {
+  const [y, m] = month.split("-");
+  return `${MONTHS[Number(m) - 1] ?? m} ${y}`;
+}
+
+function toPoints(rows: z.infer<typeof MonthlyRow>[]): MonthlyPoint[] {
+  return rows.map((r) => {
+    const f = r.f ?? 0;
+    const s = r.s ?? 0;
+    return {
+      month: `${r.y}-${String(r.m).padStart(2, "0")}`,
+      f,
+      s,
+      total: f + s,
+    };
+  });
+}
+
+/** Joints tested, by RT month, split F / S. */
+export async function jointMonthlyProgress(scope: Scope): Promise<MonthlyPoint[]> {
+  const p = new Params();
+  const sql =
+    `SELECT w.rt_year AS y, w.rt_month AS m,\n` +
+    `       count(*) FILTER (WHERE w.weld_cat = 'F') AS f,\n` +
+    `       count(*) FILTER (WHERE w.weld_cat = 'S') AS s\n` +
+    `  FROM ${JOINT_FROM}\n` +
+    ` WHERE ${scopeWhere(scope, p)}\n` +
+    `   AND w.is_tested_prall\n` +
+    `   AND w.weld_cat IS DISTINCT FROM 'J'\n` +
+    `   AND w.rt_year >= 2024\n` +
+    ` GROUP BY 1, 2 ORDER BY 1, 2`;
+  try {
+    return toPoints(z.array(MonthlyRow).parse(await query(sql, p.list())));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Welded dia inch, by RT month, split F / S.
+ *
+ * Row grain, not joint grain: `[Total Welded Dia "PR all" Table]` is a per-row
+ * value, and the measure gates on `[WeldPoint No.1 WP1] = 1` — `weldpoint_seq`,
+ * the pbix's own WP1 column, not `weldpoint_no`.
+ */
+export async function diaMonthlyProgress(scope: Scope): Promise<MonthlyPoint[]> {
+  const p = new Params();
+  const sql =
+    `SELECT extract(year from w.rt_date)::int AS y,\n` +
+    `       extract(month from w.rt_date)::int AS m,\n` +
+    `       sum(w.dia_inch) FILTER (WHERE w.weld_cat = 'F') AS f,\n` +
+    `       sum(w.dia_inch) FILTER (WHERE w.weld_cat = 'S') AS s\n` +
+    `  FROM weld w\n` +
+    ` WHERE ${scopeWhere(scope, p, "w")}\n` +
+    `   AND w.weldpoint_seq = 1\n` +
+    `   AND coalesce(w.repair_reweld, '') = ''\n` +
+    `   AND w.weld_type = ANY(${p.any(RT_WELD_TYPES)})\n` +
+    `   AND w.rt_report IS NOT NULL\n` +
+    `   AND w.weld_date IS NOT NULL\n` +
+    `   AND w.weld_cat IS DISTINCT FROM 'J'\n` +
+    `   AND w.rt_date > DATE '2024-01-01'\n` +
+    ` GROUP BY 1, 2 ORDER BY 1, 2`;
+  try {
+    return toPoints(z.array(MonthlyRow).parse(await query(sql, p.list())));
+  } catch {
+    return [];
+  }
+}

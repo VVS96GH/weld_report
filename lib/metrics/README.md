@@ -1121,6 +1121,65 @@ Result — the forecast backlog now matches the owner's card for **every party**
 
 with RT 100% = 10,158 and RT 5% = 18,228 × 0.05 = 911, both exact.
 
+### Page 20 "RT Backlog Forecast"
+
+Owner ruling: *"вся информация в таблице Project WD+WR+INCO+Acciona"* — every
+measure and slicer reads the union. The single exception is
+`[RT BACKLOG RT100% Talisman]`, whose DAX names `TALISMAN DATA` itself
+(`sources/Joint.csv` → `ref_talisman_joint`, migration 0029). Nothing else gets
+a parallel fact; columns the page needs are materialised on `mv_joint`
+(migration 0033: `by_ut_all`, `dia_inch`, `dia_band`, `rt_year`, `rt_month`,
+`weld_year`, `weld_month`).
+
+#### The forecast backlog is not the RT backlog
+
+It counts joints that are **not yet welded**, weighted by RT coverage:
+
+```dax
+RT_100 + RT_5 * 0.05 + RT_10 * 0.1 + RT_20 * 0.2 + RT_30 * 0.3
+  where RT_n = CALCULATE(DISTINCTCOUNT([Joint ID]),
+                         [Weld Type] IN {"BW","GW","CLET","MW"},
+                         ISBLANK([Weld Date]), [RT%] = n)
+```
+
+| party | ours | owner |
+|---|---|---|
+| CCC | 11,732.20 | **11,732** ✅ |
+| GAC | 1,335.15 | **1,335** ✅ |
+| MEDGULF | 526.40 | **526** ✅ |
+| TEKFEN | 11.90 | **12** ✅ |
+| **total** | **13,605.65** | **13,606** ✅ |
+
+CCC is 86 % of it and read **0** until the joint record's `RT/UT(%)` was mapped:
+that file *is* the not-yet-welded population.
+
+#### The monthly charts: the owner's screenshot samples alternate months
+
+Both charts group by **RT date** from January 2024, stacked F / S (J excluded).
+A position-by-position comparison against the owner's list fails while the
+*values* match — because the chart's axis labels alternate and the transcription
+follows them. Our joint series from Jan 2024:
+
+```
+7211 5962 6584 5379 5496 4891 6246 6287 6556 6640 8188 8581 9606 …
+```
+
+and the owner's "Feb–Jul 2024" list — 6,584 · 5,496 · 6,247 · 6,556 · 8,188 ·
+9,606 — is exactly our **Mar, May, Jul, Sep, Nov 2024 and Jan 2025**. Every
+owner value the alternate-month reading predicts matches within **4 joints**;
+the dia series matches within **0.05 %** (residuals of 1–30 on values near
+70,000, consistent with reading data labels off a chart).
+
+So the measure is right and the month labels in the screenshot cannot be taken
+positionally. Pinned as *our* series plus the alignment, with nothing tuned to
+the owner's labels.
+
+#### Near-miss, reported not tuned
+
+`[RT BACKLOG RT100% Talisman]` = **357**, owner **358**. 356 of the 357 are
+`CCC_WELDER_RECORD` joints. The gap is one joint whose RT% lookup does not
+resolve to 100 in our union; the join has not been relaxed to reach the target.
+
 ### M91 `WPS Approved` (R4-02, R4-03)
 
 `count(DISTINCT wps_no) FILTER (document_status = 'WPS APPROVED BY CTJV/ CPY')`
