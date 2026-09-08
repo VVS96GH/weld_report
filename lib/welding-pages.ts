@@ -8,7 +8,7 @@
  * If the underlying report structure changes, regenerate this list from the spec:
  *   node -e "console.log(JSON.stringify(require('./analysis/mockups/welding-spec.json').global.pageTitles))"
  */
-export const WELDING_PAGE_TITLES: readonly string[] = [
+export const WELDING_DATA_PAGE_TITLES: readonly string[] = [
   "Welding Progress (Project)",
   "Project Welding & NDE Status",
   "CCC WELDING STATUS",
@@ -55,7 +55,43 @@ export const WELDING_PAGE_TITLES: readonly string[] = [
   "Weld Rejection Detail - MEDGULF",
 ];
 
-export const WELDING_TOTAL_PAGES = WELDING_PAGE_TITLES.length;
+/** Number of mockup (data) pages — the lib/pages/welding.ts contract. */
+export const WELDING_DATA_PAGES = WELDING_DATA_PAGE_TITLES.length;
+
+/**
+ * The report as READ: the 44 mockup pages plus "RT Backlog Forecast" (pbix page 20)
+ * inserted as page 2, so the PDF export and the page nav carry it there (owner
+ * request 2026-09-08). Display numbers are 1-based positions in this order; data
+ * numbers are the mockup's 1..44. Everything that renders or navigates uses display
+ * numbers; lib/pages/welding.ts and lib/screens.ts keep data numbers.
+ */
+export type ReportEntry =
+  | { kind: "data"; data: number; title: string }
+  | { kind: "forecast"; title: string };
+
+export const FORECAST_TITLE = "RT Backlog Forecast";
+export const FORECAST_DISPLAY_PAGE = 2;
+
+export const REPORT_ORDER: readonly ReportEntry[] = (() => {
+  const entries: ReportEntry[] = WELDING_DATA_PAGE_TITLES.map((title, i) => ({ kind: "data", data: i + 1, title }));
+  entries.splice(FORECAST_DISPLAY_PAGE - 1, 0, { kind: "forecast", title: FORECAST_TITLE });
+  return entries;
+})();
+
+/** Display titles, one per display page (the nav select, the page indicator, e2e). */
+export const WELDING_PAGE_TITLES: readonly string[] = REPORT_ORDER.map((e) => e.title);
+
+export const WELDING_TOTAL_PAGES = REPORT_ORDER.length;
+
+/** Display page → report entry (undefined outside 1..WELDING_TOTAL_PAGES). */
+export function reportEntry(display: number): ReportEntry | undefined {
+  return Number.isInteger(display) ? REPORT_ORDER[display - 1] : undefined;
+}
+
+/** Data page (1..44) → display page. */
+export function dataToDisplay(data: number): number {
+  return REPORT_ORDER.findIndex((e) => e.kind === "data" && e.data === data) + 1;
+}
 
 /** Static subtitle shown under the report title when rendering from the fixture. */
 export const WELDING_REPORT_SUBTITLE = "Weekly Progress Report - Week Ending 16-Jan-26";

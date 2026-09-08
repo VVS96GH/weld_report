@@ -47,9 +47,11 @@ missing: UT TRACKER (GAC)/(TEK) and the flange repair logs; the flange dashboard
 widgets honest-empty until the repair logs arrive. Added 2026-09-07/08: page-1 slicers
 (`?ha=&area=&subco=&wtype=&wcat=`, the HA▸Area pair is one grouped control fed by
 `ref_ha_area`), the pbix HA column verbatim (branches 1–2 from Subsystem/System No, branch 3 the
-`l0_abs_guide` lookup by PDS Area — `ref_ha_guide`), `/forecast` (pbix page 20 "RT Backlog
-Forecast": 14 cards, 3 charts, 7 slicers; 10 cards exact vs the owner, 4 near-misses disclosed on
-the card — see `lib/metrics/README.md`), and `/report/<screen>` — consolidation option A, 7
+`l0_abs_guide` lookup by PDS Area — `ref_ha_guide`), the RT Backlog Forecast (pbix page 20: 16 cards,
+3 charts, 7 slicers; 13 cards exact vs the owner, the rest disclosed on the card — see
+`lib/metrics/README.md`) rendered as **display page 2 of the welding report** (`lib/welding-pages.ts`
+`REPORT_ORDER`: 44 mockup data pages + the forecast = 45 display pages; `/forecast` redirects to
+`/welding/2`; lib/pages and lib/screens keep the mockup's data numbers), and `/report/<screen>` — consolidation option A, 7
 filter-driven screens over the same 44 PageModels (`lib/screens.ts`; the 44-page route stays
 the print form).
 

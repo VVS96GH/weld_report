@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import type { FilterWidget } from "@/lib/page-model";
-import { getPage, type WeldingFilters } from "@/lib/page-source";
+import { FORECAST_FILTER_IDS, getForecastPage, getPage, type ForecastFilters, type WeldingFilters } from "@/lib/page-source";
+import { ForecastView } from "@/components/ForecastView";
 import { FilterBar } from "@/components/FilterBar";
-import { WELDING_PAGE_TITLES, WELDING_REPORT_SUBTITLE, WELDING_TOTAL_PAGES } from "@/lib/welding-pages";
+import { reportEntry, WELDING_PAGE_TITLES, WELDING_REPORT_SUBTITLE, WELDING_TOTAL_PAGES } from "@/lib/welding-pages";
 import { PageView } from "@/components/PageView";
 
 // Data is loaded per-request (fixture file today, a live DB once METRICS-LANE lands),
@@ -15,6 +16,16 @@ export const dynamic = "force-dynamic";
 // Page-1 slicers travel as URL search params (same mechanism as the flange
 // dashboard, ruling RF-08): the server re-renders the PageModel with them applied.
 const FILTER_PARAMS = ["ha", "area", "subco", "wtype", "wcat"] as const;
+
+function readForecastFilters(params: Record<string, string | string[] | undefined>): ForecastFilters {
+  const filters: ForecastFilters = {};
+  for (const key of FORECAST_FILTER_IDS) {
+    const raw = params[key];
+    const value = Array.isArray(raw) ? raw[0] : raw;
+    if (value && value.trim() !== "") filters[key] = value.trim();
+  }
+  return filters;
+}
 
 function readFilters(params: Record<string, string | string[] | undefined>): WeldingFilters {
   const filters: WeldingFilters = {};
@@ -48,8 +59,24 @@ export default async function WeldingReportPage(props: PageProps<"/welding/[page
     notFound();
   }
 
-  const filters = readFilters(await props.searchParams);
-  const model = await getPage(n, undefined, { filters });
+  const params = await props.searchParams;
+  const entry = reportEntry(n)!;
+
+  // Display page 2 is the RT Backlog Forecast (pbix page 20), inserted into the
+  // report's reading order; every other display page maps to its mockup data page.
+  if (entry.kind === "forecast") {
+    const model = await getForecastPage(readForecastFilters(params));
+    const filterWidgets = model.widgets.filter((w): w is FilterWidget => w.kind === "filter");
+    const subtitle = model.meta?.source === "database" ? `Data as of ${model.meta.as_of ?? "unknown"}` : WELDING_REPORT_SUBTITLE;
+    return (
+      <>
+        <FilterBar widgets={filterWidgets} />
+        <ForecastView model={model} subtitle={subtitle} />
+      </>
+    );
+  }
+
+  const model = await getPage(entry.data, undefined, { filters: readFilters(params) });
   const filterWidgets = model.widgets.filter((w): w is FilterWidget => w.kind === "filter");
   const subtitle =
     model.meta?.source === "database"

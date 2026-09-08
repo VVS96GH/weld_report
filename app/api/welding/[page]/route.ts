@@ -11,7 +11,9 @@
  */
 
 import type { NextRequest } from "next/server";
-import { getWeldingPage, TOTAL_PAGES, type WeldingFilters } from "@/lib/pages/welding";
+import { getWeldingPage, type WeldingFilters } from "@/lib/pages/welding";
+import { FORECAST_FILTER_IDS, getForecastPage, type ForecastFilters } from "@/lib/page-source";
+import { reportEntry, WELDING_TOTAL_PAGES as TOTAL_PAGES } from "@/lib/welding-pages";
 
 const FILTER_PARAMS = ["ha", "area", "subco", "wtype", "wcat"] as const;
 
@@ -44,7 +46,16 @@ export async function GET(
       const value = request.nextUrl.searchParams.get(key)?.trim();
       if (value) filters[key] = value;
     }
-    const model = await getWeldingPage(n, { ...(asOf ? { as_of: asOf } : {}), filters });
+    const entry = reportEntry(n)!;
+    if (entry.kind === "forecast") {
+      const ff: ForecastFilters = {};
+      for (const key of FORECAST_FILTER_IDS) {
+        const value = request.nextUrl.searchParams.get(key)?.trim();
+        if (value) ff[key] = value;
+      }
+      return Response.json(await getForecastPage(ff, asOf ? { as_of: asOf } : {}));
+    }
+    const model = await getWeldingPage(entry.data, { ...(asOf ? { as_of: asOf } : {}), filters });
     return Response.json(model);
   } catch (err) {
     return Response.json(
