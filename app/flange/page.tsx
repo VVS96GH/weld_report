@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import type { FilterWidget } from "@/lib/page-model";
 import { getFlangePage, type FlangeFilters } from "@/lib/page-source";
 import { FilterBar } from "@/components/FilterBar";
-import { PageView } from "@/components/PageView";
+import { FlangeView } from "@/components/FlangeView";
 
 // Filters travel as URL search params (ruling RF-08) and the data is loaded
 // per request, so the route is dynamic; nothing to prerender.
@@ -35,7 +35,7 @@ export default async function FlangePage(props: PageProps<"/flange">) {
   return (
     <>
       <FilterBar widgets={filterWidgets} />
-      <PageView model={model} subtitle={subtitle} />
+      <FlangeView model={model} subtitle={subtitle} />
     </>
   );
 }

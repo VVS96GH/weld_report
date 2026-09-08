@@ -1866,3 +1866,112 @@ html {
     flex-direction: row;
   }
 }
+
+/* ── Power BI look-alike pages (flange dashboard + management), tokens in app/styles/tokens.css ── */
+.pbi-page {
+  background: var(--pbi-bg);
+  color: var(--pbi-fg);
+  border: 1px solid var(--pbi-border);
+  padding: 10px;
+  font-family: var(--font-sans);
+}
+.pbi-flange-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 44fr) minmax(0, 56fr);
+  gap: 8px;
+  align-items: start;
+}
+.pbi-col { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.pbi-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pbi-row--top { grid-template-columns: minmax(0, 1fr) minmax(300px, 0.9fr); }
+.pbi-row--leak { grid-template-columns: minmax(0, 3fr) minmax(150px, 1fr); }
+.pbi-row--repair { grid-template-columns: 1fr 1fr 1fr; }
+.pbi-visual {
+  background: var(--pbi-bg);
+  border: 1px solid var(--pbi-border);
+  padding: 6px 8px 8px;
+  min-width: 0;
+}
+.pbi-visual .chart-container { height: 230px; }
+.pbi-monthly .chart-container { height: 190px; }
+.pbi-leak .chart-container { height: 170px; }
+.pbi-visual-title {
+  text-align: center;
+  color: var(--pbi-title);
+  font-weight: 700;
+  font-size: 15px;
+  text-decoration: underline;
+  margin-bottom: 4px;
+}
+.pbi-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  min-height: 30px;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--pbi-fg);
+  background: linear-gradient(90deg, var(--pbi-banner-1), var(--pbi-banner-2));
+  border: 1px solid var(--pbi-border);
+}
+.pbi-banner-date {
+  position: absolute;
+  inset-inline-end: 8px;
+  font-size: 12px;
+  background: var(--pbi-bg);
+  padding: 2px 8px;
+  border: 1px solid var(--pbi-border);
+}
+.pbi-summary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+  align-items: stretch;
+}
+.pbi-summary-grid .pbi-card--big { grid-row: 1 / 3; }
+.pbi-card {
+  border: 1px solid var(--pbi-border);
+  background: var(--pbi-bg);
+  padding: 8px 6px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+}
+.pbi-card-value { font-size: 20px; font-weight: 700; color: var(--pbi-fg); line-height: 1.1; }
+.pbi-card--big .pbi-card-value { font-size: 22px; }
+.pbi-card-label { font-size: 11px; color: var(--pbi-muted); margin-top: 3px; }
+.pbi-card-stack { display: flex; flex-direction: column; gap: 8px; }
+.pbi-card-stack .pbi-card { flex: 1 1 auto; }
+[data-mood] .pbi-page .data-table { font-size: 12px; color: var(--pbi-fg); background: var(--pbi-bg); border: 1px solid var(--pbi-border); }
+[data-mood] .pbi-page .data-table tbody tr,
+[data-mood] .pbi-page .data-table tbody tr th,
+[data-mood] .pbi-page .data-table tbody tr td,
+[data-mood] .pbi-page .data-table tbody tr td.num,
+[data-mood] .pbi-page .data-table tbody tr td:first-child { background: var(--pbi-bg); color: var(--pbi-fg); }
+[data-mood] .pbi-page .data-table th, [data-mood] .pbi-page .data-table td { padding: 3px 6px; border: 1px solid var(--pbi-grid); }
+[data-mood] .pbi-page .data-table thead th { background: var(--pbi-head); color: var(--pbi-fg); font-weight: 700; font-size: 11px; text-transform: none; letter-spacing: 0; position: static; }
+[data-mood] .pbi-page .data-table tbody th[scope="row"] { white-space: pre; color: var(--pbi-fg); font-weight: 400; }
+[data-mood] .pbi-page .data-table tbody tr:nth-child(even) th,
+[data-mood] .pbi-page .data-table tbody tr:nth-child(even) td { background: var(--pbi-subrow); }
+[data-mood] .pbi-page .data-table tbody tr:hover th,
+[data-mood] .pbi-page .data-table tbody tr:hover td { background: var(--pbi-pct); }
+[data-mood] .pbi-page .data-table .row-header th, [data-mood] .pbi-page .data-table .row-header td { background: var(--pbi-head); font-weight: 700; }
+[data-mood] .pbi-page .table-scroll { overflow-x: auto; overflow-y: visible; max-height: none; margin-bottom: 0; }
+.pbi-notes { margin-top: 10px; }
+.pbi-notes .card { font-size: 12px; }
+/* management matrix */
+.pbi-management-title { font-size: 17px; margin: 4px 0 8px; }
+.pbi-matrix thead th { text-align: center; }
+.pbi-matrix .pbi-matrix-group { background: var(--pbi-navy); color: #fff; } /* token-lint: allow-hex — white on the pbix navy header */
+.pbi-matrix .pbi-matrix-corner { background: var(--pbi-navy); color: #fff; vertical-align: middle; } /* token-lint: allow-hex — white on the pbix navy header */
+.pbi-matrix thead tr:nth-child(2) th { background: var(--pbi-navy-2); color: #fff; } /* token-lint: allow-hex — white on the pbix navy header */
+[data-mood] .pbi-page .pbi-matrix .pbi-matrix-parent th, [data-mood] .pbi-page .pbi-matrix .pbi-matrix-parent td { background: var(--pbi-group); font-weight: 700; color: var(--pbi-muted); }
+[data-mood] .pbi-page .pbi-matrix .pbi-matrix-child th { padding-inline-start: 22px; }
+[data-mood] .pbi-page .pbi-matrix tbody td.pbi-matrix-pct { background: var(--pbi-pct); }
+[data-mood] .pbi-page .pbi-matrix tbody .pbi-matrix-parent td.pbi-matrix-pct { background: var(--pbi-banner-2); color: var(--pbi-fg); }
+@media (max-width: 1100px) {
+  .pbi-flange-grid, .pbi-row, .pbi-row--top, .pbi-row--leak, .pbi-row--repair { grid-template-columns: 1fr; }
+}

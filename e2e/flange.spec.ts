@@ -14,7 +14,7 @@ const OVERFLOW_TOLERANCE_PX = 1;
 async function gotoFlange(page: Page, query = ""): Promise<void> {
   await page.goto(`/flange${query}`, { waitUntil: "domcontentloaded" });
   await expect(page.locator("#page-heading")).toHaveText(/Flange/, { timeout: 15_000 });
-  await expect(page.locator(".stat-box").first()).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator(".stat-box, .pbi-card").first()).toBeVisible({ timeout: 15_000 });
 }
 
 async function documentOverflow(page: Page): Promise<number> {
@@ -31,7 +31,7 @@ for (const scheme of ["dark", "light"] as Scheme[]) {
     test("renders the filters, KPI tiles, tables and charts without horizontal overflow", async ({ page }) => {
       await expect(page.getByRole("group", { name: "Report filters" })).toBeVisible();
       await expect(page.locator(".filter-select")).toHaveCount(3);
-      expect(await page.locator(".stat-box").count()).toBeGreaterThanOrEqual(7);
+      expect(await page.locator(".stat-box, .pbi-card").count()).toBeGreaterThanOrEqual(7);
       expect(await page.locator(".data-table").count()).toBeGreaterThanOrEqual(3);
       expect(await documentOverflow(page)).toBeLessThanOrEqual(OVERFLOW_TOLERANCE_PX);
       await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
@@ -59,7 +59,7 @@ test.describe("flange interaction", () => {
     await expect(page.locator("select[name='ha']")).toHaveValue("HA1");
     await expect(page.locator("[aria-live='polite']")).toContainText("HA1");
     await expect(page.locator("#page-heading")).toHaveText(/Flange/);
-    expect(await page.locator(".stat-box").count()).toBeGreaterThanOrEqual(7);
+    expect(await page.locator(".stat-box, .pbi-card").count()).toBeGreaterThanOrEqual(7);
 
     await page.locator("select[name='subco']").selectOption("GAC");
     await expect(page).toHaveURL(/\/flange\?ha=HA1&subco=GAC$/);

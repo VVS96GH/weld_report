@@ -257,3 +257,30 @@
   --border-color: var(--border);
   --chart-grid: var(--chart-grid-line);
 }
+
+/* ============ Power BI look-alike scope (flange pages, owner request 2026-09-08:
+   "один в один — расположения и цвета"). Scoped to .pbi-page so the rest of the app keeps
+   its mood; the two schemes only soften the page ground, the report's own colours stay. ============ */
+.pbi-page {
+  --pbi-bg: #ffffff;
+  --pbi-fg: #1f1f1f;
+  --pbi-muted: #5f6b76;
+  --pbi-border: #c9d1d9;
+  --pbi-grid: #e3e8ee;
+  --pbi-head: #e9eef3;
+  --pbi-subrow: #f3f6f9;
+  --pbi-title: #1f5fbf;        /* underlined blue visual titles */
+  --pbi-banner-1: #cfe3f7;     /* section banners: light-blue gradient, black text */
+  --pbi-banner-2: #7fb3e6;
+  --pbi-bar: #3b8fd9;          /* light-blue columns */
+  --pbi-navy: #1f4e9c;         /* doughnut / dark bars */
+  --pbi-navy-2: #2f5f9e;
+  --pbi-teal: #4bacc6;         /* PCC / second slice */
+  --pbi-grey: #a6a6a6;
+  --pbi-line: #2e75b6;
+  --pbi-pct: #cfe0f2;          /* shaded % columns in the management matrix */
+  --pbi-group: #d9d9d9;        /* HA group rows */
+}
+:root[data-theme="dark"] .pbi-page {
+  --pbi-bg: #f4f7fa;
+}

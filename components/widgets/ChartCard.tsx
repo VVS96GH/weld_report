@@ -176,6 +176,35 @@ function axisLabel(label: unknown): string {
  * formatter on the last dataset) so the total still shows when the last dataset is
  * null at that index or hidden through the legend.
  */
+/**
+ * Inline plugin: writes the dataset total in the middle of a doughnut when the
+ * widget's options_notes carry "center-total" (the pbix flange doughnuts show
+ * 197980 / 148091 in the hole).
+ */
+const centerTotalPlugin = {
+  id: "centerTotal",
+  afterDraw(chart: ChartJS) {
+    const opts = (chart.options.plugins as Record<string, unknown> | undefined)?.centerTotal as
+      | { color: string; font: string }
+      | undefined;
+    if (!opts) return;
+    const ds = chart.data.datasets[0];
+    if (!ds) return;
+    const total = (ds.data as unknown[]).reduce<number>((a, v) => a + (typeof v === "number" ? v : 0), 0);
+    const meta = chart.getDatasetMeta(0);
+    const arc = meta.data[0] as unknown as { x: number; y: number } | undefined;
+    if (!arc) return;
+    const { ctx } = chart;
+    ctx.save();
+    ctx.fillStyle = opts.color;
+    ctx.font = `700 16px ${opts.font}`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(total.toLocaleString("en-US"), arc.x, arc.y);
+    ctx.restore();
+  },
+};
+
 const stackTotalsPlugin = {
   id: "stackTotals",
   afterDatasetsDraw(chart: ChartJS) {
@@ -220,7 +249,7 @@ const stackTotalsPlugin = {
 // unset ones lets each mood contribute its own count without a hardcoded table.
 const PALETTE_VARS = Array.from({ length: 12 }, (_, i) => `--color-${i + 1}`);
 
-type Palette = {
+export type Palette = {
   colors: string[];
   primary: string;
   grid: string;
@@ -287,18 +316,26 @@ type DatalabelCtx = { dataset: { data: unknown[] }; dataIndex: number; chart: Ch
 
 /** Per-type chartjs-plugin-datalabels config; `display: false` is the registered default. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function valueLabels(type: string, stacked: boolean, percent: boolean, circular: boolean, palette: Palette, seriesCount: number, categoryCount: number, horizontal = false): any {
+function valueLabels(type: string, stacked: boolean, percent: boolean, circular: boolean, palette: Palette, seriesCount: number, categoryCount: number, horizontal = false, namePct = false): any {
   const font = { size: 10, family: palette.font, weight: 600 };
   if (circular) {
     // Slice values outside the ring; slivers under 2 % of the total stay unlabelled
-    // (the legend and tooltip still carry them) so labels never pile up.
+    // (the legend and tooltip still carry them) so labels never pile up. With
+    // "label-name-pct" in options_notes the label reads "Torquing 57,483 (29.03%)",
+    // the pbix flange doughnut's own format.
     return {
       display: (ctx: DatalabelCtx) => {
         const v = ctx.dataset.data[ctx.dataIndex];
         const total = ctx.dataset.data.reduce<number>((a, b) => a + (typeof b === "number" ? b : 0), 0);
         return typeof v === "number" && total > 0 && v / total >= 0.02;
       },
-      formatter: (v: unknown) => fmtValue(v, false),
+      formatter: (v: unknown, ctx: DatalabelCtx) => {
+        if (!namePct) return fmtValue(v, false);
+        const total = ctx.dataset.data.reduce<number>((a, b) => a + (typeof b === "number" ? b : 0), 0);
+        const name = (ctx.chart.data.labels?.[ctx.dataIndex] as string | undefined) ?? "";
+        const pct = typeof v === "number" && total > 0 ? ` (${((v / total) * 100).toFixed(2)}%)` : "";
+        return `${name} ${fmtValue(v, false)}${pct}`;
+      },
       color: palette.fg,
       anchor: "end",
       align: "end",
@@ -417,7 +454,7 @@ function isCircular(type: string): boolean {
  * so charts whose `options_notes` mention "has datalabels plugin" render without
  * on-bar value labels.
  */
-export function ChartCard({ widget }: { widget: ChartWidget }) {
+export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; paletteOverride?: Partial<Palette> }) {
   const [version, setVersion] = useState(0);
 
   // Long category axes (the forecast's 32-month series) show a WINDOW of the last
@@ -442,7 +479,7 @@ export function ChartCard({ widget }: { widget: ChartWidget }) {
   }, []);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps -- `version` is the re-read trigger, not an input
-  const palette = useMemo(() => readPalette(), [version]);
+  const palette = useMemo(() => ({ ...readPalette(), ...paletteOverride }), [version, paletteOverride]);
 
   const notes = widget.options_notes ?? "";
   const stackedX = notes.includes("stacked (x)");
@@ -513,9 +550,11 @@ export function ChartCard({ widget }: { widget: ChartWidget }) {
             : { top: widget.chart_type === "bar" && !(stackedX || stackedY) && widget.datasets.length > 2 ? 34 : 16 },
       },
       plugins: {
-        legend: { display: true, labels: { color: palette.text, boxWidth: 12, font: { size: 10, family: palette.font } } },
+        // pbix-style named slice labels already name every slice, so the legend goes
+        legend: { display: !(circular && notes.includes("label-name-pct")), labels: { color: palette.text, boxWidth: 12, font: { size: 10, family: palette.font } } },
         tooltip: { enabled: true },
-        datalabels: valueLabels(widget.chart_type, stackedX || stackedY, percentAxis, circular, palette, widget.datasets.length, widget.labels.length, horizontal),
+        datalabels: valueLabels(widget.chart_type, stackedX || stackedY, percentAxis, circular, palette, widget.datasets.length, widget.labels.length, horizontal, notes.includes("label-name-pct")),
+        centerTotal: circular && notes.includes("center-total") ? { color: palette.fg, font: palette.font ?? "sans-serif" } : undefined,
         stackTotals:
           widget.chart_type === "bar" && (stackedX || stackedY)
             ? { color: palette.fg, font: palette.font ?? "sans-serif", percent: percentAxis }
@@ -557,7 +596,7 @@ export function ChartCard({ widget }: { widget: ChartWidget }) {
             return horizontal ? { x: value, y: category } : { x: category, y: value };
           })(),
     }),
-    [palette, stackedX, stackedY, percentAxis, horizontal, circular, widget.chart_type, widget.datasets.length, widget.labels.length, thresholds],
+    [palette, stackedX, stackedY, percentAxis, horizontal, circular, widget.chart_type, widget.datasets.length, widget.labels.length, thresholds, notes],
   );
 
   // Trend charts fed by the not-yet-seeded weld_weekly_snapshot table (e.g. page 1's
@@ -582,10 +621,10 @@ export function ChartCard({ widget }: { widget: ChartWidget }) {
       chart = <Chart key={version} type="line" data={data} options={options} />;
       break;
     case "doughnut":
-      chart = <Chart key={version} type="doughnut" data={data} options={options} />;
+      chart = <Chart key={version} type="doughnut" data={data} options={options} plugins={[centerTotalPlugin]} />;
       break;
     case "pie":
-      chart = <Chart key={version} type="pie" data={data} options={options} />;
+      chart = <Chart key={version} type="pie" data={data} options={options} plugins={[centerTotalPlugin]} />;
       break;
     case "bar":
     default:

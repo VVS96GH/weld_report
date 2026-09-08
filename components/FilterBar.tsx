@@ -89,8 +89,8 @@ export function FilterBar({ widgets }: { widgets: FilterWidget[] }) {
                   return (
                     <optgroup key={key} label={key}>
                       <option value={`${key}|`}>{key} — all areas</option>
-                      {(byParent[g] ?? []).map((o) => (
-                        <option key={o} value={`${key}|${o}`}>
+                      {(byParent[g] ?? []).map((o, oi) => (
+                        <option key={`${oi}-${o}`} value={`${key}|${o}`}>
                           {"\u2003"}{o}
                         </option>
                       ))}
@@ -111,8 +111,8 @@ export function FilterBar({ widgets }: { widgets: FilterWidget[] }) {
               value={w.value}
               onChange={(e) => apply(w.id, e.target.value)}
             >
-              {w.options.map((o) => (
-                <option key={o} value={o}>
+              {w.options.map((o, i) => (
+                <option key={`${i}-${o}`} value={o}>
                   {o}
                 </option>
               ))}

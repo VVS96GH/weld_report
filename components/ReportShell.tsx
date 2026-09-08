@@ -38,12 +38,15 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
   const [subtitle, setSubtitle] = useState<string>(WELDING_REPORT_SUBTITLE);
 
   const isFlange = pathname?.startsWith("/flange") ?? false;
+  const isFlangeManagement = pathname?.startsWith("/flange/management") ?? false;
   // Consolidation option A: /report/<screen> — 7 screens with filters instead of the page list.
   const screenId = pathname?.match(/^\/report\/([a-z]+)/)?.[1] ?? null;
   const isScreens = screenId !== null;
   const current = currentPageFromPathname(pathname) ?? 1;
   const title = isFlange
-    ? "Flange Inspection Dashboard"
+    ? isFlangeManagement
+      ? "Flange Management / Repartition and Progress"
+      : "Flange Inspection Dashboard"
     : isScreens
       ? (SCREENS.find((sc) => sc.id === screenId)?.title ?? "")
       : (WELDING_PAGE_TITLES[current - 1] ?? "");
@@ -109,7 +112,15 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
           </Link>
         </div>
         {isFlange ? (
-          <span className="page-title-display">{title}</span>
+          <div className="screen-tabs" role="group" aria-label="Flange pages">
+            <Link href="/flange" className="report-pill" aria-current={isFlangeManagement ? undefined : "page"}>
+              Dashboard
+            </Link>
+            <Link href="/flange/management" className="report-pill" aria-current={isFlangeManagement ? "page" : undefined}>
+              Management
+            </Link>
+            <span className="page-title-display">{title}</span>
+          </div>
         ) : isScreens ? (
           <div className="screen-tabs" role="group" aria-label="Screens">
             {SCREENS.map((sc) => (

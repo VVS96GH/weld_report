@@ -160,3 +160,34 @@ export async function getForecastPage(filters: ForecastFilters = {}, opts: { as_
   }
   return mod.getForecastPage(filters, opts);
 }
+
+// ── Flange Management / Repartition and Progress (pbix flange page 2) ────────
+
+type FlangeManagementModule = {
+  getFlangeManagementPage: (filters: FlangeFilters) => Promise<PageModel>;
+};
+
+/** Load the flange management matrix page for the applied filters (database source only). */
+export async function getFlangeManagementPage(filters: FlangeFilters = {}): Promise<PageModel> {
+  const placeholder = (reason: string): PageModel => ({
+    page: 0,
+    id: "flange-management",
+    title: "FLANGE MANAGEMENT / Repartition and Progress",
+    widgets: [{ kind: "text", text: reason }],
+    meta: { source: resolvePageSource() },
+  });
+  if (resolvePageSource() !== "database") {
+    return placeholder("The flange management matrix is computed from the database only; PAGE_SOURCE=fixture shows this note instead.");
+  }
+  let mod: Partial<FlangeManagementModule>;
+  try {
+    mod = (await import(FLANGE_PAGES_MODULE)) as Partial<FlangeManagementModule>;
+  } catch (err) {
+    if (/Cannot find module/.test((err as Error).message)) return placeholder("Database source not available yet: lib/pages/flange.ts is not present.");
+    throw new Error(`PAGE_SOURCE=database but lib/pages/flange.ts could not be loaded: ${(err as Error).message}`);
+  }
+  if (typeof mod.getFlangeManagementPage !== "function") {
+    return placeholder("The data layer does not export getFlangeManagementPage(filters) yet; the matrix fills in automatically once it lands.");
+  }
+  return mod.getFlangeManagementPage(filters);
+}
