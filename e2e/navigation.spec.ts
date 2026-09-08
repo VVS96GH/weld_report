@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-import { WELDING_PAGE_TITLES } from "@/lib/welding-pages";
+import { WELDING_PAGE_TITLES, WELDING_TOTAL_PAGES } from "@/lib/welding-pages";
 import { gotoWeldingPage, waitForPage } from "./support/wait";
 
 // Interaction behavior doesn't vary by viewport width; one desktop and one
@@ -49,8 +49,8 @@ test.describe("page navigation", () => {
     await expect(page).toHaveURL(/\/welding\/5$/);
   });
 
-  test("/welding/45 renders the 404 page", async ({ page }) => {
-    const response = await page.goto("/welding/45");
+  test("the page after the last renders the 404 page", async ({ page }) => {
+    const response = await page.goto(`/welding/${WELDING_TOTAL_PAGES + 1}`);
     expect(response?.status()).toBe(404);
     await expect(page.locator("h2")).toHaveText("Page not found");
     await expect(page.getByRole("link", { name: "Go to page 1" })).toBeVisible();

@@ -3,7 +3,8 @@ import { test, expect, type Page } from "@playwright/test";
 import { setStoredTheme, type Scheme } from "./support/theme";
 import { gotoWeldingPage } from "./support/wait";
 
-const PAGES = [1, 4, 19, 42];
+// display pages: 1 = project overview, 2 = RT Backlog Forecast, 5/20/43 = mockup data pages 4/19/42
+const PAGES = [1, 2, 5, 20, 43];
 const SCHEMES: Scheme[] = ["dark", "light"];
 const MOBILE_PROJECTS = ["mobile-360", "mobile-375"];
 const OVERFLOW_TOLERANCE_PX = 1;
