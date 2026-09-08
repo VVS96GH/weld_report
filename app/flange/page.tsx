@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import type { FilterWidget } from "@/lib/page-model";
-import { getFlangePage, type FlangeFilters } from "@/lib/page-source";
+import { getFlangeManagementPage, getFlangePage, type FlangeFilters } from "@/lib/page-source";
 import { FilterBar } from "@/components/FilterBar";
 import { FlangeView } from "@/components/FlangeView";
 
@@ -25,7 +25,8 @@ function readFilters(params: Record<string, string | string[] | undefined>): Fla
 
 export default async function FlangePage(props: PageProps<"/flange">) {
   const params = await props.searchParams;
-  const model = await getFlangePage(readFilters(params));
+  const filters = readFilters(params);
+  const [model, management] = await Promise.all([getFlangePage(filters), getFlangeManagementPage(filters)]);
   const filterWidgets = model.widgets.filter((w): w is FilterWidget => w.kind === "filter");
   const subtitle =
     model.meta?.source === "database"
@@ -35,7 +36,7 @@ export default async function FlangePage(props: PageProps<"/flange">) {
   return (
     <>
       <FilterBar widgets={filterWidgets} />
-      <FlangeView model={model} subtitle={subtitle} />
+      <FlangeView model={model} subtitle={subtitle} management={management} />
     </>
   );
 }

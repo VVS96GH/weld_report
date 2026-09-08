@@ -6,6 +6,7 @@ import type { ChartWidget, KpiWidget, PageModel, TableWidget, TextWidget } from 
 import { usePageSubtitle } from "@/components/ReportShell";
 import { ChartCard, type Palette } from "@/components/widgets/ChartCard";
 import { DataTable } from "@/components/widgets/DataTable";
+import { MatrixTable } from "@/components/MatrixTable";
 import { TextNote } from "@/components/widgets/TextNote";
 
 /**
@@ -64,7 +65,7 @@ function Table({ widget }: { widget: TableWidget }) {
   );
 }
 
-export function FlangeView({ model, subtitle }: { model: PageModel; subtitle: string }) {
+export function FlangeView({ model, subtitle, management }: { model: PageModel; subtitle: string; management?: PageModel }) {
   usePageSubtitle(subtitle);
   const palette = useMemo(() => pbiPalette(), []);
 
@@ -165,6 +166,21 @@ export function FlangeView({ model, subtitle }: { model: PageModel; subtitle: st
           </div>
         </div>
       </div>
+
+      {management ? (
+        // pbix flange page 2, kept on the same screen (owner request 2026-09-08:
+        // "обе страницы в одном разделе")
+        <div className="pbi-management-block">
+          <div className="pbi-banner"><span>Flange Management</span></div>
+          <div className="pbi-visual">
+            <div className="pbi-visual-title pbi-management-title">{management.title}</div>
+            {management.widgets.map((w, i) => (w.kind === "table" ? <MatrixTable key={i} widget={w} /> : null))}
+          </div>
+          {management.widgets.filter((w): w is TextWidget => w.kind === "text").map((t, i) => (
+            <TextNote key={i} widget={t} />
+          ))}
+        </div>
+      ) : null}
 
       {rest.length > 0 ? (
         <div className="dashboard-grid">

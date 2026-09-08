@@ -1962,6 +1962,8 @@ html {
 [data-mood] .pbi-page .table-scroll { overflow-x: auto; overflow-y: visible; max-height: none; margin-bottom: 0; }
 .pbi-notes { margin-top: 10px; }
 .pbi-notes .card { font-size: 12px; }
+.pbi-management-block { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.pbi-management-block .card { font-size: 12px; }
 /* management matrix */
 .pbi-management-title { font-size: 17px; margin: 4px 0 8px; }
 .pbi-matrix thead th { text-align: center; }
