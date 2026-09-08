@@ -93,10 +93,11 @@ const REPAIR_NOTE =
   "and Flange Progress.xlsx has no repair column at all.";
 
 const HA_NOTE =
-  "Handover-area provenance (ruling RF-03): HA l0_abs_guide is missing, so the " +
-  "CCC side uses ovAssets_1619[Process Plant], which agrees with the DAX rule " +
-  "on 226,438 rows with 0 disagreements. The joints it cannot resolve are shown " +
-  "as their own “(blank)” row — never folded into HA1.";
+  "Handover-area provenance (ruling RF-03): HA is taken from [System], then " +
+  "from PDS Area through HA l0_abs_guide — that workbook has since been " +
+  "delivered and is loaded, which resolved all but 65 of the 6,593 joints that " +
+  "previously had none. Those 65 are GAC flanges whose PDS Area the guide does " +
+  "not list; they keep their own “(blank)” row and are never folded into HA1.";
 
 const LEAK_NOTE =
   "Leak timeline: recomputed from records — the as-reported weekly file is " +
@@ -243,6 +244,22 @@ export async function getFlangePage(
   ]);
   const { overall, bySubco, byHa, byMethod, byHaMethod } = breakdown;
   const panelBySubco = panel.bySubco;
+  /**
+   * Drop buckets after `as_of` from a chart AXIS.
+   *
+   * The register carries a known 2027-02 typo (RF-05), and every MEASURE keeps
+   * those rows — the ruling is explicit that they are counted. But a monthly
+   * axis that ends on a future month wastes a slot on a bucket of 1 and pushes
+   * the real last month out of a five-point window: the owner's chart shows
+   * Apr–Aug 2026 where ours showed May–Aug 2026 plus Feb-27.
+   *
+   * So this trims the axis only. Nothing that is counted stops being counted.
+   */
+  const untilAsOf = <T extends { month: string }>(series: T[]): T[] => {
+    const cutoff = (stamp.as_of ?? "").slice(0, 7);
+    return cutoff ? series.filter((x) => x.month <= cutoff) : series;
+  };
+
   const panelStats = panel.overall;
   const subcoOptions = options.subco;
   const haOptions = options.ha;
@@ -251,7 +268,9 @@ export async function getFlangePage(
     notes.add(
       `“Data as of” excludes ${stamp.future_rows} row(s) whose Joint Date is in ` +
         `the future (the register's known 2027-02 typo, kept by ruling RF-05). ` +
-        `Those rows are still counted in every measure.`,
+        `Those rows are still counted in every measure; only the monthly and ` +
+        `leak-timeline chart AXES stop at “Data as of”, so a bucket of one ` +
+        `future row does not displace a real month.`,
     );
   }
 
@@ -334,7 +353,7 @@ export async function getFlangePage(
     canvas_id: "leakedTimelineChart",
     title: "Leaked Flange Break % Timeline",
     chart_type: "line",
-    labels: leakSeries.map((s) => monthLabel(s.month)),
+    labels: untilAsOf(leakSeries).map((x) => monthLabel(x.month)),
     datasets: [
       {
         label: "Leaked Flg Break % (recomputed from records)",
@@ -371,8 +390,10 @@ export async function getFlangePage(
     canvas_id: "monthlyChart",
     title: "Monthly Inspection",
     chart_type: "bar",
-    labels: monthly.map((m) => monthLabel(m.month)),
-    datasets: [{ label: "Inspected", data: monthly.map((m) => m.inspected) }],
+    labels: untilAsOf(monthly).map((m) => monthLabel(m.month)),
+    datasets: [
+      { label: "Inspected", data: untilAsOf(monthly).map((m) => m.inspected) },
+    ],
   });
 
   for (const n of notes) widgets.push({ kind: "text", text: n });

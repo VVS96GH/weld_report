@@ -609,4 +609,38 @@ describe.skipIf(Boolean(skipReason))("the live page", () => {
     expect(Number(r.or_form)).toBe(16_880);
     expect(Number(r.add_form)).toBe(16_880);
   });
+
+  it("the monthly and leak axes stop at as_of, measures unchanged", async () => {
+    // The register carries a known 2027-02 typo (RF-05) and every MEASURE keeps
+    // those rows -- the ruling is explicit. But a monthly axis ending on a
+    // future bucket of 1 pushed the real last month out of a five-point window:
+    // the owner's chart shows Apr-Aug 2026 where ours showed May-Aug plus
+    // Feb-27. The AXIS is trimmed; nothing counted stops being counted.
+    const page = await getFlangePage({});
+    const chart = (id: string) => {
+      const c = page.widgets.find((w) => w.kind === "chart" && w.canvas_id === id);
+      return c && c.kind === "chart" ? c : null;
+    };
+    const monthly = chart("monthlyChart")!;
+    const last5 = monthly.labels.slice(-5);
+    expect(last5).toEqual([
+      "Apr-26", "May-26", "Jun-26", "Jul-26", "Aug-26",
+    ]);
+    expect(monthly.datasets[0]!.data.slice(-5)).toEqual([
+      12_359, 11_468, 9_604, 9_829, 6_471,
+    ]);
+    // The leak timeline shares the tail and is trimmed the same way.
+    expect(chart("leakedTimelineChart")!.labels.slice(-1)).toEqual(["Aug-26"]);
+
+    // The future row is still IN the measures -- only the axis moved.
+    const [r] = await query<{ n: string }>(
+      "SELECT count(*)::text AS n FROM flange WHERE joint_date > (" +
+        "  SELECT max(joint_date) FROM flange WHERE joint_date < DATE '2027-01-01')",
+    );
+    expect(Number(r.n), "the 2027 row is still in the fact").toBeGreaterThan(0);
+    const total = page.widgets.find(
+      (w) => w.kind === "kpi" && w.label === "Total Register",
+    );
+    expect(total && total.kind === "kpi" ? total.value : null).toBe("357,787");
+  });
 });
