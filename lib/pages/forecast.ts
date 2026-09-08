@@ -199,7 +199,9 @@ export async function getForecastPage(
     await Promise.all([
       forecastBacklog(scope),
       forecastBacklogBySubcon(scope),
-      talismanRt100Backlog(),
+      talismanRt100Backlog(scope, {
+        sliced: Object.values(applied).some((v) => v !== undefined),
+      }),
       rtStatsPrAll(rtScope),
       rtBacklogTotal(rtScope),
       jointMonthlyProgress(scope),

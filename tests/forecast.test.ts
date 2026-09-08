@@ -92,7 +92,11 @@ describe.skipIf(Boolean(skipReason))("forecast page — slice 1", () => {
     // not. All four are in Joint.csv with a weld date and a blank RT1 REP NO,
     // and exactly one (11060A4-PR6206008-SP3-11) carries RT/UT(%) = 100 --
     // found by streaming the raw 1.5 GB welder CSV, and the whole of 357 vs 358.
-    const n = await talismanRt100Backlog();
+    const n = await talismanRt100Backlog({
+      sources: SOURCES_PR_ALL_LOADED,
+      excludeSubContractors: PROJECT_EXCLUDED_SUBCONTRACTORS,
+      temporaryLines: false,
+    });
     expect(n).toBe(358);
     const [r] = await query<{ rows: string; joints: string }>(
       "SELECT count(*)::text AS rows, count(DISTINCT joint_id)::text AS joints" +
@@ -203,6 +207,24 @@ describe.skipIf(Boolean(skipReason))("forecast page — slice 1", () => {
     expect(Number(r.by_year)).toBe(172_153);
     expect(Number(r.boundary), "the year-boundary week").toBe(368);
     expect(Number(r.by_year) + Number(r.boundary)).toBe(Number(r.by_week));
+  });
+
+  it("the Talisman card follows the page slicers through the 1:1 relationship", async () => {
+    // model.md:165 -- TALISMAN DATA[Index] <-> union[Index] is an ACTIVE 1:1
+    // relationship filtering both ways, so union slicers reach this table.
+    // Unfiltered it is 358; under CCC it is 357, because the one M-excluded
+    // joint has no union row and a 1:1 relationship drops unmatched rows the
+    // moment a filter propagates.
+    const unfiltered = await getForecastPage();
+    expect(kpi(unfiltered, "RT B.Log Talisman")).toBe("358");
+    const ccc = await getForecastPage({ subco: "CCC" });
+    expect(kpi(ccc, "RT B.Log Talisman")).toBe("357");
+    // CCC + F is 325 against the owner's 341; the breakdown is 324 F + 32 S
+    // welder-record joints plus 1 joint-record F, and NONE of the 32 S joints
+    // has an F row (so a mixed-cat collapse is ruled out). Pinned as ours with
+    // the difference recorded, not tuned.
+    const cccF = await getForecastPage({ subco: "CCC", wcat: "F" });
+    expect(kpi(cccF, "RT B.Log Talisman")).toBe("325");
   });
 
   it("PWHT (New PBI Rule) differs from the standard rule by exactly 4 joints", async () => {

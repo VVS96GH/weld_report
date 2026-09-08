@@ -116,7 +116,7 @@ export async function forecastBacklogBySubcon(
 }
 
 /**
- * `[RT BACKLOG RT100% Talisman]`.
+ * `[RT BACKLOG RT100% Talisman]`, filtered by the page's slicers.
  *
  * ```dax
  * CALCULATE(DISTINCTCOUNT('TALISMAN DATA'[Joint ID]),
@@ -131,38 +131,50 @@ export async function forecastBacklogBySubcon(
  *
  * Returns `null`, never 0, when the register is unloaded.
  */
-export async function talismanRt100Backlog(): Promise<number | null> {
+export async function talismanRt100Backlog(
+  scope: Scope,
+  opts: { sliced: boolean } = { sliced: false },
+): Promise<number | null> {
+  const p = new Params();
+  // model.md:165 — TALISMAN DATA[Index] <-> union[Index] is an ACTIVE 1:1
+  // relationship filtering BOTH ways, so every page slicer reaches this table
+  // through the union. The join therefore carries the page's whole scope, not
+  // just the RT% test.
+  //
+  // Driven from `mv_joint`, not from Talisman: `rt_pct = 100` plus the scope
+  // narrows to thousands of rows, where leading with the 1.5 M-row register
+  // timed out.
+  const excluded = opts.sliced
+    ? ""
+    : // The four Joint IDs the M step #"EXLUDE 4 RT B.log CCC" removes from the
+      // union have NO union row, so no union slicer can select them: a 1:1
+      // relationship drops unmatched rows the moment a filter propagates. They
+      // count in the unfiltered total and vanish under any slicer — which is
+      // what the relationship does, not a special case we invented.
+      `\nUNION\n` +
+      `SELECT tj2.joint_id\n` +
+      `  FROM ref_talisman_joint tj2\n` +
+      `  JOIN weld_manual_exclusion me ON me.joint_id = tj2.joint_id\n` +
+      ` WHERE tj2.weld_date IS NOT NULL AND tj2.rt1_rep_no IS NULL\n` +
+      `   AND me.rt_pct = 100`;
+  const sql =
+    `SELECT count(*) AS n FROM (\n` +
+    `SELECT DISTINCT mj.joint_id\n` +
+    `  FROM mv_joint mj\n` +
+    `  JOIN ref_talisman_joint tj ON tj.joint_id = mj.joint_id\n` +
+    ` WHERE mj.rt_pct = 100\n` +
+    `   AND ${scopeWhere(scope, p, "mj")}\n` +
+    `   AND tj.weld_date IS NOT NULL AND tj.rt1_rep_no IS NULL` +
+    excluded +
+    `\n) t`;
   try {
     const rows = z
       .array(z.object({ n: zCount }))
-      .parse(
-        await query(
-          // Alias `tj`, not `t`: single-letter aliases collide with the
-          // column-contract test's regex scan (`t.` is the UT tracker).
-          //
-          // `RT% from Project WD+WR` normally resolves through `mv_joint`. The
-          // four Joint IDs the M step #"EXLUDE 4 RT B.log CCC" removes from the
-          // union are the exception: that step filters the UNION, not
-          // `TALISMAN DATA`, so the pbix still resolves their RT% while our
-          // lookup finds nothing. All four are in Joint.csv with a weld date
-          // and a blank RT1 REP NO, and exactly one — 11060A4-PR6206008-SP3-11
-          // — carries RT/UT(%) = 100. That one joint is the whole of this
-          // card's 357 against the owner's 358.
-          //
-          // `weld_manual_exclusion.rt_pct` (migration 0036) gives them
-          // somewhere to resolve. It cannot move a union measure: those rows
-          // still never enter `weld`, and nothing else reads the column.
-          `SELECT count(DISTINCT tj.joint_id) AS n\n` +
-            `  FROM ref_talisman_joint tj\n` +
-            `  LEFT JOIN mv_joint mj ON mj.joint_id = tj.joint_id\n` +
-            `  LEFT JOIN weld_manual_exclusion me ON me.joint_id = tj.joint_id\n` +
-            ` WHERE tj.weld_date IS NOT NULL AND tj.rt1_rep_no IS NULL\n` +
-            `   AND coalesce(mj.rt_pct, me.rt_pct) = 100`,
-        ),
-      );
+      .parse(await query(sql, p.list()));
     const n = rows[0]?.n ?? 0;
     return n === 0 ? null : n;
-  } catch {
+  } catch (e) {
+    if (process.env.DEBUG_FORECAST) console.error(sql, (e as Error).message);
     return null;
   }
 }

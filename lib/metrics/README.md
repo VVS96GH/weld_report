@@ -1272,6 +1272,64 @@ the pbix; neither is smoothed to match the other. Worth noting that
 condition is really "RT Date is not blank" — which is why it can be inert in one
 card and load-bearing in another.
 
+#### The Talisman card follows the page slicers
+
+`model.md:165` — `TALISMAN DATA[Index] ↔ union[Index]` is an **active 1:1
+relationship filtering both ways**, so every page slicer reaches the register
+through the union. The lookup therefore carries the page's whole scope, not just
+the RT% test, and is driven from `mv_joint` (leading with the 1.5 M-row register
+timed out).
+
+| filter | ours | owner |
+|---|---|---|
+| none | **358** | 358 ✅ |
+| `subco=CCC` | 357 | — |
+| `subco=CCC, wcat=F` | **325** | **341** |
+
+The four M-excluded Joint IDs have **no union row**, so no union slicer can
+select them: a 1:1 relationship drops unmatched rows the moment a filter
+propagates. They count in the unfiltered total and vanish under any slicer —
+which is what the relationship does, not a special case.
+
+**CCC + F is 325 against 341, and the obvious explanation is ruled out.** The
+357 matched joints break down as **324 F + 32 S** (welder record) plus **1 F**
+(joint record). The natural suspect was a mixed-cat joint — one whose rows carry
+both F and S, where our joint-grain `max(weld_cat)` collapses to `'S'` while a
+row-level filter would keep it. Tested: **zero** of the 32 S joints has an F
+row. So our weld-cat attribution genuinely differs from the report's for ~15
+joints, and settling it needs the owner's joint list. Pinned as ours, not tuned.
+
+#### The dia residual is NOT the boundary week — and all four candidates fail
+
+Per-party split of `Total Welded RT Dia` (RT week end > 2024-01-01):
+
+| party | dia | rows |
+|---|---|---|
+| CCC | 1,236,457 | 118,237 |
+| GAC | 281,169 | 29,417 |
+| TEKFEN | 168,478 | 16,053 |
+| MEDGULF | 22,929 | 5,014 |
+| ACCIONA | 3,430 | 1,291 |
+| **total** | **1,712,463** | |
+
+Under `subco=CCC, wcat=F` we read 308,069 against the owner's 308,727 (−658,
+0.21 %), and every labelled month is 0.05–0.7 % low while the joints chart
+matches within ±2 — so the missing dia is on joints we **do** count. Each named
+candidate was tested and **each fails**:
+
+| candidate | result |
+|---|---|
+| **(a)** the `weldpoint_seq = 1` row carries no dia while another row of the joint does | **0** such rows, for every party. Taking `max(dia)` per joint instead of the seq-1 row's moves the project total by **+3** (1,712,466). |
+| **(b)** CCC dia coming from the welder record vs the joint record | The two share **zero** joints — the joint record is the unwelded slice — so there is nothing to disagree about. `dia_inch` is `numeric(5,2)` with 1,225,395 fractional CCC values, so it is not a rounding artefact either. |
+| **(c)** `Repair & Reweld "PR all"` excluding rows the pbix keeps | The categories are far too large: under CCC+F, `Reweld` is 6,310, `RS1` 3,275, `Repair` 2,151. None is 658 and no combination approaches it; picking a subset to fit would be tuning. |
+| **(d)** the RT report on a different row of the joint than the dia row | **2 joints, 28 dia inch.** Two orders of magnitude too small. |
+
+658 dia inch spread over 27,205 rows is 0.024 per row — too diffuse for a
+category and too small for a filter. It is not the year-boundary week (that
+family is a −420 project residual with a *different* sign per party), so the two
+are separate after all. What would settle it is the owner's row-level export for
+one month; nothing in our data distinguishes it.
+
 #### The two remaining residuals are one family
 
 Both live in the same year-boundary week, and both are small and
