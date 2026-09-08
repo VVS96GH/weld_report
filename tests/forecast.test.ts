@@ -121,7 +121,9 @@ describe.skipIf(Boolean(skipReason))("forecast page — slice 1", () => {
     const p = await getForecastPage();
     // Exact against the owner's screenshot.
     expect(kpi(p, "RT Dia Total Forecast B.log")).toBe("124,613");
+    // One measure, two cards, two visual filters -- both are rendered.
     expect(kpi(p, "RT Avrg Prod-on 2024-26 per Month")).toBe("5,324");
+    expect(kpi(p, "RT Avrg Prod-on (week-end filtered)")).toBe("5,202");
     expect(kpi(p, "QTY Years")).toBe("0.21");
     expect(kpi(p, "Months to keep RT B.log")).toBe("0.13");
     expect(kpi(p, "Months to keep Dia RT B.log")).toBe("0.13");
@@ -143,9 +145,9 @@ describe.skipIf(Boolean(skipReason))("forecast page — slice 1", () => {
     // is in lib/metrics/README.md.
     const p = await getForecastPage();
     const cases: Array<[string, string, string]> = [
-      ["Numb RT/UT 2024", "172,153", "172,520"],
-      ["Total Welded RT Dia", "1,705,849", "1,712,883"],
-      ["RT Dia Avrg Prod-on", "52,758", "50,954"],
+      ["Numb RT/UT 2024", "172,521", "172,520"],
+      ["Total Welded RT Dia", "1,712,463", "1,712,883"],
+      ["RT Dia Avrg Prod-on", "50,941", "50,954"],
     ];
     for (const [label, ours, owner] of cases) {
       expect(kpi(p, label), label).toBe(ours);
@@ -155,6 +157,34 @@ describe.skipIf(Boolean(skipReason))("forecast page — slice 1", () => {
         `${label} must disclose the difference`,
       ).toContain(owner);
     }
+  });
+
+  it("each card takes its OWN visual filter, on the week end not the date", async () => {
+    // report-inventory.md §20 gives every card its own visual-level filter, on
+    // Calendar[Week_End_Date] rather than on the date column. Across the year
+    // boundary those are different sets: RT dates 2023-12-29..31 fall in the
+    // week ending 2024-01-04 and so PASS `> 2024-01-01`, where the date filter
+    // drops them. That is 368 joints and 6,614 dia inch, and it is the whole of
+    // the movement from 172,153 -> 172,521 and 1,705,849 -> 1,712,463.
+    //
+    // Two relationships, and different cards use different ones: the two
+    // Numb RT/UT cards and the dia TOTAL read the RT-date week end; the two
+    // averages read the weld-date week end.
+    const [r] = await query<Record<string, string>>(
+      "SELECT count(*) FILTER (WHERE is_tested_prall" +
+        "   AND rt_week_end > DATE '2024-01-01')::text AS by_week," +
+        " count(*) FILTER (WHERE is_tested_prall" +
+        "   AND rt_year >= 2024)::text AS by_year," +
+        " count(*) FILTER (WHERE is_tested_prall AND rt_year = 2023" +
+        "   AND rt_week_end > DATE '2024-01-01')::text AS boundary" +
+        " FROM mv_joint WHERE source::text IN " +
+        "('WELD_DUMP','CCC_WELDER_RECORD','CCC_JOINT_RECORD','ACCIONA')" +
+        "   AND sub_contractor IS DISTINCT FROM 'INCO' AND NOT temporary_lines",
+    );
+    expect(Number(r.by_week)).toBe(172_521);
+    expect(Number(r.by_year)).toBe(172_153);
+    expect(Number(r.boundary), "the year-boundary week").toBe(368);
+    expect(Number(r.by_year) + Number(r.boundary)).toBe(Number(r.by_week));
   });
 
   it("PWHT (New PBI Rule) differs from the standard rule by exactly 4 joints", async () => {

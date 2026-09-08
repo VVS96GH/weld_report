@@ -335,13 +335,20 @@ export const FORECAST_EPOCH = "2024-01-01";
 export type ForecastTotals = {
   /** `[RT Dia Total Forecast Backlog]` — the dia twin of the joint forecast. */
   dia_forecast: number;
-  /** `[Numb RT 2024 "PR all"]`, RT year >= 2024. */
+  /**
+   * `[Numb RT/UT "PR all" 2]` under the cards' own visual filter,
+   * `Calendar[Week_End_Date] > 2024-01-01` reached through the RT-date
+   * relationship. Both rendered cards (`Numb RT/UT_` and `Numb RT/UT 2024`)
+   * use this reading.
+   */
   numb_rt_2024: number;
-  /** `[RT Average Production 2024-2026 per Month]`. */
+  /** `[RT Average Production …]` on card 322a — no visual filter. */
   avg_prod_month: number | null;
-  /** `[Total Welded RT Dia WP1 2024 "PR all"]`. */
+  /** The same measure on card f28b — weld-date week end >= 2024-01-01. */
+  avg_prod_month_weld: number | null;
+  /** `[Total Welded RT Dia WP1 2024 "PR all"]`, RT week end > 2024-01-01. */
   welded_dia: number;
-  /** `[RT Dia Average Production 2024-26 per Month]`. */
+  /** `[RT Dia Average Production …]` — weld-date week end >= 2024-01-01. */
   dia_avg_prod_month: number | null;
   /** `[RT BACKLOG Dia Total Project "PR all"]`. */
   dia_backlog: number;
@@ -370,7 +377,18 @@ export async function forecastTotals(scope: Scope): Promise<ForecastTotals> {
         `  sum(w.dia_inch) FILTER (WHERE w.weld_date IS NULL AND ${rt}` +
         ` AND w.rt_pct = ${pct}) AS d${pct},`,
     ).join("\n") +
-    `\n  count(*) FILTER (WHERE w.is_tested_prall AND w.rt_year >= 2024) AS numb_2024,\n` +
+    // The card's VISUAL filter is on Calendar[Week_End_Date], not on the date:
+    // RT dates 2023-12-30/31 fall in the week ending 2024-01-04 and so PASS,
+    // where `rt_date > 2024-01-01` drops them. 172,153 -> 172,521.
+    `\n  count(*) FILTER (WHERE w.is_tested_prall\n` +
+    `    AND w.rt_week_end > DATE '${FORECAST_EPOCH}') AS numb_2024,\n` +
+    // Card 322a takes no visual filter; card f28b filters the WELD-date week
+    // end. Two cards, one measure, two numbers -- both are in the inventory.
+    `  count(*) FILTER (WHERE w.is_tested_prall\n` +
+    `    AND w.rt_year BETWEEN 2024 AND 2026) AS avg_num,\n` +
+    `  count(*) FILTER (WHERE w.is_tested_prall\n` +
+    `    AND w.rt_year BETWEEN 2024 AND 2026\n` +
+    `    AND w.weld_week_end >= DATE '${FORECAST_EPOCH}') AS avg_num_weld,\n` +
     `  count(*) FILTER (WHERE w.pwht_backlog_ccc_new) AS pbi_ccc,\n` +
     `  count(*) FILTER (WHERE w.pwht_backlog_rest) AS pbi_rest\n` +
     `  FROM ${JOINT_FROM} WHERE ${w}`;
@@ -392,13 +410,33 @@ export async function forecastTotals(scope: Scope): Promise<ForecastTotals> {
     "T2", "T3", "T2-1", "T2-1S", "T2-2S", "T2S",
   ]);
   const rtTypes = p2.any(RT_WELD_TYPES);
+  // The two dia measures are ROW-level, so `calendar` is joined here rather
+  // than materialised on the joint view: a joint-grain week end would be the
+  // wrong grain for a sum over weld passes.
+  //
+  // Their visual filters differ from each other: the TOTAL filters the RT-date
+  // week end, the AVERAGE filters the weld-date week end. Hence two sums over
+  // the same base rows.
+  const diaBase =
+    `w.weldpoint_seq = 1 AND coalesce(w.repair_reweld, '') = ''\n` +
+    `      AND w.weld_type = ANY(${rtTypes})\n` +
+    `      AND w.rt_report IS NOT NULL AND w.weld_date IS NOT NULL`;
   const rowSql =
     `SELECT\n` +
     `  sum(w.dia_inch) FILTER (\n` +
-    `    WHERE w.weldpoint_seq = 1 AND coalesce(w.repair_reweld, '') = ''\n` +
-    `      AND w.weld_type = ANY(${rtTypes})\n` +
-    `      AND w.rt_report IS NOT NULL AND w.weld_date IS NOT NULL\n` +
-    `      AND w.rt_date > DATE '${FORECAST_EPOCH}') AS welded_dia,\n` +
+    `    WHERE ${diaBase}\n` +
+    `      AND crt.week_end_date > DATE '${FORECAST_EPOCH}') AS welded_dia,\n` +
+    // NOTE the asymmetry between these two, and that it is the owner's, not
+    // ours: the TOTAL reproduces from the visual's week-end filter ALONE (the
+    // measure's own `[RT Date] > 1/1/2024` adds nothing on top of it), while
+    // the AVERAGE reproduces only with that date condition ALSO applied.
+    // 1,648,317 without it, 1,647,092 with it -- and 1,647,092 is the figure
+    // the owner's card divides. Both readings are verified against the pbix;
+    // neither is smoothed to match the other.
+    `  sum(w.dia_inch) FILTER (\n` +
+    `    WHERE ${diaBase}\n` +
+    `      AND cwd.week_end_date >= DATE '${FORECAST_EPOCH}'\n` +
+    `      AND w.rt_date > DATE '${FORECAST_EPOCH}') AS dia_avg_num,\n` +
     `  coalesce(sum(w.dia_inch) FILTER (\n` +
     `    WHERE w.weld_type = ANY(${rtTypes}) AND w.weld_date IS NOT NULL\n` +
     `      AND w.rt_report IS NULL AND w.weldpoint_seq = 1\n` +
@@ -409,12 +447,15 @@ export async function forecastTotals(scope: Scope): Promise<ForecastTotals> {
     `      AND (w.rt_weld_status IS NULL OR w.rt_weld_status = '?')), 0)\n` +
     `    AS dia_backlog,\n` +
     `  (max(w.rt_date) - DATE '${FORECAST_EPOCH}') AS days\n` +
-    `  FROM weld w WHERE ${w2}`;
+    `  FROM weld w\n` +
+    `  LEFT JOIN calendar crt ON crt.date = w.rt_date\n` +
+    `  LEFT JOIN calendar cwd ON cwd.date = w.weld_date\n` +
+    ` WHERE ${w2}`;
 
   const empty: ForecastTotals = {
-    dia_forecast: 0, numb_rt_2024: 0, avg_prod_month: null, welded_dia: 0,
-    dia_avg_prod_month: null, dia_backlog: 0, pwht_backlog_pbi: 0,
-    days_since_2024: 0,
+    dia_forecast: 0, numb_rt_2024: 0, avg_prod_month: null,
+    avg_prod_month_weld: null, welded_dia: 0, dia_avg_prod_month: null,
+    dia_backlog: 0, pwht_backlog_pbi: 0, days_since_2024: 0,
   };
   try {
     const [j, r] = await Promise.all([
@@ -424,11 +465,14 @@ export async function forecastTotals(scope: Scope): Promise<ForecastTotals> {
     const jr = z
       .object({
         d100: zSum, d5: zSum, d10: zSum, d20: zSum, d30: zSum,
-        numb_2024: zCount, pbi_ccc: zCount, pbi_rest: zCount,
+        numb_2024: zCount, avg_num: zCount, avg_num_weld: zCount,
+        pbi_ccc: zCount, pbi_rest: zCount,
       })
       .parse(j[0] ?? {});
     const rr = z
-      .object({ welded_dia: zSum, dia_backlog: zSum, days: zSum })
+      .object({
+        welded_dia: zSum, dia_avg_num: zSum, dia_backlog: zSum, days: zSum,
+      })
       .parse(r[0] ?? {});
     const dia: Record<number, number> = {
       100: jr.d100 ?? 0, 5: jr.d5 ?? 0, 10: jr.d10 ?? 0,
@@ -442,9 +486,10 @@ export async function forecastTotals(scope: Scope): Promise<ForecastTotals> {
         0,
       ),
       numb_rt_2024: jr.numb_2024,
-      avg_prod_month: days > 0 ? perMonth(jr.numb_2024) : null,
+      avg_prod_month: days > 0 ? perMonth(jr.avg_num) : null,
+      avg_prod_month_weld: days > 0 ? perMonth(jr.avg_num_weld) : null,
       welded_dia: rr.welded_dia ?? 0,
-      dia_avg_prod_month: days > 0 ? perMonth(rr.welded_dia ?? 0) : null,
+      dia_avg_prod_month: days > 0 ? perMonth(rr.dia_avg_num ?? 0) : null,
       dia_backlog: rr.dia_backlog ?? 0,
       pwht_backlog_pbi: jr.pbi_ccc + jr.pbi_rest,
       days_since_2024: days,

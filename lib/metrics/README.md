@@ -1229,53 +1229,74 @@ Two details carry the whole difference:
 
 6,811.00 + 20.50 = **6,831.50 → 6,832**, exact. Pinned.
 
-#### Four near-misses that remain, and what was ruled out
+#### Every card takes its OWN visual filter — on the week end, not the date
 
-| card | ours | owner | Δ |
+`report-inventory.md` §20 gives each page-20 card a **visual-level filter**, and
+this layer had been ignoring them. They filter `Calendar[Week_End_Date]`, not
+the date column, and across a year boundary the two are different sets: RT dates
+**2023-12-29…31** fall in the week ending 2024-01-04 and therefore **pass**
+`> 2024-01-01`, where a filter on the date itself drops them. That is
+**368 joints and 6,614 dia inch**, and it accounts for the whole of the
+movement.
+
+There are also **two Calendar relationships** — the active weld-date one and the
+RT-date one that `[Numb RT/UT "PR all" 2]` activates with `USERELATIONSHIP` —
+and different cards use different ones:
+
+| card | visual filter | ours | owner | Δ |
+|---|---|---|---|---|
+| `Numb RT/UT_`, `Numb RT/UT 2024` | RT week end `> 2024-01-01` | **172,521** | 172,520 | +1 |
+| `RT Avrg Prod-on` (322a) | none | **5,324** | 5,324 | ✅ |
+| `RT Avrg Prod-on` (f28b) | weld week end `>= 2024-01-01` | **5,202** | 5,202 | ✅ |
+| `Total Welded RT Dia` | RT week end `> 2024-01-01` | **1,712,463** | 1,712,883 | −420 (0.02 %) |
+| `RT Dia Avrg Prod-on` | weld week end `>= 2024-01-01` | **50,941** | 50,954 | −13 (0.03 %) |
+
+The weld-date reading was tested and rejected for the joint cards: it gives
+168,259, far from 172,520, so both rendered cards take the RT-week-end reading.
+
+**Where the columns live.** `rt_week_end` / `weld_week_end` are materialised on
+`mv_joint` (migration 0035) from `calendar`, on the same `min(rt_date)` /
+`min(weld_date)` the year/month columns already use — so a card grouped by month
+and a card filtered by week can never disagree about which date a joint has. The
+two **dia** measures are row-level sums over `weld`, so they join `calendar`
+directly in `lib/metrics/forecast.ts`; a joint-grain week end would be the wrong
+grain for a sum over weld passes.
+
+**An asymmetry that is the owner's, not ours.** The dia TOTAL reproduces from
+the visual's week-end filter *alone* — the measure's own `[RT Date] > 1/1/2024`
+adds nothing on top of it — while the dia AVERAGE reproduces only with that date
+condition *also* applied (1,648,317 without it, **1,647,092** with it, and
+1,647,092 is what the owner's card divides). Both readings are verified against
+the pbix; neither is smoothed to match the other. Worth noting that
+`1/1/2024` in DAX is a *division* (≈ 0.000495), not a date literal, so that
+condition is really "RT Date is not blank" — which is why it can be inert in one
+card and load-bearing in another.
+
+#### The two remaining residuals are one family
+
+Both live in the same year-boundary week, and both are small and
+one-directional:
+
+| | ours | owner | Δ |
 |---|---|---|---|
-| RT B.Log Talisman | 357 | 358 | −1 |
-| Numb RT/UT 2024 | 172,153 | 172,520 | −367 |
-| Total Welded RT Dia | 1,705,849 | 1,712,883 | −7,034 |
-| RT Dia Avrg Prod-on | 52,758 | 50,954 | +1,804 |
+| joints | 172,521 | 172,520 | **+1** |
+| dia inch | 1,712,463 | 1,712,883 | **−420** |
 
-**Talisman — every reading gives 357.** Blank-or-empty `RT1 REP NO`, admitting
-`RT1 DATE` as well as `WELD DATE`, matching RT% on any `weld` row rather than
-the joint, restricting to repair-flagged rows: 357 each time. **19,627**
-Talisman joints with a weld date and no RT1 report have **no union row at all**,
-and the 358th is almost certainly among them — a joint the report has and our
-union does not. Nothing to fix on our side without that joint.
+The 368 boundary joints break down CCC 213 · GAC 103 · TEKFEN 31 · MEDGULF 21,
+contributing 6,614 dia inch across RT dates 2023-12-29, -30 and -31. So the
+owner's model holds 367 of those 368 joints and about 420 dia inch more than
+ours within the same window. That is one discrepancy seen from two angles, not
+two independent ones — and it is well under a tenth of a percent on both. Not
+tuned; the cards disclose both figures.
 
-**Numb RT/UT 2024 — no filter reaches 172,520.** By RT year ≥ 2024: 172,153. By
-**weld** year ≥ 2024 (the card's other Calendar relationship): 167,770 — further
-away, so that hypothesis is disproved. Dropping the Temporary Lines filter
-changes nothing (172,153); including Inco overshoots to 174,850; `{2024,2025}`
-gives 157,083 and `rt_date > 2024-01-01` gives 171,960. The gap is in the
-population, not the date window. **The average built on our 172,153 is exact at
-5,324**, which says the numerator is right and the card is a variant we have not
-identified.
+#### Still open: the Talisman card
 
-**Total Welded RT Dia — the DAX-justified variant is the one we ship.**
-
-| WP1 column | Repair & Reweld | value |
-|---|---|---|
-| `weldpoint_seq` (= `[WeldPoint No.1 WP1]`) | `= ""` | **1,705,849** ← shipped |
-| `weldpoint_no` | `= ""` | 1,715,293 |
-| `weldpoint_seq` | no filter | 1,750,352 |
-| `weldpoint_no` | no filter | 1,760,263 |
-
-`weldpoint_no` + the repair filter lands closer to the owner (Δ +2,410 vs
-−7,034) — and is **not** what the measure says. The DAX names
-`[WeldPoint No.1 WP1]`, which is `weldpoint_seq`. Choosing the closer number
-over the specified column is exactly the tuning this project refuses, so it is
-recorded here and not shipped.
-
-**RT Dia Avrg Prod-on — the owner's own two cards disagree.** The measure is the
-dia total over days since 2024-01-01, × 30. On the owner's *own* dia total,
-1,712,883 / 970 × 30 = **52,976**, not the 50,954 their average card shows.
-Reaching 50,954 needs either a numerator of 1,647,180 — neither ours nor
-theirs — or ~1,008 days instead of 970. Since the *joint* average is exact on
-that same 970-day divisor, the divisor is right. **Both owner cards cannot be
-reproduced at once**, so neither is chased; the card discloses both figures.
+`[RT BACKLOG RT100% Talisman]` = **357**, owner **358**. Every reading gives 357
+(blank-or-empty `RT1 REP NO`, admitting `RT1 DATE` as well as `WELD DATE`,
+matching RT% on any `weld` row rather than the joint, restricting to
+repair-flagged rows). **19,627** Talisman joints with a weld date and no RT1
+report have **no union row at all**; the 358th is almost certainly one of them —
+a joint the report has and our union does not.
 
 ### M91 `WPS Approved` (R4-02, R4-03)
 

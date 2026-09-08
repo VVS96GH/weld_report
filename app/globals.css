@@ -1006,6 +1006,43 @@ body {
   height: 250px;
   background: transparent;
 }
+/* windowed long axes: canvas above, scroll slider below (components/widgets/ChartCard.tsx) */
+.chart-window {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.chart-window-canvas {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.chart-window-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-block-start: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.chart-window-range,
+.chart-window-count {
+  white-space: nowrap;
+}
+.chart-window-slider {
+  flex: 1 1 auto;
+  min-width: 0;
+  accent-color: var(--accent-primary);
+  cursor: pointer;
+}
+[data-mood="ten"] .chart-window-bar {
+  color: var(--muted);
+  font-family: var(--font-mono);
+}
+[data-mood="ten"] .chart-window-slider {
+  accent-color: var(--accent);
+}
 .chart-container canvas {
   background: transparent !important;
 }

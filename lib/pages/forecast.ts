@@ -155,13 +155,14 @@ const TALISMAN_NOTE =
 // card itself rather than only in a report, so nobody reads a near-miss as
 // agreement. None of them is tuned; see lib/metrics/README.md for the branch
 // split behind each.
-const NEAR_MISS_2024 = "owner reads 172,520 \u2014 see README";
-const NEAR_MISS_WELDED_DIA = "owner reads 1,712,883 \u2014 see README";
+const NEAR_MISS_2024 = "owner reads 172,520 (\u0394 +1) \u2014 see README";
+const NEAR_MISS_WELDED_DIA =
+  "owner reads 1,712,883 (\u0394 \u2212420, 0.02 %) \u2014 see README";
 // The owner's own two dia cards are inconsistent with each other under the
 // DAX's formula: 1,712,883 / 970 days x 30 = 52,976, not the 50,954 their
 // average card shows. Both cannot be reproduced at once, so neither is chased.
 const NEAR_MISS_DIA_AVG =
-  "owner reads 50,954, but their own dia total implies 52,976 \u2014 see README";
+  "owner reads 50,954 (\u0394 \u221213, 0.03 %) \u2014 see README";
 
 const MONTHLY_NOTE =
   "The two monthly charts group by RT DATE, from January 2024, stacked by Weld " +
@@ -298,9 +299,17 @@ export async function getForecastPage(
     kpi("RT Total Forecast B.log", num(fc.total)),
     kpi("RT Dia Total Forecast B.log", num(totals.dia_forecast)),
     kpi("Numb RT/UT 2024", num(totals.numb_rt_2024), NEAR_MISS_2024),
+    // The pbix shows this measure on TWO cards with different visual filters:
+    // 322a takes none, f28b filters the weld-date week end. Both are rendered.
     kpi(
       "RT Avrg Prod-on 2024-26 per Month",
       totals.avg_prod_month === null ? HONEST_EMPTY : num(totals.avg_prod_month),
+    ),
+    kpi(
+      "RT Avrg Prod-on (week-end filtered)",
+      totals.avg_prod_month_weld === null
+        ? HONEST_EMPTY
+        : num(totals.avg_prod_month_weld),
     ),
     // [QTY Years for RT Backlog Forecast] = forecast / avg per month / 12.
     kpi("QTY Years", ratio(fc.total, (totals.avg_prod_month ?? 0) * 12)),

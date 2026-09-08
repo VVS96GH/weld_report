@@ -74,6 +74,9 @@ function thresholdsFor(title: string) {
   return RATE_THRESHOLDS.find((t) => t.match.test(title)) ?? null;
 }
 
+/** How many categories a long axis shows at once; the slider scrolls the rest. */
+const VISIBLE_CATEGORIES = 24;
+
 const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -334,6 +337,16 @@ function isCircular(type: string): boolean {
 export function ChartCard({ widget }: { widget: ChartWidget }) {
   const [version, setVersion] = useState(0);
 
+  // Long category axes (the forecast's 32-month series) show a WINDOW of the last
+  // VISIBLE_CATEGORIES points with a slider underneath to scroll back — the pbix
+  // chart's own scrollbar (owner request 2026-09-08: "ползунок внизу графика,
+  // чтоб отображалось 24 месяца"). Circular charts never window.
+  const windowed = !isCircular(widget.chart_type) && widget.labels.length > VISIBLE_CATEGORIES;
+  const maxStart = Math.max(0, widget.labels.length - VISIBLE_CATEGORIES);
+  const [windowStart, setWindowStart] = useState(maxStart);
+  const start = windowed ? Math.min(windowStart, maxStart) : 0;
+  const end = windowed ? start + VISIBLE_CATEGORIES : widget.labels.length;
+
   useEffect(() => {
     const target = document.documentElement;
     const observer = new MutationObserver((mutations) => {
@@ -361,6 +374,8 @@ export function ChartCard({ widget }: { widget: ChartWidget }) {
   // own types happy at the call site.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const data: any = useMemo(() => {
+    const labels = widget.labels.slice(start, end);
+    const slice = <T,>(arr: T[]) => arr.slice(start, end);
     if (circular) {
       const ds = widget.datasets[0];
       return {
@@ -380,14 +395,14 @@ export function ChartCard({ widget }: { widget: ChartWidget }) {
       // With threshold lines the rate itself is the neutral series (pbix: blue) and
       // the red is reserved for the "Unacceptable" limit.
       const color = thresholds ? palette.colors[0] ?? palette.primary : seriesColor(ds.label, i, palette);
-      const base = { label: ds.label, data: ds.data.map(toNum), stack: ds.stack };
+      const base = { label: ds.label, data: slice(ds.data).map(toNum), stack: ds.stack };
       if (widget.chart_type === "line") {
         return { ...base, borderColor: color, backgroundColor: color, tension: thresholds ? 0 : 0.3, pointRadius: thresholds ? 3 : 2 };
       }
       return { ...base, backgroundColor: color, borderColor: color };
     });
     if (thresholds) {
-      const flat = (v: number) => widget.labels.map(() => v);
+      const flat = (v: number) => labels.map(() => v);
       const amber = palette.colors[2] ?? palette.primary;
       const red = palette.attention ?? palette.primary;
       datasets.push(
@@ -395,8 +410,8 @@ export function ChartCard({ widget }: { widget: ChartWidget }) {
         { label: `>${thresholds.unacceptable}% - Unacceptable`, data: flat(thresholds.unacceptable), borderColor: red, backgroundColor: red, borderWidth: 1.5, borderDash: [6, 4], pointRadius: 0, tension: 0, threshold: true } as never,
       );
     }
-    return { labels: widget.labels, datasets };
-  }, [widget, palette, circular]);
+    return { labels, datasets };
+  }, [widget, palette, circular, start, end]);
 
   const thresholds = widget.chart_type === "line" ? thresholdsFor(widget.title) : null;
 
@@ -478,15 +493,47 @@ export function ChartCard({ widget }: { widget: ChartWidget }) {
     );
   }
 
+  let chart: React.ReactNode;
   switch (widget.chart_type) {
     case "line":
-      return <Chart key={version} type="line" data={data} options={options} />;
+      chart = <Chart key={version} type="line" data={data} options={options} />;
+      break;
     case "doughnut":
-      return <Chart key={version} type="doughnut" data={data} options={options} />;
+      chart = <Chart key={version} type="doughnut" data={data} options={options} />;
+      break;
     case "pie":
-      return <Chart key={version} type="pie" data={data} options={options} />;
+      chart = <Chart key={version} type="pie" data={data} options={options} />;
+      break;
     case "bar":
     default:
-      return <Chart key={version} type="bar" data={data} options={options} plugins={[stackTotalsPlugin]} />;
+      chart = <Chart key={version} type="bar" data={data} options={options} plugins={[stackTotalsPlugin]} />;
   }
+  if (!windowed) return chart;
+
+  const first = axisLabel(widget.labels[start]);
+  const last = axisLabel(widget.labels[end - 1]);
+  return (
+    <div className="chart-window">
+      <div className="chart-window-canvas">{chart}</div>
+      <div className="chart-window-bar">
+        <span className="chart-window-range num">
+          {first} – {last}
+        </span>
+        <input
+          type="range"
+          className="chart-window-slider"
+          min={0}
+          max={maxStart}
+          step={1}
+          value={start}
+          aria-label={`Visible range: ${VISIBLE_CATEGORIES} of ${widget.labels.length} ${first} to ${last}`}
+          aria-valuetext={`${first} – ${last}`}
+          onChange={(e) => setWindowStart(Number(e.target.value))}
+        />
+        <span className="chart-window-count num">
+          {VISIBLE_CATEGORIES} / {widget.labels.length}
+        </span>
+      </div>
+    </div>
+  );
 }
