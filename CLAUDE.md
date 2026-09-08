@@ -42,9 +42,16 @@ project (subcontractors CCC / GAC / Tekfen / Medgulf). The repo holds:
 
 Current scope: all six weld sources are loaded (Weld Dump for GAC/TEKFEN/MEDGULF, CCC welder +
 joint records, Acciona, Inco — INCO excluded from project scope at the query layer). Still
-missing: UT TRACKER (GAC)/(TEK), WPQ RECORD REGISTER (honest-empty KPIs) and the flange repair
-logs; the flange dashboard is built (`/flange`, table `flange`, `analysis/flange/` rulings RF-01..RF-09)
-with its three repair widgets honest-empty until the repair logs arrive.
+missing: UT TRACKER (GAC)/(TEK) and the flange repair logs; the flange dashboard is built
+(`/flange`, table `flange`, `analysis/flange/` rulings RF-01..RF-09) with its three repair
+widgets honest-empty until the repair logs arrive. Added 2026-09-07/08: page-1 slicers
+(`?ha=&area=&subco=&wtype=&wcat=`, the HA▸Area pair is one grouped control fed by
+`ref_ha_area`), the pbix HA column verbatim (branches 1–2 from Subsystem/System No, branch 3 the
+`l0_abs_guide` lookup by PDS Area — `ref_ha_guide`), `/forecast` (pbix page 20 "RT Backlog
+Forecast": 14 cards, 3 charts, 7 slicers; 10 cards exact vs the owner, 4 near-misses disclosed on
+the card — see `lib/metrics/README.md`), and `/report/<screen>` — consolidation option A, 7
+filter-driven screens over the same 44 PageModels (`lib/screens.ts`; the 44-page route stays
+the print form).
 
 ## The mockups (design contract)
 
@@ -143,8 +150,11 @@ db:migrate` then the loaders in order: `db:load` (Weld Dump → `weld`, 958,615 
 rows, ~7 min), `db:load:ut-ccc` (tracker + the CCC UT overlay), `db:load:acciona`,
 `db:load:inco`, `db:load:weld-length`, `db:load:welders`, `db:load:wps` (WPQ register →
 `ref_wps_*`; never join `ref_wps_register` to `weld.wps_no`), `db:load:flange` (a separate
-`flange` fact at flanged-joint grain — never joined to `weld`). `weld` holds every source at weld-pass grain with a `source` enum; metrics
-read the joint-grain materialised views `mv_joint` / `mv_joint_wps` (migrations 0013–0021;
+`flange` fact at flanged-joint grain — never joined to `weld`), `db:load:ha-guide`
+(`sources/l0_abs_guide.csv` → `ref_ha_guide`, plus `HA.csv` → `ref_ha_area` when present),
+`db:load:talisman` (`sources/Joint.csv` → `ref_talisman_joint`, the pbix TALISMAN DATA; only
+the Talisman backlog card reads it). `weld` holds every source at weld-pass grain with a `source` enum; metrics
+read the joint-grain materialised views `mv_joint` / `mv_joint_wps` (migrations 0013–0034;
 never edit an applied migration — a new one re-creates the view from the previous text),
 refreshed by the loaders — never `count(*)` over `weld` for a joint metric.
 Column names are `analysis/dump/profile.md` §8.1 verbatim — the contract between the DB and

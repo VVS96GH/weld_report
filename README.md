@@ -24,7 +24,9 @@ npm run db:load:acciona && npm run db:load:inco      # Acciona / Inco workbooks
 npm run db:load:weld-length && npm run db:load:welders   # dia->length lookup, welder registers
 npm run db:load:wps                      # WPQ RECORD REGISTER -> ref_wps_* (WPS Approved = 318)
 npm run db:load:flange                   # Flange Progress.xlsx + ovAssets_1619.xlsx -> flange (~30 s)
-npm run dev                              # http://localhost:3000/welding/1
+npm run db:load:ha-guide                 # l0_abs_guide.csv (+ HA.csv) -> ref_ha_guide / ref_ha_area (HA column, HA>Area slicer)
+npm run db:load:talisman                 # Joint.csv (TALISMAN DATA) -> ref_talisman_joint (~20 s)
+npm run dev                              # http://localhost:3000/welding/1  |  /forecast  |  /report/overview  |  /flange
 ```
 
 Without a database, `PAGE_SOURCE=fixture npm run dev` serves the mockup snapshot
@@ -39,10 +41,10 @@ them; the list of files each page needs is in `analysis/calculation-logic.md` §
 | Path | Contents |
 |---|---|
 | `analysis/` | The recon that drives everything: `pbix/` (448 DAX measures, 62 Power Query scripts, 145 report pages → visuals, extracted from the `.pbix`), `dump/` and `sources2/` (column profiles of every source file), `mockups/` (machine‑readable spec of the HTML mockups), **`calculation-logic.md`** (172 mockup metrics → DAX → SQL, the 44‑page build sheet, rulings R‑01…R‑12 and the batch‑2 corrections §7) |
-| `db/` | Migrations (`0001`–`0022`) and `db/README.md` — the column‑name contract, null/date rules, the DAX‑derived columns, indexes, loaders |
+| `db/` | Migrations (`0001`–`0034`) and `db/README.md` — the column‑name contract, null/date rules, the DAX‑derived columns, indexes, loaders |
 | `scripts/` | Streaming loaders (`load-weld-dump.ts`, `load-ccc-*.ts`, `load-spool-dump.ts`), workbook seeders, `migrate.ts`, the offline schema checker `check-sql-columns.ts`, `token-lint.mjs` |
-| `lib/metrics/` | Parameterised SQL, one function per DAX measure family (`M##` ids cited in every doc comment); `lib/pages/welding.ts` assembles the 44 `PageModel`s, `lib/pages/flange.ts` the filter-driven flange page |
-| `app/` | App Router: `/welding/[page]`, `/flange` (filter-driven, `?ha=&subco=&method=`), `/api/welding/[page]`, `/api/flange`, `/api/health`; `app/styles/tokens.css` (T.EN tokens) and `app/globals.css` |
+| `lib/metrics/` | Parameterised SQL, one function per DAX measure family (`M##` ids cited in every doc comment); `lib/pages/welding.ts` assembles the 44 `PageModel`s (page 1 with its five slicers), `lib/pages/flange.ts` the filter-driven flange page, `lib/pages/forecast.ts` the RT Backlog Forecast page (pbix page 20), `lib/screens.ts` the option-A regrouping of the 44 pages into 7 filter-driven screens |
+| `app/` | App Router: `/welding/[page]` (page 1 takes `?ha=&area=&subco=&wtype=&wcat=`), `/flange` (`?ha=&subco=&method=`), `/forecast` (`?ha=&area=&subco=&byut=&wcat=&rt=&dia=`), `/report/<screen>` (option A: overview / status / subco / nde / pwht / wps with `?subco=&rt=`), `/api/welding/[page]`, `/api/flange`, `/api/forecast`, `/api/health`; `app/styles/tokens.css` (T.EN tokens) and `app/globals.css` |
 | `components/` | `ReportShell`, `PageView`, widgets (KPI / DataTable / ChartCard / TextNote), theme + mood + density controls |
 | `docs/` | `ten-design-system.md` (the design spec, verbatim), `brand-README.md`, `ci.md` |
 | `tests/`, `e2e/` | vitest (structure tests without a DB; metric pins against the loaded DB), Playwright layout/navigation matrix |
