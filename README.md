@@ -27,6 +27,7 @@ npm run db:load:flange                   # Flange Progress.xlsx + ovAssets_1619.
 npm run db:load:ha-guide                 # l0_abs_guide.csv (+ HA.csv) -> ref_ha_guide / ref_ha_area (HA column, HA>Area slicer)
 npm run db:load:talisman                 # Joint.csv (TALISMAN DATA) -> ref_talisman_joint (~20 s)
 npm run dev                              # http://localhost:3000/welding/1  (45 pages; page 2 = RT Backlog Forecast)  |  /report/overview  |  /flange
+npm run export:pdf                       # the whole report as one PDF (server running; PLAYWRIGHT_BROWSERS_PATH as for e2e)
 ```
 
 Without a database, `PAGE_SOURCE=fixture npm run dev` serves the mockup snapshot
