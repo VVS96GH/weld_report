@@ -86,7 +86,10 @@ export function FlangeView({ model, subtitle }: { model: PageModel; subtitle: st
   const tSubco = table("Subcontractor Flange Status");
   const tHa1 = table("HA 1 Subcontractor Flange Status");
   const tHa = table("HA Flange Status");
-  const monthly = chart("monthlyChart");
+  const withWindow = (w: ChartWidget | undefined, n: number) =>
+    w ? { ...w, options_notes: `${w.options_notes ?? ""} window ${n}`.trim() } : undefined;
+  // the pbix shows the last five months / five week-ends; the scrollbar reaches the rest
+  const monthly = withWindow(chart("monthlyChart"), 5);
   const withHints = (w: ChartWidget | undefined) =>
     w ? { ...w, options_notes: `${w.options_notes ?? ""} label-name-pct center-total`.trim() } : undefined;
   const inspDonut = withHints(chart("inspectionDonut"));
@@ -97,7 +100,7 @@ export function FlangeView({ model, subtitle }: { model: PageModel; subtitle: st
   kpi("Inspected");
   kpi("PCC");
   kpi("Leaked");
-  const leakLine = chart("leakedTimelineChart");
+  const leakLine = withWindow(chart("leakedTimelineChart"), 5);
   const siteBar = chart("siteRepairChart");
   const vendorBar = chart("vendorRepairChart");
   const kRegister = kpi("Total Register");

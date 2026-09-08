@@ -28,6 +28,7 @@ import {
   flangeMonthly,
   flangeStats,
   flangeStatsBy,
+  flangeManagementMatrix,
 } from "@/lib/metrics/flange";
 import { getFlangePage } from "@/lib/pages/flange";
 import type { Widget } from "@/lib/page-model";
@@ -57,6 +58,24 @@ const REF: Metrics = JSON.parse(
  * being quietly absorbed.
  */
 const LOADED = {
+  /**
+   * HA totals after migration 0037 applied the `HA l0_abs_guide` lookup that
+   * RF-03 could not (the workbook was absent; it is loaded now, migration
+   * 0031). `metrics.json` predates it and still has the 6,593-joint blank
+   * bucket. The owner's own matrix confirms the new numbers: HA1 CCC 58,057,
+   * MEDGULF 7,522 and TEKFEN 52,351 are exact against it.
+   *
+   * 65 joints still resolve to nothing and keep their own row -- the guide has
+   * no PDS Area for them -- and every remaining difference from the owner is
+   * one of those 65, all GAC.
+   */
+  by_ha: {
+    HA1: 148_076, // metrics.json 145,839 · owner 148,091 (the 15 blank GAC)
+    HA2: 60_324, //  metrics.json  60,237 · owner  60,337 (13)
+    HA3: 87_720, //  metrics.json  85,747 · owner  87,752 (32)
+    HA4: 61_602, //  metrics.json  59,371 · owner  61,606 (4)
+    "(blank)": 65, // metrics.json 6,593
+  } as Record<string, number>,
   inspected: 197_980, // metrics.json: 197,825 (+155, the re-parsed CCC dates)
   constn: 187_902, // metrics.json: 187,756 (+146 of those 155)
   remains: 160_171, // metrics.json: 160,326 (−155)
@@ -150,7 +169,17 @@ describe("flange PageModel structure vs analysis/mockups/flange-spec.json", () =
         compared++;
       } else if (want.kind === "table" && got.kind === "table") {
         expect(got.title, `widget ${i}`).toBe(want.title);
-        expect(got.columns, `widget ${i} columns`).toEqual(want.columns);
+        // The mockup snapshot predates the owner's "Leaked %" column, so the
+        // model may carry EXTRA trailing columns; everything the mockup
+        // declares must still be present, in order, at the front.
+        const wantCols = want.columns as string[];
+        expect(
+          got.columns.slice(0, wantCols.length),
+          `widget ${i} columns`,
+        ).toEqual(wantCols);
+        expect(got.columns.length, `widget ${i} extra columns`).toBeLessThanOrEqual(
+          wantCols.length + 1,
+        );
         compared++;
       } else if (want.kind === "chart" && got.kind === "chart") {
         expect(got.canvas_id, `widget ${i}`).toBe(want.canvas_id);
@@ -340,7 +369,7 @@ describe.skipIf(Boolean(skipReason))("the nine measures", () => {
     const rows = await flangeStatsBy(ALL, FLANGE_COLUMNS.ha);
     const got = Object.fromEntries(rows.map((r) => [r.group, r.total]));
     for (const [name, want] of Object.entries(REF.by_ha)) {
-      expect(got[name], `HA ${name}`).toBe(want.total);
+      expect(got[name], `HA ${name}`).toBe(LOADED.by_ha[name] ?? want.total);
     }
     // RF-03: the unresolved joints get their own visible row.
     expect(got["(blank)"], "(blank) HA bucket").toBeGreaterThan(0);
@@ -391,7 +420,7 @@ describe.skipIf(Boolean(skipReason))("the filter triple", () => {
   it("filtering by HA narrows to that area", async () => {
     for (const [name, want] of Object.entries(REF.by_ha)) {
       const s = await flangeStats({ ...ALL, ha: name });
-      expect(s.total, `ha=${name}`).toBe(want.total);
+      expect(s.total, `ha=${name}`).toBe(LOADED.by_ha[name] ?? want.total);
     }
   });
 
@@ -434,5 +463,150 @@ describe.skipIf(Boolean(skipReason))("the live page", () => {
     expect(notes.some((t) => /ruling RF-03/.test(t)), "HA provenance note").toBe(true);
     expect(notes.some((t) => /recomputed from records/.test(t)), "RF-04 note").toBe(true);
     expect(notes.some((t) => /ruling RF-01/.test(t)), "live-data note").toBe(true);
+  });
+
+  it("the management matrix reproduces the owner's totals and HA1 block", async () => {
+    // FLANGE MANAGEMENT / Repartition and Progress. Required is the register
+    // count; Completed is the page's own INSPECTED measure -- NOT a raw
+    // `joint_date OR pcc_tightening_date`, which over-counts by 2,671
+    // project-wide and would put this matrix at odds with the HA Flange Status
+    // table it rearranges.
+    const rows = await flangeManagementMatrix({});
+    const by = (g: string, child: boolean) =>
+      rows.find((x) => x.group === g && x.child === child)!;
+
+    const total = by("Total", false);
+    expect(total.cells.Manual).toEqual({ required: 249_155, completed: 138_245 });
+    expect(total.cells.Tensioning).toEqual({ required: 2_913, completed: 1_124 });
+    expect(total.cells.Torquing).toEqual({ required: 103_713, completed: 57_483 });
+    expect(total.cells.Total!.completed).toBe(197_980);
+    // TBN required is 2,006 against the owner's 2,005, and the grand total
+    // 357,787 against 357,786: one flange the owner's model has without a
+    // tightening method carries TBN in ours. Reproduced, not forced.
+    expect(total.cells.TBN).toEqual({ required: 2_006, completed: 1_128 });
+    expect(total.cells.Total!.required).toBe(357_787);
+
+    // HA1's four sub-contractor blocks. CCC, MEDGULF and TEKFEN are exact
+    // against the owner; GAC is short by the blank-HA joints the guide cannot
+    // resolve (see the HA test below).
+    const ccc = by("CCC", true);
+    expect(ccc.cells.Manual).toEqual({ required: 42_075, completed: 40_398 });
+    expect(ccc.cells.TBN).toEqual({ required: 348, completed: 279 });
+    expect(ccc.cells.Tensioning).toEqual({ required: 612, completed: 546 });
+    expect(ccc.cells.Torquing).toEqual({ required: 15_022, completed: 14_012 });
+    expect(ccc.cells.Total).toEqual({ required: 58_057, completed: 55_235 });
+
+    const ha1 = by("HA1", false);
+    expect(ha1.cells.TBN).toEqual({ required: 376, completed: 284 });
+    expect(ha1.cells.Tensioning).toEqual({ required: 887, completed: 783 });
+    expect(ha1.cells.Total!.completed).toBe(141_892);
+  });
+
+  it("the l0_abs_guide fallback fixes flange HA; 65 joints stay blank", async () => {
+    // RF-03 left 6,593 flange joints with a blank HA because HA l0_abs_guide
+    // was absent. It is loaded now (0031), and migration 0037 applies the same
+    // PDS-Area lookup migration 0032 applied to mv_joint. HA1 Required moves
+    // 145,839 -> 148,076 and CCC/MEDGULF/TEKFEN land exactly on the owner's
+    // numbers.
+    //
+    // 65 joints remain blank -- the guide has no PDS Area for them -- and
+    // EVERY remaining difference from the owner is one of them, all GAC:
+    // HA1 +15, HA2 +13, HA3 +32, HA4 +4, plus the one flange with no
+    // tightening method. They keep their own row rather than being folded into
+    // HA1, exactly as RF-03 intends.
+    const [r] = await query<{ blank: string; ha1: string }>(
+      "SELECT count(DISTINCT joint_id) FILTER (WHERE ha IS NULL)::text AS blank," +
+        " count(DISTINCT joint_id) FILTER (WHERE ha = 'HA1')::text AS ha1" +
+        "  FROM flange",
+    );
+    expect(Number(r.blank)).toBe(65);
+    expect(Number(r.ha1)).toBe(148_076);
+  });
+
+  it("the status tables carry Leaked % over the REGISTER, not over inspected", async () => {
+    // The owner's tables show leaked / register (CCC 0.13 %). That is a
+    // different measure from `Flange Break Down Rate %` = leaked / inspected,
+    // which the "Leaked Flange Break" KPI already shows -- the two must not be
+    // conflated.
+    const page = await getFlangePage({});
+    const t = page.widgets.find(
+      (w) => w.kind === "table" && w.title === "Subcontractor Flange Status",
+    );
+    expect(t?.kind).toBe("table");
+    if (!t || t.kind !== "table") return;
+    expect(t.columns).toContain("Leaked %");
+    expect(t.columns[t.columns.length - 1]).toBe("Leaked %");
+
+    // Owner cells, all exact. Over the REGISTER the total would read 0.11 %.
+    const cell = (label: string) => t.rows.find((r) => r[0] === label)?.[7];
+    expect(cell("CCC")).toBe("0.13%");
+    expect(cell("GAC")).toBe("0.56%");
+    expect(cell("TEKFEN")).toBe("0.11%");
+    expect(cell("Total")).toBe("0.19%");
+
+    // The numerator matches "FLANGE LEAKAGE" in EITHER case: the register
+    // stores it upper-case (267) and the CCC side reaches it through two M
+    // replacements that leave "Flange Leakage" (119). 267 + 119 = 386, so the
+    // upper() in the LEAKED predicate is load-bearing.
+    const [r] = await query<{ upper: string; mixed: string }>(
+      "SELECT count(*) FILTER (WHERE reason_for_de_tightening = 'FLANGE LEAKAGE')::text AS upper," +
+        " count(*) FILTER (WHERE reason_for_de_tightening = 'Flange Leakage')::text AS mixed" +
+        "  FROM flange",
+    );
+    expect(Number(r.upper) + Number(r.mixed)).toBe(386);
+    expect(Number(r.mixed), "the mixed-case variant must not be dropped").toBeGreaterThan(0);
+  });
+
+  it("the status columns implement their DAX verbatim, cell for cell", async () => {
+    // Owner-supplied DAX for the three status tables:
+    //   Total Flanges ID          = DISTINCTCOUNT(Joint ID)               -> "Total"
+    //   Total Flanges ID Jointed  = ... with Joint Date > 0               -> "Inspected"
+    //   Flanges ID Jointed %      = Jointed / Total                       -> "%"
+    //   Total Flanges ID Tightening Constraction "CCC no cat"             -> "Const-n"
+    //     VAR DateFilter = Joint Date not blank AND PCC Tightening Date blank
+    //     RETURN  DateFilter AND Subcontractor  = "CCC"
+    //           + DateFilter AND Subcontractor <> "CCC" AND Cat. IN {X,Y}
+    //   Total Flanges ID Tightening PCC "CCC no cat"                      -> "PCC"
+    //           DISTINCTCOUNT with PCC Tightening Date > 0
+    //         + DISTINCTCOUNT with Joint Date > 0 AND Sub <> "CCC"
+    //                            AND Cat. IN {Z,A,B}
+    const rows = await flangeStatsBy(ALL, FLANGE_COLUMNS.subcontractor);
+    const by = Object.fromEntries(rows.map((r) => [r.group, r]));
+    for (const [name, constn, pcc] of [
+      ["CCC", 88_940, 6_820],
+      ["GAC", 32_581, 5_469],
+      ["MEDGULF", 9_260, 62],
+      ["TEKFEN", 57_121, 4_529],
+    ] as Array<[string, number, number]>) {
+      expect(by[name]!.constn, `${name} Const-n`).toBe(constn);
+      expect(by[name]!.pcc, `${name} PCC`).toBe(pcc);
+    }
+  });
+
+  it("PCC's two DAX terms do not overlap, so OR and + agree", async () => {
+    // The DAX ADDS its two terms and the second is NOT gated on the PCC date,
+    // so in principle a non-CCC jointed flange with Cat Z/A/B and a PCC date
+    // would be counted twice. We use OR, which counts it once -- a difference
+    // the README has flagged as unresolved since RF-07.
+    //
+    // It is resolved: the intersection is EMPTY, so both readings give 16,880
+    // and the choice cannot be observed on this data. Pinned, so that if the
+    // register ever produces such a row the ambiguity resurfaces loudly rather
+    // than silently changing a number.
+    const [r] = await query<{ or_form: string; add_form: string; overlap: string }>(
+      "SELECT count(DISTINCT f.joint_id) FILTER (WHERE f.pcc_tightening_date IS NOT NULL" +
+        "   OR (f.joint_date IS NOT NULL AND f.sub_contractor <> 'CCC'" +
+        "       AND f.cat IN ('Z','A','B')))::text AS or_form," +
+        " (count(DISTINCT f.joint_id) FILTER (WHERE f.pcc_tightening_date IS NOT NULL)" +
+        "  + count(DISTINCT f.joint_id) FILTER (WHERE f.joint_date IS NOT NULL" +
+        "      AND f.sub_contractor <> 'CCC' AND f.cat IN ('Z','A','B')))::text AS add_form," +
+        " count(DISTINCT f.joint_id) FILTER (WHERE f.pcc_tightening_date IS NOT NULL" +
+        "   AND f.joint_date IS NOT NULL AND f.sub_contractor <> 'CCC'" +
+        "   AND f.cat IN ('Z','A','B'))::text AS overlap" +
+        "  FROM flange f",
+    );
+    expect(Number(r.overlap), "the two PCC terms must stay disjoint").toBe(0);
+    expect(Number(r.or_form)).toBe(16_880);
+    expect(Number(r.add_form)).toBe(16_880);
   });
 });

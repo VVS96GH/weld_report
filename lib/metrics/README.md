@@ -1391,6 +1391,39 @@ excludes them on purpose — *"ручная правка данных «чтоб
 depends on that holding. Nothing but this one card reads the new column, so no
 union measure can move; every existing pin is unaffected by construction.
 
+### The flange status columns, and their DAX names
+
+| column | DAX measure |
+|---|---|
+| `Total` | `Total Flanges ID` = `DISTINCTCOUNT(Joint ID)` |
+| `Inspected` | `Total Flanges ID Jointed` — `Joint Date > 0` |
+| `%` | `Flanges ID Jointed %` = Jointed / Total |
+| `Const-n` | `Total Flanges ID Tightening Constraction "CCC no cat"` |
+| `PCC` | `Total Flanges ID Tightening PCC "CCC no cat"` |
+| `Leaked` | `Flanges ID BreakDown` — `[Reason for De-Tightening] = "FLANGE LEAKAGE"` |
+| `Leaked %` | `Flange Break Down Rate %` = BreakDown / **Jointed** |
+
+`Const-n` is two added `CALCULATE`s over one date filter (`Joint Date` not
+blank **and** `PCC Tightening Date` blank): sub-contractor `= "CCC"`, plus
+sub-contractor `<> "CCC"` with `Cat. IN {X,Y}`. Those branches are disjoint by
+construction, so the `+` and our `OR` are the same set.
+
+`PCC` adds `PCC Tightening Date > 0` to `Joint Date > 0 AND Sub <> "CCC" AND
+Cat. IN {Z,A,B}` — and the second term is **not** gated on the PCC date, so in
+principle a non-CCC jointed flange with `Cat Z/A/B` *and* a PCC date would be
+counted twice by the literal `+` where our `OR` counts it once. **That ambiguity
+is now resolved: the intersection is empty**, both readings give 16,880, and the
+choice cannot be observed on this data. A test pins the disjointness so the
+question resurfaces loudly if the register ever produces such a row.
+
+Every cell verified against the owner: CCC 88,940 / 6,820 · GAC 32,581 / 5,469 ·
+MEDGULF 9,260 / 62 · TEKFEN 57,121 / 4,529 · totals 187,902 / 16,880 / 197,980.
+
+`Leaked %` is over **Jointed**, not over the register — over the register the
+total reads 0.11 % instead of 0.19 %. The numerator matches `FLANGE LEAKAGE` in
+either case: 267 upper-case plus 119 `Flange Leakage` = 386, so the `upper()` in
+the predicate is load-bearing.
+
 ### M91 `WPS Approved` (R4-02, R4-03)
 
 `count(DISTINCT wps_no) FILTER (document_status = 'WPS APPROVED BY CTJV/ CPY')`

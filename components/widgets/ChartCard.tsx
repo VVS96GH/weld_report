@@ -461,11 +461,14 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
   // VISIBLE_CATEGORIES points with a slider underneath to scroll back — the pbix
   // chart's own scrollbar (owner request 2026-09-08: "ползунок внизу графика,
   // чтоб отображалось 24 месяца"). Circular charts never window.
-  const windowed = !isCircular(widget.chart_type) && widget.labels.length > VISIBLE_CATEGORIES;
-  const maxStart = Math.max(0, widget.labels.length - VISIBLE_CATEGORIES);
+  // "window N" in options_notes narrows the visible span (the flange monthly chart
+  // shows its last five months, as the pbix does; owner request 2026-09-08).
+  const visible = Number(/\bwindow (\d+)\b/.exec(widget.options_notes ?? "")?.[1]) || VISIBLE_CATEGORIES;
+  const windowed = !isCircular(widget.chart_type) && widget.labels.length > visible;
+  const maxStart = Math.max(0, widget.labels.length - visible);
   const [windowStart, setWindowStart] = useState(maxStart);
   const start = windowed ? Math.min(windowStart, maxStart) : 0;
-  const end = windowed ? start + VISIBLE_CATEGORIES : widget.labels.length;
+  const end = windowed ? start + visible : widget.labels.length;
 
   useEffect(() => {
     const target = document.documentElement;
@@ -553,7 +556,7 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
         // pbix-style named slice labels already name every slice, so the legend goes
         legend: { display: !(circular && notes.includes("label-name-pct")), labels: { color: palette.text, boxWidth: 12, font: { size: 10, family: palette.font } } },
         tooltip: { enabled: true },
-        datalabels: valueLabels(widget.chart_type, stackedX || stackedY, percentAxis, circular, palette, widget.datasets.length, widget.labels.length, horizontal, notes.includes("label-name-pct")),
+        datalabels: valueLabels(widget.chart_type, stackedX || stackedY, percentAxis, circular, palette, widget.datasets.length, end - start, horizontal, notes.includes("label-name-pct")),
         centerTotal: circular && notes.includes("center-total") ? { color: palette.fg, font: palette.font ?? "sans-serif" } : undefined,
         stackTotals:
           widget.chart_type === "bar" && (stackedX || stackedY)
@@ -596,7 +599,7 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
             return horizontal ? { x: value, y: category } : { x: category, y: value };
           })(),
     }),
-    [palette, stackedX, stackedY, percentAxis, horizontal, circular, widget.chart_type, widget.datasets.length, widget.labels.length, thresholds, notes],
+    [palette, stackedX, stackedY, percentAxis, horizontal, circular, widget.chart_type, widget.datasets.length, start, end, thresholds, notes],
   );
 
   // Trend charts fed by the not-yet-seeded weld_weekly_snapshot table (e.g. page 1's
@@ -643,13 +646,13 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
         </span>
         <WindowScrollbar
           total={widget.labels.length}
-          visible={VISIBLE_CATEGORIES}
+          visible={visible}
           start={start}
           label={`${first} – ${last}`}
           onChange={setWindowStart}
         />
         <span className="chart-window-count num">
-          {VISIBLE_CATEGORIES} / {widget.labels.length}
+          {visible} / {widget.labels.length}
         </span>
       </div>
     </div>

@@ -123,10 +123,12 @@ const CONSTN = and([
  *
  * Unlike const-n these two are NOT disjoint in principle — a non-CCC row with
  * both a PCC date and `Cat. IN {Z,A,B}` would be counted twice by the literal
- * `+`. This uses `OR`, i.e. counts such a joint once, which is what the recon
- * that produced `analysis/flange/metrics.json` did and therefore what the pins
- * assert. Flagged in the README: if the owner wants the literal double count,
- * it is a one-line change and the pin moves.
+ * `+`. This uses `OR`, i.e. counts such a joint once.
+ *
+ * RESOLVED (owner DAX, verified): the intersection is EMPTY, so `OR` and `+`
+ * both give 16,880 and the choice cannot be observed on this data. A test pins
+ * the disjointness, so if the register ever produces such a row the ambiguity
+ * resurfaces loudly instead of silently moving a number.
  */
 const PCC = `(f.${C.pccTighteningDate} IS NOT NULL OR ${and([
   INSPECTED,
@@ -545,3 +547,109 @@ export const FLANGE_REPAIR_SOURCES = [
   "MEG - Flange Repair Log - Consolidated.xlsx",
   "Flange Face Re-Machining Log.xlsx",
 ] as const;
+
+// ── FLANGE MANAGEMENT / Repartition and Progress ────────────────────────────
+
+/**
+ * The tightening methods the management matrix reports, in the pbix's order.
+ * `Total` is the whole row, not a fifth method.
+ */
+export const FLANGE_METHODS = ["Manual", "TBN", "Tensioning", "Torquing"] as const;
+
+export type FlangeCell = { required: number; completed: number };
+export type FlangeMatrixRow = {
+  /** `HA1`…`HA4`, `(blank)`, or a sub-contractor when `child` is true. */
+  group: string;
+  child: boolean;
+  /** Keyed by method plus `Total`. */
+  cells: Record<string, FlangeCell>;
+};
+
+const MatrixRow = z.object({
+  ha: zText,
+  subco: zText,
+  method: zText,
+  required: zCount,
+  completed: zCount,
+});
+
+/**
+ * HA × Sub-contractor × tightening method, in one pass.
+ *
+ * `Required` is every flange in the register for the group; `Completed` is the
+ * inspected total, Const-n plus PCC — the same two measures the HA Flange
+ * Status table already shows, so no new DAX is involved.
+ *
+ * Returned flat and already ordered: each HA parent followed by its
+ * sub-contractor children, then the grand total. The page turns that into rows;
+ * the shape lives here so the ordering is testable without a page.
+ */
+export async function flangeManagementMatrix(
+  filters: FlangeFilters,
+): Promise<FlangeMatrixRow[]> {
+  const p = new Params();
+  // `Completed` is the page's own INSPECTED measure, not a hand-rolled
+  // date test: the two differ (a raw `joint_date OR pcc_tightening_date`
+  // over-counts by 2,671 project-wide), and this matrix must agree with the
+  // HA Flange Status table cell for cell.
+  const completed =
+    `count(DISTINCT f.${C.jointId}) FILTER (WHERE ${INSPECTED})`;
+  const sql =
+    `SELECT coalesce(f.${C.ha}, '${FLANGE_BLANK}') AS ha,\n` +
+    `       coalesce(f.${C.subcontractor}, '${FLANGE_BLANK}') AS subco,\n` +
+    `       f.${C.method} AS method,\n` +
+    `       count(DISTINCT f.${C.jointId}) AS required,\n` +
+    `       ${completed} AS completed\n` +
+    `  FROM ${T}\n WHERE ${flangeWhere(filters, p)}\n` +
+    // A flange with no tightening method has no column to land in, so it is
+    // outside the matrix. The pbix does the same: its grand total is 357,786
+    // against a register of 357,787.
+    `   AND f.${C.method} IS NOT NULL\n` +
+    ` GROUP BY 1, 2, 3`;
+  let rows: z.infer<typeof MatrixRow>[];
+  try {
+    rows = z.array(MatrixRow).parse(await query(sql, p.list()));
+  } catch {
+    return [];
+  }
+
+  const blank = (): Record<string, FlangeCell> =>
+    Object.fromEntries(
+      [...FLANGE_METHODS, "Total"].map((m) => [m, { required: 0, completed: 0 }]),
+    );
+  const add = (into: Record<string, FlangeCell>, m: string, r: number, c: number) => {
+    for (const key of [m, "Total"]) {
+      const cell = into[key];
+      if (!cell) continue;
+      cell.required += r;
+      cell.completed += c;
+    }
+  };
+
+  const byHa = new Map<string, Record<string, FlangeCell>>();
+  const byHaSub = new Map<string, Map<string, Record<string, FlangeCell>>>();
+  const grand = blank();
+  for (const r of rows) {
+    const ha = r.ha ?? FLANGE_BLANK;
+    const sub = r.subco ?? FLANGE_BLANK;
+    const method = r.method ?? "";
+    if (!byHa.has(ha)) byHa.set(ha, blank());
+    if (!byHaSub.has(ha)) byHaSub.set(ha, new Map());
+    const subs = byHaSub.get(ha)!;
+    if (!subs.has(sub)) subs.set(sub, blank());
+    add(byHa.get(ha)!, method, r.required, r.completed);
+    add(subs.get(sub)!, method, r.required, r.completed);
+    add(grand, method, r.required, r.completed);
+  }
+
+  const out: FlangeMatrixRow[] = [];
+  for (const ha of [...byHa.keys()].sort()) {
+    out.push({ group: ha, child: false, cells: byHa.get(ha)! });
+    const subs = byHaSub.get(ha)!;
+    for (const sub of [...subs.keys()].sort()) {
+      out.push({ group: sub, child: true, cells: subs.get(sub)! });
+    }
+  }
+  out.push({ group: "Total", child: false, cells: grand });
+  return out;
+}

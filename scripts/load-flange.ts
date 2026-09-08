@@ -108,8 +108,11 @@ function normaliseMethod(v: string): string {
 
 /**
  * The DAX `HA` column, primary branch: `MID([System], 2, 1)` -> HA1..HA4.
- * The fallback is `LOOKUPVALUE('HA l0_abs_guide'…)`, and that table is ABSENT, so
- * an unresolved row gets NULL rather than a guessed HA (RF-03).
+ * The fallback is `LOOKUPVALUE('HA l0_abs_guide'…)`. That workbook is now in
+ * `sources/` and loaded into `ref_ha_guide`, but the lookup keys on PDS Area,
+ * not on System, so it is applied as a post-load UPDATE below rather than here.
+ * A row this function cannot resolve gets NULL, and stays NULL if the guide has
+ * no PDS Area for it either — never a guessed HA (RF-03).
  */
 function haFromSystem(system: string): string | null {
   const s = system.trim();
@@ -436,6 +439,19 @@ async function main(): Promise<void> {
         for await (const r of rowsFor(source, loadId, stats)) yield copyLine(r);
       }
       const n = await copyRows(client, "flange", [...FLANGE_COLUMNS], lines(), { label: source });
+      // The DAX's HA fallback: LOOKUPVALUE('HA l0_abs_guide'[Handover Area],
+      // [Location Number], [PDS Area]). It keys on PDS Area rather than System,
+      // so it runs here, after the rows land, and only where [System] gave
+      // nothing. A row the guide does not know keeps a NULL HA and its own
+      // "(blank)" row -- RF-03 -- rather than a guessed area.
+      const haFilled = await client.query(
+        `UPDATE flange f SET ha = g.handover_area
+           FROM ref_ha_guide g
+          WHERE f.ha IS NULL AND g.location_number = f.pds_area
+            AND g.handover_area ~ '^HA[1-4]$'`,
+      );
+      console.log(`  HA from l0_abs_guide: ${haFilled.rowCount ?? 0} rows filled`);
+
       await client.query("COMMIT");
       console.log(`  copy    ${fmt(n)} rows`);
       report(stats, t0);

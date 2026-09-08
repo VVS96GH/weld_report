@@ -39,6 +39,8 @@ import type {
   Widget,
 } from "@/lib/page-model";
 import {
+  flangeManagementMatrix,
+  FLANGE_METHODS,
   FLANGE_ALL,
   FLANGE_BLANK,
   FLANGE_REPAIR_SOURCES,
@@ -136,6 +138,10 @@ const STATUS_COLUMNS = [
   "Inspected",
   "%",
   "Leaked",
+  // `Flange Break Down Rate %` = [Flanges ID BreakDown] / [Total Flanges ID
+  // Jointed] -- leaked over INSPECTED, not over the register. Over the register
+  // the total reads 0.11 %; over inspected it is 0.19 %, which is the owner's.
+  "Leaked %",
 ] as const;
 
 function statusRow(label: string, s: FlangeStats): string[] {
@@ -147,6 +153,7 @@ function statusRow(label: string, s: FlangeStats): string[] {
     cellInt(s.inspected),
     cellPct(s.pct),
     cellInt(s.leaked),
+    cellPct(s.leakedPct),
   ];
 }
 
@@ -459,4 +466,95 @@ export async function flangeFilterOptions(): Promise<Record<string, string[]>> {
     return { subco: [FLANGE_ALL], ha: [FLANGE_ALL], method: [FLANGE_ALL] };
   }
   return flangeAllOptions();
+}
+
+
+// ── FLANGE MANAGEMENT / Repartition and Progress ────────────────────────────
+
+/**
+ * The second flange page: one matrix, HA × Sub-contractor × tightening method.
+ *
+ * `Required` is every flange in the register for the group; `Completed` is the
+ * inspected total, Const-n plus PCC. Both are the measures the HA Flange Status
+ * table already shows, so this page introduces no new DAX — it is a different
+ * arrangement of the same two numbers.
+ *
+ * The hierarchy is flattened into one table: each HA parent row followed by its
+ * sub-contractor children, then the grand total. Children are marked with a
+ * two-space indent in the first cell so a view can style them without needing a
+ * parallel structure. Blank cells are `""`, never `0` — the owner's matrix
+ * leaves a method a party never used empty, and a zero would read as "measured,
+ * and it was none".
+ */
+export const FLANGE_MANAGEMENT_TITLE = "FLANGE MANAGEMENT / Repartition and Progress";
+
+export async function getFlangeManagementPage(
+  filters: FlangeFilters = {},
+): Promise<PageModel> {
+  const [matrix, options, asOf] = await Promise.all([
+    flangeManagementMatrix(filters),
+    flangeAllOptions(),
+    flangeAsOf(),
+  ]);
+
+  const columns = ["HA"];
+  for (const m of [...FLANGE_METHODS, "Total"]) {
+    columns.push(`${m} Required`, `${m} Completed Total`, `${m} Completed %`);
+  }
+
+  const int = (n: number) => n.toLocaleString("en-US");
+  const pct = (a: number, b: number) =>
+    b === 0 ? "" : `${((a / b) * 100).toFixed(2)}%`;
+
+  const rows = matrix.map((r) => {
+    const cells = [r.child ? `  ${r.group}` : r.group];
+    for (const m of [...FLANGE_METHODS, "Total"]) {
+      const c = r.cells[m] ?? { required: 0, completed: 0 };
+      // A method a group never used is blank, not zero.
+      cells.push(
+        c.required === 0 ? "" : int(c.required),
+        c.completed === 0 ? "" : int(c.completed),
+        pct(c.completed, c.required),
+      );
+    }
+    return cells;
+  });
+
+  const widgets: Widget[] = [
+    // Same ids and labels as /flange, so one filter bar drives both pages.
+    filterWidget("subco", "Subcontractor",
+      [FLANGE_ALL, ...(options.subco ?? [])], filters.subco ?? FLANGE_ALL),
+    filterWidget("ha", "Handover Area",
+      [FLANGE_ALL, ...(options.ha ?? [])], filters.ha ?? FLANGE_ALL),
+    filterWidget("method", "Joint Method",
+      [FLANGE_ALL, ...(options.method ?? [])], filters.method ?? FLANGE_ALL),
+    {
+      kind: "table",
+      title: "Repartition and Progress",
+      columns,
+      rows,
+    },
+    {
+      kind: "text",
+      text:
+        "Required is every flange in the register for the group; Completed is " +
+        "the inspected total (Const-n + PCC) \u2014 the same two measures the HA " +
+        "Flange Status table shows, rearranged. A flange with no tightening " +
+        "method has no column to land in and is outside the matrix, which is " +
+        "why the grand total is one short of the register.",
+    },
+  ];
+
+  return {
+    page: 0,
+    id: "flange-management",
+    title: FLANGE_MANAGEMENT_TITLE,
+    widgets,
+    filters: {
+      ha: filters.ha ?? FLANGE_ALL,
+      subco: filters.subco ?? FLANGE_ALL,
+      method: filters.method ?? FLANGE_ALL,
+    },
+    meta: { source: "database", as_of: asOf.as_of ?? undefined },
+  };
 }
