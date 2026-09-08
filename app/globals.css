@@ -1030,18 +1030,49 @@ body {
 .chart-window-count {
   white-space: nowrap;
 }
-.chart-window-slider {
+/* the scrollbar: a full-width track, a thumb as wide as the visible share, draggable */
+.chart-scrollbar {
+  position: relative;
   flex: 1 1 auto;
   min-width: 0;
-  accent-color: var(--accent-primary);
+  height: 10px;
+  border-radius: 999px;
+  background: var(--border-color);
   cursor: pointer;
+  touch-action: none;
+}
+.chart-scrollbar-thumb {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  min-width: 24px;
+  border-radius: 999px;
+  background: var(--accent-primary);
+  opacity: 0.85;
+  cursor: grab;
+  touch-action: none;
+}
+.chart-scrollbar-thumb:hover,
+.chart-scrollbar-thumb:active {
+  opacity: 1;
+  cursor: grabbing;
+}
+.chart-scrollbar-thumb:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
 }
 [data-mood="ten"] .chart-window-bar {
   color: var(--muted);
   font-family: var(--font-mono);
 }
-[data-mood="ten"] .chart-window-slider {
-  accent-color: var(--accent);
+[data-mood="ten"] .chart-scrollbar {
+  background: var(--border);
+}
+[data-mood="ten"] .chart-scrollbar-thumb {
+  background: var(--accent);
+}
+[data-mood="ten"] .chart-scrollbar-thumb:focus-visible {
+  outline-color: var(--accent);
 }
 .chart-container canvas {
   background: transparent !important;

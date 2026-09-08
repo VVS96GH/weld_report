@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArcElement,
   BarController,
@@ -74,8 +74,91 @@ function thresholdsFor(title: string) {
   return RATE_THRESHOLDS.find((t) => t.match.test(title)) ?? null;
 }
 
-/** How many categories a long axis shows at once; the slider scrolls the rest. */
+/** How many categories a long axis shows at once; the scrollbar scrolls the rest. */
 const VISIBLE_CATEGORIES = 24;
+
+/**
+ * The pbix-style scrollbar under a windowed chart: a track whose thumb is as wide as
+ * the visible share of the axis, dragged left/right with the pointer (owner request
+ * 2026-09-08), moved one step with ← → and a page with PageUp/PageDown, or jumped by
+ * clicking the track. `start` is the index of the first visible category.
+ */
+function WindowScrollbar({
+  total,
+  visible,
+  start,
+  label,
+  onChange,
+}: {
+  total: number;
+  visible: number;
+  start: number;
+  label: string;
+  onChange: (start: number) => void;
+}) {
+  const track = useRef<HTMLDivElement>(null);
+  const drag = useRef<{ pointerX: number; startAt: number } | null>(null);
+  const maxStart = Math.max(0, total - visible);
+  const clamp = (n: number) => Math.min(maxStart, Math.max(0, Math.round(n)));
+  const thumbPct = (visible / total) * 100;
+  const leftPct = (start / total) * 100;
+
+  function categoriesPerPixel(): number {
+    const width = track.current?.clientWidth ?? 0;
+    return width > 0 ? total / width : 0;
+  }
+
+  return (
+    <div
+      ref={track}
+      className="chart-scrollbar"
+      onPointerDown={(e) => {
+        // click on the track (not the thumb) centres the window there
+        if (e.target !== track.current) return;
+        const rect = track.current!.getBoundingClientRect();
+        const at = ((e.clientX - rect.left) / rect.width) * total - visible / 2;
+        onChange(clamp(at));
+      }}
+    >
+      <div
+        className="chart-scrollbar-thumb"
+        role="scrollbar"
+        tabIndex={0}
+        aria-controls={undefined}
+        aria-orientation="horizontal"
+        aria-valuemin={0}
+        aria-valuemax={maxStart}
+        aria-valuenow={start}
+        aria-valuetext={label}
+        aria-label="Visible range"
+        style={{ width: `${thumbPct}%`, insetInlineStart: `${leftPct}%` }}
+        onPointerDown={(e) => {
+          drag.current = { pointerX: e.clientX, startAt: start };
+          e.currentTarget.setPointerCapture(e.pointerId);
+          e.stopPropagation();
+        }}
+        onPointerMove={(e) => {
+          if (!drag.current) return;
+          const delta = (e.clientX - drag.current.pointerX) * categoriesPerPixel();
+          onChange(clamp(drag.current.startAt + delta));
+        }}
+        onPointerUp={(e) => {
+          drag.current = null;
+          e.currentTarget.releasePointerCapture(e.pointerId);
+        }}
+        onPointerCancel={() => {
+          drag.current = null;
+        }}
+        onKeyDown={(e) => {
+          const step = { ArrowLeft: -1, ArrowRight: 1, PageUp: -visible, PageDown: visible, Home: -total, End: total }[e.key];
+          if (step === undefined) return;
+          e.preventDefault();
+          onChange(clamp(start + step));
+        }}
+      />
+    </div>
+  );
+}
 
 const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -519,16 +602,12 @@ export function ChartCard({ widget }: { widget: ChartWidget }) {
         <span className="chart-window-range num">
           {first} – {last}
         </span>
-        <input
-          type="range"
-          className="chart-window-slider"
-          min={0}
-          max={maxStart}
-          step={1}
-          value={start}
-          aria-label={`Visible range: ${VISIBLE_CATEGORIES} of ${widget.labels.length} ${first} to ${last}`}
-          aria-valuetext={`${first} – ${last}`}
-          onChange={(e) => setWindowStart(Number(e.target.value))}
+        <WindowScrollbar
+          total={widget.labels.length}
+          visible={VISIBLE_CATEGORIES}
+          start={start}
+          label={`${first} – ${last}`}
+          onChange={setWindowStart}
         />
         <span className="chart-window-count num">
           {VISIBLE_CATEGORIES} / {widget.labels.length}
