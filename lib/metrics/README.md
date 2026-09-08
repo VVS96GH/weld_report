@@ -1289,14 +1289,49 @@ ours within the same window. That is one discrepancy seen from two angles, not
 two independent ones — and it is well under a tenth of a percent on both. Not
 tuned; the cards disclose both figures.
 
-#### Still open: the Talisman card
+#### The Talisman card: 358, and the cause was the M's own exclusion
 
-`[RT BACKLOG RT100% Talisman]` = **357**, owner **358**. Every reading gives 357
-(blank-or-empty `RT1 REP NO`, admitting `RT1 DATE` as well as `WELD DATE`,
-matching RT% on any `weld` row rather than the joint, restricting to
-repair-flagged rows). **19,627** Talisman joints with a weld date and no RT1
-report have **no union row at all**; the 358th is almost certainly one of them —
-a joint the report has and our union does not.
+`[RT BACKLOG RT100% Talisman]` read **357** against the owner's **358** for
+several rounds. The cause turned out to be a boundary between two filters:
+
+The pbix M step `#"EXLUDE 4 RT B.log CCC"` removes four hard-coded Joint IDs
+from the union `Project WD+WR+INCO+Acciona`, and our CCC loaders honour it —
+those rows never enter `weld` (migration 0012 records the list so the exclusion
+is visible rather than buried in a loader). **But the step filters the UNION,
+and `TALISMAN DATA` is a different table.** The measure resolves each Talisman
+joint's `RT% from Project WD+WR`, which in the pbix still resolves for those
+four and in ours could not, because they are absent from `mv_joint`.
+
+All four are in `Joint.csv` with a weld date and a blank `RT1 REP NO`, and
+streaming the raw 1.5 GB welder CSV for them showed **exactly one** carries
+`RT/UT(%) = 100`:
+
+| joint | RT/UT(%) |
+|---|---|
+| `11060A4-PR6206008-SP3-11` | **100** |
+| `11040A1-DG6204061C-SP2-9` | 0 |
+| `11040A3-DB6204507-SP4-12` | 0 |
+| `11040A3-NG6204709-SP17-62` | 0 |
+
+357 + 1 = **358**. Exact.
+
+**The hypothesis that was tested and disproved.** The suspicion was the welder
+loader's `csvSkippedTested` filter — rows with a non-blank `RT/UT Report No.`
+are dropped from the CSV because the ACC/REJ workbook supersedes them (R2-16).
+The scan shows this joint's report number is **blank**, so that filter never
+touched it. It is excluded by the M step, not by a loader rule of ours.
+
+**What changed, and what deliberately did not.** Migration 0036 adds
+`weld_manual_exclusion.rt_pct`, populated by a targeted scan in
+`scripts/load-exclusion-list.ts` that looks for those four Joint IDs only and
+writes one integer each. The Talisman lookup then reads
+`coalesce(mv_joint.rt_pct, weld_manual_exclusion.rt_pct)`.
+
+The excluded rows **still never enter `weld`**, and a test asserts it. The M
+excludes them on purpose — *"ручная правка данных «чтобы бэклог сошёлся»"*
+(`analysis/pbix/project-wd-wr-inco-acciona.md:167`) — and the RT backlog of 672
+depends on that holding. Nothing but this one card reads the new column, so no
+union measure can move; every existing pin is unaffected by construction.
 
 ### M91 `WPS Approved` (R4-02, R4-03)
 

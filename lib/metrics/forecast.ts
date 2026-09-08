@@ -139,10 +139,25 @@ export async function talismanRt100Backlog(): Promise<number | null> {
         await query(
           // Alias `tj`, not `t`: single-letter aliases collide with the
           // column-contract test's regex scan (`t.` is the UT tracker).
+          //
+          // `RT% from Project WD+WR` normally resolves through `mv_joint`. The
+          // four Joint IDs the M step #"EXLUDE 4 RT B.log CCC" removes from the
+          // union are the exception: that step filters the UNION, not
+          // `TALISMAN DATA`, so the pbix still resolves their RT% while our
+          // lookup finds nothing. All four are in Joint.csv with a weld date
+          // and a blank RT1 REP NO, and exactly one — 11060A4-PR6206008-SP3-11
+          // — carries RT/UT(%) = 100. That one joint is the whole of this
+          // card's 357 against the owner's 358.
+          //
+          // `weld_manual_exclusion.rt_pct` (migration 0036) gives them
+          // somewhere to resolve. It cannot move a union measure: those rows
+          // still never enter `weld`, and nothing else reads the column.
           `SELECT count(DISTINCT tj.joint_id) AS n\n` +
             `  FROM ref_talisman_joint tj\n` +
-            `  JOIN mv_joint mj ON mj.joint_id = tj.joint_id AND mj.rt_pct = 100\n` +
-            ` WHERE tj.weld_date IS NOT NULL AND tj.rt1_rep_no IS NULL`,
+            `  LEFT JOIN mv_joint mj ON mj.joint_id = tj.joint_id\n` +
+            `  LEFT JOIN weld_manual_exclusion me ON me.joint_id = tj.joint_id\n` +
+            ` WHERE tj.weld_date IS NOT NULL AND tj.rt1_rep_no IS NULL\n` +
+            `   AND coalesce(mj.rt_pct, me.rt_pct) = 100`,
         ),
       );
     const n = rows[0]?.n ?? 0;

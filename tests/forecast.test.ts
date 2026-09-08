@@ -84,11 +84,16 @@ describe.skipIf(Boolean(skipReason))("forecast page — slice 1", () => {
     expect(rows.reduce((a, r) => a + r.backlog.total, 0)).toBeCloseTo(13_605.65, 2);
   });
 
-  it("the Talisman card reads Joint.csv, joined for RT% (owner 358)", async () => {
-    // 357, one short of the owner's 358 -- reported as a near-miss, not tuned.
-    // 356 of the 357 come from CCC_WELDER_RECORD joints.
+  it("the Talisman card reads Joint.csv, joined for RT% = 358", async () => {
+    // The last near-miss, solved. `RT% from Project WD+WR` resolves through
+    // mv_joint -- except for the four Joint IDs the M step
+    // #"EXLUDE 4 RT B.log CCC" removes from the UNION. That step does not
+    // filter TALISMAN DATA, so the pbix still resolves their RT% and we could
+    // not. All four are in Joint.csv with a weld date and a blank RT1 REP NO,
+    // and exactly one (11060A4-PR6206008-SP3-11) carries RT/UT(%) = 100 --
+    // found by streaming the raw 1.5 GB welder CSV, and the whole of 357 vs 358.
     const n = await talismanRt100Backlog();
-    expect(n).toBe(357);
+    expect(n).toBe(358);
     const [r] = await query<{ rows: string; joints: string }>(
       "SELECT count(*)::text AS rows, count(DISTINCT joint_id)::text AS joints" +
         "  FROM ref_talisman_joint",
@@ -100,6 +105,18 @@ describe.skipIf(Boolean(skipReason))("forecast page — slice 1", () => {
         " WHERE orig_repair_delete_flag = 'D'",
     );
     expect(Number(d.n)).toBe(0);
+
+    // The excluded joints stay OUT of the union -- the M means them to, and the
+    // RT backlog of 672 depends on it. Only their RT% is recorded, for this
+    // one lookup.
+    const [x] = await query<{ in_weld: string; with_pct: string }>(
+      "SELECT (SELECT count(*) FROM weld w JOIN weld_manual_exclusion e" +
+        "         ON e.joint_id = w.joint_id)::text AS in_weld," +
+        "       (SELECT count(*) FROM weld_manual_exclusion" +
+        "         WHERE rt_pct = 100)::text AS with_pct",
+    );
+    expect(Number(x.in_weld), "excluded joints must never enter weld").toBe(0);
+    expect(Number(x.with_pct), "exactly one of the four is RT 100%").toBe(1);
   });
 
   it("every slicer narrows the forecast, and Inco is never in scope", async () => {
@@ -133,6 +150,7 @@ describe.skipIf(Boolean(skipReason))("forecast page — slice 1", () => {
     // admitting only {?, ""} (no 'S') -- not the joint backlog flag, which gave
     // 6,958. 6,811.00 + 20.50 = 6,831.50.
     expect(kpi(p, "RT Dia B.Log")).toBe("6,832");
+    expect(kpi(p, "RT B.Log Talisman")).toBe("358");
     // Nothing is left as a placeholder any more.
     for (const w of p.widgets) {
       if (w.kind !== "kpi") continue;

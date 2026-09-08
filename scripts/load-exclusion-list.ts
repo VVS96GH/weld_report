@@ -39,6 +39,12 @@ import { existsSync, statSync } from "node:fs";
 import path from "node:path";
 import { Client } from "pg";
 import { chunk, readSheet, toText } from "./lib/xlsx";
+import { readDelimited } from "./load-common";
+import { EXCLUDED_JOINT_IDS, normaliseRepairSuffix } from "./ccc-columns";
+
+/** The CCC welder record, read only to look up the four excluded joints' RT%. */
+const CCC_WELDER_CSV = "sources/CSVExport_Welder Record.csv";
+const CCC_WELDER_WIDTH = 119;
 
 const SOURCE = "EXCLUSION_LIST";
 const FILE = "sources/TO BE EXLUDE FROM DATA.xlsx";
@@ -68,6 +74,59 @@ export function mapExclusionRow(r: unknown[]): ExclusionRow {
     reason: toText(r[COL_NEW_REPORTS]),
     combinedKeyRaw: toText(r[COL_COMBINED_KEY]),
   };
+}
+
+/**
+ * Record the RT% of the four M-excluded joints on `weld_manual_exclusion`.
+ *
+ * The M step #"EXLUDE 4 RT B.log CCC" keeps those Joint IDs out of the union,
+ * and the CCC loaders honour it. But the step filters the UNION, not
+ * `TALISMAN DATA`, and `[RT BACKLOG RT100% Talisman]` resolves each Talisman
+ * joint's `RT% from Project WD+WR` — which for these four still resolves in the
+ * pbix and cannot in ours, because they are absent from `mv_joint`. Exactly one
+ * of them carries RT/UT(%) = 100, and it is the whole of that card's 357
+ * against the owner's 358.
+ *
+ * A targeted scan, not a load: it reads the welder-record CSV looking only for
+ * these four Joint IDs and writes one integer each. `weld` is never touched, so
+ * no union measure can move.
+ */
+async function captureExclusionRtPct(client: Client): Promise<void> {
+  const file = process.env.CCC_WELDER_CSV_PATH ?? CCC_WELDER_CSV;
+  if (!existsSync(file)) {
+    console.log(`  ${file} absent — leaving weld_manual_exclusion.rt_pct as is`);
+    return;
+  }
+  const wanted = new Set(EXCLUDED_JOINT_IDS);
+  const found = new Map<string, string>();
+  let header: Map<string, number> | null = null;
+  for await (const line of readDelimited(file, {
+    delimiter: ",", encoding: "utf-8", width: CCC_WELDER_WIDTH, mode: "pad",
+  })) {
+    if (line.lineNo === 0) {
+      header = new Map(line.fields.map((h, i) => [h.trim(), i]));
+      continue;
+    }
+    if (!header) continue;
+    const g = (h: string) => (line.fields[header!.get(h) ?? -1] ?? "").trim();
+    const jointId =
+      `${g("QC ISO DWG. No.")}-${g("Spool No.")}-${g("Joint No.")}` +
+      normaliseRepairSuffix(g("Repair Suffix"));
+    if (!wanted.has(jointId) || found.has(jointId)) continue;
+    const pct = g("RT/UT(%)");
+    if (pct !== "") found.set(jointId, pct);
+    if (found.size === wanted.size) break;
+  }
+  for (const [jointId, pct] of found) {
+    await client.query(
+      "UPDATE weld_manual_exclusion SET rt_pct = $2 WHERE joint_id = $1",
+      [jointId, Number(pct)],
+    );
+  }
+  console.log(
+    `  weld_manual_exclusion.rt_pct: ${found.size}/${wanted.size} joints` +
+      ` (${[...found].map(([j, p]) => `${j}=${p}`).join(", ") || "none found"})`,
+  );
 }
 
 async function main(): Promise<void> {
@@ -148,6 +207,8 @@ async function main(): Promise<void> {
     }
     await client.query("COMMIT");
     console.log(`ref_exclusion_list: inserted ${insertedRows} rows`);
+
+    await captureExclusionRtPct(client);
 
     await client.query(
       `UPDATE load SET finished_at = now(), records_read = $2, records_loaded = $3, notes = $4
