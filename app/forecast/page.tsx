@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import type { FilterWidget } from "@/lib/page-model";
 import { FORECAST_FILTER_IDS, getForecastPage, type ForecastFilters } from "@/lib/page-source";
 import { FilterBar } from "@/components/FilterBar";
-import { PageView } from "@/components/PageView";
+import { ForecastView } from "@/components/ForecastView";
 
 // pbix page 20 "RT Backlog Forecast" as a filter-driven page (owner request
 // 2026-09-07). Filters travel as URL search params; data is per request.
@@ -30,7 +30,7 @@ export default async function ForecastPage(props: PageProps<"/forecast">) {
   return (
     <>
       <FilterBar widgets={filterWidgets} />
-      <PageView model={model} subtitle={subtitle} />
+      <ForecastView model={model} subtitle={subtitle} />
     </>
   );
 }

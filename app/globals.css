@@ -1803,3 +1803,66 @@ html {
   background: transparent;
   padding-inline: 16px;
 }
+
+/* ── RT Backlog Forecast: the pbix page-20 arrangement (components/ForecastView.tsx) ── */
+.forecast-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(170px, 1.4fr) minmax(0, 6fr);
+  gap: 14px;
+  align-items: start;
+  margin-bottom: 16px;
+}
+.forecast-col {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+.forecast-col .card {
+  min-width: 0;
+}
+.forecast-bar .chart-container {
+  height: 300px;
+}
+.forecast-done-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) minmax(0, 2fr);
+  gap: 14px;
+  align-items: stretch;
+}
+.forecast-done-kpi {
+  margin-bottom: 0;
+}
+.forecast-done-kpi .stat-box {
+  height: 100%;
+}
+.forecast-donut-small .chart-container {
+  height: 220px;
+}
+.forecast-donut .chart-container {
+  height: 320px;
+}
+.forecast-stack {
+  flex-direction: column;
+  margin-bottom: 0;
+}
+.forecast-stack .stat-box {
+  flex: 0 0 auto;
+}
+.forecast-monthly .chart-container {
+  height: 300px;
+}
+.forecast-cards {
+  margin-bottom: 0;
+}
+.forecast-cards .stat-box {
+  flex: 1 1 120px;
+}
+@media (max-width: 1100px) {
+  .forecast-layout {
+    grid-template-columns: 1fr;
+  }
+  .forecast-stack {
+    flex-direction: row;
+  }
+}
