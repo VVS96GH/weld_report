@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { isAllSubcos, SCREENS, screenById, screenValues, screenVariantLabel, SUBCO_ALL } from "@/lib/screens";
+import { isAllRt, isAllSubcos, RT_ALL, SCREENS, screenById, screenValues, screenVariantLabel, SUBCO_ALL } from "@/lib/screens";
 
 /**
  * Consolidation option A is a pure regrouping of the 44 mockup pages: every page
@@ -23,7 +23,7 @@ describe("option A screen registry", () => {
 
   it("covers every mockup page exactly once (party combinations)", () => {
     const hits = new Map<number, string[]>();
-    for (const c of combos.filter((c) => !isAllSubcos(c.values))) for (const p of c.pages ?? []) hits.set(p, [...(hits.get(p) ?? []), `${c.screen}:${JSON.stringify(c.values)}`]);
+    for (const c of combos.filter((c) => !isAllSubcos(c.values) && !isAllRt(c.values))) for (const p of c.pages ?? []) hits.set(p, [...(hits.get(p) ?? []), `${c.screen}:${JSON.stringify(c.values)}`]);
     for (let p = 1; p <= 44; p++) expect(hits.get(p), `page ${p}`).toHaveLength(1);
     for (const [p, who] of hits) expect(p, who.join()).toBeGreaterThanOrEqual(1);
   });
@@ -35,7 +35,7 @@ describe("option A screen registry", () => {
         expect(p).toBeLessThanOrEqual(44);
       }
     }
-    const nulls = combos.filter((c) => c.pages === null).map((c) => `${c.screen} ${c.values.subco} ${c.values.rt ?? ""}`.trim());
+    const nulls = combos.filter((c) => c.pages === null && !isAllRt(c.values)).map((c) => `${c.screen} ${c.values.subco} ${c.values.rt ?? ""}`.trim());
     // NDE: 30 % exists for GAC only; PWHT has no 20/30 % pages at all (not offered).
     expect(nulls.sort()).toEqual(["nde CCC 30", "nde MEDGULF 30", "nde TEKFEN 30"]);
   });
@@ -55,9 +55,22 @@ describe("option A screen registry", () => {
     expect(screenById("nde")!.pages({ subco: SUBCO_ALL, rt: "30" })).toEqual([26]);
   });
 
+  it("offers ALL first on the RT % axis and resolves it to each party's RT 100 % page", () => {
+    for (const id of ["nde", "pwht"]) {
+      const s = screenById(id)!;
+      const rt = s.filters.find((f) => f.id === "rt")!;
+      expect(rt.options[0]?.value).toBe(RT_ALL);
+      expect(rt.default).toBe(RT_ALL);
+      for (const subco of s.filters.find((f) => f.id === "subco")!.options.map((o) => o.value)) {
+        expect(s.pages({ subco, rt: RT_ALL }), `${id} ${subco}`).toEqual(s.pages({ subco, rt: "100" }));
+      }
+    }
+  });
+
   it("falls back to the default when a filter value is unknown", () => {
     const nde = screenById("nde")!;
     expect(screenValues(nde, { subco: "NOPE", rt: "100" })).toEqual({ subco: SUBCO_ALL, rt: "100" });
+    expect(screenValues(nde, { subco: "GAC", rt: "999" })).toEqual({ subco: "GAC", rt: RT_ALL });
     expect(screenVariantLabel(nde, { subco: "GAC", rt: "100" })).toBe("GAC · 100 %");
   });
 });

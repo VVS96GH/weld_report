@@ -50,12 +50,23 @@ const subcoFilter = (options: ScreenFilterOption[] = SUBCOS.map((s) => ({ value:
 export function isAllSubcos(values: Record<string, string>): boolean {
   return values.subco === SUBCO_ALL;
 }
+/**
+ * "ALL" on the RT % axis (owner request 2026-09-15): the RT 100 % page's structure
+ * rendered with no RT % predicate — lib/pages/welding.ts `allRtPct`. First option
+ * and the default, like the sub-contractor axis.
+ */
+export const RT_ALL = "ALL";
 const rtFilter = (pcts: readonly number[]): ScreenFilterDef => ({
   id: "rt",
   label: "RT %",
-  options: pcts.map((p) => ({ value: String(p), label: `${p} %` })),
-  default: String(pcts[0]),
+  options: [{ value: RT_ALL, label: RT_ALL }, ...pcts.map((p) => ({ value: String(p), label: `${p} %` }))],
+  default: RT_ALL,
 });
+
+/** Whether the applied values ask for every RT % at once. */
+export function isAllRt(values: Record<string, string>): boolean {
+  return values.rt === RT_ALL;
+}
 
 /** Sub-contractor status: the "PR all" table page (3-6) followed by the chart page (7-11). */
 const STATUS_PAGES: Record<string, number[]> = {
@@ -69,22 +80,25 @@ const STATUS_PAGES: Record<string, number[]> = {
 };
 
 /** NDE status by RT coverage: sub-contractor → RT% → mockup page. */
+// RT "ALL" borrows each party's RT 100 % page (its columns are the RT-100 flags, which
+// stay truthful over every RT %; the 5/10/20 % pages carry a coverage-gap table that
+// needs one RT % to exist).
 const NDE_PAGES: Record<string, Record<string, number>> = {
   // ALL: the CCC pages' structure; RT 30 % exists for GAC only, so that one is GAC's.
-  [SUBCO_ALL]: { "100": 12, "5": 14, "10": 16, "20": 18, "30": 26 },
-  CCC: { "100": 12, "5": 14, "10": 16, "20": 18 },
-  GAC: { "100": 19, "5": 21, "10": 23, "20": 25, "30": 26 },
-  TEKFEN: { "100": 27, "5": 29, "10": 31, "20": 33 },
-  MEDGULF: { "100": 34, "5": 36, "10": 38, "20": 40 },
+  [SUBCO_ALL]: { [RT_ALL]: 12, "100": 12, "5": 14, "10": 16, "20": 18, "30": 26 },
+  CCC: { [RT_ALL]: 12, "100": 12, "5": 14, "10": 16, "20": 18 },
+  GAC: { [RT_ALL]: 19, "100": 19, "5": 21, "10": 23, "20": 25, "30": 26 },
+  TEKFEN: { [RT_ALL]: 27, "100": 27, "5": 29, "10": 31, "20": 33 },
+  MEDGULF: { [RT_ALL]: 34, "100": 34, "5": 36, "10": 38, "20": 40 },
 };
 
 /** PWHT status by RT coverage. */
 const PWHT_PAGES: Record<string, Record<string, number>> = {
-  [SUBCO_ALL]: { "100": 13, "5": 15, "10": 17 },
-  CCC: { "100": 13, "5": 15, "10": 17 },
-  GAC: { "100": 20, "5": 22, "10": 24 },
-  TEKFEN: { "100": 28, "5": 30, "10": 32 },
-  MEDGULF: { "100": 35, "5": 37, "10": 39 },
+  [SUBCO_ALL]: { [RT_ALL]: 13, "100": 13, "5": 15, "10": 17 },
+  CCC: { [RT_ALL]: 13, "100": 13, "5": 15, "10": 17 },
+  GAC: { [RT_ALL]: 20, "100": 20, "5": 22, "10": 24 },
+  TEKFEN: { [RT_ALL]: 28, "100": 28, "5": 30, "10": 32 },
+  MEDGULF: { [RT_ALL]: 35, "100": 35, "5": 37, "10": 39 },
 };
 
 const WPS_PAGES: Record<string, number> = { [SUBCO_ALL]: 41, CCC: 41, GAC: 42, TEKFEN: 43, MEDGULF: 44 };

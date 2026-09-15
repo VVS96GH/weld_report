@@ -223,6 +223,28 @@ describe("ALL sub-contractor rendering (allSubcos)", () => {
     });
   }
 
+  for (const n of [12, 13, 19, 20]) {
+    it(`page ${n} over every RT % (allRtPct) keeps the structure and drops "RT 100%" from the titles`, async () => {
+      const spec = specPage(n);
+      const model = await getWeldingPage(n, { allRtPct: true });
+      expect(model.id).toBe(`${spec.id}-allrt`);
+      expect(model.title).toBe(spec.title.replace(/RT ?100 ?%/g, "ALL RT %"));
+      expect(model.title).not.toMatch(/RT ?100 ?%/);
+      const declared = model.widgets.filter((w) => w.kind !== "filter").slice(0, spec.widgets.length);
+      expect(declared.map((w) => w.kind)).toEqual(spec.widgets.map((w) => w.kind));
+      for (let i = 0; i < spec.widgets.length; i++) {
+        const want = spec.widgets[i];
+        const got = declared[i];
+        if (want.kind === "table" && got.kind === "table") {
+          expect(got.columns).toEqual(want.columns);
+          expect(got.title).not.toMatch(/RT ?100 ?%/);
+        }
+      }
+      const notes = model.widgets.filter((w) => w.kind === "text").map((w) => (w.kind === "text" ? w.text : ""));
+      expect(notes.some((t) => t.startsWith("ALL RT %:"))).toBe(true);
+    });
+  }
+
   it("is a no-op on the project pages 1 and 2", async () => {
     for (const n of [1, 2]) {
       const plain = await getWeldingPage(n);

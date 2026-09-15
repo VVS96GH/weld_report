@@ -21,6 +21,8 @@ export type WeldingPageOpts = {
    * one party's numbers under an ALL title.
    */
   allSubcos?: boolean;
+  /** Render an NDE / PWHT page (12–40) over every RT % — the "ALL" option of the RT % axis. */
+  allRtPct?: boolean;
 };
 
 /**
@@ -76,7 +78,7 @@ export async function getPage(
     return getDatabasePage(n, opts);
   }
   const page = getFixturePage(n);
-  if (opts.allSubcos && n > 2) {
+  if ((opts.allSubcos && n > 2) || (opts.allRtPct && n >= 12 && n <= 40)) {
     return {
       ...page,
       id: `${page.id}-all`,
@@ -84,7 +86,7 @@ export async function getPage(
       widgets: [
         {
           kind: "text",
-          text: "ALL sub-contractors is computed from the database only; the mockup snapshot has no project-wide version of this page.",
+          text: "ALL (sub-contractors or RT %) is computed from the database only; the mockup snapshot has no such version of this page.",
         },
       ],
     };

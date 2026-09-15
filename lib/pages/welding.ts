@@ -1234,6 +1234,13 @@ function allConf(conf: SubconConf): SubconConf {
   return { sub: SUBCO_ALL, excludeWeldTypes: conf.excludeWeldTypes };
 }
 
+/** "CCC NDE RT 100% STATUS" → "CCC NDE ALL RT % STATUS"; "… by RT 100%" → "… by ALL RT %". */
+function allRtTitle(title: string, on: boolean): string {
+  return on ? title.replace(/RT ?100 ?%/g, "ALL RT %") : title;
+}
+const ALL_RT_NOTE =
+  "ALL RT %: the rows span every RT % (no RT % predicate). Columns named RT100% / RT 100% keep their " +
+  "meaning — those measures carry RT % = 100 in their own definition — so they count the RT 100 % share of each row.";
 const ALL_SCOPE_NOTE =
   "ALL sub-contractors: every figure is computed over the project scope (the loaded " +
   "WELD_DUMP + CCC + ACCIONA union, INCO excluded), not summed from the four party pages, " +
@@ -1260,6 +1267,13 @@ export type WeldingPageOpts = {
    * see {@link SUBCO_ALL}. Ignored on pages 1 and 2, which are project-wide already.
    */
   allSubcos?: boolean;
+  /**
+   * Render an NDE / PWHT page (12–40) with NO RT % predicate — the "ALL" option of
+   * the screens' RT % axis (owner request 2026-09-15). The page's RT-100 columns
+   * keep their meaning (their flags carry `rt_pct = 100` themselves); the rows
+   * span every RT %. Ignored on every other page.
+   */
+  allRtPct?: boolean;
 };
 
 /**
@@ -1373,6 +1387,8 @@ export async function getWeldingPage(
   // ALL applies to the per-party families only; pages 1/2 are project-wide already.
   const all = Boolean(opts.allSubcos) && (SUBCON_PAGES.has(n) || NDE_PAGES.has(n) || WPS_PAGES.has(n));
   if (all) note(ctx, ALL_SCOPE_NOTE);
+  const allRt = Boolean(opts.allRtPct) && NDE_PAGES.has(n);
+  if (allRt) note(ctx, ALL_RT_NOTE);
 
   let widgets: Widget[];
   const unavailable = UNAVAILABLE_PAGES.get(n);
@@ -1388,7 +1404,11 @@ export async function getWeldingPage(
     widgets = await buildSubconPage(spec, all ? [allConf(confs[0]!)] : confs, ctx);
   } else if (NDE_PAGES.has(n)) {
     const conf = NDE_PAGES.get(n)!;
-    widgets = await buildNdePage(spec, all ? { ...conf, sub: SUBCO_ALL } : conf, ctx);
+    widgets = await buildNdePage(
+      spec,
+      { ...conf, sub: all ? SUBCO_ALL : conf.sub, rtPct: allRt ? undefined : conf.rtPct },
+      ctx,
+    );
   } else if (WPS_PAGES.has(n)) {
     const confs = WPS_PAGES.get(n)!;
     widgets = await buildWpsPage(spec, all ? [allConf(confs[0]!)] : confs, ctx);
@@ -1400,16 +1420,15 @@ export async function getWeldingPage(
   for (const msg of ctx.notes) widgets.push(textWidget(msg));
   // The bar goes FIRST, ahead of every data widget.
   if (bar) widgets = [...bar.widgets, ...widgets];
-  if (all) {
-    widgets = widgets.map((w) =>
-      w.kind === "table" || w.kind === "chart" ? { ...w, title: allWidgetTitle(w.title) } : w,
-    );
+  if (all || allRt) {
+    const retitle = (t: string) => allRtTitle(all ? allWidgetTitle(t) : t, allRt);
+    widgets = widgets.map((w) => (w.kind === "table" || w.kind === "chart" ? { ...w, title: retitle(w.title) } : w));
   }
 
   return {
     page: spec.page,
-    id: all ? `${spec.id}-all` : spec.id,
-    title: all ? allTitle(spec.title) : spec.title,
+    id: `${spec.id}${all ? "-all" : ""}${allRt ? "-allrt" : ""}`,
+    title: allRtTitle(all ? allTitle(spec.title) : spec.title, allRt),
     subtitle: spec.subtitle ?? undefined,
     widgets,
     ...(bar
@@ -2310,7 +2329,7 @@ function subconProgressChart(
 
 async function buildNdePage(
   spec: SpecPage,
-  conf: { sub: string; rtPct: number; kind: "nde" | "pwht" },
+  conf: { sub: string; rtPct: number | undefined; kind: "nde" | "pwht" },
   ctx: Ctx,
 ): Promise<Widget[]> {
   const isCcc = conf.sub === "CCC";
@@ -2413,7 +2432,8 @@ async function buildNdePage(
       w.kind === "table" &&
       w.columns.some((c) => COVERAGE_GAP_HEADERS.has(c)),
   );
-  const gapByGroup = wantGap
+  // The coverage gap (M52) is defined against ONE RT % target; over every RT % it has none.
+  const gapByGroup = wantGap && conf.rtPct !== undefined
     ? new Map(
         (
           await coverageGapByServiceClass(scope, conf.rtPct / 100, catClassGroup, {
@@ -2466,12 +2486,23 @@ async function buildNdePage(
       out.push(metricTable(w, rows, totalB));
     } else if (key === "Service Class+NDT Remarks") {
       // §3.3 mk 14/16/18 second table: M52, the RT-coverage gap.
-      out.push(await coverageGapTable(w, scope, conf.rtPct, classGroup, ctx));
+      if (conf.rtPct === undefined) {
+        out.push(emptyTable(w));
+        note(ctx, "The RT-coverage gap (M52) needs one RT % target; pick an RT % to see it.");
+      } else {
+        out.push(await coverageGapTable(w, scope, conf.rtPct, classGroup, ctx));
+      }
     } else if (key === "RT%") {
       const rows: RowSpec[] = [];
-      const pctKey = String(conf.rtPct);
-      const pctBundle = byRtPct.get(pctKey);
-      if (pctBundle) rows.push({ label: pctKey, bundle: attach(pctBundle, agingTotal ?? undefined) });
+      // One row per RT % on the page's own RT %; every RT % present, highest first, under ALL.
+      const pctKeys =
+        conf.rtPct === undefined
+          ? [...byRtPct.keys()].filter((k): k is string => k !== null).sort((a, b) => Number(b) - Number(a))
+          : [String(conf.rtPct)];
+      for (const pctKey of pctKeys) {
+        const pctBundle = byRtPct.get(pctKey);
+        if (pctBundle) rows.push({ label: pctKey, bundle: attach(pctBundle, conf.rtPct === undefined ? undefined : agingTotal ?? undefined) });
+      }
       for (const c of orderedCats(byCat.keys())) {
         rows.push({ label: c, bundle: attach(byCat.get(c)!, agingByCat.get(c)) });
       }
