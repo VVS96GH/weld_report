@@ -803,17 +803,32 @@ export function rtBacklogPwhtYNotDoneFabricatedCond(p: Params, a = "w"): string 
   return and([rtBacklogPwhtYNotDoneCond(p, a), fabricatedCond(a)]);
 }
 
-export function fabricatedAggs(p: Params, a = "w"): AggSpec[] {
+/**
+ * M44 / M48 / M49 for a bundle. The `"EP"` family reads the dump-only flags;
+ * the `"PR all"` family (CCC pages, ALL-sub-contractor pages) reads the
+ * dump + CCC pairs of migrations 0025 / 0039, added as the DAX adds its
+ * CALCULATEs — the CCC pages showed blank FAB-D cells while bound to the
+ * `"EP"` flags, whose `PWHT Y/N` test is NULL on every CCC row (owner re-read
+ * 2026-09-15: CCC is 294 and 12).
+ */
+export function fabricatedAggs(p: Params, a = "w", variant: "EP" | "PR_ALL" = "EP"): AggSpec[] {
   void p;
+  const count = (flag: string) => `count(*) ${filterWhere([`${a}.${flag}`])}`;
   return [
-    { key: "rt_backlog_fabricated", sql: `count(*) ${filterWhere([`${a}.rt_backlog_fabricated`])}` },
+    { key: "rt_backlog_fabricated", sql: count("rt_backlog_fabricated") },
     {
       key: "rt_backlog_pwht_y_done_or_n_fabricated",
-      sql: `count(*) ${filterWhere([`${a}.rt_backlog_pwht_ydone_or_n_fabricated`])}`,
+      sql:
+        variant === "PR_ALL"
+          ? `${count("rt_bl_ydone_n_fab_prall_dump")} + ${count("rt_bl_ydone_n_fab_prall_ccc")}`
+          : count("rt_backlog_pwht_ydone_or_n_fabricated"),
     },
     {
       key: "rt_backlog_pwht_y_not_done_fabricated",
-      sql: `count(*) ${filterWhere([`${a}.rt_backlog_pwht_ynotdone_fabricated`])}`,
+      sql:
+        variant === "PR_ALL"
+          ? `${count("rt_bl_ynotdone_fab_prall_dump")} + ${count("rt_bl_ynotdone_fab_prall_ccc")}`
+          : count("rt_backlog_pwht_ynotdone_fabricated"),
     },
   ];
 }

@@ -62,6 +62,7 @@ rules are right; the pbix stores 958,634 for its own (19 days older) snapshot.
 | `0020_inco_repair_length.sql` | `weld.repair_length_mm` — the Inco branch of `[Defect Length(MM).]` (0016-0019 are the metrics lane's) |
 | `0022_wps_register.sql` | `ref_wps_register` widened + `ref_wps_process` / `ref_wps_status_cum` / `ref_wps_pwht_status` (0021 is the metrics lane's) |
 | `0013_mv_joint.sql` | **metrics lane** — `mv_joint` (2,370,428 rows) and `mv_joint_wps` (2,194,756), the joint-grain rollups the project pages read |
+| `0039_fabricated_prall_pages.sql` | `mv_joint.rt_bl_ynotdone_fab_prall_dump` / `_ccc` — M49 `[… PWHT"Y" NOT Done FABRICATED "PR all"]` as the DAX's dump + CCC branches (56 + 12 = 68); the `"PR all"` bundle now reads the 0025 / 0039 pairs for both FAB-D columns; otherwise 0038 verbatim |
 | `0038_pwht_yn_slicer.sql` | `mv_joint.pwht_y_n` / `pwht_y_n_ccc` — the raw PWHT Y/N token at joint grain (`max()`, constant per joint) for the NDE / PWHT pages' slicer; otherwise 0035 verbatim (0036 / 0037 do not touch the views) |
 
 `0002` and `0003` are produced by `scripts/gen-schema-columns.ts` from

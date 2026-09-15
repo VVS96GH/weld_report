@@ -890,6 +890,25 @@ describe.skipIf(Boolean(skipReason))("pbix cross-check (user readings)", () => {
     expect(Number(r.total)).toBe(589);
     expect(Number(r.ynd), '"Y NOT Done" FABRICATED, by difference').toBe(68);
     expect(all!.total + Number(r.ynd)).toBe(Number(r.total));
+
+    // Migration 0039 materialises that 68 directly, as the DAX's three
+    // CALCULATEs (owner re-read 2026-09-15): dump branches 56 (all GAC) + the
+    // CCC branch 12. The `"PR all"` bundle reads these pairs, so the CCC NDE
+    // pages' FAB-D cells are 294 / 12 rather than the blank the `"EP"` flags gave.
+    const [y] = await query<{ dump: string; ccc: string; gac: string; ep: string }>(
+      "SELECT count(*) FILTER (WHERE rt_bl_ynotdone_fab_prall_dump)::text AS dump," +
+        " count(*) FILTER (WHERE rt_bl_ynotdone_fab_prall_ccc)::text AS ccc," +
+        " count(*) FILTER (WHERE rt_bl_ynotdone_fab_prall_dump AND sub_contractor = 'GAC')::text AS gac," +
+        " count(*) FILTER (WHERE rt_backlog_pwht_ynotdone_fabricated)::text AS ep" +
+        " FROM mv_joint WHERE source::text IN " +
+        "('WELD_DUMP','CCC_WELDER_RECORD','CCC_JOINT_RECORD','ACCIONA')",
+    );
+    expect(Number(y.dump)).toBe(56);
+    expect(Number(y.gac)).toBe(56);
+    expect(Number(y.ccc)).toBe(12);
+    expect(Number(y.dump) + Number(y.ccc)).toBe(Number(r.ynd));
+    // the "EP" flag agrees with the dump branches today (no unwelded joint in branch 1)
+    expect(Number(y.ep)).toBe(Number(y.dump));
   });
 
   it("merging the six FABRICATED branches into two does not undercount", async () => {

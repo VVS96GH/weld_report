@@ -375,7 +375,7 @@ function allAggs(p: Params, variant: Variant, withFabricated: boolean) {
     ...(variant === "EP" ? utAggs(p) : utAggsPrAll(p)),
     ...(variant === "EP" ? rtBacklogAggs(p) : rtBacklogAggsPrAll(p)),
     ...(variant === "EP" ? pwhtAggs(p) : pwhtAggsPrAll(p)),
-    ...(withFabricated ? fabricatedAggs(p) : []),
+    ...(withFabricated ? fabricatedAggs(p, "w", variant) : []),
   ];
 }
 
