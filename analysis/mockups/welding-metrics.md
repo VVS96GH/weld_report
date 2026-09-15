@@ -85,15 +85,15 @@ De-duplicated list of every distinct metric name/label found across all 44 pages
 | RPD | table-column | 2,3,4,5,6,7,8,10,11 | area, subcontractor, weld type (F/S weld category) |
 | RT 100% Backlog | table-column | 19 | RT%, WPS/service class, subcontractor, weld type (F/S weld category) |
 | RT Acc.Joints | kpi | 1 | (none detected) |
-| RT B.log & FAB-D | table-column | 3,12 | RT%, subcontractor, weld type (F/S weld category) |
+| RT B.log & FAB-D | table-column | 2,3,12 | RT%, subcontractor, weld type (F/S weld category) |
 | RT B.log & PWHT "N" | table-column | 12 | RT%, subcontractor |
 | RT B.log & PWHT "Y" Done | table-column | 12 | RT%, subcontractor |
-| RT B.log & PWHT "Y" Done + PWHT "N" FAB-D | table-column | 3,12 | RT%, subcontractor, weld type (F/S weld category) |
+| RT B.log & PWHT "Y" Done + PWHT "N" FAB-D | table-column | 2,3,12 | RT%, subcontractor, weld type (F/S weld category) |
 | RT B.LOG & PWHT "Y" NOT Done | table-column | 7,8,9,10,11 | RT%, area, subcontractor, weld type (F/S weld category) |
 | RT B.LOG & PWHT NOT Done | table-column | 2,12,13,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40 | PWHT, RT%, subcontractor, weld type (F/S weld category) |
 | RT B.log & PWHT NOT Done | table-column | 4,5,6 | RT%, area, subcontractor, weld type (F/S weld category) |
+| RT B.LOG & PWHT"Y" NOT Done FAB-D | table-column | 2,12 | RT%, subcontractor |
 | RT B.Log & PWHT"Y" NOT Done FAB-D | table-column | 3 | RT%, subcontractor, weld type (F/S weld category) |
-| RT B.LOG & PWHT"Y" NOT Done FAB-D | table-column | 12 | RT%, subcontractor |
 | RT B.LOG Total | table-column | 2 | RT%, subcontractor |
 | RT B.Log Total Project | table-column | 12 | RT%, subcontractor |
 | RT Backlog | table-column | 21,23,25,26,27,29,31,33,34,36,38,40 | RT%, WPS/service class, subcontractor, weld type (F/S weld category) |

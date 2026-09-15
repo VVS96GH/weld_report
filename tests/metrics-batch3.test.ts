@@ -964,12 +964,17 @@ describe.skipIf(Boolean(skipReason))("pbix cross-check (user readings)", () => {
     //   TEKFEN  "% Rej UT Joint"  owner 7.74%, ours 7.78% (198 vs 197 joints)
     const owner: Record<string, Record<string, string>> = {
       ACCIONA: { "% Rej by Joint": "0.39%" },
+      // The three FAB-D columns were added to this table on 2026-09-15 (owner
+      // request, with their pbix values): M44 / M48 / M49 per party.
       CCC: {
         "RT B.LOG Total": "357", "RT100% Backlog": "357",
         "PWHT Backlog All": "546", "PWHT B.log for RT": "185",
         "PWHT B.log RT100%": "26", "PWHT B.Log RT NOT Done": "",
         'RT+PWHT "Y" Done': "25", 'RT+PWHT "N"': "314",
         "RT B.LOG & PWHT NOT Done": "18",
+        "RT B.log & FAB-D": "306",
+        'RT B.log & PWHT "Y" Done + PWHT "N" FAB-D': "294",
+        'RT B.LOG & PWHT"Y" NOT Done FAB-D': "12",
         "% Rej by Joint": "0.12%", "% Rej UT Joint": "0.32%",
       },
       GAC: {
@@ -978,12 +983,18 @@ describe.skipIf(Boolean(skipReason))("pbix cross-check (user readings)", () => {
         "PWHT B.log RT100%": "77", "PWHT B.Log RT NOT Done": "3",
         'RT+PWHT "Y" Done': "64", 'RT+PWHT "N"': "170",
         "RT B.LOG & PWHT NOT Done": "58",
+        "RT B.log & FAB-D": "267",
+        'RT B.log & PWHT "Y" Done + PWHT "N" FAB-D': "211",
+        'RT B.LOG & PWHT"Y" NOT Done FAB-D': "56",
         "% Rej by Joint": "0.42%", "% Rej UT Joint": "5.65%",
       },
       MEDGULF: {
         "RT B.LOG Total": "23", "RT100% Backlog": "22",
         "PWHT Backlog All": "43", "PWHT B.log for RT": "24",
         'RT+PWHT "N"': "23", "% Rej by Joint": "0.23%",
+        "RT B.log & FAB-D": "16",
+        'RT B.log & PWHT "Y" Done + PWHT "N" FAB-D': "16",
+        'RT B.LOG & PWHT"Y" NOT Done FAB-D': "",
       },
       TEKFEN: {
         "PWHT Backlog All": "26", "PWHT B.log for RT": "11",
@@ -994,6 +1005,9 @@ describe.skipIf(Boolean(skipReason))("pbix cross-check (user readings)", () => {
         "PWHT B.log for RT": "354", "PWHT B.log RT100%": "103",
         "PWHT B.Log RT NOT Done": "3", 'RT+PWHT "Y" Done': "89",
         'RT+PWHT "N"': "507", "RT B.LOG & PWHT NOT Done": "76",
+        "RT B.log & FAB-D": "589",
+        'RT B.log & PWHT "Y" Done + PWHT "N" FAB-D': "521",
+        'RT B.LOG & PWHT"Y" NOT Done FAB-D': "68",
         "% Rej by Joint": "0.27%",
       },
     };

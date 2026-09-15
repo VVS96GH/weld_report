@@ -84,14 +84,14 @@ id: `page2`
 
 - **Table** — Project RT & PWHT Status by Sub-Contractor
 
-  | Sub-Contractor | RT B.LOG Total | RT100% Backlog | PWHT Backlog All | PWHT B.log for RT | PWHT B.log RT100% | PWHT B.Log RT NOT Done | RT+PWHT "Y" Done | RT+PWHT "N" | RT B.LOG & PWHT NOT Done | % Rej by Joint | % Rej UT Joint |
-  |---|---|---|---|---|---|---|---|---|---|---|---|
-  | Acciona |   |   |   |   |   |   |   |   |   | 0.39% |   |
-  | CCC | 305 | 305 | 1,395 | 272 | 55 |   | 16 | 247 | 42 | 0.11% | 0.30% |
-  | GAC | 222 | 192 | 454 | 133 | 97 | 46 | 41 | 96 | 85 | 0.40% | 5.57% |
-  | MEDGULF | 22 | 22 | 54 | 36 |   |   |   | 22 |   | 0.19% |   |
-  | TEKFEN | 17 | 12 | 123 | 36 | 3 |   | 5 | 9 | 3 | 0.97% | 7.67% |
-  | Total | 566 | 531 | 2,026 | 477 | 155 | 46 | 62 | 374 | 130 | 0.27% | 2.66% |
+  | Sub-Contractor | RT B.LOG Total | RT100% Backlog | PWHT Backlog All | PWHT B.log for RT | PWHT B.log RT100% | PWHT B.Log RT NOT Done | RT+PWHT "Y" Done | RT+PWHT "N" | RT B.LOG & PWHT NOT Done | RT B.log & FAB-D | RT B.log & PWHT "Y" Done + PWHT "N" FAB-D | RT B.LOG & PWHT"Y" NOT Done FAB-D | % Rej by Joint | % Rej UT Joint |
+  |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+  | Acciona |   |   |   |   |   |   |   |   |   |   |   |   | 0.39% |   |
+  | CCC | 305 | 305 | 1,395 | 272 | 55 |   | 16 | 247 | 42 |   |   |   | 0.11% | 0.30% |
+  | GAC | 222 | 192 | 454 | 133 | 97 | 46 | 41 | 96 | 85 |   |   |   | 0.40% | 5.57% |
+  | MEDGULF | 22 | 22 | 54 | 36 |   |   |   | 22 |   |   |   |   | 0.19% |   |
+  | TEKFEN | 17 | 12 | 123 | 36 | 3 |   | 5 | 9 | 3 |   |   |   | 0.97% | 7.67% |
+  | Total | 566 | 531 | 2,026 | 477 | 155 | 46 | 62 | 374 | 130 |   |   |   | 0.27% | 2.66% |
 
 
 ## Page 3 — CCC WELDING STATUS
