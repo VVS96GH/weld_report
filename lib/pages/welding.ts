@@ -555,6 +555,9 @@ async function pwhtYnOptions(scope: Scope): Promise<string[]> {
       return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib) || a.localeCompare(b);
     });
 }
+const PWHT_CCC_NEW_NOTE =
+  "PWHT Y/N for CCC joints is the owner's calculated column [PWHT Y/N CCC (NEW)] (16 rules over " +
+  "Joint ID, Weld Type, WPS No., Service class, Material Type and Thickness; migration 0034), not the raw PWHT Y/N CCC.";
 const PWHT_TOKEN_NOTE =
   `PWHT Y/N "${PWHT_AMBIGUOUS_TOKEN}" is a raw token of the weld dump (ruling R-04: the backlog measures ` +
   "count it as both Y and N, as the DAX does). The slicer offers it as its own value rather than folding it into either.";
@@ -2351,6 +2354,7 @@ async function buildNdePage(
   if (requestedPwht !== undefined && !pwhtApplied) note(ctx, FILTER_UNKNOWN_NOTE);
   if (pwhtApplied) scope.pwhtYn = requestedPwht;
   if (pwhtOptions.includes(PWHT_AMBIGUOUS_TOKEN)) note(ctx, PWHT_TOKEN_NOTE);
+  if (isCcc || all) note(ctx, PWHT_CCC_NEW_NOTE);
   const pwhtFilter: FilterWidget = {
     kind: "filter",
     id: "pwht",

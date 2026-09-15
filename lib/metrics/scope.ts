@@ -295,8 +295,16 @@ export type Scope = {
   pwhtYn?: string;
 };
 
-/** The slicer's column: one expression for both sources (0038). */
-export const pwhtYnExpr = (a = "w") => `coalesce(${a}.pwht_y_n, ${a}.pwht_y_n_ccc)`;
+/**
+ * The slicer's column, one expression for both sources: the dump's raw `PWHT Y/N`
+ * (0038), and for CCC the owner's `[PWHT Y/N CCC (NEW)]` calculated column
+ * (migration 0034, `pwht_y_n_ccc_new_y`) — the owner's ruling of 2026-09-15
+ * ("вот формула — можешь её использовать"), replacing the raw `PWHT Y/N CCC`
+ * for 818 of 1,470,093 CCC joints. The two are NULL on disjoint sources, so
+ * `coalesce` picks whichever exists.
+ */
+export const pwhtYnExpr = (a = "w") =>
+  `coalesce(${a}.pwht_y_n, CASE WHEN ${a}.pwht_y_n_ccc_new_y THEN 'Y' WHEN ${a}.pwht_y_n_ccc_new_y = false THEN 'N' END)`;
 
 /**
  * `[By UT All]` — materialised on `mv_joint` by migration 0033, because the
