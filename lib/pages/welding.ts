@@ -124,6 +124,8 @@ import {
   areaOptionsByHa,
   type WeldingFilters,
   PROJECT_EXCLUDED_SUBCONTRACTORS,
+  PWHT_AMBIGUOUS_TOKEN,
+  pwhtYnExpr,
   projectScope,
   type Scope,
   scopeWhere,
@@ -515,6 +517,61 @@ const GROUP_SERVICE_CLASS_NDT: GroupSpec = {
   sql: "w.service_class_cat_ndt",
 };
 const GROUP_RT_PCT: GroupSpec = { key: "rt_pct", sql: "w.rt_pct::text" };
+
+/**
+ * `Weld Cat` → `Service Class` as ONE grouping key (`F|1C3AS ABDF`), so a class
+ * that recurs under F and S (shop vs field welds of the same line) is counted
+ * once per cat. A joint with no weld cat has no parent row and is left out, as
+ * it is from the cat rows themselves; the grand total still counts it.
+ */
+const CAT_CLASS_SEP = "|";
+function weldCatClassGroup(classGroup: GroupSpec): GroupSpec {
+  return {
+    key: "cat_class",
+    sql: `(w.weld_cat || '${CAT_CLASS_SEP}' || coalesce(${classGroup.sql}, ''))`,
+  };
+}
+function splitCatClass(key: string): { cat: string; cls: string } {
+  const at = key.indexOf(CAT_CLASS_SEP);
+  return at < 0 ? { cat: key, cls: "" } : { cat: key.slice(0, at), cls: key.slice(at + 1) };
+}
+/** Em spaces survive HTML white-space collapsing, so the child rows read indented. */
+const CHILD_INDENT = "\u2003\u2003";
+
+/** PWHT Y/N slicer options inside a scope, in the reading order Y, N, then the dump's raw token. */
+const PWHT_YN_ORDER = ["Y", "N", PWHT_AMBIGUOUS_TOKEN];
+async function pwhtYnOptions(scope: Scope): Promise<string[]> {
+  const p = new Params();
+  const sql =
+    `SELECT DISTINCT ${pwhtYnExpr()} AS v\n` +
+    `  FROM ${JOINT_FROM}\n` +
+    ` WHERE ${scopeWhere(scope, p)} AND ${pwhtYnExpr()} IS NOT NULL`;
+  const rows = await query<{ v: string | null }>(sql, p.list());
+  return rows
+    .map((r) => r.v)
+    .filter((v): v is string => typeof v === "string" && v !== "")
+    .sort((a, b) => {
+      const ia = PWHT_YN_ORDER.indexOf(a), ib = PWHT_YN_ORDER.indexOf(b);
+      return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib) || a.localeCompare(b);
+    });
+}
+const PWHT_TOKEN_NOTE =
+  `PWHT Y/N "${PWHT_AMBIGUOUS_TOKEN}" is a raw token of the weld dump (ruling R-04: the backlog measures ` +
+  "count it as both Y and N, as the DAX does). The slicer offers it as its own value rather than folding it into either.";
+
+/** The distinct Service Class labels inside a scope — the NDE / PWHT slicer's options. */
+async function serviceClassOptions(scope: Scope, classGroup: GroupSpec): Promise<string[]> {
+  const p = new Params();
+  // Trimmed labels: the slicer value travels through a URL, which drops the trailing
+  // space of a class with no Service Cat; the predicate trims the column the same way.
+  const sql =
+    `SELECT DISTINCT btrim(${classGroup.sql}) AS cls\n` +
+    `  FROM ${JOINT_FROM}\n` +
+    ` WHERE ${scopeWhere(scope, p)} AND btrim(${classGroup.sql}) <> ''\n` +
+    ` ORDER BY 1`;
+  const rows = await query<{ cls: string | null }>(sql, p.list());
+  return rows.map((r) => r.cls).filter((c): c is string => typeof c === "string" && c !== "");
+}
 const GROUP_SUBCON: GroupSpec = {
   key: "sub_contractor",
   sql: "w.sub_contractor",
@@ -1027,14 +1084,25 @@ type SubconConf = {
   excludeWeldTypes?: readonly string[];
 };
 
+/**
+ * The "ALL" sub-contractor (owner request 2026-09-15: "добавить ALL во вкладке
+ * Sub-contractor" on the four per-party screens). A per-party page rendered with
+ * this value keeps its structure but reads the PROJECT scope: the loaded
+ * `"PR all"` union minus INCO, exactly what page 1 / page 2 read — never a sum of
+ * the four party pages, because a joint welded under two parties would then be
+ * counted twice.
+ */
+export const SUBCO_ALL = "ALL";
+const isAll = (sub: string) => sub === SUBCO_ALL;
+
 /** CCC binds `Project WD+WR+INCO+Acciona`; everyone else binds `Weld Dump` (§1.2). */
 function variantFor(sub: string): Variant {
-  return sub === "CCC" ? "PR_ALL" : "EP";
+  return sub === "CCC" || isAll(sub) ? "PR_ALL" : "EP";
 }
 
-/** CCC's fact rows live in its own two files (R2-03). */
+/** CCC's fact rows live in its own two files (R2-03); ALL reads the loaded union. */
 function sourcesFor(sub: string): readonly string[] {
-  return sub === "CCC" ? SOURCES_CCC : SOURCES_EP;
+  return isAll(sub) ? SOURCES_PR_ALL_LOADED : sub === "CCC" ? SOURCES_CCC : SOURCES_EP;
 }
 
 /**
@@ -1044,6 +1112,8 @@ function sourcesFor(sub: string): readonly string[] {
  * `Service Class+Service Cat "WD"` (`1C3AS ABDF`). Do not merge the two.
  */
 function serviceClassGroup(sub: string): GroupSpec {
+  // ALL keys on the `Weld Dump` style; CCC rows (no `Service Cat`) then land under
+  // their own `Service Class` label — disclosed by ALL_CLASS_NOTE, never merged.
   return sub === "CCC" ? GROUP_SERVICE_CLASS_NDT : GROUP_SERVICE_CLASS;
 }
 
@@ -1126,13 +1196,53 @@ const WPS_PAGES = new Map<number, SubconConf[]>([
 function baseScope(conf: SubconConf): Scope {
   return {
     sources: sourcesFor(conf.sub),
-    subContractor: conf.sub,
+    // ALL: no party predicate, INCO excluded — the project scope of pages 1/2.
+    subContractor: isAll(conf.sub) ? undefined : conf.sub,
+    excludeSubContractors: isAll(conf.sub) ? PROJECT_EXCLUDED_SUBCONTRACTORS : undefined,
     serviceCat: conf.serviceCat,
     tmcpPipe: conf.tmcpPipe,
     // Every pbix page in this family carries `Temporary Lines "WD" IN {null}`.
     temporaryLines: false,
   };
 }
+
+/** Sub-contractor arguments for the trend helpers (`weeklyProgress`, backlog current). */
+function partyArgs(sub: string): { subContractor?: string; excludeSubContractors?: readonly string[] } {
+  return isAll(sub)
+    ? { subContractor: undefined, excludeSubContractors: PROJECT_EXCLUDED_SUBCONTRACTORS }
+    : { subContractor: sub };
+}
+
+/**
+ * Rewrite a per-party page's own labels for the ALL rendering: the page title
+ * ("CCC WELDING STATUS" → "ALL SUB-CONTRACTORS WELDING STATUS") and the widget
+ * titles ("Weld Type - CCC" → "Weld Type - ALL"). The structure is the party
+ * page's; only the party name changes.
+ */
+const PARTY_IN_TITLE = /\b(CCC|GAC|TEKFEN|MEDGULF)\b/g;
+function allTitle(title: string): string {
+  return title.replace(PARTY_IN_TITLE, "ALL SUB-CONTRACTORS");
+}
+function allWidgetTitle(title: string): string {
+  return title.replace(PARTY_IN_TITLE, "ALL");
+}
+function allConf(conf: SubconConf): SubconConf {
+  // The party's own service-cat / TMCP split has no meaning across parties.
+  return { sub: SUBCO_ALL, excludeWeldTypes: conf.excludeWeldTypes };
+}
+
+const ALL_SCOPE_NOTE =
+  "ALL sub-contractors: every figure is computed over the project scope (the loaded " +
+  "WELD_DUMP + CCC + ACCIONA union, INCO excluded), not summed from the four party pages, " +
+  "so a joint is never counted twice. The party split of the page (Slug Catcher, TMCP) does not apply.";
+const ALL_CLASS_NOTE =
+  "Service-class rows: CCC joints carry no Service Cat, so under ALL they group by " +
+  "their own Service Class label alongside the Weld Dump `Service Class+Service Cat` keys.";
+const ALL_PWHT_NOTE =
+  "PWHT by RT %: the party pages' `PWHT Weld Status not blank` filter is not applied under ALL " +
+  "because CCC rows carry no PWHT Weld Status and would be dropped entirely.";
+const ALL_WPS_NOTE =
+  "Per-WPS pivot under ALL drops both `THD` (as the CCC page does) and `DMY` (as the other pages do).";
 
 // ── the assembler ───────────────────────────────────────────────────────────
 
@@ -1142,6 +1252,11 @@ export type WeldingPageOpts = {
   as_of?: string;
   /** Page-1 slicer bar. Ignored on every other page. */
   filters?: WeldingFilters;
+  /**
+   * Render a per-party page (3–11, 12–40, 41–44) with the ALL sub-contractor —
+   * see {@link SUBCO_ALL}. Ignored on pages 1 and 2, which are project-wide already.
+   */
+  allSubcos?: boolean;
 };
 
 /**
@@ -1232,6 +1347,10 @@ export async function getWeldingPage(
   // untouched no matter what a caller passes.
   const requested = n === 1 ? normaliseFilters(opts.filters) : {};
   const bar = n === 1 ? await filterWidgets(requested) : null;
+  // The NDE / PWHT pages own one slicer of their own: Service Class (2026-09-15).
+  const ndeSlicers = NDE_PAGES.has(n) ? normaliseFilters(opts.filters) : {};
+  const sclass = ndeSlicers.sclass;
+  const pwht = ndeSlicers.pwht;
   // Only values that actually exist are applied — an unknown one is reported
   // as "All" in the widget AND dropped from the query, so the page can never
   // show a filter it did not honour.
@@ -1245,9 +1364,12 @@ export async function getWeldingPage(
         wtype: applied(3),
         wcat: applied(4),
       }
-    : {};
+    : { sclass, pwht };
   const ctx: Ctx = { asOf: as_of, asOfOrigin: origin, notes: new Set(), filters };
   if (bar?.unknown) note(ctx, FILTER_UNKNOWN_NOTE);
+  // ALL applies to the per-party families only; pages 1/2 are project-wide already.
+  const all = Boolean(opts.allSubcos) && (SUBCON_PAGES.has(n) || NDE_PAGES.has(n) || WPS_PAGES.has(n));
+  if (all) note(ctx, ALL_SCOPE_NOTE);
 
   let widgets: Widget[];
   const unavailable = UNAVAILABLE_PAGES.get(n);
@@ -1259,11 +1381,14 @@ export async function getWeldingPage(
   } else if (n === 2) {
     widgets = await buildProjectStatusPage(spec, ctx);
   } else if (SUBCON_PAGES.has(n)) {
-    widgets = await buildSubconPage(spec, SUBCON_PAGES.get(n)!, ctx);
+    const confs = SUBCON_PAGES.get(n)!;
+    widgets = await buildSubconPage(spec, all ? [allConf(confs[0]!)] : confs, ctx);
   } else if (NDE_PAGES.has(n)) {
-    widgets = await buildNdePage(spec, NDE_PAGES.get(n)!, ctx);
+    const conf = NDE_PAGES.get(n)!;
+    widgets = await buildNdePage(spec, all ? { ...conf, sub: SUBCO_ALL } : conf, ctx);
   } else if (WPS_PAGES.has(n)) {
-    widgets = await buildWpsPage(spec, WPS_PAGES.get(n)!, ctx);
+    const confs = WPS_PAGES.get(n)!;
+    widgets = await buildWpsPage(spec, all ? [allConf(confs[0]!)] : confs, ctx);
   } else {
     widgets = spec.widgets.map(emptyWidget);
     note(ctx, `page ${n} has no build rule yet`);
@@ -1272,11 +1397,16 @@ export async function getWeldingPage(
   for (const msg of ctx.notes) widgets.push(textWidget(msg));
   // The bar goes FIRST, ahead of every data widget.
   if (bar) widgets = [...bar.widgets, ...widgets];
+  if (all) {
+    widgets = widgets.map((w) =>
+      w.kind === "table" || w.kind === "chart" ? { ...w, title: allWidgetTitle(w.title) } : w,
+    );
+  }
 
   return {
     page: spec.page,
-    id: spec.id,
-    title: spec.title,
+    id: all ? `${spec.id}-all` : spec.id,
+    title: all ? allTitle(spec.title) : spec.title,
     subtitle: spec.subtitle ?? undefined,
     widgets,
     ...(bar
@@ -1973,7 +2103,7 @@ async function buildSubconPage(
         bundleBy(prScope, GROUP_WELD_CAT, prAv),
         bundleTotal(prScope, prAv),
         weeklyProgress({
-          subContractor: conf.sub,
+          ...partyArgs(conf.sub),
           weeks: 8,
           excludeWeldCats: ["J"],
           sources: sourcesFor(conf.sub),
@@ -2030,12 +2160,13 @@ async function buildSubconPage(
         const isRt = !/pwht/i.test(w.canvas_id);
         const src = {
           sources: SOURCES_PR_ALL_LOADED,
-          subContractor: blk.conf.sub,
+          ...partyArgs(blk.conf.sub),
         };
         const [points, rtCur, pwhtCur] = await Promise.all([
           weeklySnapshot({
             metrics: snapshotMetricsFor(w),
-            subContractor: blk.conf.sub,
+            // ALL: every party summed, the PROJECT sentinel dropped — the page-1 bars.
+            subContractor: isAll(blk.conf.sub) ? undefined : blk.conf.sub,
             aggregate: true,
             excludeProject: true,
             weeks: w.labels.length,
@@ -2046,6 +2177,19 @@ async function buildSubconPage(
         out.push(withCurrentWeek(snapshotChart(w, points), rtCur, pwhtCur));
         if (points.length === 0) note(ctx, TREND_NOTE);
         else note(ctx, BACKLOG_PROVENANCE_NOTE);
+      } else if (isAll(blk.conf.sub)) {
+        // The party rejection-rate lines have project-wide twins (M25P/M36P):
+        // read those exactly as page 1 does, deduplicated per week, never summed.
+        const metrics = snapshotMetricsFor(w, { project: true });
+        const points = await weeklySnapshot({
+          metrics,
+          scope: SNAPSHOT_SCOPES.ALL,
+          aggregate: false,
+          weeks: w.labels.length,
+        });
+        out.push(snapshotChart(w, points, { project: true }));
+        if (points.length === 0) note(ctx, TREND_NOTE);
+        if (metrics.some((m) => PROVISIONAL_METRICS.has(m))) note(ctx, PROVISIONAL_NOTE);
       } else {
         const metrics = snapshotMetricsFor(w);
         const points = await weeklySnapshot({
@@ -2167,11 +2311,13 @@ async function buildNdePage(
   ctx: Ctx,
 ): Promise<Widget[]> {
   const isCcc = conf.sub === "CCC";
+  const all = isAll(conf.sub);
   const variant = variantFor(conf.sub);
   const classGroup = serviceClassGroup(conf.sub);
   const scope: Scope = {
     sources: sourcesFor(conf.sub),
-    subContractor: conf.sub,
+    subContractor: all ? undefined : conf.sub,
+    excludeSubContractors: all ? PROJECT_EXCLUDED_SUBCONTRACTORS : undefined,
     rtPct: conf.rtPct,
     temporaryLines: false,
     weldedOnly: true,
@@ -2180,7 +2326,37 @@ async function buildNdePage(
     // non-blank by construction) and restricts Joints Welded / PWHT Done.
     // CCC rows carry no `PWHT Weld Status` at all (its PWHT comes from the
     // joint record), so applying it there would empty the page.
-    pwhtStatusPresent: conf.kind === "pwht" && !isCcc ? true : undefined,
+    pwhtStatusPresent: conf.kind === "pwht" && !isCcc && !all ? true : undefined,
+  };
+  if (all) note(ctx, ALL_CLASS_NOTE);
+  if (all && conf.kind === "pwht") note(ctx, ALL_PWHT_NOTE);
+  // Service Class slicer: the options are the classes that occur under the page's
+  // own scope (party + RT %), BEFORE the slicer is applied; a value that is not
+  // among them is reported as "All" and dropped, like page 1's slicers.
+  const [classOptions, pwhtOptions] = await Promise.all([serviceClassOptions(scope, classGroup), pwhtYnOptions(scope)]);
+  const requestedClass = ctx.filters.sclass;
+  const classApplied = requestedClass !== undefined && classOptions.includes(requestedClass);
+  if (requestedClass !== undefined && !classApplied) note(ctx, FILTER_UNKNOWN_NOTE);
+  if (classApplied) scope.serviceClass = { sql: classGroup.sql, value: requestedClass };
+  const classFilter: FilterWidget = {
+    kind: "filter",
+    id: "sclass",
+    label: "Service Class",
+    options: [FILTER_ALL, ...classOptions],
+    value: classApplied ? requestedClass : FILTER_ALL,
+  };
+  // PWHT Y/N: the raw token (`Y` / `N` / `25.01`), see migration 0038 and R-04.
+  const requestedPwht = ctx.filters.pwht;
+  const pwhtApplied = requestedPwht !== undefined && pwhtOptions.includes(requestedPwht);
+  if (requestedPwht !== undefined && !pwhtApplied) note(ctx, FILTER_UNKNOWN_NOTE);
+  if (pwhtApplied) scope.pwhtYn = requestedPwht;
+  if (pwhtOptions.includes(PWHT_AMBIGUOUS_TOKEN)) note(ctx, PWHT_TOKEN_NOTE);
+  const pwhtFilter: FilterWidget = {
+    kind: "filter",
+    id: "pwht",
+    label: "PWHT Y/N",
+    options: [FILTER_ALL, ...pwhtOptions],
+    value: pwhtApplied ? requestedPwht : FILTER_ALL,
   };
   const av = await availability(variant, sourcesFor(conf.sub), scope);
   const family =
@@ -2192,28 +2368,33 @@ async function buildNdePage(
         ? RT_BACKLOG_EP
         : RT_BACKLOG_PRALL;
 
+  // The details table is the pbix matrix `Weld Cat` → `Service Class`: a service
+  // class recurs under F (shop) and S (field) because part of a line is welded in
+  // the shop and part on site (owner, 2026-09-15). Group by the PAIR, never by
+  // class alone, so a class's shop and field joints land under their own cat.
+  const catClassGroup = weldCatClassGroup(classGroup);
   // R2-05: `RT Selected Date` is empty on every CCC row, so M51/M66 have no
   // clock for CCC. Honest-empty, never a substituted date.
   const wantAging = !isCcc;
   const [
     total,
     byCat,
-    byClass,
+    byCatClass,
     byRtPct,
     agingTotal,
     agingByCat,
-    agingByClass,
+    agingByCatClass,
   ] = await Promise.all([
     bundleTotal(scope, av),
     bundleBy(scope, GROUP_WELD_CAT, av),
-    bundleBy(scope, classGroup, av),
+    bundleBy(scope, catClassGroup, av),
     bundleBy(scope, GROUP_RT_PCT, av),
     wantAging ? backlogAging(scope, ctx.asOf, family) : Promise.resolve(null),
     wantAging
       ? backlogAgingBy(scope, ctx.asOf, family, GROUP_WELD_CAT)
       : Promise.resolve(new Map<string | null, AgingBuckets>()),
     wantAging
-      ? backlogAgingBy(scope, ctx.asOf, family, classGroup)
+      ? backlogAgingBy(scope, ctx.asOf, family, catClassGroup)
       : Promise.resolve(new Map<string | null, AgingBuckets>()),
   ]);
   if (!av.spool) note(ctx, FABRICATED_NOTE);
@@ -2231,7 +2412,7 @@ async function buildNdePage(
   const gapByGroup = wantGap
     ? new Map(
         (
-          await coverageGapByServiceClass(scope, conf.rtPct / 100, classGroup, {
+          await coverageGapByServiceClass(scope, conf.rtPct / 100, catClassGroup, {
             byHa: await hasHaValues(scope),
           })
         ).map((r) => [r.group, r.backlog_joints] as const),
@@ -2255,7 +2436,8 @@ async function buildNdePage(
 
   const totalB = attach(total, agingTotal ?? undefined);
 
-  const out: Widget[] = [];
+  // The slicers go FIRST, ahead of every data widget (as page 1's bar does).
+  const out: Widget[] = [classFilter, pwhtFilter];
   for (const w of spec.widgets) {
     if (w.kind !== "table") {
       out.push(emptyWidget(w));
@@ -2263,20 +2445,19 @@ async function buildNdePage(
     }
     const key = w.columns[0];
     if (key === "Service Class+Weld Cat" || key === "Weld Cat") {
-      // Hierarchical detail table: weld cat, then its service classes.
-      const srcByCat = byCat;
-      const srcByClass = byClass;
+      // Hierarchical detail table: each weld cat, then ITS service classes
+      // (indented), the way the pbix matrix expands.
       const rows: RowSpec[] = [];
-      for (const c of orderedCats(srcByCat.keys())) {
-        rows.push({ label: c, bundle: attach(srcByCat.get(c)!, agingByCat.get(c)) });
-      }
-      for (const cls of [...srcByClass.keys()]
-        .filter((k): k is string => k !== null)
-        .sort()) {
-        rows.push({
-          label: cls,
-          bundle: attach(srcByClass.get(cls)!, agingByClass.get(cls), gapByGroup.get(cls) ?? 0),
-        });
+      for (const c of orderedCats(byCat.keys())) {
+        rows.push({ label: c, bundle: attach(byCat.get(c)!, agingByCat.get(c)) });
+        for (const k of [...byCatClass.keys()]
+          .filter((k): k is string => k !== null && splitCatClass(k).cat === c)
+          .sort((a, b) => splitCatClass(a).cls.localeCompare(splitCatClass(b).cls))) {
+          rows.push({
+            label: CHILD_INDENT + splitCatClass(k).cls.trim(),
+            bundle: attach(byCatClass.get(k)!, agingByCatClass.get(k), gapByGroup.get(k) ?? 0),
+          });
+        }
       }
       out.push(metricTable(w, rows, totalB));
     } else if (key === "Service Class+NDT Remarks") {
@@ -2323,7 +2504,7 @@ async function buildWpsPage(
     confs.map(async (conf) => {
       const scope: Scope = {
         ...baseScope(conf),
-        excludeWeldTypes: conf.excludeWeldTypes,
+        excludeWeldTypes: isAll(conf.sub) ? ["THD", "DMY"] : conf.excludeWeldTypes,
         wpsPresent: true,
       };
       const [rows, total] = await Promise.all([
@@ -2338,6 +2519,7 @@ async function buildWpsPage(
     }),
   );
   if (!av.sourceLoaded) note(ctx, sourceNote(confs[0]!.sub));
+  if (isAll(confs[0]!.sub)) note(ctx, ALL_WPS_NOTE);
   const out: Widget[] = [];
   let i = 0;
   for (const w of spec.widgets) {
@@ -2443,6 +2625,7 @@ async function coverageGapTable(
 
 /** Provenance note for a page whose fact source has not been loaded yet. */
 function sourceNote(sub: string): string {
+  if (isAll(sub)) return "No fact rows are loaded for any sub-contractor source, so every figure on this page is unavailable — not zero.";
   return sub === "CCC"
     ? CCC_NOTE
     : `${sub} is not loaded: weld holds no rows for this subcontractor's source, ` +

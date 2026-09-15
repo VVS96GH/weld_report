@@ -111,18 +111,15 @@ describe("getWeldingPage — structure equals analysis/mockups/welding-spec.json
       // mockup declares (Sub-Contractor / Weld Type / Weld Cat). It is server
       // chrome, not a mockup widget, so it is checked here and then skipped —
       // the position-for-position comparison below is unchanged.
+      // The NDE / PWHT pages (12–40) likewise lead with their own Service Class
+      // and PWHT Y/N slicers (2026-09-15).
       let body = model.widgets;
-      if (n === 1) {
-        const bar = body.slice(0, 5);
-        expect(bar.map((w) => w.kind)).toEqual(Array(5).fill("filter"));
-        expect(bar.map((w) => (w.kind === "filter" ? w.id : ""))).toEqual([
-          "ha",
-          "area",
-          "subco",
-          "wtype",
-          "wcat",
-        ]);
-        body = body.slice(5);
+      const barIds = n === 1 ? ["ha", "area", "subco", "wtype", "wcat"] : n >= 12 && n <= 40 ? ["sclass", "pwht"] : [];
+      if (barIds.length > 0) {
+        const bar = body.slice(0, barIds.length);
+        expect(bar.map((w) => w.kind)).toEqual(Array(barIds.length).fill("filter"));
+        expect(bar.map((w) => (w.kind === "filter" ? w.id : ""))).toEqual(barIds);
+        body = body.slice(barIds.length);
       }
 
       // Everything the mockup declares, position for position.
@@ -193,6 +190,46 @@ describe("honest-empty: no fabricated zeros with no data", () => {
         ),
         `page ${n}`,
       ).toBe(true);
+    }
+  });
+});
+
+describe("ALL sub-contractor rendering (allSubcos)", () => {
+  // The representative pages the option-A screens borrow for ALL (lib/screens.ts).
+  const REPRESENTATIVE = [7, 3, 12, 13, 14, 18, 26, 41];
+  for (const n of REPRESENTATIVE) {
+    it(`page ${n} keeps the mockup structure and drops the party from every title`, async () => {
+      const spec = specPage(n);
+      const model = await getWeldingPage(n, { allSubcos: true });
+      expect(model.id).toBe(`${spec.id}-all`);
+      expect(model.title).toBe(spec.title.replace(/\b(CCC|GAC|TEKFEN|MEDGULF)\b/g, "ALL SUB-CONTRACTORS"));
+      expect(model.title).not.toMatch(/\b(CCC|GAC|TEKFEN|MEDGULF)\b/);
+      const declared = model.widgets.filter((w) => w.kind !== "filter").slice(0, spec.widgets.length);
+      expect(declared.map((w) => w.kind)).toEqual(spec.widgets.map((w) => w.kind));
+      for (let i = 0; i < spec.widgets.length; i++) {
+        const want = spec.widgets[i];
+        const got = declared[i];
+        if (want.kind === "table" && got.kind === "table") {
+          expect(got.columns).toEqual(want.columns);
+          expect(got.title).not.toMatch(/\b(CCC|GAC|TEKFEN|MEDGULF)\b/);
+        }
+        if (want.kind === "chart" && got.kind === "chart") {
+          expect(got.canvas_id).toBe(want.canvas_id);
+          expect(got.datasets.map((d) => d.label)).toEqual(want.datasets.map((d) => d.label ?? ""));
+        }
+      }
+      const notes = model.widgets.filter((w) => w.kind === "text").map((w) => (w.kind === "text" ? w.text : ""));
+      expect(notes.some((t) => t.startsWith("ALL sub-contractors:"))).toBe(true);
+    });
+  }
+
+  it("is a no-op on the project pages 1 and 2", async () => {
+    for (const n of [1, 2]) {
+      const plain = await getWeldingPage(n);
+      const all = await getWeldingPage(n, { allSubcos: true });
+      expect(all.id).toBe(plain.id);
+      expect(all.title).toBe(plain.title);
+      expect(all.widgets.length).toBe(plain.widgets.length);
     }
   });
 });

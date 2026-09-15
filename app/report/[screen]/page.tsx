@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 
 import type { FilterWidget, PageModel, Widget } from "@/lib/page-model";
 import { getPage, type WeldingFilters } from "@/lib/page-source";
-import { screenById, screenValues, screenVariantLabel, SCREENS } from "@/lib/screens";
+import { isAllSubcos, screenById, screenValues, screenVariantLabel, SCREENS } from "@/lib/screens";
 import { WELDING_REPORT_SUBTITLE } from "@/lib/welding-pages";
 import { FilterBar } from "@/components/FilterBar";
 import { PageView } from "@/components/PageView";
@@ -75,7 +75,9 @@ export default async function ReportScreen(props: PageProps<"/report/[screen]">)
     if (v) (passthrough as Record<string, string>)[key] = v;
   }
 
-  const models = pages ? await Promise.all(pages.map((n) => getPage(n, undefined, { filters: passthrough }))) : [];
+  // "ALL" renders the representative party pages with the project scope (lib/screens.ts SUBCO_ALL).
+  const allSubcos = isAllSubcos(values);
+  const models = pages ? await Promise.all(pages.map((n) => getPage(n, undefined, { filters: passthrough, allSubcos }))) : [];
   const variant = screenVariantLabel(def, values);
 
   // Filters this screen owns (subco / rt) come first; page 1's own slicers follow as

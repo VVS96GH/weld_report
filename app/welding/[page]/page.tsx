@@ -15,7 +15,8 @@ export const dynamic = "force-dynamic";
 
 // Page-1 slicers travel as URL search params (same mechanism as the flange
 // dashboard, ruling RF-08): the server re-renders the PageModel with them applied.
-const FILTER_PARAMS = ["ha", "area", "subco", "wtype", "wcat"] as const;
+// `sclass` / `pwht` are the NDE / PWHT pages' own slicers; page 1 ignores them.
+const FILTER_PARAMS = ["ha", "area", "subco", "wtype", "wcat", "sclass", "pwht"] as const;
 
 function readForecastFilters(params: Record<string, string | string[] | undefined>): ForecastFilters {
   const filters: ForecastFilters = {};

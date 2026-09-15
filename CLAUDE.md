@@ -156,7 +156,7 @@ rows, ~7 min), `db:load:ut-ccc` (tracker + the CCC UT overlay), `db:load:acciona
 (`sources/l0_abs_guide.csv` → `ref_ha_guide`, plus `HA.csv` → `ref_ha_area` when present),
 `db:load:talisman` (`sources/Joint.csv` → `ref_talisman_joint`, the pbix TALISMAN DATA; only
 the Talisman backlog card reads it). `weld` holds every source at weld-pass grain with a `source` enum; metrics
-read the joint-grain materialised views `mv_joint` / `mv_joint_wps` (migrations 0013–0034;
+read the joint-grain materialised views `mv_joint` / `mv_joint_wps` (migrations 0013–0038;
 never edit an applied migration — a new one re-creates the view from the previous text),
 refreshed by the loaders — never `count(*)` over `weld` for a joint metric.
 Column names are `analysis/dump/profile.md` §8.1 verbatim — the contract between the DB and

@@ -30,13 +30,26 @@ export type ScreenDef = {
   passthrough?: readonly string[];
 };
 
+/**
+ * "ALL" (owner request 2026-09-15): the page is rendered with the project scope
+ * instead of one party — lib/pages/welding.ts `allSubcos`. It is the FIRST option
+ * and the default, as a pbix slicer with nothing selected is. The structure comes
+ * from a representative party page (`ALL_PAGES` below); the numbers do not.
+ */
+export const SUBCO_ALL = "ALL";
 const SUBCOS = ["CCC", "GAC", "TEKFEN", "MEDGULF"] as const;
+const ALL_OPTION: ScreenFilterOption = { value: SUBCO_ALL, label: SUBCO_ALL };
 const subcoFilter = (options: ScreenFilterOption[] = SUBCOS.map((s) => ({ value: s, label: s }))): ScreenFilterDef => ({
   id: "subco",
   label: "Sub-Contractor",
-  options,
-  default: options[0]?.value ?? "CCC",
+  options: [ALL_OPTION, ...options],
+  default: SUBCO_ALL,
 });
+
+/** Whether the applied values ask for the ALL sub-contractor rendering. */
+export function isAllSubcos(values: Record<string, string>): boolean {
+  return values.subco === SUBCO_ALL;
+}
 const rtFilter = (pcts: readonly number[]): ScreenFilterDef => ({
   id: "rt",
   label: "RT %",
@@ -46,6 +59,8 @@ const rtFilter = (pcts: readonly number[]): ScreenFilterDef => ({
 
 /** Sub-contractor status: the "PR all" table page (3-6) followed by the chart page (7-11). */
 const STATUS_PAGES: Record<string, number[]> = {
+  // ALL borrows the CCC pages' structure (rendered project-wide, see SUBCO_ALL)
+  [SUBCO_ALL]: [7, 3],
   CCC: [7, 3],
   GAC: [8, 4],
   "GAC-SLG": [9],
@@ -55,6 +70,8 @@ const STATUS_PAGES: Record<string, number[]> = {
 
 /** NDE status by RT coverage: sub-contractor → RT% → mockup page. */
 const NDE_PAGES: Record<string, Record<string, number>> = {
+  // ALL: the CCC pages' structure; RT 30 % exists for GAC only, so that one is GAC's.
+  [SUBCO_ALL]: { "100": 12, "5": 14, "10": 16, "20": 18, "30": 26 },
   CCC: { "100": 12, "5": 14, "10": 16, "20": 18 },
   GAC: { "100": 19, "5": 21, "10": 23, "20": 25, "30": 26 },
   TEKFEN: { "100": 27, "5": 29, "10": 31, "20": 33 },
@@ -63,13 +80,14 @@ const NDE_PAGES: Record<string, Record<string, number>> = {
 
 /** PWHT status by RT coverage. */
 const PWHT_PAGES: Record<string, Record<string, number>> = {
+  [SUBCO_ALL]: { "100": 13, "5": 15, "10": 17 },
   CCC: { "100": 13, "5": 15, "10": 17 },
   GAC: { "100": 20, "5": 22, "10": 24 },
   TEKFEN: { "100": 28, "5": 30, "10": 32 },
   MEDGULF: { "100": 35, "5": 37, "10": 39 },
 };
 
-const WPS_PAGES: Record<string, number> = { CCC: 41, GAC: 42, TEKFEN: 43, MEDGULF: 44 };
+const WPS_PAGES: Record<string, number> = { [SUBCO_ALL]: 41, CCC: 41, GAC: 42, TEKFEN: 43, MEDGULF: 44 };
 
 export const SCREENS: readonly ScreenDef[] = [
   {
@@ -107,6 +125,8 @@ export const SCREENS: readonly ScreenDef[] = [
     title: "NDE Status by RT %",
     nav: "NDE by RT %",
     filters: [subcoFilter(), rtFilter([100, 30, 20, 10, 5])],
+    // the page's own Service Class and PWHT Y/N slicers (lib/pages/welding.ts buildNdePage)
+    passthrough: ["sclass", "pwht"],
     pages: (v) => {
       const n = NDE_PAGES[v.subco]?.[v.rt];
       return n ? [n] : null;
@@ -117,6 +137,7 @@ export const SCREENS: readonly ScreenDef[] = [
     title: "PWHT Status by RT %",
     nav: "PWHT by RT %",
     filters: [subcoFilter(), rtFilter([100, 10, 5])],
+    passthrough: ["sclass", "pwht"],
     pages: (v) => {
       const n = PWHT_PAGES[v.subco]?.[v.rt];
       return n ? [n] : null;

@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { SCREENS, screenById, screenValues, screenVariantLabel } from "@/lib/screens";
+import { isAllSubcos, SCREENS, screenById, screenValues, screenVariantLabel, SUBCO_ALL } from "@/lib/screens";
 
 /**
  * Consolidation option A is a pure regrouping of the 44 mockup pages: every page
  * must be reachable from exactly one (screen, filter combination), and no
- * combination may point outside 1..44.
+ * combination may point outside 1..44. The "ALL" sub-contractor (2026-09-15) is
+ * the exception by design: it re-renders a representative party page with the
+ * project scope, so it is excluded from the exactly-once check and covered by
+ * its own.
  */
 describe("option A screen registry", () => {
   const combos: { screen: string; values: Record<string, string>; pages: number[] | null }[] = [];
@@ -18,9 +21,9 @@ describe("option A screen registry", () => {
     }
   }
 
-  it("covers every mockup page exactly once", () => {
+  it("covers every mockup page exactly once (party combinations)", () => {
     const hits = new Map<number, string[]>();
-    for (const c of combos) for (const p of c.pages ?? []) hits.set(p, [...(hits.get(p) ?? []), `${c.screen}:${JSON.stringify(c.values)}`]);
+    for (const c of combos.filter((c) => !isAllSubcos(c.values))) for (const p of c.pages ?? []) hits.set(p, [...(hits.get(p) ?? []), `${c.screen}:${JSON.stringify(c.values)}`]);
     for (let p = 1; p <= 44; p++) expect(hits.get(p), `page ${p}`).toHaveLength(1);
     for (const [p, who] of hits) expect(p, who.join()).toBeGreaterThanOrEqual(1);
   });
@@ -37,9 +40,24 @@ describe("option A screen registry", () => {
     expect(nulls.sort()).toEqual(["nde CCC 30", "nde MEDGULF 30", "nde TEKFEN 30"]);
   });
 
+  it("offers ALL first on every sub-contractor screen and resolves it to a party page", () => {
+    for (const s of SCREENS) {
+      const subco = s.filters.find((f) => f.id === "subco");
+      if (!subco) continue;
+      expect(subco.options[0]?.value).toBe(SUBCO_ALL);
+      expect(subco.default).toBe(SUBCO_ALL);
+    }
+    for (const c of combos.filter((c) => isAllSubcos(c.values))) {
+      expect(c.pages, `${c.screen} ${JSON.stringify(c.values)}`).not.toBeNull();
+      for (const p of c.pages ?? []) expect(p).toBeGreaterThanOrEqual(3);
+    }
+    // RT 30 % has one party page (GAC 26); ALL borrows that structure.
+    expect(screenById("nde")!.pages({ subco: SUBCO_ALL, rt: "30" })).toEqual([26]);
+  });
+
   it("falls back to the default when a filter value is unknown", () => {
     const nde = screenById("nde")!;
-    expect(screenValues(nde, { subco: "NOPE", rt: "100" })).toEqual({ subco: "CCC", rt: "100" });
+    expect(screenValues(nde, { subco: "NOPE", rt: "100" })).toEqual({ subco: SUBCO_ALL, rt: "100" });
     expect(screenVariantLabel(nde, { subco: "GAC", rt: "100" })).toBe("GAC · 100 %");
   });
 });

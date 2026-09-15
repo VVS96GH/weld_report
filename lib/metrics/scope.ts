@@ -280,7 +280,23 @@ export type Scope = {
    */
   byUtAll?: string;
   diaBand?: string;
+  /**
+   * The NDE / PWHT pages' Service Class slicer (owner request 2026-09-15): `sql`
+   * is the page's OWN class expression (the `GroupSpec.sql` it groups rows by —
+   * `w.service_class_cat_wd` or `w.service_class_cat_ndt`, never caller text),
+   * `value` the chosen label, bound as a parameter.
+   */
+  serviceClass?: { sql: string; value: string };
+  /**
+   * The NDE / PWHT pages' PWHT Y/N slicer (owner request 2026-09-15): the RAW
+   * token at joint grain — `PWHT Y/N` on dump rows, `PWHT Y/N CCC` on CCC rows
+   * (migration 0038) — so `Y`, `N` and the dump's `25.01` are each their own value.
+   */
+  pwhtYn?: string;
 };
+
+/** The slicer's column: one expression for both sources (0038). */
+export const pwhtYnExpr = (a = "w") => `coalesce(${a}.pwht_y_n, ${a}.pwht_y_n_ccc)`;
 
 /**
  * `[By UT All]` — materialised on `mv_joint` by migration 0033, because the
@@ -332,6 +348,15 @@ export function scopeConditions(
   }
   if (scope.rtPct !== undefined) {
     c.push(`${a}.rt_pct = ${p.add(scope.rtPct)}`);
+  }
+  if (scope.pwhtYn !== undefined) {
+    c.push(`${pwhtYnExpr(a)} = ${p.add(scope.pwhtYn)}`);
+  }
+  if (scope.serviceClass !== undefined) {
+    // Compared TRIMMED: `service_class_cat_wd` is `class || ' ' || cat`, so a row with
+    // no Service Cat (every CCC row under ALL) carries a trailing space that a URL
+    // round-trip drops — 42 of 156 classes were unselectable (owner, 2026-09-15).
+    c.push(`btrim(${scope.serviceClass.sql}) = ${p.add(scope.serviceClass.value.trim())}`);
   }
   if (scope.weldTypes?.length) {
     c.push(`${a}.weld_type = ANY(${p.any(scope.weldTypes)})`);
@@ -571,6 +596,10 @@ export type WeldingFilters = {
   subco?: string;
   wtype?: string;
   wcat?: string;
+  /** NDE / PWHT pages (12–40) only: one Service Class label; absent = All. */
+  sclass?: string;
+  /** NDE / PWHT pages (12–40) only: one PWHT Y/N token (`Y` / `N` / `25.01`); absent = All. */
+  pwht?: string;
 };
 
 export const FILTER_ALL = "All";
@@ -594,6 +623,8 @@ export function normaliseFilters(f: WeldingFilters | undefined): WeldingFilters 
     subco: clean(f?.subco),
     wtype: clean(f?.wtype),
     wcat: clean(f?.wcat),
+    sclass: clean(f?.sclass),
+    pwht: clean(f?.pwht),
   };
 }
 

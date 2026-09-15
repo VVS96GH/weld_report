@@ -10,8 +10,18 @@ export type { FlangeFilters };
  * The database source applies them as an extra WHERE on every page-1 measure
  * (lib/pages/welding.ts); the fixture source has no filterable data and ignores them.
  */
-export type WeldingFilters = { ha?: string; area?: string; subco?: string; wtype?: string; wcat?: string };
-export type WeldingPageOpts = { as_of?: string; filters?: WeldingFilters };
+export type WeldingFilters = { ha?: string; area?: string; subco?: string; wtype?: string; wcat?: string; sclass?: string; pwht?: string };
+export type WeldingPageOpts = {
+  as_of?: string;
+  filters?: WeldingFilters;
+  /**
+   * Render a per-party page with the ALL sub-contractor (project scope, INCO
+   * excluded) — the "ALL" option of the option-A screens (owner request
+   * 2026-09-15). The fixture has no such data and says so instead of showing
+   * one party's numbers under an ALL title.
+   */
+  allSubcos?: boolean;
+};
 
 /**
  * Where a rendered PageModel's data comes from.
@@ -65,7 +75,21 @@ export async function getPage(
   if (source === "database") {
     return getDatabasePage(n, opts);
   }
-  return getFixturePage(n);
+  const page = getFixturePage(n);
+  if (opts.allSubcos && n > 2) {
+    return {
+      ...page,
+      id: `${page.id}-all`,
+      title: page.title.replace(/\b(CCC|GAC|TEKFEN|MEDGULF)\b/g, "ALL SUB-CONTRACTORS"),
+      widgets: [
+        {
+          kind: "text",
+          text: "ALL sub-contractors is computed from the database only; the mockup snapshot has no project-wide version of this page.",
+        },
+      ],
+    };
+  }
+  return page;
 }
 
 // ── Flange dashboard (single page, filter-driven; ruling RF-08) ──────────────
