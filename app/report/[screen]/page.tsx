@@ -3,8 +3,9 @@ import { notFound } from "next/navigation";
 
 import type { FilterWidget, PageModel, Widget } from "@/lib/page-model";
 import { getPage, type WeldingFilters } from "@/lib/page-source";
-import { DEMO_SCREEN_ID, isAllRt, isAllSubcos, screenById, screenValues, screenVariantLabel, SCREENS } from "@/lib/screens";
+import { DEMO2_SCREEN_ID, DEMO_SCREEN_ID, isAllRt, isAllSubcos, screenById, screenValues, screenVariantLabel, SCREENS } from "@/lib/screens";
 import { DemoView } from "@/components/DemoView";
+import { Demo2View } from "@/components/Demo2View";
 import { WELDING_REPORT_SUBTITLE } from "@/lib/welding-pages";
 import { FilterBar } from "@/components/FilterBar";
 import { PageView } from "@/components/PageView";
@@ -70,6 +71,11 @@ export default async function ReportScreen(props: PageProps<"/report/[screen]">)
     const { getDemoData } = await import("@/lib/pages/demo");
     const data = await getDemoData();
     return <DemoView data={data} subtitle={`Data as of ${data.as_of}`} />;
+  }
+  if (def.id === DEMO2_SCREEN_ID) {
+    const { getDemo2Data } = await import("@/lib/pages/demo2");
+    const data = await getDemo2Data();
+    return <Demo2View data={data} subtitle={`Data as of ${data.as_of}`} />;
   }
 
   const params = await props.searchParams;

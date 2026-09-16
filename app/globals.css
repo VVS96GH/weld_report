@@ -2015,3 +2015,30 @@ html {
 @media (max-width: 767px) {
   .demo-tile-top { flex-direction: column; align-items: flex-start; }
 }
+
+/* ── Demo 2 (components/Demo2View.tsx): burn-down, HA readiness, lead-time multiples ── */
+.demo-highlights { margin-bottom: 16px; }
+.demo-highlight-list { margin: 8px 0 0; padding-inline-start: 20px; font-size: 13px; line-height: 1.6; color: var(--fg); max-width: 90ch; }
+.demo-highlight-list li + li { margin-top: 4px; }
+.demo-burn-card, .demo-ha-card { margin-bottom: 16px; }
+.demo-line-primary { fill: none; stroke: var(--accent); stroke-width: 2.5; stroke-linejoin: round; }
+.demo-dot-primary { fill: var(--accent); }
+.demo-projection { fill: none; stroke: var(--attention); stroke-width: 2; stroke-dasharray: 6 4; }
+.demo-legend-svg text { fill: var(--muted); }
+.demo-pct-cell { min-width: 150px; }
+.demo-pct-bar { display: inline-block; vertical-align: middle; width: 80px; height: 8px; border-radius: 999px; background: var(--border); margin-inline-end: 8px; overflow: hidden; }
+.demo-pct-fill { display: block; height: 100%; border-radius: 999px; }
+.demo-pct-text { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.demo-bar-ok { fill: var(--ok-soft); background: var(--ok-soft); }
+.demo-bar-warn { fill: var(--warn); background: var(--warn); }
+.demo-bar-bad { fill: var(--attention); background: var(--attention); }
+.demo-swatch { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-inline: 6px 2px; vertical-align: middle; }
+.demo-lead-grid { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.demo-lead-card .card-header { text-transform: none; letter-spacing: 0; font-size: 14px; }
+.demo-lead-stats { display: flex; gap: 18px; margin-top: 6px; font-size: 12px; color: var(--muted); }
+.demo-lead-stats b { color: var(--fg); font-weight: 700; }
+.demo-bar-neutral { fill: var(--chart-7); background: var(--chart-7); }
+.demo-burn-card .card-header, .demo-ha-card .card-header, .demo-heat-card .card-header, .demo-lead-card .card-header, .demo-highlights .card-header {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap;
+}
+.demo-burn-card .demo-svg { max-width: 1180px; }
