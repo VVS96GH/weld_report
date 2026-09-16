@@ -167,7 +167,19 @@ export const SCREENS: readonly ScreenDef[] = [
       return n ? [n] : null;
     },
   },
+  {
+    id: "demo",
+    title: "Demo widgets",
+    nav: "Demo",
+    filters: [],
+    pages: () => [],
+  },
 ];
+
+/** The "Demo" screen (2026-09-16): four advanced widget forms over the project scope
+ *  (lib/pages/demo.ts + components/DemoView.tsx). It owns no mockup page, so the
+ *  registry's page coverage is unchanged. */
+export const DEMO_SCREEN_ID = "demo";
 
 export const SCREEN_IDS = SCREENS.map((s) => s.id);
 

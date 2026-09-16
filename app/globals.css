@@ -1977,3 +1977,41 @@ html {
 @media (max-width: 1100px) {
   .pbi-flange-grid, .pbi-row, .pbi-row--top, .pbi-row--leak, .pbi-row--repair { grid-template-columns: 1fr; }
 }
+
+/* ── Demo screen (components/DemoView.tsx): sparkline tiles, waterfall, heatmap, Pareto.
+   Every colour is a token so both schemes and the token lint hold. ── */
+.demo-tile { display: flex; flex-direction: column; gap: 6px; }
+.demo-tile-top { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.demo-spark { width: 140px; height: 36px; flex: none; overflow: visible; }
+.demo-spark-line { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.demo-spark-area { fill: var(--accent-a15); }
+.demo-spark-dot { fill: var(--attention); }
+.demo-delta-up { color: var(--ok-soft); font-weight: 700; }
+.demo-delta-down { color: var(--bad-text); font-weight: 700; }
+.demo-svg { display: block; width: 100%; height: auto; }
+.demo-grid { stroke: var(--chart-grid); stroke-width: 1; }
+.demo-grid-strong { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 4 3; }
+.demo-tick { fill: var(--muted); font-family: var(--font-mono); font-size: 10px; }
+.demo-value { fill: var(--fg); font-family: var(--font-mono); font-size: 10px; font-weight: 600; }
+.demo-note { fill: var(--faint); font-family: var(--font-sans); font-size: 10px; }
+.demo-bar-total { fill: var(--chart-1); }
+.demo-bar-step { fill: var(--chart-attention); }
+.demo-bar-rest { fill: var(--chart-2); }
+.demo-bar-attention { fill: var(--chart-attention); }
+.demo-bar-muted { fill: var(--chart-7); opacity: 0.55; }
+.demo-connector { stroke: var(--faint); stroke-width: 1; stroke-dasharray: 3 3; }
+.demo-pareto-line { fill: none; stroke: var(--fg); stroke-width: 2; stroke-linejoin: round; }
+.demo-pareto-dot { fill: var(--fg); }
+.demo-heat-card { margin-bottom: 16px; }
+.demo-heat-scroll { max-height: 640px; }
+.demo-heat td.demo-heat-cell {
+  /* --heat is 0..100: the share of the largest cell */
+  background: color-mix(in srgb, var(--chart-attention) calc(var(--heat, 0) * 0.85%), var(--surface));
+  text-align: center;
+}
+.demo-heat td.demo-heat-total { font-weight: 700; }
+.demo-legend { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-sans); font-size: 11px; font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--muted); }
+.demo-legend-swatch { display: inline-block; width: 14px; height: 14px; border-radius: 3px; background: color-mix(in srgb, var(--chart-attention) calc(var(--heat, 0) * 0.85%), var(--surface)); border: 1px solid var(--border); }
+@media (max-width: 767px) {
+  .demo-tile-top { flex-direction: column; align-items: flex-start; }
+}

@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 
 import type { FilterWidget, PageModel, Widget } from "@/lib/page-model";
 import { getPage, type WeldingFilters } from "@/lib/page-source";
-import { isAllRt, isAllSubcos, screenById, screenValues, screenVariantLabel, SCREENS } from "@/lib/screens";
+import { DEMO_SCREEN_ID, isAllRt, isAllSubcos, screenById, screenValues, screenVariantLabel, SCREENS } from "@/lib/screens";
+import { DemoView } from "@/components/DemoView";
 import { WELDING_REPORT_SUBTITLE } from "@/lib/welding-pages";
 import { FilterBar } from "@/components/FilterBar";
 import { PageView } from "@/components/PageView";
@@ -63,6 +64,13 @@ export default async function ReportScreen(props: PageProps<"/report/[screen]">)
   const { screen } = await props.params;
   const def = screenById(screen);
   if (!def) notFound();
+
+  if (def.id === DEMO_SCREEN_ID) {
+    // Database only: the demo reads the joint-grain views directly.
+    const { getDemoData } = await import("@/lib/pages/demo");
+    const data = await getDemoData();
+    return <DemoView data={data} subtitle={`Data as of ${data.as_of}`} />;
+  }
 
   const params = await props.searchParams;
   const values = screenValues(def, Object.fromEntries(def.filters.map((f) => [f.id, first(params, f.id)])));
