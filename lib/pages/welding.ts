@@ -2355,32 +2355,29 @@ async function buildNdePage(
   // Service Class slicer: the options are the classes that occur under the page's
   // own scope (party + RT %), BEFORE the slicer is applied; a value that is not
   // among them is reported as "All" and dropped, like page 1's slicers.
-  const [classOptions, pwhtOptions] = await Promise.all([serviceClassOptions(scope, classGroup), pwhtYnOptions(scope)]);
+  //
+  // The two option lists are full scans of the scope (≈1 s each under ALL), so they
+  // are STARTED here and awaited only where needed: at once when a slicer value has
+  // to be validated, otherwise after the bundles — they then overlap the page's own
+  // queries instead of delaying them (2026-09-21: ALL / ALL went 2.9 s → 1.6 s).
+  const optionsScope: Scope = { ...scope };
+  const optionsP = Promise.all([serviceClassOptions(optionsScope, classGroup), pwhtYnOptions(optionsScope)]);
+  optionsP.catch(() => undefined); // surfaced by the await below; never an unhandled rejection
   const requestedClass = ctx.filters.sclass;
-  const classApplied = requestedClass !== undefined && classOptions.includes(requestedClass);
-  if (requestedClass !== undefined && !classApplied) note(ctx, FILTER_UNKNOWN_NOTE);
-  if (classApplied) scope.serviceClass = { sql: classGroup.sql, value: requestedClass };
-  const classFilter: FilterWidget = {
-    kind: "filter",
-    id: "sclass",
-    label: "Service Class",
-    options: [FILTER_ALL, ...classOptions],
-    value: classApplied ? requestedClass : FILTER_ALL,
-  };
   // PWHT Y/N: the raw token (`Y` / `N` / `25.01`), see migration 0038 and R-04.
   const requestedPwht = ctx.filters.pwht;
-  const pwhtApplied = requestedPwht !== undefined && pwhtOptions.includes(requestedPwht);
-  if (requestedPwht !== undefined && !pwhtApplied) note(ctx, FILTER_UNKNOWN_NOTE);
-  if (pwhtApplied) scope.pwhtYn = requestedPwht;
-  if (pwhtOptions.includes(PWHT_AMBIGUOUS_TOKEN)) note(ctx, PWHT_TOKEN_NOTE);
+  let classApplied = false;
+  let pwhtApplied = false;
+  if (requestedClass !== undefined || requestedPwht !== undefined) {
+    const [classOpts, pwhtOpts] = await optionsP;
+    classApplied = requestedClass !== undefined && classOpts.includes(requestedClass);
+    if (requestedClass !== undefined && !classApplied) note(ctx, FILTER_UNKNOWN_NOTE);
+    if (classApplied) scope.serviceClass = { sql: classGroup.sql, value: requestedClass! };
+    pwhtApplied = requestedPwht !== undefined && pwhtOpts.includes(requestedPwht);
+    if (requestedPwht !== undefined && !pwhtApplied) note(ctx, FILTER_UNKNOWN_NOTE);
+    if (pwhtApplied) scope.pwhtYn = requestedPwht!;
+  }
   if (isCcc || all) note(ctx, PWHT_CCC_NEW_NOTE);
-  const pwhtFilter: FilterWidget = {
-    kind: "filter",
-    id: "pwht",
-    label: "PWHT Y/N",
-    options: [FILTER_ALL, ...pwhtOptions],
-    value: pwhtApplied ? requestedPwht : FILTER_ALL,
-  };
   const av = await availability(variant, sourcesFor(conf.sub), scope);
   const family =
     conf.kind === "pwht"
@@ -2460,6 +2457,22 @@ async function buildNdePage(
 
   const totalB = attach(total, agingTotal ?? undefined);
 
+  const [classOptions, pwhtOptions] = await optionsP;
+  if (pwhtOptions.includes(PWHT_AMBIGUOUS_TOKEN)) note(ctx, PWHT_TOKEN_NOTE);
+  const classFilter: FilterWidget = {
+    kind: "filter",
+    id: "sclass",
+    label: "Service Class",
+    options: [FILTER_ALL, ...classOptions],
+    value: classApplied ? requestedClass! : FILTER_ALL,
+  };
+  const pwhtFilter: FilterWidget = {
+    kind: "filter",
+    id: "pwht",
+    label: "PWHT Y/N",
+    options: [FILTER_ALL, ...pwhtOptions],
+    value: pwhtApplied ? requestedPwht! : FILTER_ALL,
+  };
   // The slicers go FIRST, ahead of every data widget (as page 1's bar does).
   const out: Widget[] = [classFilter, pwhtFilter];
   for (const w of spec.widgets) {

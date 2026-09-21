@@ -30,6 +30,15 @@ npm run dev                              # http://localhost:3000/welding/1  (45 
 npm run export:pdf                       # the whole report as one PDF (server running; PLAYWRIGHT_BROWSERS_PATH as for e2e)
 ```
 
+**Everyday run (no terminal needed).** `scripts/serve.sh` brings the database up, makes a
+production build when the code has moved, warms the read cache and runs `next start` on
+:3000. On the owner's machine it is the systemd user unit `weld-report` (lingering, so it
+starts with the WSL distro) and a hidden Startup script on the Windows side boots the distro
+at logon: `systemctl --user status|restart weld-report`, logs with
+`journalctl --user -u weld-report -f`. Stop it (`systemctl --user stop weld-report`) before
+`npm run dev` — both want port 3000. Read statements are memoised in process
+(`lib/db.ts`, invalidated by a new load or migration; `QUERY_CACHE=off` disables it).
+
 Without a database, `PAGE_SOURCE=fixture npm run dev` serves the mockup snapshot
 (16‑Jan‑2026) through the same components.
 

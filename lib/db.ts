@@ -61,7 +61,98 @@ async function pgQuery<T extends QueryResultRow = QueryResultRow>(
   return res.rows;
 }
 
-let impl: QueryFn = pgQuery;
+// ── read cache ──────────────────────────────────────────────────────────────
+//
+// The data changes only when a loader or a migration runs; between those, the
+// same statement with the same parameters returns the same rows, and the pages
+// re-ask identical full scans of `mv_joint` on every view (an ALL-scope NDE page
+// costs ~10 s of database time per render). So read statements are memoised in
+// process, keyed by SQL text + parameters:
+//
+//   • invalidated the moment the DATA VERSION moves — the latest `load.id` plus
+//     the number of applied migrations, re-read at most every 20 s — so a fresh
+//     load or a view-rebuilding migration is picked up without a restart;
+//   • bounded by a TTL (6 h, `QUERY_CACHE_TTL_MS`) for anything the version
+//     cannot see, e.g. a manual `REFRESH MATERIALIZED VIEW` — pages carry no
+//     wall-clock dependence (`as_of` is the load's own date), so a long TTL is safe;
+//   • in-flight de-duplication for free: the PROMISE is cached, so identical
+//     concurrent statements share one round-trip;
+//   • rows are handed out as shallow copies, so a caller cannot mutate the cache.
+//
+// Off under vitest (the suites pin live numbers and swap `impl` anyway) and with
+// `QUERY_CACHE=off`. Only `SELECT` / `WITH` statements are cached.
+const CACHE_TTL_MS = Number(process.env.QUERY_CACHE_TTL_MS ?? 6 * 60 * 60_000);
+const CACHE_MAX_ENTRIES = 2000;
+const VERSION_RECHECK_MS = 20_000;
+const READ_STATEMENT = /^\s*(select|with)\b/i;
+
+type CacheEntry = { at: number; rows: Promise<QueryResultRow[]> };
+const readCache = new Map<string, CacheEntry>();
+let dataVersion: string | null = null;
+let versionCheckedAt = 0;
+let versionCheck: Promise<void> | null = null;
+
+function cacheEnabled(): boolean {
+  return process.env.QUERY_CACHE !== "off" && !process.env.VITEST && CACHE_TTL_MS > 0;
+}
+
+/** Drop every memoised result (loaders and tests may call this explicitly). */
+export function clearQueryCache(): void {
+  readCache.clear();
+}
+
+async function refreshDataVersion(): Promise<void> {
+  if (Date.now() - versionCheckedAt < VERSION_RECHECK_MS) return;
+  versionCheck ??= (async () => {
+    try {
+      const rows = await pgQuery<{ v: string }>(
+        `SELECT coalesce((SELECT max(id) FROM load), 0)::text || ':' ||
+                coalesce((SELECT count(*) FROM schema_migrations), 0)::text AS v`,
+      );
+      const v = rows[0]?.v ?? null;
+      if (v !== dataVersion) {
+        readCache.clear();
+        dataVersion = v;
+      }
+    } catch {
+      // `load` / `schema_migrations` absent (fresh database): nothing to key on, so
+      // do not keep anything.
+      readCache.clear();
+      dataVersion = null;
+    } finally {
+      versionCheckedAt = Date.now();
+      versionCheck = null;
+    }
+  })();
+  await versionCheck;
+}
+
+async function cachedPgQuery<T extends QueryResultRow = QueryResultRow>(
+  text: string,
+  params?: readonly unknown[],
+): Promise<T[]> {
+  if (!cacheEnabled() || !READ_STATEMENT.test(text)) return pgQuery<T>(text, params);
+  await refreshDataVersion();
+  const key = `${text}\u0000${JSON.stringify(params ?? [])}`;
+  const hit = readCache.get(key);
+  if (hit && Date.now() - hit.at < CACHE_TTL_MS) {
+    return (await hit.rows).map((r) => ({ ...r })) as T[];
+  }
+  const rows = pgQuery<T>(text, params);
+  readCache.set(key, { at: Date.now(), rows });
+  if (readCache.size > CACHE_MAX_ENTRIES) {
+    const oldest = readCache.keys().next().value;
+    if (oldest !== undefined) readCache.delete(oldest);
+  }
+  try {
+    return (await rows).map((r) => ({ ...r })) as T[];
+  } catch (err) {
+    readCache.delete(key);
+    throw err;
+  }
+}
+
+let impl: QueryFn = cachedPgQuery;
 
 /**
  * Run a parameterised statement. Values are ALWAYS bound as `$1…$n`; nothing
@@ -80,7 +171,8 @@ export function query<T extends QueryResultRow = QueryResultRow>(
  * Pass `null` to restore the real pool-backed implementation.
  */
 export function setQueryImpl(fn: QueryFn | null): void {
-  impl = fn ?? pgQuery;
+  impl = fn ?? cachedPgQuery;
+  readCache.clear();
 }
 
 export async function closePool(): Promise<void> {
