@@ -1,0 +1,67 @@
+# Release: a tag vX.Y.Z pushed on main (by anatoly) becomes a Gitea release.
+#
+# The release carries the exact commit, the change list since the previous tag,
+# the source archive and its SHA-256. The LNG platform consumes a module by tag
+# and digest, so this digest is what gets pinned. Container images are not built
+# here yet; add that step when the platform host and registry are settled.
+name: release
+
+"on":
+  push:
+    tags: ['v*']
+
+jobs:
+  release:
+    name: Publish release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Tag must point at a commit on main
+        run: |
+          git fetch origin main
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main \
+            || { echo "::error::$GITHUB_REF_NAME is not on main - releases are cut from main only"; exit 1; }
+
+      - name: Build archive, digest and notes
+        run: |
+          set -eu
+          tag="$GITHUB_REF_NAME"; name="${GITHUB_REPOSITORY##*/}-$tag"
+          mkdir -p dist
+          git archive --format=tar.gz --prefix="$name/" -o "dist/$name.tar.gz" "$GITHUB_SHA"
+          (cd dist && sha256sum "$name.tar.gz" > SHA256SUMS)
+          prev=$(git describe --tags --abbrev=0 "$GITHUB_SHA^" 2>/dev/null || true)
+          {
+            echo "Commit: \`$GITHUB_SHA\`"
+            echo "Source digest (sha256): \`$(cut -d' ' -f1 dist/SHA256SUMS)\`"
+            echo
+            if [ -n "$prev" ]; then echo "Changes since $prev:"; range="$prev..$GITHUB_SHA"
+            else echo "Changes (first release):"; range="$GITHUB_SHA"; fi
+            echo
+            git log --no-merges --format='- %s (%an, %h)' $range | head -200
+          } > dist/notes.md
+          cat dist/notes.md
+
+      - name: Publish Gitea release
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          API: ${{ github.api_url }}
+        run: |
+          set -eu
+          tag="$GITHUB_REF_NAME"; auth="Authorization: token $TOKEN"
+          id=$(curl -sS -H "$auth" "$API/repos/$GITHUB_REPOSITORY/releases/tags/$tag" \
+               | python3 -c 'import json,sys; print(json.load(sys.stdin).get("id",""))' 2>/dev/null || true)
+          if [ -z "$id" ]; then
+            payload=$(python3 -c 'import json,sys; print(json.dumps({"tag_name":sys.argv[1],"name":sys.argv[1],"body":open("dist/notes.md").read()}))' "$tag")
+            id=$(curl -sS -f -X POST -H "$auth" -H 'Content-Type: application/json' \
+                 "$API/repos/$GITHUB_REPOSITORY/releases" -d "$payload" \
+                 | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])')
+          fi
+          for f in dist/*.tar.gz dist/SHA256SUMS; do
+            curl -sS -f -X POST -H "$auth" -F "attachment=@$f" \
+              "$API/repos/$GITHUB_REPOSITORY/releases/$id/assets?name=$(basename "$f")" > /dev/null
+            echo "attached $(basename "$f")"
+          done

@@ -17,7 +17,8 @@ name: ci
 
 on:
   push:
-    branches: [main]
+    # main plus everyone's personal branches: <name>/dev, <name>/test, <name>/fix
+    branches: [main, '*/dev', '*/test', '*/fix']
   pull_request:
 
 env:
@@ -117,3 +118,38 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 7
+
+  # Opens (or keeps) a pull request <branch> -> main once every check above is green.
+  # Only for pushes to personal */dev and */fix branches; */test is for experiments.
+  # Needs the repository secret CI_BOT_TOKEN (user ci-bot, write access); without it
+  # the job logs a notice and succeeds, so CI stays green.
+  auto-pr:
+    name: Open PR to main
+    needs: [checks, db-migrate, build-e2e]
+    if: github.event_name == 'push' && (endsWith(github.ref_name, '/dev') || endsWith(github.ref_name, '/fix'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Open pull request
+        env:
+          CI_BOT_TOKEN: ${{ secrets.CI_BOT_TOKEN }}
+          API: ${{ github.api_url }}
+          REPO: ${{ github.repository }}
+          HEAD_REF: ${{ github.ref_name }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          if [ -z "$CI_BOT_TOKEN" ]; then
+            echo "::notice::CI_BOT_TOKEN is not set - skipping automatic PR"; exit 0
+          fi
+          body=$(printf '{"head":"%s","base":"main","title":"%s -> main","body":"Opened automatically after CI passed on `%s` (last push by @%s). anatoly reviews and merges."}' \
+            "$HEAD_REF" "$HEAD_REF" "$HEAD_REF" "$ACTOR")
+          code=$(curl -sS -o /tmp/pr.json -w '%{http_code}' -X POST \
+            -H "Authorization: token $CI_BOT_TOKEN" -H 'Content-Type: application/json' \
+            "$API/repos/$REPO/pulls" -d "$body")
+          cat /tmp/pr.json; echo
+          case "$code" in
+            201) echo "pull request opened" ;;
+            409) echo "a pull request for $HEAD_REF is already open - it now carries this push" ;;
+            422) echo "nothing to propose (branch has no changes against main)" ;;
+            *) echo "::error::creating the pull request failed with HTTP $code"; exit 1 ;;
+          esac
