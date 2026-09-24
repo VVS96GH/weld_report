@@ -21,7 +21,10 @@ extracts of the `DataModel`, or screenshots; put them in the scratchpad or objec
 
 ## CI — `.gitea/workflows/ci.yml`
 
-Runs on pushes to `main` and on pull requests (GitHub‑Actions‑compatible syntax):
+Runs on pushes to `main`, to the personal branches `<name>/dev`, `<name>/test`, `<name>/fix`,
+and on pull requests (GitHub‑Actions‑compatible syntax). The branch model, the automatic PR
+to `main`, required checks and releases are described in
+[`ci-and-pull-requests.md`](ci-and-pull-requests.md).
 
 | Job | What it proves |
 |---|---|
@@ -36,10 +39,10 @@ five‑viewport Playwright matrix (run `npm run test:e2e` locally).
 
 ### Runner health
 
-The Gitea runner on `git.mantalis.qa` was reported unhealthy since 2026‑07‑31. **Confirm a
-workflow actually executed** in the repository's Actions tab (or
-`GET /api/v1/repos/anatoly/welding_report/actions/runs`) before trusting a green state.
-Until a run is observed, the local verification commands in `README.md` are the gate.
+Jobs run on `doha01-build-runner` (the only runner with the `ubuntu-latest` label). All three
+jobs were confirmed green on 2026‑09‑24 (commit `73ebe44`, the first run after the branch
+model landed). A green mark is still only as good as the run behind it — open *Details*
+when in doubt.
 
 ## Local gate before pushing
 

@@ -2,6 +2,9 @@
 
 ## Branches, CI and releases
 
+Full description — CI jobs, the automatic PR, required checks, releases, administration and
+troubleshooting: [`docs/ci-and-pull-requests.md`](docs/ci-and-pull-requests.md).
+
 | branch / ref | owner | rule |
 |---|---|---|
 | `main` | **anatoly (lead)** | Protected. Only anatoly pushes or merges. Everything else arrives as a pull request, and a PR can be merged only when CI is green. |
