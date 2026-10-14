@@ -66,6 +66,7 @@ export const CCC_JOINT_PWHT_COLUMNS = [
   "pt_root_report_no", "pt_root_date", "pt_root_pct", "pt_cap_pct",
   "pmi_report_no", "pmi_date", "weld_report_no", "test_package_no", "sub_system_no",
   "wall_thickness", "rework_code", "sub_contractor", "weld_date", "repair_suffix",
+  "rt_ut_date", "rt_ut_report_no",
 ] as const;
 
 /** `weld` columns the NOT-WELDED joint-record slice writes (source CCC_JOINT_RECORD). */

@@ -46,8 +46,48 @@ function readHeader(file: string): string[] {
 
 const COLUMNS = [
   "joint_id", "load_id", "subcon_code", "weld_date",
-  "rt1_date", "rt1_rep_no", "rt1_result", "orig_repair_delete_flag",
+  "rt1_date", "rt1_rep_no", "rt1_result", "orig_repair_delete_flag", "size_sum",
+  "ut1_rep_no", "rt1_films", "file_row", "welder_keys",
 ] as const;
+
+/**
+ * The row's `WELDER ID ALL` values as the M expands them (migration 0043): every
+ * combination of the "/"-split, trimmed WELDER ID 1..4, each taking W4 when it is
+ * not blank, else W1. Distinct, blanks dropped, "|"-joined for the COPY.
+ */
+function welderKeys(g: (c: string) => string): string | null {
+  const parts = (k: number) => g(`WELDER ID ${k}`).split("/").map((x) => x.trim());
+  const out = new Set<string>();
+  // W2 / W3 only multiply the rows; the key reads W1 and W4 alone.
+  for (const w4 of parts(4)) {
+    if (w4 !== "") out.add(w4);
+    else for (const w1 of parts(1)) if (w1 !== "") out.add(w1);
+  }
+  return out.size ? [...out].join("|") : null;
+}
+
+/** Power Query's Int64 conversion: round half to even (0.5 -> 0, 1.5 -> 2, 0.75 -> 1). */
+function int64HalfEven(v: number): number {
+  const f = Math.floor(v);
+  const d = v - f;
+  if (d > 0.5) return f + 1;
+  if (d < 0.5) return f;
+  return f % 2 === 0 ? f : f + 1;
+}
+
+/**
+ * This file row's share of `Sum(TALISMAN DATA[SIZE])` (migration 0040): SIZE as
+ * Int64, times the rows the M makes by splitting WELDER ID 1..4 on "/".
+ */
+function sizeTimesRows(g: (c: string) => string): string | null {
+  const raw = g("SIZE");
+  if (raw === "") return null;
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return null;
+  let rows = 1;
+  for (const k of [1, 2, 3, 4]) rows *= g(`WELDER ID ${k}`).split("/").length;
+  return String(int64HalfEven(n) * rows);
+}
 
 async function main(): Promise<void> {
   const abs = path.resolve(FILE);
@@ -73,7 +113,9 @@ async function main(): Promise<void> {
     );
     for (const c of ["SUBCON CODE", "QCISO NO", "JOINT NO", "SPOOL NO",
                      "ORIGINAL REPAIR DELETE FLAG", "WELD DATE",
-                     "RT1 DATE", "RT1 REP NO", "RT1 RESULT"]) {
+                     "RT1 DATE", "RT1 REP NO", "RT1 RESULT", "SIZE",
+                     "WELDER ID 1", "WELDER ID 2", "WELDER ID 3", "WELDER ID 4",
+                     "UT1 REP NO", "RT1 TOTAL FILM NO"]) {
       if (idx[c] === undefined) throw new Error(`missing column: ${c}`);
     }
 
@@ -110,6 +152,13 @@ async function main(): Promise<void> {
           txt(g("RT1 REP NO")),
           txt(g("RT1 RESULT")),
           txt(flag),
+          sizeTimesRows(g),
+          txt(g("UT1 REP NO")),
+          g("RT1 TOTAL FILM NO") === "" || !Number.isFinite(Number(g("RT1 TOTAL FILM NO")))
+            ? null
+            : String(int64HalfEven(Number(g("RT1 TOTAL FILM NO")))),
+          String(lines),
+          welderKeys(g),
         ]);
       }
     }
@@ -118,7 +167,8 @@ async function main(): Promise<void> {
     await client.query(`CREATE TEMP TABLE tmp_talisman (
       joint_id text, load_id bigint, subcon_code text, weld_date date,
       rt1_date date, rt1_rep_no text, rt1_result text,
-      orig_repair_delete_flag text) ON COMMIT DROP`);
+      orig_repair_delete_flag text, size_sum numeric, ut1_rep_no text,
+      rt1_films numeric, file_row bigint, welder_keys text) ON COMMIT DROP`);
     const t0 = Date.now();
     const copied = await copyRows(client, "tmp_talisman", [...COLUMNS], rows(), {
       label: "Joint.csv -> tmp_talisman",
@@ -133,10 +183,23 @@ async function main(): Promise<void> {
     const collapsed = await client.query(`
       INSERT INTO ref_talisman_joint (
         joint_id, load_id, subcon_code, weld_date, rt1_date,
-        rt1_rep_no, rt1_result, orig_repair_delete_flag, source_rows)
+        rt1_rep_no, rt1_result, orig_repair_delete_flag, source_rows, size_sum,
+        ut1_rep_no, rt1_films)
       SELECT joint_id, max(load_id), max(subcon_code), max(weld_date), max(rt1_date),
-             max(rt1_rep_no), max(rt1_result), max(orig_repair_delete_flag), count(*)
+             max(rt1_rep_no), max(rt1_result), max(orig_repair_delete_flag), count(*),
+             sum(size_sum), max(ut1_rep_no),
+             -- WeldPoint No.1 WP1: the joint's FIRST file row carries its films (0042)
+             (array_agg(rt1_films ORDER BY file_row))[1]
         FROM tmp_talisman GROUP BY joint_id`);
+    // Joint ID + WELDER ID ALL keys (0043), one row per distinct pair.
+    await client.query("DELETE FROM ref_talisman_welder");
+    const welders = await client.query(
+      `INSERT INTO ref_talisman_welder (joint_id, welder_id, load_id)
+       SELECT DISTINCT joint_id, unnest(string_to_array(welder_keys, '|')), $1::bigint
+         FROM tmp_talisman WHERE welder_keys IS NOT NULL`,
+      [loadId],
+    );
+    console.log(`  welder keys ${welders.rowCount ?? 0} (Joint ID + WELDER ID ALL)`);
     await client.query("COMMIT");
 
     const joints = collapsed.rowCount ?? 0;

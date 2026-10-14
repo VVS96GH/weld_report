@@ -1839,6 +1839,22 @@ html {
   display: flex;
   flex-direction: column;
 }
+.ms-search {
+  margin: 8px 8px 0;
+  min-height: 36px;
+  padding-inline: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.8rem;
+}
+[data-mood="ten"] .ms-search {
+  border-color: var(--border);
+  background: var(--surface-2);
+  color: var(--fg);
+}
 .ms-options {
   max-height: 340px;
   overflow-y: auto;
@@ -1927,6 +1943,106 @@ html {
 [data-mood="ten"] .ms-btn--primary {
   border-color: var(--accent);
   color: var(--on-accent, white);
+}
+
+/* ── Errors page (components/ErrorsView.tsx) ── */
+.error-card {
+  margin-bottom: 16px;
+  padding: 16px;
+}
+.error-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.error-title {
+  margin: 0;
+  font-size: 1.05rem;
+  color: var(--bad, var(--accent));
+  flex: 1 1 auto;
+}
+.error-count {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+.error-count.has-errors {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.error-csv {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+.error-desc,
+.error-empty {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin: 8px 0 12px;
+}
+.error-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 16px;
+}
+.error-table {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+}
+.error-filters {
+  flex: 1 1 420px;
+  min-width: 0;
+}
+.error-filters .filter-bar {
+  margin-bottom: 0;
+}
+.error-matrix {
+  width: auto;
+  min-width: min(520px, 100%);
+}
+.error-expand {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: start;
+}
+.error-leaf {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+.error-level0 td {
+  font-weight: 600;
+}
+.error-exceptions {
+  margin-top: 12px;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+.error-exceptions summary {
+  cursor: pointer;
+}
+.error-exceptions ul {
+  margin: 6px 0 0;
+  padding-inline-start: 20px;
+}
+[data-mood="ten"] .error-title {
+  color: var(--bad-fill, var(--accent));
+}
+[data-mood="ten"] .error-count,
+[data-mood="ten"] .error-desc,
+[data-mood="ten"] .error-empty,
+[data-mood="ten"] .error-leaf,
+[data-mood="ten"] .error-exceptions {
+  color: var(--muted);
+}
+[data-mood="ten"] .error-count.has-errors {
+  color: var(--fg);
 }
 
 /* ── data refresh button + dialog (components/RefreshDataButton.tsx) ── */

@@ -56,22 +56,38 @@ function useDropdown(onClose: (apply: boolean) => void) {
   return { open, setOpen, ref };
 }
 
+/** Long lists (joint numbers, report numbers) get a search box above them. */
+const SEARCH_FROM = 12;
+
 function Panel({
   children,
   onApply,
   onClear,
   open,
   labelledBy,
+  search,
 }: {
   children: React.ReactNode;
   onApply: () => void;
   onClear: () => void;
   open: boolean;
   labelledBy: string;
+  search?: { value: string; onChange: (v: string) => void };
 }) {
   if (!open) return null;
   return (
     <div className="ms-panel" role="group" aria-labelledby={labelledBy}>
+      {search ? (
+        <input
+          type="search"
+          className="ms-search"
+          placeholder="Search"
+          aria-label="Search the options"
+          value={search.value}
+          onChange={(e) => search.onChange(e.target.value)}
+          autoFocus
+        />
+      ) : null}
       <div className="ms-options">{children}</div>
       <div className="ms-footer">
         <button type="button" className="ms-btn" onClick={onClear}>
@@ -106,6 +122,8 @@ export function MultiSelect({
     else setDraft(value);
   };
   const { open, setOpen, ref } = useDropdown(close);
+  const [q, setQ] = useState("");
+  const shownOptions = q ? options.filter((o) => o.toLowerCase().includes(q.toLowerCase())) : options;
   const toggle = (o: string) =>
     setDraft((d) => (d.includes(o) ? d.filter((x) => x !== o) : options.filter((x) => x === o || d.includes(x))));
 
@@ -139,12 +157,13 @@ export function MultiSelect({
           setOpen(false);
           close(true);
         }}
+        search={options.length >= SEARCH_FROM ? { value: q, onChange: setQ } : undefined}
       >
         <label className="ms-option ms-option--all">
           <input type="checkbox" checked={draft.length === 0} onChange={() => setDraft([])} />
           <span>Select all</span>
         </label>
-        {options.map((o) => (
+        {shownOptions.map((o) => (
           <label className="ms-option" key={o}>
             <input type="checkbox" checked={draft.includes(o)} onChange={() => toggle(o)} />
             <span>{o}</span>
@@ -213,6 +232,16 @@ export function TreeMultiSelect({
 
   const shown = open ? draft : value;
   const picked = [...shown.has, ...shown.pairs.map((p) => p.replace(PAIR, " ▸ "))];
+  const [q, setQ] = useState("");
+  const size = groups.reduce((n, g) => n + 1 + g.areas.length, 0);
+  const needle = q.toLowerCase();
+  const shownGroups = q
+    ? groups
+        .map((g) =>
+          g.key.toLowerCase().includes(needle) ? g : { ...g, areas: g.areas.filter((a) => a.toLowerCase().includes(needle)) },
+        )
+        .filter((g) => g.key.toLowerCase().includes(needle) || g.areas.length > 0)
+    : groups;
 
   return (
     <div className="filter-group filter-group--tree ms" ref={ref}>
@@ -244,6 +273,7 @@ export function TreeMultiSelect({
           setOpen(false);
           close(true);
         }}
+        search={size >= SEARCH_FROM ? { value: q, onChange: setQ } : undefined}
       >
         <label className="ms-option ms-option--all">
           <input
@@ -253,7 +283,7 @@ export function TreeMultiSelect({
           />
           <span>Select all</span>
         </label>
-        {groups.map(({ key: g, areas }) => {
+        {shownGroups.map(({ key: g, areas }) => {
           const whole = draft.has.includes(g);
           const some = !whole && draft.pairs.some((p) => p.startsWith(`${g}${PAIR}`));
           return (

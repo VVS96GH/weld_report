@@ -78,6 +78,12 @@ export function FilterBar({ widgets }: { widgets: FilterWidget[] }) {
   }
 
   const applied = widgets.filter((w) => w.value !== "All");
+  // Reset clears THIS bar's params only: a page may carry several bars (the
+  // Errors page has one per check) and another bar's picks must survive.
+  const resetParams = new URLSearchParams(searchParams.toString());
+  for (const w of widgets) resetParams.delete(w.id);
+  const resetQs = resetParams.toString();
+  const resetHref = resetQs ? `${pathname}?${resetQs}` : pathname;
   const announcement =
     applied.length === 0
       ? "Filters: all records"
@@ -173,7 +179,7 @@ export function FilterBar({ widgets }: { widgets: FilterWidget[] }) {
         );
       })}
       {applied.length > 0 ? (
-        <Link href={pathname} className="nav-btn filter-reset" aria-label="Reset all filters">
+        <Link href={resetHref} className="nav-btn filter-reset" aria-label="Reset all filters">
           &#10005; Reset
         </Link>
       ) : null}
