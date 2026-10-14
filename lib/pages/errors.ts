@@ -739,6 +739,73 @@ const welderIdTalisman: ErrorCheck = {
   },
 };
 
+// ── check 8: the WPS of a CCC joint differs between PIC and Talisman ──────────
+
+const WpsRow = z.object({
+  joint_id: z.string(),
+  wps_no: zText,
+  wps_code: z.string(),
+  thickness: z.union([z.null(), z.coerce.number()]),
+  service_class: zText,
+  rt_report: zText,
+});
+
+/**
+ * pbix page "Err 9 WPS PIC & Tal.n Tr/Fl", visual "Discrepancy WPS CCC PIC &
+ * Talisman True/False Status": `WPS From "Talisman"` = MAXX(TALISMAN DATA[WPS
+ * CODE]) for the joint (CCC only), and `WPS from "Talisman" True/False Status`
+ * on FALSE — Talisman has the joint and its WPS CODE differs from `WPS No.`.
+ *
+ * DAX text equality ignores case and treats BLANK as "", hence lower() and
+ * coalesce(). An EMPTY Talisman WPS CODE is a value (migration 0044), so a
+ * joint with a WPS in PIC and none in Talisman is listed too. Thickness is the
+ * joint's (the pbix union has one CCC row per joint; `weld` has one per pass).
+ *
+ * Owner's pbix (14-Oct-2026): 34 joints, e.g. 12060A4-DB6306033B-SP1-12 DS-01 vs
+ * DS-09, 14010PB-LP7307312-SP4-4 CS/LTCS-021 vs CS/LTCS-001, THD vs blank.
+ */
+const wpsTalisman: ErrorCheck = {
+  id: "wps-talisman",
+  title: "Discrepancy WPS CCC PIC & Talisman",
+  description:
+    "The WPS of the joint in the CCC welder record (PIC) differs from the WPS CODE in Talisman. " +
+    "The WPS must be corrected in Talisman or in the CCC welder record so both carry the same procedure.",
+  rowLabel: "Joint ID",
+  csvColumns: ["Joint ID", "WPS No. PIC", 'WPS From "Talisman"', "Thickness", "Service class", "RT Report"],
+  levels: ["Joint ID"],
+  columnField: "Sub-Contractor",
+  display: "table",
+  filters: [
+    { kind: "list", id: "pic", label: "WPS No. PIC", field: "WPS No. PIC" },
+    { kind: "list", id: "tal", label: 'WPS From "Talisman"', field: 'WPS From "Talisman"' },
+    { kind: "list", id: "rtr", label: "RT Report", field: "RT Report" },
+    { kind: "list", id: "thk", label: "Thickness", field: "Thickness" },
+    { kind: "list", id: "sclass", label: "Service class", field: "Service class" },
+    { kind: "list", id: "joint", label: "Joint ID", field: "Joint ID" },
+  ],
+  async rows() {
+    const sql =
+      `SELECT w.joint_id, w.wps_no, t.wps_code, max(w.thickness) AS thickness, w.service_class, w.rt_report\n` +
+      `  FROM weld w\n` +
+      `  JOIN ref_talisman_joint t ON t.joint_id = w.joint_id\n` +
+      ` WHERE w.sub_contractor = 'CCC' AND t.wps_code IS NOT NULL\n` +
+      `   AND lower(coalesce(w.wps_no, '')) <> lower(t.wps_code)\n` +
+      ` GROUP BY w.joint_id, w.wps_no, t.wps_code, w.service_class, w.rt_report\n` +
+      // RT Report descending, the owner's visual
+      ` ORDER BY w.rt_report DESC NULLS LAST, w.joint_id`;
+    const rows = z.array(WpsRow).parse(await query(sql));
+    return rows.map((r) => ({
+      "Joint ID": r.joint_id,
+      "WPS No. PIC": r.wps_no ?? "",
+      'WPS From "Talisman"': r.wps_code,
+      Thickness: r.thickness,
+      "Service class": r.service_class ?? "",
+      "RT Report": r.rt_report ?? "",
+      "Sub-Contractor": "CCC",
+    }));
+  },
+};
+
 export const CHECKS: readonly ErrorCheck[] = [
   ndtRemarksBlank,
   duplicateRtReport,
@@ -747,6 +814,7 @@ export const CHECKS: readonly ErrorCheck[] = [
   rtDateTalisman,
   rtReportTalisman,
   welderIdTalisman,
+  wpsTalisman,
 ];
 
 export function checkById(id: string): ErrorCheck | undefined {

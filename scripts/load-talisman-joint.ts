@@ -47,7 +47,7 @@ function readHeader(file: string): string[] {
 const COLUMNS = [
   "joint_id", "load_id", "subcon_code", "weld_date",
   "rt1_date", "rt1_rep_no", "rt1_result", "orig_repair_delete_flag", "size_sum",
-  "ut1_rep_no", "rt1_films", "file_row", "welder_keys",
+  "ut1_rep_no", "rt1_films", "file_row", "welder_keys", "wps_code",
 ] as const;
 
 /**
@@ -115,7 +115,7 @@ async function main(): Promise<void> {
                      "ORIGINAL REPAIR DELETE FLAG", "WELD DATE",
                      "RT1 DATE", "RT1 REP NO", "RT1 RESULT", "SIZE",
                      "WELDER ID 1", "WELDER ID 2", "WELDER ID 3", "WELDER ID 4",
-                     "UT1 REP NO", "RT1 TOTAL FILM NO"]) {
+                     "UT1 REP NO", "RT1 TOTAL FILM NO", "WPS CODE"]) {
       if (idx[c] === undefined) throw new Error(`missing column: ${c}`);
     }
 
@@ -159,6 +159,8 @@ async function main(): Promise<void> {
             : String(int64HalfEven(Number(g("RT1 TOTAL FILM NO")))),
           String(lines),
           welderKeys(g),
+          // kept "" when empty: the pbix tells an empty WPS CODE from a missing row (0044)
+          g("WPS CODE"),
         ]);
       }
     }
@@ -168,7 +170,7 @@ async function main(): Promise<void> {
       joint_id text, load_id bigint, subcon_code text, weld_date date,
       rt1_date date, rt1_rep_no text, rt1_result text,
       orig_repair_delete_flag text, size_sum numeric, ut1_rep_no text,
-      rt1_films numeric, file_row bigint, welder_keys text) ON COMMIT DROP`);
+      rt1_films numeric, file_row bigint, welder_keys text, wps_code text) ON COMMIT DROP`);
     const t0 = Date.now();
     const copied = await copyRows(client, "tmp_talisman", [...COLUMNS], rows(), {
       label: "Joint.csv -> tmp_talisman",
@@ -184,12 +186,13 @@ async function main(): Promise<void> {
       INSERT INTO ref_talisman_joint (
         joint_id, load_id, subcon_code, weld_date, rt1_date,
         rt1_rep_no, rt1_result, orig_repair_delete_flag, source_rows, size_sum,
-        ut1_rep_no, rt1_films)
+        ut1_rep_no, rt1_films, wps_code)
       SELECT joint_id, max(load_id), max(subcon_code), max(weld_date), max(rt1_date),
              max(rt1_rep_no), max(rt1_result), max(orig_repair_delete_flag), count(*),
              sum(size_sum), max(ut1_rep_no),
              -- WeldPoint No.1 WP1: the joint's FIRST file row carries its films (0042)
-             (array_agg(rt1_films ORDER BY file_row))[1]
+             (array_agg(rt1_films ORDER BY file_row))[1],
+             max(wps_code)
         FROM tmp_talisman GROUP BY joint_id`);
     // Joint ID + WELDER ID ALL keys (0043), one row per distinct pair.
     await client.query("DELETE FROM ref_talisman_welder");
