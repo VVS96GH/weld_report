@@ -47,12 +47,14 @@ import {
   flangeAllOptions,
   flangeAsOf,
   flangeBreakdown,
-  flangeLeakTimeline,
+  flangeLeakWeekly,
+  flangeValues,
   flangeLoaded,
   flangeMonthly,
   type FlangeFilters,
   type FlangeStats,
 } from "@/lib/metrics/flange";
+import { chartCutoff } from "@/lib/metrics/trend";
 
 export const FLANGE_PAGE_ID = "flange";
 export const FLANGE_TITLE = "Flange Inspection Dashboard";
@@ -118,13 +120,18 @@ const SNAPSHOT_NOTE =
 
 // ── widget builders ─────────────────────────────────────────────────────────
 
+/**
+ * A check-box filter (multi-select, 2026-10-14). Picks that are not among the
+ * options are dropped, so the widget never shows a filter it did not apply.
+ */
 function filterWidget(
   id: string,
   label: string,
   options: string[],
   value: string,
 ): FilterWidget {
-  return { kind: "filter", id, label, options, value };
+  const kept = (flangeValues(value) ?? []).filter((v) => options.includes(v));
+  return { kind: "filter", id, label, options, value: kept.length ? kept.join(",") : FLANGE_ALL, multi: true };
 }
 
 function kpi(label: string, value: string, sub?: string): KpiWidget {
@@ -190,15 +197,32 @@ function emptyChart(
   };
 }
 
-/** `2026-08` → `Aug-26`, the mockup's month label shape. */
+/** Week ends the Monthly Inspection chart covers — the pbix visual's Top-N filter. */
+const MONTHLY_WEEKS = 21;
+
+/** The Friday on or after an ISO date — its `Calendar[Week_End_Date]`. */
+function weekEndIso(iso: string): string {
+  const d = new Date(`${iso.slice(0, 10)}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return iso;
+  d.setUTCDate(d.getUTCDate() + ((5 - d.getUTCDay() + 7) % 7));
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * `2026-08` → `August 2026`, the pbix's Year/Month hierarchy axis.
+ *
+ * Not `Aug-26`: next to the report's `04-Sep-26` week labels that shape reads
+ * as a day of the month (owner, 2026-10-14). The buckets are week-end months,
+ * see flangeMonthly.
+ */
 function monthLabel(month: string): string {
   const [y, m] = month.split("-");
   const names = [
-    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
   ];
   const idx = Number(m) - 1;
-  return `${names[idx] ?? m}-${(y ?? "").slice(2)}`;
+  return `${names[idx] ?? m} ${y ?? ""}`.trim();
 }
 
 // ── the page ────────────────────────────────────────────────────────────────
@@ -228,20 +252,26 @@ export async function getFlangePage(
 
   // The HA panel keeps its own HA selection: the mockup defaults it to HA1 and
   // relabels when the HA filter moves. It also ignores the method filter.
+  // Several HAs picked: the panel covers all of them.
   const panelHa = applied.ha === FLANGE_ALL ? "HA1" : applied.ha;
 
   // Four scans, not thirteen: `flangeBreakdown` returns overall + the four
   // group-bys from one GROUPING SETS pass, and the panel is a second pass at
   // its own scope. RF-09's budget is 500 ms over 363k rows.
   const panelScope = { ...applied, ha: panelHa, method: FLANGE_ALL };
-  const [options, breakdown, panel, monthly, leakSeries, stamp] = await Promise.all([
+  const [options, breakdown, panel, monthly, stamp] = await Promise.all([
     flangeAllOptions(),
     flangeBreakdown(applied),
     flangeBreakdown(panelScope),
-    flangeMonthly(applied),
-    flangeLeakTimeline(applied),
+    // The owner's visual carries "Top 21 by Latest Week_End_Date" (2026-10-14).
+    flangeAsOf().then((st) =>
+      flangeMonthly(applied, st.as_of ? { weeks: MONTHLY_WEEKS, upTo: weekEndIso(st.as_of) } : undefined),
+    ),
     flangeAsOf(),
   ]);
+  // Weekly leak line (2026-10-14): closes on the last Friday on or before the
+  // register's as-of date, like every weekly chart in the report.
+  const leakWeeks = await flangeLeakWeekly(applied, chartCutoff(stamp.as_of ?? new Date().toISOString().slice(0, 10)));
   const { overall, bySubco, byHa, byMethod, byHaMethod } = breakdown;
   const panelBySubco = panel.bySubco;
   /**
@@ -256,7 +286,9 @@ export async function getFlangePage(
    * So this trims the axis only. Nothing that is counted stops being counted.
    */
   const untilAsOf = <T extends { month: string }>(series: T[]): T[] => {
-    const cutoff = (stamp.as_of ?? "").slice(0, 7);
+    // Months are week-end months (flangeMonthly), so the last one is the month
+    // of the Friday that closes the as-of date's week.
+    const cutoff = stamp.as_of ? weekEndIso(stamp.as_of).slice(0, 7) : "";
     return cutoff ? series.filter((x) => x.month <= cutoff) : series;
   };
 
@@ -323,7 +355,9 @@ export async function getFlangePage(
   widgets.push(statusTable("HA Flange Status", "HA / Method", haRows, overall));
 
   // ── section 3: the HA panel ──────────────────────────────────────────────
-  const haLabel = panelHa === FLANGE_BLANK ? "(blank)" : panelHa.replace(/^HA/, "HA ");
+  const haLabel = (flangeValues(panelHa) ?? [panelHa])
+    .map((h) => (h === FLANGE_BLANK ? "(blank)" : h.replace(/^HA/, "HA ")))
+    .join(", ");
   widgets.push(
     statusTable(
       `${haLabel} Subcontractor Flange Status`,
@@ -353,11 +387,12 @@ export async function getFlangePage(
     canvas_id: "leakedTimelineChart",
     title: "Leaked Flange Break % Timeline",
     chart_type: "line",
-    labels: untilAsOf(leakSeries).map((x) => monthLabel(x.month)),
+    // ISO Friday dates: ChartCard renders them as `09-Oct-26`, the pbix label.
+    labels: leakWeeks.map((x) => x.week_end),
     datasets: [
       {
         label: "Leaked Flg Break % (recomputed from records)",
-        data: leakSeries.map((s) => (s.rate === null ? null : Number(s.rate.toFixed(4)))),
+        data: leakWeeks.map((s) => (s.rate === null ? null : Number(s.rate.toFixed(4)))),
       },
     ],
     options_notes:
@@ -394,6 +429,8 @@ export async function getFlangePage(
     datasets: [
       { label: "Inspected", data: untilAsOf(monthly).map((m) => m.inspected) },
     ],
+    // ticks show the month, the year is drawn once under the axis (ChartCard)
+    options_notes: "year-axis-title",
   });
 
   for (const n of notes) widgets.push({ kind: "text", text: n });
@@ -436,7 +473,7 @@ function emptyPage(
   widgets.push(statusTable("Subcontractor Flange Status", "Subcontractor", [], null));
   widgets.push(statusTable("HA Flange Status", "HA / Method", [], null));
 
-  const haLabel = applied.ha === FLANGE_ALL ? "HA 1" : applied.ha.replace(/^HA/, "HA ");
+  const haLabel = applied.ha === FLANGE_ALL ? "HA 1" : applied.ha.split(",").map((h) => h.replace(/^HA/, "HA ")).join(", ");
   widgets.push(
     statusTable(`${haLabel} Subcontractor Flange Status`, "Subcontractor", [], null),
   );

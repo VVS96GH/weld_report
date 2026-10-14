@@ -17,7 +17,7 @@
 
 import { z } from "zod";
 import { query } from "@/lib/db";
-import { Params, zCount, zSum, zText } from "./scope";
+import { haAreaCondition, Params, zCount, zSum, zText, type HaAreaPick } from "./scope";
 
 /**
  * M81 — the flat reference lines on the rejection-rate charts. Hard-coded
@@ -126,11 +126,20 @@ export async function weeklySnapshot(opts: {
    * of its own `GAC` parent.
    */
   aggregate?: boolean;
+  /** Last week end to show ({@link chartCutoff}); later weeks are dropped. */
+  upTo?: string;
+  /** Page-1 multi-select: these parties only (overrides `subContractor`). */
+  subContractors?: readonly string[];
 }): Promise<SnapshotPoint[]> {
   if (opts.metrics.length === 0) return [];
   const p = new Params();
   const conds = [`s.metric = ANY(${p.any(opts.metrics)})`];
-  if (opts.subContractor === null) {
+  if (opts.upTo !== undefined) {
+    conds.push(`s.week_end_date <= ${p.add(opts.upTo)}::date`);
+  }
+  if (opts.subContractors?.length) {
+    conds.push(`s.sub_contractor = ANY(${p.any(opts.subContractors)})`);
+  } else if (opts.subContractor === null) {
     conds.push(`s.sub_contractor IS NULL`);
   } else if (opts.subContractor !== undefined) {
     conds.push(`s.sub_contractor = ${p.add(opts.subContractor)}`);
@@ -207,14 +216,29 @@ export async function weeklyProgress(opts: {
   /** The pbix slicer's "(Blank)" group — `ha IS NULL`. */
   haIsNull?: boolean;
   area?: string;
+  /** Last week end to show ({@link chartCutoff}); later weeks are dropped. */
+  upTo?: string;
+  /** Page-1 multi-select lists; each overrides its single-value twin above. */
+  subContractors?: readonly string[];
+  weldTypes?: readonly string[];
+  weldCats?: readonly string[];
+  haArea?: readonly HaAreaPick[];
 }): Promise<WeeklyProgressPoint[]> {
   const p = new Params();
   const conds: string[] = [
     `m.source::text = ANY(${p.any(opts.sources ?? ["WELD_DUMP"])}::text[])`,
   ];
-  if (opts.subContractor !== undefined) {
+  if (opts.upTo !== undefined) {
+    conds.push(`m.week_end_date <= ${p.add(opts.upTo)}::date`);
+  }
+  if (opts.subContractors?.length) {
+    conds.push(`m.sub_contractor = ANY(${p.any(opts.subContractors)})`);
+  } else if (opts.subContractor !== undefined) {
     conds.push(`m.sub_contractor = ${p.add(opts.subContractor)}`);
   }
+  if (opts.weldTypes?.length) conds.push(`m.weld_type = ANY(${p.any(opts.weldTypes)})`);
+  if (opts.weldCats?.length) conds.push(`m.weld_cat = ANY(${p.any(opts.weldCats)})`);
+  if (opts.haArea?.length) conds.push(haAreaCondition(opts.haArea, p, "m"));
   if (opts.excludeSubContractors?.length) {
     conds.push(
       `(m.sub_contractor IS NULL OR NOT (m.sub_contractor = ANY(${p.any(opts.excludeSubContractors)})))`,
@@ -271,10 +295,15 @@ export async function weeklyProgress(opts: {
  * (`Calendar[Week_End_Date] IN TOP 1 DESC`, the M05 visual filter).
  * `null` when the view is empty or absent.
  */
-export async function latestWeekEnd(): Promise<string | null> {
+export async function latestWeekEnd(upTo?: string): Promise<string | null> {
   try {
+    // `upTo` is the chart cut-off ({@link chartCutoff}): without it a weld typed
+    // with a future date would make that future week "this week".
     const rows = await query<{ week_end_date: string | null }>(
-      `SELECT max(week_end_date)::text AS week_end_date FROM mv_weekly_progress`,
+      upTo
+        ? `SELECT max(week_end_date)::text AS week_end_date FROM mv_weekly_progress WHERE week_end_date <= $1::date`
+        : `SELECT max(week_end_date)::text AS week_end_date FROM mv_weekly_progress`,
+      upTo ? [upTo] : undefined,
     );
     const v = rows[0]?.week_end_date ?? null;
     return v ? String(v).slice(0, 10) : null;
@@ -403,6 +432,97 @@ export async function backlogTrend(opts: {
 }
 
 /**
+ * The cut-off of every weekly chart: the Friday on or before `asOf`.
+ *
+ * Owner rule (2026-10-14): the report is read weekly, and its charts close on the
+ * last Friday — a dump exported on Saturday 10-Oct shows the week ending Friday
+ * 09-Oct, and the Saturday's welds wait for the next week. Week ends in this
+ * model are Fridays (`Calendar[Week_End_Date]`), so this is also the label of
+ * the last bar.
+ */
+export function chartCutoff(asOf: string): string {
+  const d = new Date(`${asOf.slice(0, 10)}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return asOf;
+  const back = (d.getUTCDay() - 5 + 7) % 7; // 5 = Friday
+  d.setUTCDate(d.getUTCDate() - back);
+  return d.toISOString().slice(0, 10);
+}
+
+/** Slicer options the backlog queries honour (page 1 and pages 7-11). */
+type BacklogSlice = {
+  subContractor?: string;
+  /** Multi-select: these parties only (overrides `subContractor`). */
+  subContractors?: readonly string[];
+  weldTypes?: readonly string[];
+  weldCats?: readonly string[];
+  haArea?: readonly HaAreaPick[];
+};
+
+/** ` AND …` for the backlog queries over `mv_joint` (unaliased columns). */
+function subContractorSql(opts: BacklogSlice, p: Params): string {
+  const c: string[] = [];
+  if (opts.subContractors?.length) c.push(`sub_contractor = ANY(${p.any(opts.subContractors)})`);
+  else if (opts.subContractor) c.push(`sub_contractor = ${p.add(opts.subContractor)}`);
+  if (opts.weldTypes?.length) c.push(`weld_type = ANY(${p.any(opts.weldTypes)})`);
+  if (opts.weldCats?.length) c.push(`weld_cat = ANY(${p.any(opts.weldCats)})`);
+  if (opts.haArea?.length) c.push(haAreaCondition(opts.haArea, p, "mv_joint"));
+  return c.map((x) => ` AND ${x}`).join("");
+}
+
+type BacklogShift = { rt: number; pwht: number; both: number };
+
+/**
+ * How much each backlog moved AFTER `cutoff`: its size at the cut-off minus its
+ * size now, both read through the same reconstruction `backlogTrend` uses.
+ *
+ * Added to the owner's live DAX values it turns "the backlog today" into "the
+ * backlog at the cut-off" without re-deriving the measures: joints welded after
+ * the Friday leave the backlog, joints tested after it come back. When nothing
+ * happened after the cut-off every term is 0 and the live values stand as they
+ * are. The status columns are the current snapshot (no history in the export),
+ * which is the same approximation the reconstruction documents.
+ */
+async function backlogShift(opts: BacklogSlice & {
+  cutoff: string;
+  sources: readonly string[];
+}): Promise<BacklogShift> {
+  const p = new Params();
+  const cutP = p.add(opts.cutoff);
+  const srcP = p.any(opts.sources);
+  const sub = subContractorSql(opts, p);
+  const sql =
+    `WITH wk AS (SELECT ${cutP}::date AS w, true AS at_cut\n` +
+    `             UNION ALL SELECT DATE '9999-12-31', false), j AS (\n` +
+    `  SELECT * FROM mv_joint\n` +
+    `   WHERE source::text = ANY(${srcP}::text[])${sub}\n` +
+    `     AND (rt_bl_cand_prall OR pwht_bl_cand_ccc OR pwht_bl_cand_rest)\n` +
+    `     AND (rt_backlog_prall OR pwht_backlog_ccc OR pwht_backlog_rest\n` +
+    `          OR rt_bl_end > ${cutP}::date OR pwht_bl_end > ${cutP}::date)\n` +
+    `)\n` +
+    `SELECT wk.at_cut,\n` +
+    `       count(*) FILTER (WHERE ${RT_OPEN})   AS rt_total,\n` +
+    `       count(*) FILTER (WHERE ${PWHT_OPEN}) AS pwht_total,\n` +
+    `       count(*) FILTER (WHERE ${RT_OPEN} AND ${PWHT_OPEN}) AS both\n` +
+    `  FROM wk LEFT JOIN j ON true GROUP BY wk.at_cut`;
+  try {
+    const rows = z
+      .array(z.object({ at_cut: z.boolean(), rt_total: zCount, pwht_total: zCount, both: zCount }))
+      .parse(await query(sql, p.list()));
+    const cut = rows.find((r) => r.at_cut);
+    const now = rows.find((r) => !r.at_cut);
+    if (!cut || !now) return { rt: 0, pwht: 0, both: 0 };
+    return {
+      rt: cut.rt_total - now.rt_total,
+      pwht: cut.pwht_total - now.pwht_total,
+      both: cut.both - now.both,
+    };
+  } catch {
+    // History columns absent (pre-0023): no shift rather than a wrong one.
+    return { rt: 0, pwht: 0, both: 0 };
+  }
+}
+
+/**
  * The page-1 RT backlog chart's CURRENT week, computed from `mv_joint`.
  *
  * The chart's history is the trend workbook (the pbix chart *is* the workbook),
@@ -430,15 +550,14 @@ export type RtBacklogCurrent = {
   total: number;
 };
 
-export async function rtBacklogCurrent(opts: {
+export async function rtBacklogCurrent(opts: BacklogSlice & {
   sources: readonly string[];
-  subContractor?: string;
+  /** Read the backlog at this Friday instead of now ({@link chartCutoff}). */
+  cutoff?: string;
 }): Promise<RtBacklogCurrent | null> {
   const p = new Params();
   const srcP = p.any(opts.sources);
-  const sub = opts.subContractor
-    ? ` AND sub_contractor = ${p.add(opts.subContractor)}`
-    : "";
+  const sub = subContractorSql(opts, p);
   const sql =
     `SELECT count(*) FILTER (WHERE rt_backlog_pwht_y_not_done_prall)\n` +
     `     + count(*) FILTER (WHERE rt_backlog_pwht_y_not_done_ccc) AS plus_pwht,\n` +
@@ -451,7 +570,11 @@ export async function rtBacklogCurrent(opts: {
       .parse(await query(sql, p.list()));
     const r = rows[0];
     if (!r) return null;
-    return { ...r, total: r.plus_pwht + r.rt_only };
+    if (!opts.cutoff) return { ...r, total: r.plus_pwht + r.rt_only };
+    const d = await backlogShift({ ...opts, cutoff: opts.cutoff });
+    const plus = Math.max(0, r.plus_pwht + d.both);
+    const only = Math.max(0, r.rt_only + d.rt - d.both);
+    return { plus_pwht: plus, rt_only: only, total: plus + only };
   } catch {
     // `rt_backlog_pwht_y_not_done_ccc` arrives with migration 0024; before it
     // the chart shows the workbook's own last week rather than a wrong number.
@@ -486,15 +609,14 @@ export type PwhtBacklogCurrent = {
   total: number;
 };
 
-export async function pwhtBacklogCurrent(opts: {
+export async function pwhtBacklogCurrent(opts: BacklogSlice & {
   sources: readonly string[];
-  subContractor?: string;
+  /** Read the backlog at this Friday instead of now ({@link chartCutoff}). */
+  cutoff?: string;
 }): Promise<PwhtBacklogCurrent | null> {
   const p = new Params();
   const srcP = p.any(opts.sources);
-  const sub = opts.subContractor
-    ? ` AND sub_contractor = ${p.add(opts.subContractor)}`
-    : "";
+  const sub = subContractorSql(opts, p);
   const sql =
     // The DAX ADDS the four branches, so they are summed, not OR-ed: a joint
     // that is both SG and TMCP, or that matches both branches, counts once per
@@ -513,7 +635,12 @@ export async function pwhtBacklogCurrent(opts: {
       .parse(await query(sql, p.list()));
     const r = rows[0];
     if (!r) return null;
-    return { ...r, pwht_only: r.total - r.plus_rt };
+    if (!opts.cutoff) return { ...r, pwht_only: r.total - r.plus_rt };
+    // `PWHT+RT/UT` is an SG/TMCP-scoped measure with no history of its own, so
+    // the post-cut-off movement is carried by the total (and `PWHT Only`).
+    const d = await backlogShift({ ...opts, cutoff: opts.cutoff });
+    const total = Math.max(r.plus_rt, r.total + d.pwht);
+    return { plus_rt: r.plus_rt, total, pwht_only: total - r.plus_rt };
   } catch {
     // The SG/TMCP flags arrive with migration 0024.
     return null;

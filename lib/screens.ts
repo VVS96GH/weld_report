@@ -46,6 +46,34 @@ const subcoFilter = (options: ScreenFilterOption[] = SUBCOS.map((s) => ({ value:
   default: SUBCO_ALL,
 });
 
+/**
+ * Multi-select (2026-10-14): a screen axis value may be a comma-joined list of
+ * its options ("GAC,TEKFEN", "5,10"). Two or more picks render the axis's ALL
+ * structure restricted to the picks (lib/pages/welding.ts `subcoSet` / `rtSet`).
+ */
+export function axisValues(value: string | undefined): string[] {
+  return (value ?? "").split(",").map((x) => x.trim()).filter(Boolean);
+}
+
+/** The table key for one axis: a single pick is itself, several picks use ALL. */
+function axisKey(value: string, all: string): string {
+  return axisValues(value).length > 1 ? all : value;
+}
+
+/** Parties picked on a multi-select sub-contractor axis (2+), else undefined. */
+export function subcoSet(values: Record<string, string>): string[] | undefined {
+  const picks = axisValues(values.subco).filter((v) => v !== SUBCO_ALL);
+  // The two GAC areas are one party: GAC + GAC-SLG is GAC.
+  const parties = [...new Set(picks.map((v) => (v === "GAC-SLG" ? "GAC" : v)))];
+  return picks.length > 1 ? parties : undefined;
+}
+
+/** RT % values picked on a multi-select RT axis (2+), else undefined. */
+export function rtSet(values: Record<string, string>): number[] | undefined {
+  const picks = axisValues(values.rt).filter((v) => v !== RT_ALL).map(Number).filter(Number.isFinite);
+  return picks.length > 1 ? picks : undefined;
+}
+
 /** Whether the applied values ask for the ALL sub-contractor rendering. */
 export function isAllSubcos(values: Record<string, string>): boolean {
   return values.subco === SUBCO_ALL;
@@ -132,7 +160,7 @@ export const SCREENS: readonly ScreenDef[] = [
         { value: "MEDGULF", label: "MEDGULF" },
       ]),
     ],
-    pages: (v) => STATUS_PAGES[v.subco] ?? null,
+    pages: (v) => STATUS_PAGES[axisKey(v.subco, SUBCO_ALL)] ?? null,
   },
   {
     id: "nde",
@@ -142,7 +170,7 @@ export const SCREENS: readonly ScreenDef[] = [
     // the page's own Service Class and PWHT Y/N slicers (lib/pages/welding.ts buildNdePage)
     passthrough: ["sclass", "pwht"],
     pages: (v) => {
-      const n = NDE_PAGES[v.subco]?.[v.rt];
+      const n = NDE_PAGES[axisKey(v.subco, SUBCO_ALL)]?.[axisKey(v.rt, RT_ALL)];
       return n ? [n] : null;
     },
   },
@@ -153,7 +181,7 @@ export const SCREENS: readonly ScreenDef[] = [
     filters: [subcoFilter(), rtFilter([100, 10, 5])],
     passthrough: ["sclass", "pwht"],
     pages: (v) => {
-      const n = PWHT_PAGES[v.subco]?.[v.rt];
+      const n = PWHT_PAGES[axisKey(v.subco, SUBCO_ALL)]?.[axisKey(v.rt, RT_ALL)];
       return n ? [n] : null;
     },
   },
@@ -163,7 +191,7 @@ export const SCREENS: readonly ScreenDef[] = [
     nav: "Rejection by WPS",
     filters: [subcoFilter()],
     pages: (v) => {
-      const n = WPS_PAGES[v.subco];
+      const n = WPS_PAGES[axisKey(v.subco, SUBCO_ALL)];
       return n ? [n] : null;
     },
   },
@@ -200,8 +228,9 @@ export function screenById(id: string): ScreenDef | undefined {
 export function screenValues(screen: ScreenDef, params: Record<string, string | undefined>): Record<string, string> {
   const values: Record<string, string> = {};
   for (const f of screen.filters) {
-    const raw = params[f.id];
-    values[f.id] = raw !== undefined && f.options.some((o) => o.value === raw) ? raw : f.default;
+    // Keep the known picks of a (possibly comma-joined) value; none → the default.
+    const kept = axisValues(params[f.id]).filter((v) => f.options.some((o) => o.value === v));
+    values[f.id] = kept.length && !kept.includes(f.default) ? kept.join(",") : f.default;
   }
   return values;
 }
@@ -209,6 +238,10 @@ export function screenValues(screen: ScreenDef, params: Record<string, string | 
 /** Human title for the applied combination, e.g. "GAC · RT 100 %". */
 export function screenVariantLabel(screen: ScreenDef, values: Record<string, string>): string {
   return screen.filters
-    .map((f) => f.options.find((o) => o.value === values[f.id])?.label ?? values[f.id])
+    .map((f) =>
+      axisValues(values[f.id])
+        .map((v) => f.options.find((o) => o.value === v)?.label ?? v)
+        .join(" + "),
+    )
     .join(" · ");
 }

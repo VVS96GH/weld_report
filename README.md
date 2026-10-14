@@ -39,6 +39,28 @@ at logon: `systemctl --user status|restart weld-report`, logs with
 `npm run dev` — both want port 3000. Read statements are memoised in process
 (`lib/db.ts`, invalidated by a new load or migration; `QUERY_CACHE=off` disables it).
 
+**Updating the data.** Replace the files in `sources/` with newer exports under the same
+names, then run one command:
+
+```bash
+npm run db:refresh              # reloads only the sources whose files changed, in order
+npm run db:refresh -- --check   # show what would be reloaded, load nothing
+npm run db:refresh -- --all     # reload everything
+```
+
+The same command runs from the report itself: the 🔄 button at the top right
+asks «Обновить все данные?» and, on «Да», starts it through `POST /api/refresh`
+as a transient systemd user unit (`weld-data-refresh`, log in `.data-refresh.log`)
+so it survives the service restart at its end.
+
+It fingerprints every source file (`.data-refresh-state.json`, git-ignored), runs the
+loaders a change makes necessary — including the ones it leaves stale in another loader's
+output — refreshes the joint matviews once instead of once per loader, and restarts the
+`weld-report` service so the read cache is dropped. A failed run is resumed by running it
+again. The metric pins in `tests/` describe the 28-Aug-2026 delivery and are expected to
+move with new data: regenerate `analysis/reconcile_results.json` with
+`uv run analysis/reconcile_check.py` before trusting them again.
+
 Without a database, `PAGE_SOURCE=fixture npm run dev` serves the mockup snapshot
 (16‑Jan‑2026) through the same components.
 
@@ -54,7 +76,7 @@ them; the list of files each page needs is in `analysis/calculation-logic.md` §
 | `db/` | Migrations (`0001`–`0039`) and `db/README.md` — the column‑name contract, null/date rules, the DAX‑derived columns, indexes, loaders |
 | `scripts/` | Streaming loaders (`load-weld-dump.ts`, `load-ccc-*.ts`, `load-spool-dump.ts`), workbook seeders, `migrate.ts`, the offline schema checker `check-sql-columns.ts`, `token-lint.mjs` |
 | `lib/metrics/` | Parameterised SQL, one function per DAX measure family (`M##` ids cited in every doc comment); `lib/pages/welding.ts` assembles the 44 `PageModel`s (page 1 with its five slicers), `lib/pages/flange.ts` the filter-driven flange page, `lib/pages/forecast.ts` the RT Backlog Forecast page (pbix page 20), `lib/screens.ts` the option-A regrouping of the 44 pages into 7 filter-driven screens |
-| `app/` | App Router: `/welding/[page]` (page 1 takes `?ha=&area=&subco=&wtype=&wcat=`), `/flange` (`?ha=&subco=&method=`), `/welding/2` = RT Backlog Forecast (`?ha=&area=&subco=&byut=&wcat=&rt=&dia=`; `/forecast` redirects there), `/report/<screen>` (option A: overview / status / subco / nde / pwht / wps with `?subco=&rt=`; `subco=ALL`, the default, renders the party page's structure over the project scope — INCO excluded, never a sum of the party pages; `rt=ALL`, the default on nde / pwht, renders the RT 100 % page with no RT % predicate; nde / pwht also take `sclass=` and `pwht=`; `/report/demo` shows four widget forms — sparkline KPIs, a backlog waterfall, an aging heatmap, a WPS Pareto — over the project scope; `/report/demo2` a burn-down with projection, an HA readiness matrix, NDE lead-time small multiples and auto-written highlights), `/api/welding/[page]`, `/api/flange`, `/api/forecast`, `/api/health`; `app/styles/tokens.css` (T.EN tokens) and `app/globals.css` |
+| `app/` | App Router: `/welding/[page]` (page 1 takes `?ha=&area=&subco=&wtype=&wcat=`, each a comma-joined multi-select list; `area` may carry `HA>Area` pairs), `/flange` (`?ha=&subco=&method=`), `/welding/2` = RT Backlog Forecast (`?ha=&area=&subco=&byut=&wcat=&rt=&dia=`; `/forecast` redirects there), `/report/<screen>` (option A: overview / status / subco / nde / pwht / wps with `?subco=&rt=`; `subco=ALL`, the default, renders the party page's structure over the project scope — INCO excluded, never a sum of the party pages; `rt=ALL`, the default on nde / pwht, renders the RT 100 % page with no RT % predicate; nde / pwht also take `sclass=` and `pwht=`; `/report/demo` shows four widget forms — sparkline KPIs, a backlog waterfall, an aging heatmap, a WPS Pareto — over the project scope; `/report/demo2` a burn-down with projection, an HA readiness matrix, NDE lead-time small multiples and auto-written highlights), `/api/welding/[page]`, `/api/flange`, `/api/forecast`, `/api/health`; `app/styles/tokens.css` (T.EN tokens) and `app/globals.css` |
 | `components/` | `ReportShell`, `PageView`, widgets (KPI / DataTable / ChartCard / TextNote), theme + mood + density controls |
 | `docs/` | `ten-design-system.md` (the design spec, verbatim), `brand-README.md`, `ci.md` |
 | `tests/`, `e2e/` | vitest (structure tests without a DB; metric pins against the loaded DB), Playwright layout/navigation matrix |

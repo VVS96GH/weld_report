@@ -225,12 +225,22 @@ export type ServiceCatScope = "SG" | "NONSG";
 export type Scope = {
   /** `Sub-Contractor` page filter. */
   subContractor?: string;
+  /** Page-1 multi-select: `Sub-Contractor IN (…)` (2+ values; one value uses `subContractor`). */
+  subContractors?: readonly string[];
+  /**
+   * Page-1 "HA, Area Classification" multi-select, OR-ed: each entry is a whole
+   * HA (`area` absent), an HA ▸ area pair, or an area alone (`ha` absent).
+   * `ha: null` is the "(Blank)" group (`ha IS NULL`). See {@link haAreaCondition}.
+   */
+  haArea?: readonly HaAreaPick[];
   /** `SC NOT IN {…}` — the project pages all carry `NOT IN {Inco}`. */
   excludeSubContractors?: readonly string[];
   /** R-09 slug-catcher split: `service_cat = 'SG'` vs `IS DISTINCT FROM 'SG'`. */
   serviceCat?: ServiceCatScope;
   /** `RT%` slicer value (5/10/20/30/100). */
   rtPct?: number;
+  /** Multi-select `RT% IN (…)` (forecast page, 2026-10-14). */
+  rtPcts?: readonly number[];
   /** `Weld Type IN (…)`. */
   weldTypes?: readonly string[];
   /** `Weld Type NOT IN (…)` — e.g. the per-WPS pages drop `DMY`/`THD`. */
@@ -280,6 +290,9 @@ export type Scope = {
    */
   byUtAll?: string;
   diaBand?: string;
+  /** Multi-select twins of `byUtAll` / `diaBand` (forecast page, 2026-10-14). */
+  byUtAlls?: readonly string[];
+  diaBands?: readonly string[];
   /**
    * The NDE / PWHT pages' Service Class slicer (owner request 2026-09-15): `sql`
    * is the page's OWN class expression (the `GroupSpec.sql` it groups rows by —
@@ -293,6 +306,9 @@ export type Scope = {
    * (migration 0038) — so `Y`, `N` and the dump's `25.01` are each their own value.
    */
   pwhtYn?: string;
+  /** Multi-select twins (2026-10-14): several classes / tokens, OR-ed. */
+  serviceClasses?: { sql: string; values: readonly string[] };
+  pwhtYns?: readonly string[];
 };
 
 /**
@@ -342,6 +358,12 @@ export function scopeConditions(
   if (scope.subContractor !== undefined) {
     c.push(`${a}.sub_contractor = ${p.add(scope.subContractor)}`);
   }
+  if (scope.subContractors?.length) {
+    c.push(`${a}.sub_contractor = ANY(${p.any(scope.subContractors)})`);
+  }
+  if (scope.haArea?.length) {
+    c.push(haAreaCondition(scope.haArea, p, a));
+  }
   if (scope.excludeSubContractors?.length) {
     // DAX `NOT IN {…}` is true for blanks, so NULL must survive (§0.2).
     c.push(
@@ -354,11 +376,20 @@ export function scopeConditions(
     // §0.2: `<> "SG"` in DAX is true for blanks too.
     c.push(`${a}.service_cat IS DISTINCT FROM 'SG'`);
   }
+  if (scope.rtPcts?.length) {
+    c.push(`${a}.rt_pct = ANY(${p.add(scope.rtPcts.map(String))}::int[])`);
+  }
   if (scope.rtPct !== undefined) {
     c.push(`${a}.rt_pct = ${p.add(scope.rtPct)}`);
   }
   if (scope.pwhtYn !== undefined) {
     c.push(`${pwhtYnExpr(a)} = ${p.add(scope.pwhtYn)}`);
+  }
+  if (scope.pwhtYns?.length) {
+    c.push(`${pwhtYnExpr(a)} = ANY(${p.any(scope.pwhtYns)})`);
+  }
+  if (scope.serviceClasses?.values.length) {
+    c.push(`btrim(${scope.serviceClasses.sql}) = ANY(${p.any(scope.serviceClasses.values.map((v) => v.trim()))})`);
   }
   if (scope.serviceClass !== undefined) {
     // Compared TRIMMED: `service_class_cat_wd` is `class || ' ' || cat`, so a row with
@@ -405,6 +436,12 @@ export function scopeConditions(
   }
   if (scope.haIsNull) {
     c.push(`${a}.ha IS NULL`);
+  }
+  if (scope.byUtAlls?.length) {
+    c.push(`(${byUtAllExpr(a)}) = ANY(${p.any(scope.byUtAlls)})`);
+  }
+  if (scope.diaBands?.length) {
+    c.push(`(${diaBandExpr(a)}) = ANY(${p.any(scope.diaBands)})`);
   }
   if (scope.byUtAll !== undefined) {
     c.push(`(${byUtAllExpr(a)}) = ${p.add(scope.byUtAll)}`);
@@ -613,6 +650,60 @@ export type WeldingFilters = {
 export const FILTER_ALL = "All";
 
 /**
+ * Page-1 slicers are MULTI-select (owner request 2026-10-14, the pbix's
+ * check-box slicers): several values travel comma-joined in the same search
+ * param (`subco=GAC,TEKFEN`). No slicer value contains a comma (checked against
+ * every option list). A child `area` value may be an `HA>Area` pair, so the
+ * "HA, Area Classification" tree can pick one area under one HA only.
+ */
+export const FILTER_SEP = ",";
+export const PAIR_SEP = ">";
+
+/** The values of one slicer param; `undefined` when nothing is picked. */
+export function filterValues(v: string | undefined): string[] | undefined {
+  if (v === undefined) return undefined;
+  const out = [...new Set(v.split(FILTER_SEP).map((x) => x.trim()).filter((x) => x && x !== FILTER_ALL))];
+  return out.length ? out : undefined;
+}
+
+/** One pick of the "HA, Area Classification" tree. `ha: null` = "(Blank)". */
+export type HaAreaPick = { ha?: string | null; area?: string };
+
+/**
+ * The tree picks from the `ha` / `area` params.
+ *
+ * `ha` lists whole HAs; `area` lists `HA>Area` pairs, or plain areas. A plain
+ * area with exactly one `ha` and nothing else is the pre-multi-select link form
+ * (`?ha=HA1&area=Train-8 Process`) and keeps its old meaning: that area within
+ * that HA.
+ */
+export function haAreaPicks(f: WeldingFilters): HaAreaPick[] {
+  const has = filterValues(f.ha) ?? [];
+  const areas = filterValues(f.area) ?? [];
+  const toHa = (h: string) => (h === FILTER_BLANK ? null : h);
+  const legacy = has.length === 1 && areas.length > 0 && areas.every((a) => !a.includes(PAIR_SEP));
+  if (legacy) return areas.map((area) => ({ ha: toHa(has[0]!), area }));
+  const picks: HaAreaPick[] = has.map((h) => ({ ha: toHa(h) }));
+  for (const a of areas) {
+    const i = a.indexOf(PAIR_SEP);
+    picks.push(i < 0 ? { area: a } : { ha: toHa(a.slice(0, i)), area: a.slice(i + 1) });
+  }
+  return picks;
+}
+
+/** SQL for {@link HaAreaPick}s: the picks are OR-ed, each pick's parts AND-ed. */
+export function haAreaCondition(picks: readonly HaAreaPick[], p: Params, a = "w"): string {
+  const ors = picks.map((k) => {
+    const parts: string[] = [];
+    if (k.ha === null) parts.push(`${a}.ha IS NULL`);
+    else if (k.ha !== undefined) parts.push(`${a}.ha = ${p.add(k.ha)}`);
+    if (k.area !== undefined) parts.push(`${a}.area_classification_label = ${p.add(k.area)}`);
+    return parts.length ? `(${parts.join(" AND ")})` : "true";
+  });
+  return `(${ors.join(" OR ")})`;
+}
+
+/**
  * The pbix slicer's own label for the blank group. Sent as the `ha` value when
  * the reader picks "(Blank)", and translated to `ha IS NULL` — a literal
  * comparison would match nothing, since blank HA is NULL in `mv_joint`.
@@ -653,13 +744,16 @@ export function noFilters(f: WeldingFilters): boolean {
 export function withFilters(scope: Scope, f: WeldingFilters): Scope {
   const out: Scope = { ...scope };
   // "(Blank)" is the pbix slicer's own label for the blank group; it means
-  // `ha IS NULL`, not `ha = '(Blank)'`.
-  if (f.ha === FILTER_BLANK) out.haIsNull = true;
-  else if (f.ha) out.ha = f.ha;
-  if (f.area) out.areaClassificationLabel = f.area;
-  if (f.subco) out.subContractor = f.subco;
-  if (f.wtype) out.weldTypes = [f.wtype];
-  if (f.wcat) out.weldCats = [f.wcat];
+  // `ha IS NULL`, not `ha = '(Blank)'`. Several picks are OR-ed (haArea).
+  const picks = haAreaPicks(f);
+  if (picks.length > 0) out.haArea = picks;
+  const subcos = filterValues(f.subco);
+  if (subcos?.length === 1) out.subContractor = subcos[0];
+  else if (subcos) out.subContractors = subcos;
+  const wtypes = filterValues(f.wtype);
+  if (wtypes) out.weldTypes = wtypes;
+  const wcats = filterValues(f.wcat);
+  if (wcats) out.weldCats = wcats;
   return out;
 }
 

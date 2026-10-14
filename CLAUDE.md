@@ -17,6 +17,7 @@ npx tsc --noEmit               # typecheck only (tsconfig has noEmit)
 
 npm test                       # vitest (integration tests need DATABASE_URL reachable)
 npm run db:up / db:migrate / db:load   # Postgres 17 in Docker, migrations, load sources/Weld Dump.txt
+npm run db:refresh             # after replacing files in sources/: reload only what changed (scripts/refresh-data.ts; --check, --all, --only)
 
 **Python: `uv` only.** Analysis scripts under `analysis/` are stdlib-only and run with
 `uv run analysis/<script>.py` (root `pyproject.toml`, no deps). Never call `python3`/`pip`

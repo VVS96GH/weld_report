@@ -90,7 +90,7 @@ export function FlangeView({ model, subtitle, management }: { model: PageModel; 
   const withWindow = (w: ChartWidget | undefined, n: number) =>
     w ? { ...w, options_notes: `${w.options_notes ?? ""} window ${n}`.trim() } : undefined;
   // the pbix shows the last five months / five week-ends; the scrollbar reaches the rest
-  const monthly = withWindow(chart("monthlyChart"), 5);
+  const monthly = withWindow(chart("monthlyChart"), 6);
   const withHints = (w: ChartWidget | undefined) =>
     w ? { ...w, options_notes: `${w.options_notes ?? ""} label-name-pct center-total`.trim() } : undefined;
   const inspDonut = withHints(chart("inspectionDonut"));
@@ -101,7 +101,7 @@ export function FlangeView({ model, subtitle, management }: { model: PageModel; 
   kpi("Inspected");
   kpi("PCC");
   kpi("Leaked");
-  const leakLine = withWindow(chart("leakedTimelineChart"), 5);
+  const leakLine = withWindow(chart("leakedTimelineChart"), 6);
   const siteBar = chart("siteRepairChart");
   const vendorBar = chart("vendorRepairChart");
   const kRegister = kpi("Total Register");

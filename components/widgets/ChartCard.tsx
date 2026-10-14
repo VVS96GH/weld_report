@@ -162,6 +162,8 @@ function WindowScrollbar({
 
 const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+/** A trailing " 2026" on a month label ("May 2026") — see "year-axis-title". */
+const YEAR_SUFFIX = /\s+(\d{4})$/;
 
 /** "2026-07-24" → "24-Jul-26" (the pbix axis format); anything else passes through. */
 function axisLabel(label: unknown): string {
@@ -490,6 +492,15 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
   const percentAxis = notes.includes("percent-axis");
   const horizontal = notes.toLowerCase().includes("indexaxis") && notes.toLowerCase().includes("y");
   const circular = isCircular(widget.chart_type);
+  // "year-axis-title" (flange Monthly Inspection, 2026-10-14): labels are
+  // "May 2026"; the ticks show the month only and the year goes ONCE under the
+  // axis, as the pbix Year ▸ Month hierarchy draws it ("2025 – 2026" if the
+  // visible window spans two years).
+  const yearAxis = notes.includes("year-axis-title");
+  const visibleYears = yearAxis
+    ? [...new Set(widget.labels.slice(start, end).map((l) => YEAR_SUFFIX.exec(l)?.[1]).filter(Boolean))]
+    : [];
+  const yearTitle = visibleYears.length > 1 ? `${visibleYears[0]} – ${visibleYears.at(-1)}` : (visibleYears[0] ?? "");
 
   // Chart.js's ChartData/ChartOptions generics don't compose across a runtime-chosen
   // chart type, so the config objects are built loosely here and handed to a
@@ -575,10 +586,14 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
                 color: palette.text,
                 font: { size: 10, family: palette.font },
                 callback(this: { getLabelForValue(v: number): string }, value: number | string) {
-                  return axisLabel(typeof value === "number" ? this.getLabelForValue(value) : value);
+                  const label = typeof value === "number" ? this.getLabelForValue(value) : value;
+                  return yearAxis ? label.replace(YEAR_SUFFIX, "") : axisLabel(label);
                 },
               },
               grid: { color: palette.grid },
+              title: yearAxis && yearTitle
+                ? { display: true, text: yearTitle, color: palette.text, font: { size: 11, family: palette.font } }
+                : undefined,
             };
             const value = {
               stacked: stackedY,
@@ -599,7 +614,7 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
             return horizontal ? { x: value, y: category } : { x: category, y: value };
           })(),
     }),
-    [palette, stackedX, stackedY, percentAxis, horizontal, circular, widget.chart_type, widget.datasets.length, start, end, thresholds, notes],
+    [palette, stackedX, stackedY, percentAxis, horizontal, circular, widget.chart_type, widget.datasets.length, start, end, thresholds, notes, yearAxis, yearTitle],
   );
 
   // Trend charts fed by the not-yet-seeded weld_weekly_snapshot table (e.g. page 1's

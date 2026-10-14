@@ -68,6 +68,12 @@ export type FilterWidget = {
    */
   parent?: string;
   options_by_parent?: Record<string, string[]>;
+  /**
+   * Check-box multi-select (owner request 2026-10-14, the pbix slicers): `value`
+   * is then a comma-joined list ("GAC,TEKFEN"), or "All". For a hierarchy child
+   * a pick may be "HA>Area" — that area under that HA only.
+   */
+  multi?: boolean;
 };
 
 export type Widget = KpiWidget | TableWidget | ChartWidget | TextWidget | FilterWidget;

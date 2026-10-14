@@ -1804,6 +1804,202 @@ html {
   padding-inline: 16px;
 }
 
+/* ── check-box slicers (components/MultiSelect.tsx, page 1) ── */
+.ms {
+  position: relative;
+}
+.ms-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  text-align: start;
+  cursor: pointer;
+}
+.ms-summary {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ms-caret {
+  opacity: 0.7;
+  flex: none;
+}
+.ms-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  inset-inline-start: 0;
+  min-width: 100%;
+  max-width: min(420px, 92vw);
+  z-index: 300;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+}
+.ms-options {
+  max-height: 340px;
+  overflow-y: auto;
+  padding: 6px;
+}
+.ms-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  cursor: pointer;
+  text-transform: none;
+  font-weight: 400;
+  letter-spacing: normal;
+}
+.filter-group .ms-option {
+  font-size: 0.8rem;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--text-primary);
+}
+.ms-option:hover {
+  background: var(--bg-secondary);
+}
+.ms-option input {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.ms-option--all {
+  border-bottom: 1px solid var(--border-color);
+  border-radius: 6px 6px 0 0;
+  margin-bottom: 4px;
+}
+.filter-group .ms-option--parent {
+  font-weight: 600;
+}
+.ms-option--child {
+  padding-inline-start: 34px;
+}
+.ms-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 8px;
+  border-top: 1px solid var(--border-color);
+}
+.ms-btn {
+  min-height: 36px;
+  padding-inline: 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.ms-btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+[data-mood="ten"] .ms-panel {
+  background: var(--surface);
+  border-color: var(--border);
+  border-radius: var(--r);
+}
+[data-mood="ten"] .filter-group .ms-option,
+[data-mood="ten"] .ms-btn {
+  color: var(--fg);
+}
+[data-mood="ten"] .ms-option:hover {
+  background: var(--surface-2);
+}
+[data-mood="ten"] .ms-option--all,
+[data-mood="ten"] .ms-footer,
+[data-mood="ten"] .ms-btn {
+  border-color: var(--border);
+}
+[data-mood="ten"] .ms-btn--primary {
+  border-color: var(--accent);
+  color: var(--on-accent, white);
+}
+
+/* ── data refresh button + dialog (components/RefreshDataButton.tsx) ── */
+.refresh-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: var(--overlay, rgb(0 0 0 / 0.55));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.refresh-dialog {
+  width: min(440px, 100%);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  box-shadow: var(--shadow-card);
+  padding: 20px;
+}
+.refresh-dialog h2 {
+  margin: 0 0 8px;
+  font-size: 1.1rem;
+}
+.refresh-dialog p {
+  margin: 0 0 12px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+.refresh-dialog pre {
+  max-height: 220px;
+  overflow: auto;
+  font-size: 0.7rem;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  padding: 8px;
+  white-space: pre-wrap;
+  margin: 0 0 12px;
+}
+.refresh-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.header-btn.is-running span {
+  display: inline-block;
+  animation: refresh-spin 1.2s linear infinite;
+}
+@keyframes refresh-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .header-btn.is-running span {
+    animation: none;
+  }
+}
+[data-mood="ten"] .refresh-dialog {
+  background: var(--surface);
+  color: var(--fg);
+  border-color: var(--border);
+  border-radius: var(--r);
+}
+[data-mood="ten"] .refresh-dialog p {
+  color: var(--muted);
+}
+[data-mood="ten"] .refresh-dialog pre {
+  background: var(--surface-2);
+}
+
 /* ── RT Backlog Forecast: the pbix page-20 arrangement (components/ForecastView.tsx) ── */
 .forecast-layout {
   display: grid;

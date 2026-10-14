@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import type { FilterWidget } from "@/lib/page-model";
+import { MultiSelect, TreeMultiSelect } from "@/components/MultiSelect";
 
 /**
  * Server-driven filters (flange dashboard): each FilterWidget is a labelled
@@ -58,11 +59,29 @@ export function FilterBar({ widgets }: { widgets: FilterWidget[] }) {
     push(next);
   }
 
+  // Multi-select slicers (page 1, 2026-10-14): values travel comma-joined in
+  // the same params; no box ticked = the param is dropped = "All".
+  const list = (v: string) => (v === "All" ? [] : v.split(",").filter(Boolean));
+  function applyList(id: string, values: string[]) {
+    const next = new URLSearchParams(searchParams.toString());
+    if (values.length === 0) next.delete(id);
+    else next.set(id, values.join(","));
+    push(next);
+  }
+  function applyTree(parentId: string, childId: string, v: { has: string[]; pairs: string[] }) {
+    const next = new URLSearchParams(searchParams.toString());
+    if (v.has.length) next.set(parentId, v.has.join(","));
+    else next.delete(parentId);
+    if (v.pairs.length) next.set(childId, v.pairs.join(","));
+    else next.delete(childId);
+    push(next);
+  }
+
   const applied = widgets.filter((w) => w.value !== "All");
   const announcement =
     applied.length === 0
       ? "Filters: all records"
-      : `Filters applied: ${applied.map((w) => `${w.label} ${w.value}`).join(", ")}`;
+      : `Filters applied: ${applied.map((w) => `${w.label} ${w.value.split(",").join(" or ")}`).join(", ")}`;
 
   return (
     <div className="filter-bar" role="group" aria-label="Report filters" aria-busy={pending}>
@@ -71,6 +90,39 @@ export function FilterBar({ widgets }: { widgets: FilterWidget[] }) {
         // children are rendered inside their parent's grouped control
         if (w.parent && widgets.some((p) => p.id === w.parent)) return null;
         const child = widgets.find((c) => c.parent === w.id && c.options_by_parent);
+        if (child && w.multi) {
+          const byParent = child.options_by_parent ?? {};
+          const groups = Object.keys(byParent)
+            .sort((x, y) => (x === "" ? 1 : y === "" ? -1 : x.localeCompare(y)))
+            .map((g) => ({ key: g === "" ? BLANK_PARENT : g, areas: byParent[g] ?? [] }));
+          let has = list(w.value);
+          let pairs = list(child.value);
+          // pre-multi-select link form: ?ha=HA1&area=Train-8 Process
+          if (has.length === 1 && pairs.length > 0 && pairs.every((p) => !p.includes(">"))) {
+            pairs = pairs.map((a) => `${has[0]}>${a}`);
+            has = [];
+          }
+          return (
+            <TreeMultiSelect
+              key={`${w.id}:${w.value}:${child.value}`}
+              label={`${w.label}, ${child.label}`}
+              groups={groups}
+              value={{ has, pairs: pairs.filter((p) => p.includes(">")) }}
+              onApply={(v) => applyTree(w.id, child.id, v)}
+            />
+          );
+        }
+        if (w.multi) {
+          return (
+            <MultiSelect
+              key={`${w.id}:${w.value}`}
+              label={w.label}
+              options={w.options.filter((o) => o !== "All")}
+              value={list(w.value)}
+              onApply={(v) => applyList(w.id, v)}
+            />
+          );
+        }
         if (child) {
           const byParent = child.options_by_parent ?? {};
           const parentValue = w.value === "All" ? "" : w.value;

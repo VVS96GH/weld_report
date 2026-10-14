@@ -105,6 +105,7 @@ import {
   SNAPSHOT_SCOPES,
   weeklyProgress,
   weeklySnapshot,
+  chartCutoff,
   rtBacklogCurrent,
   pwhtBacklogCurrent,
   type RtBacklogCurrent,
@@ -121,6 +122,10 @@ import {
   withFilters,
   FILTER_ALL,
   FILTER_BLANK,
+  FILTER_SEP,
+  filterValues,
+  haAreaPicks,
+  PAIR_SEP,
   areaOptionsByHa,
   type WeldingFilters,
   PROJECT_EXCLUDED_SUBCONTRACTORS,
@@ -1085,6 +1090,11 @@ type SubconConf = {
   tmcpPipe?: boolean;
   /** `Weld Type NOT IN {…}` — the per-WPS pivots drop `DMY` (§3.4). */
   excludeWeldTypes?: readonly string[];
+  /**
+   * Screens multi-select (2026-10-14): with `sub = ALL`, only these parties —
+   * the ALL structure over their union. Absent = the whole project scope.
+   */
+  subs?: readonly string[];
 };
 
 /**
@@ -1201,6 +1211,7 @@ function baseScope(conf: SubconConf): Scope {
     sources: sourcesFor(conf.sub),
     // ALL: no party predicate, INCO excluded — the project scope of pages 1/2.
     subContractor: isAll(conf.sub) ? undefined : conf.sub,
+    subContractors: isAll(conf.sub) ? conf.subs : undefined,
     excludeSubContractors: isAll(conf.sub) ? PROJECT_EXCLUDED_SUBCONTRACTORS : undefined,
     serviceCat: conf.serviceCat,
     tmcpPipe: conf.tmcpPipe,
@@ -1210,9 +1221,12 @@ function baseScope(conf: SubconConf): Scope {
 }
 
 /** Sub-contractor arguments for the trend helpers (`weeklyProgress`, backlog current). */
-function partyArgs(sub: string): { subContractor?: string; excludeSubContractors?: readonly string[] } {
+function partyArgs(
+  sub: string,
+  subs?: readonly string[],
+): { subContractor?: string; subContractors?: readonly string[]; excludeSubContractors?: readonly string[] } {
   return isAll(sub)
-    ? { subContractor: undefined, excludeSubContractors: PROJECT_EXCLUDED_SUBCONTRACTORS }
+    ? { subContractor: undefined, subContractors: subs, excludeSubContractors: PROJECT_EXCLUDED_SUBCONTRACTORS }
     : { subContractor: sub };
 }
 
@@ -1223,21 +1237,29 @@ function partyArgs(sub: string): { subContractor?: string; excludeSubContractors
  * page's; only the party name changes.
  */
 const PARTY_IN_TITLE = /\b(CCC|GAC|TEKFEN|MEDGULF)\b/g;
-function allTitle(title: string): string {
-  return title.replace(PARTY_IN_TITLE, "ALL SUB-CONTRACTORS");
+function allTitle(title: string, subs?: readonly string[]): string {
+  return title.replace(PARTY_IN_TITLE, subs ? subs.join(" + ") : "ALL SUB-CONTRACTORS");
 }
-function allWidgetTitle(title: string): string {
-  return title.replace(PARTY_IN_TITLE, "ALL");
+function allWidgetTitle(title: string, subs?: readonly string[]): string {
+  return title.replace(PARTY_IN_TITLE, subs ? subs.join(" + ") : "ALL");
 }
-function allConf(conf: SubconConf): SubconConf {
+function allConf(conf: SubconConf, subs?: readonly string[]): SubconConf {
   // The party's own service-cat / TMCP split has no meaning across parties.
-  return { sub: SUBCO_ALL, excludeWeldTypes: conf.excludeWeldTypes };
+  return { sub: SUBCO_ALL, excludeWeldTypes: conf.excludeWeldTypes, ...(subs ? { subs } : {}) };
 }
 
 /** "CCC NDE RT 100% STATUS" → "CCC NDE ALL RT % STATUS"; "… by RT 100%" → "… by ALL RT %". */
-function allRtTitle(title: string, on: boolean): string {
-  return on ? title.replace(/RT ?100 ?%/g, "ALL RT %") : title;
+function allRtTitle(title: string, on: boolean, pcts?: readonly number[]): string {
+  return on ? title.replace(/RT ?100 ?%/g, pcts ? `RT ${pcts.join(" + ")} %` : "ALL RT %") : title;
 }
+const SUBSET_SCOPE_NOTE = (subs: readonly string[]) =>
+  `Selected sub-contractors: ${subs.join(", ")}. Every figure is computed over their union ` +
+  "(the ALL rendering restricted to them), not summed from the party pages, so a joint is never counted twice.";
+const SUBSET_RT_NOTE = (pcts: readonly number[]) =>
+  `Selected RT %: ${pcts.join(", ")}. The rows span those RT % values; columns named RT100% keep their meaning.`;
+const SUBSET_RATE_NOTE =
+  "Rejection-rate lines: the weekly trend workbook records one rate per sub-contractor, and rates of " +
+  "several parties cannot be added up, so these lines are not drawn for a multi-party selection.";
 const ALL_RT_NOTE =
   "ALL RT %: the rows span every RT % (no RT % predicate). Columns named RT100% / RT 100% keep their " +
   "meaning — those measures carry RT % = 100 in their own definition — so they count the RT 100 % share of each row.";
@@ -1274,6 +1296,10 @@ export type WeldingPageOpts = {
    * span every RT %. Ignored on every other page.
    */
   allRtPct?: boolean;
+  /** Screens multi-select (2026-10-14): 2+ parties → the ALL structure over just them. */
+  subcoSet?: readonly string[];
+  /** Screens multi-select: 2+ RT % values → the ALL-RT structure over just them. */
+  rtSet?: readonly number[];
 };
 
 /**
@@ -1309,6 +1335,17 @@ const FILTER_UNKNOWN_NOTE =
   "One or more filter values are not present in the data and were ignored " +
   "(treated as \u201cAll\u201d).";
 
+/** Inco & co.: parties the project-scope cards leave out (R3-01). */
+const isProjectExcluded = (sub: string) =>
+  PROJECT_EXCLUDED_SUBCONTRACTORS.some((x) => x.toUpperCase() === sub.toUpperCase());
+
+/** The sub-contractor slicer as metric options: one value, a list, or nothing. */
+function subcoArgs(f: WeldingFilters): { subContractor?: string; subContractors?: readonly string[] } {
+  const v = filterValues(f.subco);
+  if (!v) return {};
+  return v.length === 1 ? { subContractor: v[0] } : { subContractors: v };
+}
+
 async function filterWidgets(
   applied: WeldingFilters,
 ): Promise<{ widgets: FilterWidget[]; unknown: boolean }> {
@@ -1324,15 +1361,25 @@ async function filterWidgets(
       f.id === "ha"
         ? [...(options.ha ?? []), FILTER_BLANK]
         : (options[f.id] ?? []);
-    const raw = applied[f.id as keyof WeldingFilters];
-    const ok = raw !== undefined && opts.includes(raw);
-    if (raw !== undefined && !ok) unknown = true;
+    // Multi-select (2026-10-14): keep every picked value that exists, drop
+    // the rest. An `area` pick may be an `HA>Area` pair from the tree; both
+    // halves must exist.
+    const picked = filterValues(applied[f.id as keyof WeldingFilters]) ?? [];
+    const haOpts = [...(options.ha ?? []), FILTER_BLANK];
+    const exists = (v: string) => {
+      if (f.id !== "area" || !v.includes(PAIR_SEP)) return opts.includes(v);
+      const i = v.indexOf(PAIR_SEP);
+      return haOpts.includes(v.slice(0, i)) && opts.includes(v.slice(i + 1));
+    };
+    const kept = picked.filter(exists);
+    if (kept.length < picked.length) unknown = true;
     const w: FilterWidget = {
       kind: "filter",
       id: f.id,
       label: f.label,
       options: [FILTER_ALL, ...opts],
-      value: ok ? raw! : FILTER_ALL,
+      value: kept.length ? kept.join(FILTER_SEP) : FILTER_ALL,
+      multi: true,
     };
     // The pbix renders "HA, Area Classification" as one two-field slicer, so
     // `area` declares `ha` as its parent and carries the per-HA option lists.
@@ -1385,10 +1432,14 @@ export async function getWeldingPage(
   const ctx: Ctx = { asOf: as_of, asOfOrigin: origin, notes: new Set(), filters };
   if (bar?.unknown) note(ctx, FILTER_UNKNOWN_NOTE);
   // ALL applies to the per-party families only; pages 1/2 are project-wide already.
-  const all = Boolean(opts.allSubcos) && (SUBCON_PAGES.has(n) || NDE_PAGES.has(n) || WPS_PAGES.has(n));
-  if (all) note(ctx, ALL_SCOPE_NOTE);
-  const allRt = Boolean(opts.allRtPct) && NDE_PAGES.has(n);
-  if (allRt) note(ctx, ALL_RT_NOTE);
+  // Screens multi-select: 2+ parties / RT % values render the ALL structure over
+  // just those (a single pick is that party's or RT %'s own page, as before).
+  const subs = opts.subcoSet && opts.subcoSet.length > 1 ? [...opts.subcoSet] : undefined;
+  const rts = opts.rtSet && opts.rtSet.length > 1 ? [...opts.rtSet] : undefined;
+  const all = (Boolean(opts.allSubcos) || subs !== undefined) && (SUBCON_PAGES.has(n) || NDE_PAGES.has(n) || WPS_PAGES.has(n));
+  if (all) note(ctx, subs ? SUBSET_SCOPE_NOTE(subs) : ALL_SCOPE_NOTE);
+  const allRt = (Boolean(opts.allRtPct) || rts !== undefined) && NDE_PAGES.has(n);
+  if (allRt) note(ctx, rts ? SUBSET_RT_NOTE(rts) : ALL_RT_NOTE);
 
   let widgets: Widget[];
   const unavailable = UNAVAILABLE_PAGES.get(n);
@@ -1401,17 +1452,23 @@ export async function getWeldingPage(
     widgets = await buildProjectStatusPage(spec, ctx);
   } else if (SUBCON_PAGES.has(n)) {
     const confs = SUBCON_PAGES.get(n)!;
-    widgets = await buildSubconPage(spec, all ? [allConf(confs[0]!)] : confs, ctx);
+    widgets = await buildSubconPage(spec, all ? [allConf(confs[0]!, subs)] : confs, ctx);
   } else if (NDE_PAGES.has(n)) {
     const conf = NDE_PAGES.get(n)!;
     widgets = await buildNdePage(
       spec,
-      { ...conf, sub: all ? SUBCO_ALL : conf.sub, rtPct: allRt ? undefined : conf.rtPct },
+      {
+        ...conf,
+        sub: all ? SUBCO_ALL : conf.sub,
+        rtPct: allRt ? undefined : conf.rtPct,
+        subs: all ? subs : undefined,
+        rtPcts: allRt ? rts : undefined,
+      },
       ctx,
     );
   } else if (WPS_PAGES.has(n)) {
     const confs = WPS_PAGES.get(n)!;
-    widgets = await buildWpsPage(spec, all ? [allConf(confs[0]!)] : confs, ctx);
+    widgets = await buildWpsPage(spec, all ? [allConf(confs[0]!, subs)] : confs, ctx);
   } else {
     widgets = spec.widgets.map(emptyWidget);
     note(ctx, `page ${n} has no build rule yet`);
@@ -1421,14 +1478,14 @@ export async function getWeldingPage(
   // The bar goes FIRST, ahead of every data widget.
   if (bar) widgets = [...bar.widgets, ...widgets];
   if (all || allRt) {
-    const retitle = (t: string) => allRtTitle(all ? allWidgetTitle(t) : t, allRt);
+    const retitle = (t: string) => allRtTitle(all ? allWidgetTitle(t, subs) : t, allRt, rts);
     widgets = widgets.map((w) => (w.kind === "table" || w.kind === "chart" ? { ...w, title: retitle(w.title) } : w));
   }
 
   return {
     page: spec.page,
     id: `${spec.id}${all ? "-all" : ""}${allRt ? "-allrt" : ""}`,
-    title: allRtTitle(all ? allTitle(spec.title) : spec.title, allRt),
+    title: allRtTitle(all ? allTitle(spec.title, subs) : spec.title, allRt, rts),
     subtitle: spec.subtitle ?? undefined,
     widgets,
     ...(bar
@@ -1473,28 +1530,23 @@ async function buildProjectKpiPage(spec: SpecPage, ctx: Ctx): Promise<Widget[]> 
       // Owner: page 1's Welding Progress Trend shows the LAST 10 WEEKS. The
       // mockup snapshot declares 14 labels; pages 7-11 keep their own window.
       weeks: 10,
+      upTo: chartCutoff(ctx.asOf),
       excludeWeldCats: ["J"],
       excludeSubContractors: PROJECT_EXCLUDED_SUBCONTRACTORS,
       sources: SOURCES_PR_ALL_LOADED,
       // mv_weekly_progress carries all three columns, so the trend follows the
       // slicer exactly rather than being dropped.
-      subContractor: f.subco,
-      weldType: f.wtype,
-      weldCat: f.wcat,
+      // Multi-select lists (2026-10-14); one value is a one-element list.
+      subContractors: filterValues(f.subco),
+      weldTypes: filterValues(f.wtype),
+      weldCats: filterValues(f.wcat),
       // 0030 put HA and Area into mv_weekly_progress precisely so the trend
       // cannot show unfiltered weeks beside filtered cards.
-      ha: f.ha === FILTER_BLANK ? undefined : f.ha,
-      haIsNull: f.ha === FILTER_BLANK,
-      area: f.area,
+      haArea: haAreaPicks(f),
     }),
     weldTypeDistribution({ ...scope, excludeWeldTypes: ["THD"] }),
   ]);
-  if (
-    f.subco !== undefined &&
-    PROJECT_EXCLUDED_SUBCONTRACTORS.some(
-      (x) => x.toUpperCase() === f.subco!.toUpperCase(),
-    )
-  ) {
+  if (filterValues(f.subco)?.some(isProjectExcluded)) {
     note(ctx, PROJECT_EXCLUDED_FILTER_NOTE);
   }
   const sources = await loadedSources();
@@ -1545,12 +1597,11 @@ async function buildProjectKpiPage(spec: SpecPage, ctx: Ctx): Promise<Widget[]> 
           // R3-01 keeps Inco out of this card. Filtering TO Inco therefore
           // leaves it measuring nothing — and "nothing" must render as `—`,
           // not as a 0 that reads like "Inco did no MT/PT".
+          // Several parties picked: the card measures the ones it covers, and
+          // only a pick made ENTIRELY of excluded parties leaves nothing.
           const excluded =
             CARD_SCOPE[w.label] === "project" &&
-            f.subco !== undefined &&
-            PROJECT_EXCLUDED_SUBCONTRACTORS.some(
-              (x) => x.toUpperCase() === f.subco!.toUpperCase(),
-            );
+            (filterValues(f.subco)?.every(isProjectExcluded) ?? false);
           if (excluded) {
             out.push(emptyKpi(w));
             note(ctx, PROJECT_EXCLUDED_FILTER_NOTE);
@@ -1671,7 +1722,16 @@ async function buildProjectKpiPage(spec: SpecPage, ctx: Ctx): Promise<Widget[]> 
         // dropped. Verified week for week against the owner's 31-Jul..28-Aug
         // chart. RT = M47 vs M48; PWHT = M60 vs M64.
         const isRt = !/pwht/i.test(w.canvas_id);
-        const src = { sources: SOURCES_PR_ALL_LOADED, subContractor: f.subco };
+        const src = {
+          sources: SOURCES_PR_ALL_LOADED,
+          ...subcoArgs(f),
+          // Without history the chart is this one computed week, so it must
+          // honour every slicer, not just the party.
+          weldTypes: filterValues(f.wtype),
+          weldCats: filterValues(f.wcat),
+          haArea: haAreaPicks(f),
+          cutoff: chartCutoff(ctx.asOf),
+        };
         // The workbook is keyed per PARTY only. A sub-contractor filter picks
         // that party's rows, exactly as pages 7-11 do; a weld-type or weld-cat
         // filter has no counterpart there, so the history is genuinely
@@ -1681,17 +1741,18 @@ async function buildProjectKpiPage(spec: SpecPage, ctx: Ctx): Promise<Widget[]> 
           historyOk
             ? weeklySnapshot({
                 metrics: snapshotMetricsFor(w),
-                subContractor: f.subco,
+                ...subcoArgs(f),
                 aggregate: true,
                 excludeProject: true,
                 weeks: w.labels.length,
+            upTo: chartCutoff(ctx.asOf),
               })
             : Promise.resolve([]),
           isRt ? rtBacklogCurrent(src) : Promise.resolve(null),
           isRt ? Promise.resolve(null) : pwhtBacklogCurrent(src),
         ]);
         if (!historyOk) {
-          out.push(currentWeekOnlyChart(w, ctx.asOf, rtCur, pwhtCur));
+          out.push(currentWeekOnlyChart(w, chartCutoff(ctx.asOf), rtCur, pwhtCur));
           note(ctx, FILTER_NO_HISTORY_NOTE);
           continue;
         }
@@ -1718,7 +1779,7 @@ async function buildProjectKpiPage(spec: SpecPage, ctx: Ctx): Promise<Widget[]> 
       }
       const points = await weeklySnapshot({
         metrics,
-        subContractor: f.subco,
+        ...subcoArgs(f),
         // The project rate lines (M25P/M36P) are written once per PARTY with
         // the same project-wide value — the seeder has no PROJECT row for them
         // (that sentinel carries only the MPI metrics) — so they are
@@ -1726,6 +1787,7 @@ async function buildProjectKpiPage(spec: SpecPage, ctx: Ctx): Promise<Widget[]> 
         scope: SNAPSHOT_SCOPES.ALL,
         aggregate: !isRate,
         weeks: w.labels.length,
+            upTo: chartCutoff(ctx.asOf),
       });
       out.push(snapshotChart(w, points, { project: true }));
       if (points.length === 0) note(ctx, TREND_NOTE);
@@ -1984,7 +2046,7 @@ async function buildProjectStatusPage(
   if (scopeNote) note(ctx, scopeNote);
   noteIf(ctx, utCoverageNote(av.ut));
   if (!(await sourceHasRows(SOURCES_CCC))) note(ctx, CCC_NOTE);
-  const weekEnd = await latestWeekEnd();
+  const weekEnd = await latestWeekEnd(chartCutoff(ctx.asOf));
   const rtTypes = { ...scope, weldTypes: ["BW", "GW", "MW", "CLET"] };
   const noJ = { ...scope, excludeWeldCats: ["J"] };
   const statusScope = { ...scope, weldCats: WELD_STATUS_CATS };
@@ -2083,7 +2145,7 @@ async function buildSubconPage(
   confs: SubconConf[],
   ctx: Ctx,
 ): Promise<Widget[]> {
-  const weekEnd = await latestWeekEnd();
+  const weekEnd = await latestWeekEnd(chartCutoff(ctx.asOf));
   const av = await availability(
     variantFor(confs[0]!.sub),
     sourcesFor(confs[0]!.sub),
@@ -2125,8 +2187,9 @@ async function buildSubconPage(
         bundleBy(prScope, GROUP_WELD_CAT, prAv),
         bundleTotal(prScope, prAv),
         weeklyProgress({
-          ...partyArgs(conf.sub),
+          ...partyArgs(conf.sub, conf.subs),
           weeks: 8,
+          upTo: chartCutoff(ctx.asOf),
           excludeWeldCats: ["J"],
           sources: sourcesFor(conf.sub),
         }),
@@ -2182,16 +2245,19 @@ async function buildSubconPage(
         const isRt = !/pwht/i.test(w.canvas_id);
         const src = {
           sources: SOURCES_PR_ALL_LOADED,
-          ...partyArgs(blk.conf.sub),
+          ...partyArgs(blk.conf.sub, blk.conf.subs),
+          cutoff: chartCutoff(ctx.asOf),
         };
         const [points, rtCur, pwhtCur] = await Promise.all([
           weeklySnapshot({
             metrics: snapshotMetricsFor(w),
             // ALL: every party summed, the PROJECT sentinel dropped — the page-1 bars.
             subContractor: isAll(blk.conf.sub) ? undefined : blk.conf.sub,
+            subContractors: blk.conf.subs,
             aggregate: true,
             excludeProject: true,
             weeks: w.labels.length,
+            upTo: chartCutoff(ctx.asOf),
           }),
           isRt ? rtBacklogCurrent(src) : Promise.resolve(null),
           isRt ? Promise.resolve(null) : pwhtBacklogCurrent(src),
@@ -2199,6 +2265,9 @@ async function buildSubconPage(
         out.push(withCurrentWeek(snapshotChart(w, points), rtCur, pwhtCur));
         if (points.length === 0) note(ctx, TREND_NOTE);
         else note(ctx, BACKLOG_PROVENANCE_NOTE);
+      } else if (blk.conf.subs) {
+        out.push(emptyWidget(w));
+        note(ctx, SUBSET_RATE_NOTE);
       } else if (isAll(blk.conf.sub)) {
         // The party rejection-rate lines have project-wide twins (M25P/M36P):
         // read those exactly as page 1 does, deduplicated per week, never summed.
@@ -2208,6 +2277,7 @@ async function buildSubconPage(
           scope: SNAPSHOT_SCOPES.ALL,
           aggregate: false,
           weeks: w.labels.length,
+            upTo: chartCutoff(ctx.asOf),
         });
         out.push(snapshotChart(w, points, { project: true }));
         if (points.length === 0) note(ctx, TREND_NOTE);
@@ -2221,6 +2291,7 @@ async function buildSubconPage(
           // (sub_contractor='GAC', scope='SG'); pick the matching qualifier.
           scope: snapshotScopeFor(blk.conf),
           weeks: w.labels.length,
+            upTo: chartCutoff(ctx.asOf),
         });
         out.push(snapshotChart(w, points));
         if (points.length === 0) note(ctx, TREND_NOTE);
@@ -2329,7 +2400,14 @@ function subconProgressChart(
 
 async function buildNdePage(
   spec: SpecPage,
-  conf: { sub: string; rtPct: number | undefined; kind: "nde" | "pwht" },
+  conf: {
+    sub: string;
+    rtPct: number | undefined;
+    kind: "nde" | "pwht";
+    /** Screens multi-select: parties under ALL / RT % values under ALL RT. */
+    subs?: readonly string[];
+    rtPcts?: readonly number[];
+  },
   ctx: Ctx,
 ): Promise<Widget[]> {
   const isCcc = conf.sub === "CCC";
@@ -2339,8 +2417,10 @@ async function buildNdePage(
   const scope: Scope = {
     sources: sourcesFor(conf.sub),
     subContractor: all ? undefined : conf.sub,
+    subContractors: all ? conf.subs : undefined,
     excludeSubContractors: all ? PROJECT_EXCLUDED_SUBCONTRACTORS : undefined,
     rtPct: conf.rtPct,
+    rtPcts: conf.rtPcts,
     temporaryLines: false,
     weldedOnly: true,
     // §3.3: the PWHT-by-RT% pages carry the extra filter "PWHT Weld Status not
@@ -2363,19 +2443,23 @@ async function buildNdePage(
   const optionsScope: Scope = { ...scope };
   const optionsP = Promise.all([serviceClassOptions(optionsScope, classGroup), pwhtYnOptions(optionsScope)]);
   optionsP.catch(() => undefined); // surfaced by the await below; never an unhandled rejection
-  const requestedClass = ctx.filters.sclass;
+  // Multi-select (2026-10-14): both slicers take comma-joined lists, OR-ed.
+  const requestedClass = filterValues(ctx.filters.sclass);
   // PWHT Y/N: the raw token (`Y` / `N` / `25.01`), see migration 0038 and R-04.
-  const requestedPwht = ctx.filters.pwht;
-  let classApplied = false;
-  let pwhtApplied = false;
-  if (requestedClass !== undefined || requestedPwht !== undefined) {
+  const requestedPwht = filterValues(ctx.filters.pwht);
+  let keptClass: string[] = [];
+  let keptPwht: string[] = [];
+  if (requestedClass || requestedPwht) {
     const [classOpts, pwhtOpts] = await optionsP;
-    classApplied = requestedClass !== undefined && classOpts.includes(requestedClass);
-    if (requestedClass !== undefined && !classApplied) note(ctx, FILTER_UNKNOWN_NOTE);
-    if (classApplied) scope.serviceClass = { sql: classGroup.sql, value: requestedClass! };
-    pwhtApplied = requestedPwht !== undefined && pwhtOpts.includes(requestedPwht);
-    if (requestedPwht !== undefined && !pwhtApplied) note(ctx, FILTER_UNKNOWN_NOTE);
-    if (pwhtApplied) scope.pwhtYn = requestedPwht!;
+    // Compared trimmed: a URL round-trip drops the trailing space of a class
+    // with no Service Cat (see Scope.serviceClass).
+    keptClass = (requestedClass ?? []).filter((v) => classOpts.some((o) => o.trim() === v.trim()));
+    keptPwht = (requestedPwht ?? []).filter((v) => pwhtOpts.includes(v));
+    if (keptClass.length < (requestedClass?.length ?? 0) || keptPwht.length < (requestedPwht?.length ?? 0)) {
+      note(ctx, FILTER_UNKNOWN_NOTE);
+    }
+    if (keptClass.length) scope.serviceClasses = { sql: classGroup.sql, values: keptClass };
+    if (keptPwht.length) scope.pwhtYns = keptPwht;
   }
   if (isCcc || all) note(ctx, PWHT_CCC_NEW_NOTE);
   const av = await availability(variant, sourcesFor(conf.sub), scope);
@@ -2463,15 +2547,18 @@ async function buildNdePage(
     kind: "filter",
     id: "sclass",
     label: "Service Class",
-    options: [FILTER_ALL, ...classOptions],
-    value: classApplied ? requestedClass! : FILTER_ALL,
+    // Trimmed, so a ticked box round-trips through the URL (see keptClass).
+    options: [FILTER_ALL, ...new Set(classOptions.map((o) => o.trim()))],
+    value: keptClass.length ? keptClass.map((v) => v.trim()).join(FILTER_SEP) : FILTER_ALL,
+    multi: true,
   };
   const pwhtFilter: FilterWidget = {
     kind: "filter",
     id: "pwht",
     label: "PWHT Y/N",
     options: [FILTER_ALL, ...pwhtOptions],
-    value: pwhtApplied ? requestedPwht! : FILTER_ALL,
+    value: keptPwht.length ? keptPwht.join(FILTER_SEP) : FILTER_ALL,
+    multi: true,
   };
   // The slicers go FIRST, ahead of every data widget (as page 1's bar does).
   const out: Widget[] = [classFilter, pwhtFilter];

@@ -24,7 +24,7 @@ import {
   zCount,
 } from "@/lib/metrics/scope";
 import { backlogAgingBy, RT_BACKLOG_PRALL } from "@/lib/metrics/rt";
-import { weeklyProgress } from "@/lib/metrics/trend";
+import { chartCutoff, weeklyProgress } from "@/lib/metrics/trend";
 import { wpsRejectionTable } from "@/lib/metrics/wps";
 
 export type SparkKpi = {
@@ -80,6 +80,7 @@ export async function getDemoData(): Promise<DemoData> {
     excludeSubContractors: PROJECT_EXCLUDED_SUBCONTRACTORS,
     excludeWeldCats: ["J"],
     weeks: 12,
+    upTo: chartCutoff(as_of),
   });
   const weeks = [...new Set(weekly.map((p) => p.week_end_date))].sort();
   const byWeek = (field: "joints_welded" | "tested" | "films_taken" | "films_rejected") =>

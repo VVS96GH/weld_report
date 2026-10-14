@@ -27,7 +27,7 @@ import {
   SOURCES_PR_ALL_LOADED,
   zCount,
 } from "@/lib/metrics/scope";
-import { SNAPSHOT_METRICS, weeklyProgress, weeklySnapshot } from "@/lib/metrics/trend";
+import { chartCutoff, SNAPSHOT_METRICS, weeklyProgress, weeklySnapshot } from "@/lib/metrics/trend";
 
 export type BurnPoint = { week: string; backlog: number | null; tested: number | null };
 
@@ -99,12 +99,14 @@ export async function getDemo2Data(): Promise<Demo2Data> {
       aggregate: true,
       excludeProject: true,
       weeks: 16,
+      upTo: chartCutoff(as_of),
     }),
     weeklyProgress({
       sources: SOURCES_PR_ALL_LOADED,
       excludeSubContractors: PROJECT_EXCLUDED_SUBCONTRACTORS,
       excludeWeldCats: ["J"],
       weeks: 16,
+      upTo: chartCutoff(as_of),
     }),
   ]);
   const weeks = [...new Set([...snap.map((s) => s.week_end_date), ...weekly.map((p) => p.week_end_date)])].sort();

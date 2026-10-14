@@ -25,6 +25,10 @@ import {
   areaOptionsByHa,
   FILTER_ALL,
   FILTER_BLANK,
+  FILTER_SEP,
+  filterValues,
+  haAreaPicks,
+  PAIR_SEP,
   filterOptions,
   PROJECT_EXCLUDED_SUBCONTRACTORS,
   type Scope,
@@ -79,17 +83,24 @@ function pageScope(): Scope {
 
 function withForecastFilters(scope: Scope, f: ForecastFilters): Scope {
   const out: Scope = { ...scope };
-  if (f.ha === FILTER_BLANK) out.haIsNull = true;
-  else if (f.ha) out.ha = f.ha;
-  if (f.area) out.areaClassificationLabel = f.area;
-  if (f.subco) out.subContractor = f.subco;
-  if (f.wcat) out.weldCats = [f.wcat];
-  if (f.rt) out.rtPct = Number(f.rt);
+  // Multi-select (2026-10-14): every slicer is a comma-joined list; HA ▸ Area
+  // picks are OR-ed exactly as on page 1.
+  const picks = haAreaPicks(f);
+  if (picks.length) out.haArea = picks;
+  const subcos = filterValues(f.subco);
+  if (subcos?.length === 1) out.subContractor = subcos[0];
+  else if (subcos) out.subContractors = subcos;
+  const wcats = filterValues(f.wcat);
+  if (wcats) out.weldCats = wcats;
+  const rts = filterValues(f.rt)?.map(Number).filter((n) => Number.isFinite(n));
+  if (rts?.length) out.rtPcts = rts;
   // `byut` and `dia` are pbix calculated columns with no stored equivalent.
   // They are Scope fields so their values are BOUND as parameters like every
   // other filter — never interpolated, since they arrive from a query string.
-  if (f.byut) out.byUtAll = f.byut;
-  if (f.dia) out.diaBand = f.dia;
+  const byut = filterValues(f.byut);
+  if (byut) out.byUtAlls = byut;
+  const dia = filterValues(f.dia);
+  if (dia) out.diaBands = dia;
   return out;
 }
 
@@ -116,15 +127,23 @@ async function filterWidgets(
         : f.id === "area"
           ? (shared.area ?? [])
           : (own[f.id] ?? []);
-    const raw = applied[f.id as keyof ForecastFilters];
-    const ok = raw !== undefined && opts.includes(raw);
-    if (raw !== undefined && !ok) unknown = true;
+    // Multi-select: keep the picks that exist; an `area` pick may be HA>Area.
+    const picked = filterValues(applied[f.id as keyof ForecastFilters]) ?? [];
+    const haOpts = [...(shared.ha ?? []), FILTER_BLANK];
+    const exists = (v: string) => {
+      if (f.id !== "area" || !v.includes(PAIR_SEP)) return opts.includes(v);
+      const i = v.indexOf(PAIR_SEP);
+      return haOpts.includes(v.slice(0, i)) && opts.includes(v.slice(i + 1));
+    };
+    const kept = picked.filter(exists);
+    if (kept.length < picked.length) unknown = true;
     const w: FilterWidget = {
       kind: "filter",
       id: f.id,
       label: f.label,
       options: [FILTER_ALL, ...opts],
-      value: ok ? raw! : FILTER_ALL,
+      value: kept.length ? kept.join(FILTER_SEP) : FILTER_ALL,
+      multi: true,
     };
     if (f.id === "area") {
       w.parent = "ha";
@@ -193,7 +212,7 @@ export async function getForecastPage(
 
   const rtScope: Scope = {
     ...scope,
-    weldCats: applied.wcat ? [applied.wcat] : ["F", "S"],
+    weldCats: filterValues(applied.wcat) ?? ["F", "S"],
   };
   const [fc, bySub, talisman, rt, backlogTotal, jointMonths, diaMonths] =
     await Promise.all([

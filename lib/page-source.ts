@@ -23,6 +23,10 @@ export type WeldingPageOpts = {
   allSubcos?: boolean;
   /** Render an NDE / PWHT page (12–40) over every RT % — the "ALL" option of the RT % axis. */
   allRtPct?: boolean;
+  /** Screens multi-select (2026-10-14): 2+ parties → the ALL structure over just them. */
+  subcoSet?: readonly string[];
+  /** Screens multi-select: 2+ RT % values → the ALL-RT structure over just them. */
+  rtSet?: readonly number[];
 };
 
 /**
@@ -78,7 +82,8 @@ export async function getPage(
     return getDatabasePage(n, opts);
   }
   const page = getFixturePage(n);
-  if ((opts.allSubcos && n > 2) || (opts.allRtPct && n >= 12 && n <= 40)) {
+  const subset = (opts.subcoSet?.length ?? 0) > 1 || (opts.rtSet?.length ?? 0) > 1;
+  if (((opts.allSubcos || subset) && n > 2) || (opts.allRtPct && n >= 12 && n <= 40)) {
     return {
       ...page,
       id: `${page.id}-all`,

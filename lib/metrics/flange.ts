@@ -64,16 +64,27 @@ export type FlangeFilters = {
   method?: string;
 };
 
+/** The values of one flange filter param (comma-joined); `undefined` = All. */
+export function flangeValues(v: string | undefined): string[] | undefined {
+  if (!v) return undefined;
+  const out = [...new Set(v.split(",").map((x) => x.trim()).filter((x) => x && x !== FLANGE_ALL))];
+  return out.length ? out : undefined;
+}
+
 /** Filter triple → SQL conditions. `All`/undefined contributes no predicate. */
 export function flangeWhere(filters: FlangeFilters, p: Params, a = "f"): string {
   const c: string[] = [];
+  // Multi-select (2026-10-14): a value may be a comma-joined list; "(blank)"
+  // in it adds the NULL bucket.
   const eq = (col: string, value: string | undefined) => {
-    if (!value || value === FLANGE_ALL) return;
-    if (value === FLANGE_BLANK) {
-      c.push(`${a}.${col} IS NULL`);
-      return;
-    }
-    c.push(`${a}.${col} = ${p.add(value)}`);
+    const vals = flangeValues(value);
+    if (!vals) return;
+    const named = vals.filter((v) => v !== FLANGE_BLANK);
+    const parts: string[] = [];
+    if (vals.includes(FLANGE_BLANK)) parts.push(`${a}.${col} IS NULL`);
+    if (named.length === 1) parts.push(`${a}.${col} = ${p.add(named[0]!)}`);
+    else if (named.length > 1) parts.push(`${a}.${col} = ANY(${p.any(named)})`);
+    c.push(parts.length === 1 ? parts[0]! : `(${parts.join(" OR ")})`);
   };
   eq(C.ha, filters.ha);
   eq(C.subcontractor, filters.subco);
@@ -405,6 +416,12 @@ export async function flangeAllOptions(): Promise<Record<string, string[]>> {
 
 // ── time series ─────────────────────────────────────────────────────────────
 
+/** The Friday that closes a date's week (`Calendar[Week_End_Date]`, Sat → Fri). */
+function weekEndOf(dateSql: string): string {
+  // isodow: Mon=1 … Fri=5 … Sun=7 → days forward to that week's Friday.
+  return `(${dateSql} + ((12 - extract(isodow FROM ${dateSql})::int) % 7))`;
+}
+
 const MonthRow = z.object({ month: zText, inspected: zCount, leaked: zCount });
 export type FlangeMonth = { month: string; inspected: number; leaked: number };
 
@@ -417,17 +434,38 @@ export type FlangeMonth = { month: string; inspected: number; leaked: number };
  * data-entry typo of a single Joint ID that ruling RF-05 keeps rather than
  * silently dropping (the pbix does not filter it either).
  */
-export async function flangeMonthly(filters: FlangeFilters): Promise<FlangeMonth[]> {
+export async function flangeMonthly(
+  filters: FlangeFilters,
+  window?: {
+    /** Keep only the last `weeks` week ends up to `upTo` — the pbix visual's
+     *  "Top N by Latest Week_End_Date" filter (N = 21 on the owner's chart). */
+    weeks: number;
+    /** The latest week end shown (ISO Friday). */
+    upTo: string;
+  },
+): Promise<FlangeMonth[]> {
   const p = new Params();
+  const weekCond = window
+    ? [
+        `${weekEndOf(`f.${C.jointDate}`)} <= ${p.add(window.upTo)}::date`,
+        `${weekEndOf(`f.${C.jointDate}`)} > ${p.add(window.upTo)}::date - 7 * ${p.add(String(window.weeks))}::int`,
+      ]
+    : [];
   // Dedupe to (joint, month) first so the outer aggregates are plain counts.
   // A flange re-jointed in two months counts in both — the register's own
   // behaviour, which is why these buckets sum to more than the headline total.
+  //
+  // The month is that of the joint's WEEK END, not of the joint date (owner,
+  // 2026-10-14, with the pbix visual: X-axis = Calendar[Week_End_Date] ▸ Year ▸
+  // Month). Weeks run Saturday → Friday, so the week 26-Sep … 02-Oct-2026 is
+  // October. Checked against the owner's chart: June…October 2026 equal to the
+  // joint (9,019 · 11,056 · 6,559 · 7,969 · 3,278).
   const sql =
     `WITH j AS (\n` +
-    `  SELECT to_char(date_trunc('month', f.${C.jointDate}), 'YYYY-MM') AS month,\n` +
+    `  SELECT to_char(date_trunc('month', ${weekEndOf(`f.${C.jointDate}`)}), 'YYYY-MM') AS month,\n` +
     `         f.${C.jointId} AS joint_id, bool_or(${LEAKED}) AS leaked\n` +
     `    FROM ${T}\n` +
-    `   WHERE ${and([flangeWhere(filters, p), INSPECTED])}\n` +
+    `   WHERE ${and([flangeWhere(filters, p), INSPECTED, ...weekCond])}\n` +
     `   GROUP BY 1, 2\n` +
     `)\n` +
     `SELECT j.month, count(*) AS inspected,\n` +
@@ -467,6 +505,58 @@ export async function flangeLeakTimeline(
     const rate = divide(leaked, inspected);
     return { month: m.month, rate: rate === null ? null : rate * 100 };
   });
+}
+
+export type LeakWeek = { week_end: string; rate: number | null };
+
+const WeekRow = z.object({ week_end: zText, inspected: zCount, leaked: zCount });
+
+/**
+ * The leak timeline by WEEK (owner request 2026-10-14: the pbix line is weekly,
+ * one point per Friday week end, like every other trend in the report).
+ *
+ * Same recomputation as {@link flangeLeakTimeline} — leaked-to-date over
+ * inspected-to-date, each joint back-dated to its own `[Joint Date]` — with the
+ * buckets closing on Fridays (`Calendar[Week_End_Date]`). Weeks with no jointing
+ * still get a point, so the line has no holes. Points after `cutoff` (the last
+ * Friday on or before the register's as-of date) are not returned.
+ */
+export async function flangeLeakWeekly(
+  filters: FlangeFilters,
+  cutoff: string,
+): Promise<LeakWeek[]> {
+  const p = new Params();
+  const weekEnd = weekEndOf(`f.${C.jointDate}`);
+  const sql =
+    `WITH j AS (\n` +
+    `  SELECT ${weekEnd}::text AS week_end,\n` +
+    `         f.${C.jointId} AS joint_id, bool_or(${LEAKED}) AS leaked\n` +
+    `    FROM ${T}\n` +
+    `   WHERE ${and([flangeWhere(filters, p), INSPECTED])}\n` +
+    `   GROUP BY 1, 2\n` +
+    `)\n` +
+    `SELECT j.week_end, count(*) AS inspected,\n` +
+    `       count(*) FILTER (WHERE j.leaked) AS leaked\n` +
+    `  FROM j GROUP BY 1 ORDER BY 1`;
+  const rows = z.array(WeekRow).parse(await query(sql, p.list()));
+  const byWeek = new Map(rows.map((r) => [r.week_end ?? "", r]));
+  const first = rows.find((r) => r.week_end)?.week_end;
+  if (!first) return [];
+  const out: LeakWeek[] = [];
+  let inspected = 0;
+  let leaked = 0;
+  const d = new Date(`${first}T00:00:00Z`);
+  for (let i = 0; i < 2000; i++) {
+    const wk = d.toISOString().slice(0, 10);
+    if (wk > cutoff) break;
+    const r = byWeek.get(wk);
+    inspected += r?.inspected ?? 0;
+    leaked += r?.leaked ?? 0;
+    const rate = divide(leaked, inspected);
+    out.push({ week_end: wk, rate: rate === null ? null : rate * 100 });
+    d.setUTCDate(d.getUTCDate() + 7);
+  }
+  return out;
 }
 
 // ── filter options and provenance ───────────────────────────────────────────

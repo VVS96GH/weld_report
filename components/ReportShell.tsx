@@ -7,6 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { WELDING_PAGE_TITLES, WELDING_REPORT_SUBTITLE, WELDING_TOTAL_PAGES } from "@/lib/welding-pages";
 import { SCREENS } from "@/lib/screens";
 import { ThemeMoodControls } from "@/components/ThemeMoodControls";
+import { RefreshDataButton } from "@/components/RefreshDataButton";
 
 type SubtitleApi = { setSubtitle: (s: string) => void };
 const SubtitleContext = createContext<SubtitleApi | null>(null);
@@ -92,6 +93,7 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
         </div>
         <div className="header-right">
           <ThemeMoodControls />
+          <RefreshDataButton />
         </div>
       </header>
 
