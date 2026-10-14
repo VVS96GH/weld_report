@@ -39,6 +39,24 @@ export function diaInchFactor(weldType: string): boolean {
 }
 
 /**
+ * `RT/UT(%)` as the pbix reads it: a WHOLE number.
+ *
+ * The 2026-10 welder-record export writes every number as a float ("100.0",
+ * "5.0", "0.0") where the 2026-08 one wrote "100", "5", "0" — same values, other
+ * formatting. Left alone that breaks three things at once: `weld.rt_pct` is an
+ * integer column (the COPY aborts), `synthRtWeldStatus` compares with "100"
+ * (every "HS CCC" would silently vanish), and the service-class composite key
+ * ends in this text. So a float with a zero fraction is folded back to the
+ * integer text; anything else (a real fraction, a blank, a word) is returned
+ * untouched and fails loudly downstream, as before.
+ */
+export function wholePct(raw: string): string {
+  const t = raw.trim();
+  const m = /^(-?\d+)\.0+$/.exec(t);
+  return m ? m[1] : t;
+}
+
+/**
  * M `#"WELD Status"` for the welder record:
  *   if [RT Report] = "blank" then "HS"
  *   else if [RT%] = 100 then "HS CCC"
@@ -101,4 +119,24 @@ export const EXCLUDED_JOINT_IDS = new Set<string>([
   "11040A3-DB6204507-SP4-12",
   "11040A3-NG6204709-SP17-62",
   "11060A4-PR6206008-SP3-11",
+]);
+
+/**
+ * M `#"Filtered Exlude RS1 RT B.log"` — the CCC welder-record query's LAST step
+ * (after `#"Replaced Value # to CCC"`), added by the owner in the October pbix:
+ * `Joint ID <> …` AND-ed over these RS1 joints, which sit in the RT backlog
+ * without ever being shot. Five were listed by the owner on 2026-10-14; the
+ * sixth (`11080A1-DB6208004A-SP2-14RS1`) is the clause visible in the owner's
+ * screenshot of that step, truncated there to `11080A1-DB6208004A-SP2-` — it is
+ * the only RS1 joint with that prefix. Removing the six takes CCC's RT backlog
+ * from 386 to the pbix's 380 and its PWHT backlog from 255 to 254.
+ * Only the welder record carries the step; the union-level list is above.
+ */
+export const EXCLUDED_RS1_RT_BLOG_JOINT_IDS = new Set<string>([
+  "11060A4-MR6206036-SP2-3RS1",
+  "11020A1-SV6202033-SP8-25RS1",
+  "11060A4-DB6206011B-SP4-19RS1",
+  "11040A3-NG6204704-SP14-43RS1",
+  "11080A1-DB6208004A-SP2-14RS1",
+  "11060A4-PR6206005-SP10A-33RS1",
 ]);

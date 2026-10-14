@@ -35,7 +35,7 @@ import {
 } from "./load-columns";
 import {
   EXCLUDED_JOINT_IDS, diaInchFactor, normaliseRepairSuffix, normaliseWeldType,
-  repairRewaldPrAll,
+  repairRewaldPrAll, wholePct,
 } from "./ccc-columns";
 
 const FILE = "sources/AllTrain_CSVExport_Joint Record.csv";
@@ -156,7 +156,7 @@ async function* rows(loadId: number, stats: Stats, jointIds: Set<string> | null)
           // rename of `RT/UT(%)`, exactly as the welder record does it — NOT a
           // lookup into the welder record, which holds welded passes only and
           // therefore has no row for any of these joints.
-          num(g("RT/UT(%)")),
+          num(wholePct(g("RT/UT(%)") ?? "")),
         ];
       }
     }

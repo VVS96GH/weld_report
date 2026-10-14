@@ -18,7 +18,7 @@ WHAT IT DOES
      - keep [Revision Status] = ""            <- cancelled welds dropped
      - keep [Sub-Contractor] <> ""
      - Weld Type: "BW_"->"BW", "SW_"->"SW"
-     - drop [Weld Date] in {2026-12-30, 2026-08-29, 2026-08-30}
+     - drop [Weld Date] in {2026-12-30} (29/30-Aug-2026 dropped only by the August pbix; counted since the October delivery)
      - add  Spool ID  = ISO Number & "-" & Spool No.
      - add  Joint ID  = ISO Number & "-" & Spool No. & "-" & Weld No.
      - add  RT Film Total = [Total No of films Acc] + [Total No of films Rej]
@@ -63,7 +63,7 @@ PWHT_BACKLOG_STATUS_PRALL = PWHT_BACKLOG_STATUS | {"T1-2", "HS CCC"}
 RT_WELD_TYPES = ("BW", "GW", "CLET", "MW")
 
 # Weld Dates the M query throws away (bad future dates in the source system)
-DROP_WELD_DATES = {"30-DEC-2026", "29-AUG-2026", "30-AUG-2026"}
+DROP_WELD_DATES = {"30-DEC-2026"}
 
 MONTHS = {
     "JAN": 1, "FEB": 2, "MAR": 3, "APR": 4, "MAY": 5, "JUN": 6,

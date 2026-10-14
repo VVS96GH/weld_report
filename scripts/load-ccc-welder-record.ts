@@ -34,8 +34,8 @@ import {
 import { CCC_WELDER_WELD_COLUMNS as WELD_COLUMNS } from "./load-columns";
 import { applyCccUtOverlay, formatUtOverlay } from "./lib/ut-overlay";
 import {
-  EXCLUDED_JOINT_IDS, diaInchFactor, normaliseRepairSuffix, normaliseWeldType,
-  repairRewaldPrAll, synthRtWeldStatus, tmcpPipePrAll,
+  EXCLUDED_JOINT_IDS, EXCLUDED_RS1_RT_BLOG_JOINT_IDS, diaInchFactor, normaliseRepairSuffix, normaliseWeldType,
+  repairRewaldPrAll, synthRtWeldStatus, tmcpPipePrAll, wholePct,
 } from "./ccc-columns";
 
 const CSV_FILE = "sources/CSVExport_Welder Record.csv";
@@ -47,7 +47,7 @@ const EXPECTED = { csvLines: 5_430_732, csvKept: 4_791_434, xlsxRows: 641_575, t
 
 interface Stats {
   csvLines: number; csvKept: number; csvSkippedTested: number;
-  xlsxRows: number; excludedByM: number; written: number;
+  xlsxRows: number; excludedByM: number; excludedRs1: number; written: number;
   weldTypeChanged: number; rtWeldStatus: Map<string, number>;
   repairReweld: Map<string, number>; dateFailures: Map<string, number>;
   distinctJointIds: number; peakRssMb: number;
@@ -55,7 +55,7 @@ interface Stats {
 
 function newStats(): Stats {
   return {
-    csvLines: 0, csvKept: 0, csvSkippedTested: 0, xlsxRows: 0, excludedByM: 0, written: 0,
+    csvLines: 0, csvKept: 0, csvSkippedTested: 0, xlsxRows: 0, excludedByM: 0, excludedRs1: 0, written: 0,
     weldTypeChanged: 0, rtWeldStatus: new Map(), repairReweld: new Map(),
     dateFailures: new Map(), distinctJointIds: 0, peakRssMb: 0,
   };
@@ -84,6 +84,10 @@ function buildRow(
     stats.excludedByM += 1;
     return null;
   }
+  if (EXCLUDED_RS1_RT_BLOG_JOINT_IDS.has(jointId)) {
+    stats.excludedRs1 += 1;
+    return null;
+  }
 
   const rawType = g("Weld Type").trim();
   const weldType = normaliseWeldType(rawType);
@@ -98,7 +102,7 @@ function buildRow(
   const rtDate = parseDate(g("RT/UT Date"));
   if (rtDate === null && g("RT/UT Date").trim() !== "") bump(stats.dateFailures, "rt_date");
 
-  const rtPct = g("RT/UT(%)").trim();
+  const rtPct = wholePct(g("RT/UT(%)"));
   const rtStatus = synthRtWeldStatus(g("RT/UT Report No.").trim(), rtPct, g("Tracer Shot").trim());
   bump(stats.rtWeldStatus, rtStatus === "" ? "(blank)" : rtStatus);
 
@@ -236,6 +240,7 @@ function report(stats: Stats, t0: number): boolean {
   console.log(`  XLSX rows             ${fmt(stats.xlsxRows).padStart(11)}  (expected ${fmt(EXPECTED.xlsxRows)})`);
   console.log(`  union                 ${fmt(stats.csvKept + stats.xlsxRows).padStart(11)}  (expected ${fmt(EXPECTED.total)})`);
   console.log(`  ...minus the M's 4 hard-coded Joint IDs  ${fmt(stats.excludedByM)}`);
+  console.log(`  ...minus the RS1 RT B.log step's Joint IDs ${fmt(stats.excludedRs1)}`);
   console.log(`  rows into weld        ${fmt(stats.written).padStart(11)}`);
   console.log(`  distinct joint_id     ${fmt(stats.distinctJointIds).padStart(11)}`);
   console.log(`  Weld Type normalised  ${fmt(stats.weldTypeChanged).padStart(11)}  (the 17 ordered ReplaceText steps)`);
@@ -369,6 +374,7 @@ async function live(): Promise<void> {
       csv_kept: stats.csvKept,
       xlsx_rows: stats.xlsxRows,
       excluded_by_m: stats.excludedByM,
+      excluded_rs1_rt_blog: stats.excludedRs1,
       overlay_rows: upd.rowCount ?? 0,
       distinct_joint_ids: stats.distinctJointIds,
       peak_rss_mb: stats.peakRssMb,

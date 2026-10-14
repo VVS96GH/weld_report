@@ -17,7 +17,8 @@
  *      would silently inflate every "above 30 Days" bucket as the file gets
  *      older on disk.
  *
- * Default: `as_of = max(weld_date)` over the current load (2026-08-28 for the
+ * Default: `as_of = max(weld_date)` over the current load, ignoring welds dated
+ * after the day of the load itself (a typo in the source) (2026-08-28 for the
  * 30-Aug-2026 export — the same value `analysis/reconcile_check.py` used for
  * `TODAY()`). Callers may override it with `?as_of=YYYY-MM-DD`.
  */
@@ -221,8 +222,16 @@ export async function withAsOf(requested?: string | null): Promise<AsOf> {
   // `::text` in SQL, NOT a JS Date: node-postgres parses `date` into a Date at
   // LOCAL midnight, and `toISOString()` would then shift it a day back in any
   // timezone east of UTC. Ask Postgres for the calendar date as text instead.
+  // Capped at the day of the latest load: a weld cannot be dated after the file
+  // it came from was loaded. The 2026-10 dump carries one MEDGULF weld typed as
+  // 28-Oct-2026 (fit-up 27-Sep-2026) in a file loaded on 13-Oct; uncapped, that
+  // single typo moved the whole report two weeks into the future. The cap reads
+  // the `load` ledger, not the wall clock, so a load still yields one date.
   const rows = await query<{ max_weld_date: string | null }>(
-    "SELECT max(weld_date)::text AS max_weld_date FROM weld",
+    `SELECT max(weld_date) FILTER (
+              WHERE weld_date <= coalesce((SELECT max(started_at)::date FROM load), current_date)
+            )::text AS max_weld_date
+       FROM weld`,
   );
   const raw = rows[0]?.max_weld_date ?? null;
   if (raw) {

@@ -21,8 +21,18 @@ import {
 /** R-04: `PWHT Y/N` = '25.01' on 580,860 rows; the DAX counts it as BOTH Y and N. */
 export const PWHT_AMBIGUOUS_TOKEN = "25.01";
 
-/** Weld Dates the M query throws away (source-system garbage), §0.4 step 12. */
-export const DROPPED_WELD_DATES = ["2026-12-30", "2026-08-29", "2026-08-30"];
+/**
+ * Weld Dates the M query throws away (source-system garbage), §0.4 step 12.
+ *
+ * The August pbix also dropped 2026-08-29 and 2026-08-30 — the two partial days
+ * after that export's cut-off. By the October delivery they are ordinary working
+ * days (563 rows, 559 joints), and the owner's October pbix counts them: with them
+ * back, joints welded GAC/TEKFEN, films and Numb RT/UT match it exactly. Owner
+ * instruction 2026-10-14: every date up to the cut-off counts. Days after the
+ * cut-off are kept out by the chart cut-off (lib/metrics/trend.ts chartCutoff),
+ * not by editing this list per delivery.
+ */
+export const DROPPED_WELD_DATES = ["2026-12-30"];
 
 /**
  * Tokens that LOOK like nulls but are KEPT AS LITERAL TEXT.
