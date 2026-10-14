@@ -50,3 +50,8 @@ next-env.d.ts
 # python (uv)
 /.venv/
 !.env.example
+
+# npm run db:refresh — fingerprints of the source files this database was loaded from
+/.data-refresh-state.json
+/.data-refresh.log
+/.data-refresh.pid

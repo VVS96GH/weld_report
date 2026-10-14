@@ -357,6 +357,8 @@ export interface RefreshResult {
   /** false when the view had to be refreshed plainly because it was unpopulated. */
   concurrently: boolean;
   missing: boolean;
+  /** true when the refresh was left to scripts/refresh-data.ts (one refresh per run). */
+  deferred?: boolean;
 }
 
 /**
@@ -372,6 +374,14 @@ export interface RefreshResult {
  */
 export async function refreshMatviews(client: Client): Promise<RefreshResult[]> {
   const out: RefreshResult[] = [];
+  // `npm run db:refresh` (scripts/refresh-data.ts) runs several loaders in a row
+  // and refreshes the views ONCE at the end; it sets this for its children. Never
+  // set it by hand: the pages read these views and would stay stale.
+  if (process.env.WELD_DEFER_MATVIEW_REFRESH === "1") {
+    return POST_LOAD_MATVIEWS.map((mv) => ({
+      name: mv.name, seconds: 0, concurrently: false, missing: false, deferred: true,
+    }));
+  }
   for (const mv of POST_LOAD_MATVIEWS) {
     const meta = await client.query<{ populated: boolean }>(
       `SELECT relispopulated AS populated FROM pg_class
@@ -406,7 +416,9 @@ export async function refreshMatviews(client: Client): Promise<RefreshResult[]> 
 /** One-line summary for a loader's `post` line. */
 export function formatRefreshes(results: RefreshResult[]): string {
   return results
-    .map((r) => (r.missing ? `${r.name} SKIPPED` : `${r.name} ${r.seconds}s${r.concurrently ? "" : " (plain)"}`))
+    .map((r) => (r.missing ? `${r.name} SKIPPED`
+      : r.deferred ? `${r.name} deferred`
+      : `${r.name} ${r.seconds}s${r.concurrently ? "" : " (plain)"}`))
     .join(", ");
 }
 

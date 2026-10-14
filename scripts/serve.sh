@@ -36,7 +36,15 @@ log "database: $(docker inspect -f '{{.State.Health.Status}}' weld_report_db 2>/
 
 # 2. build when stale
 stamp=.next/BUILD_STAMP
-want="$(git rev-parse HEAD 2>/dev/null || echo nogit):$(git status --porcelain 2>/dev/null | sha1sum | cut -c1-12)"
+# The stamp covers the CONTENT of uncommitted work, not just the list of changed
+# files: a second edit to an already-modified file must trigger a rebuild too.
+tree_hash() {
+  {
+    git diff HEAD 2>/dev/null
+    git ls-files --others --exclude-standard -z 2>/dev/null | xargs -0 -r sha1sum 2>/dev/null
+  } | sha1sum | cut -c1-12
+}
+want="$(git rev-parse HEAD 2>/dev/null || echo nogit):$(tree_hash)"
 if [ "${FORCE_BUILD:-0}" = 1 ] || [ ! -f .next/BUILD_ID ] || [ "$(cat "$stamp" 2>/dev/null)" != "$want" ]; then
   log "building (stamp $want)…"
   npm run --silent build

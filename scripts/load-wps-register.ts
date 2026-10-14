@@ -203,7 +203,7 @@ function report(stats: Stats, t0: number): boolean {
   console.log(`  ref_wps_pwht_status   ${fmt(stats.pwht.length).padStart(11)}  (expected ${EXPECTED.pwht}), distinct ${stats.pwhtDistinct.size}`);
   if (stats.dupKeys.length > 0) console.log(`  !! DUPLICATE KEYS      ${stats.dupKeys.slice(0, 5).join(", ")}`);
   console.log(`  runtime               ${secs(t0)}`);
-  const ok = stats.register.length === EXPECTED.register
+  const matchesFirstDelivery = stats.register.length === EXPECTED.register
     && stats.registerDistinct.size === EXPECTED.register
     && stats.registerApproved === EXPECTED.register
     && stats.process.length === EXPECTED.process
@@ -212,7 +212,19 @@ function report(stats: Stats, t0: number): boolean {
     && stats.pwht.length === EXPECTED.pwht
     && stats.pwhtDistinct.size === EXPECTED.pwht
     && stats.dupKeys.length === 0;
-  console.log(`  verdict               ${ok ? "counts MATCH the pbix" : "COUNTS DIFFER FROM THE PBIX"}`);
+  // A REFRESHED register (npm run db:refresh sets WELD_REFRESH) legitimately has
+  // other counts than the 2026-09 delivery the EXPECTED numbers pin. What must
+  // still hold is that the workbook is whole: no duplicate keys, no empty sheet.
+  const wellFormed = stats.dupKeys.length === 0
+    && stats.register.length > 0 && stats.registerDistinct.size === stats.register.length
+    && stats.process.length > 0 && stats.processDistinct.size === stats.process.length
+    && stats.cumWeeks.size > 0
+    && stats.pwht.length > 0 && stats.pwhtDistinct.size === stats.pwht.length;
+  const refreshed = process.env.WELD_REFRESH === "1";
+  const ok = matchesFirstDelivery || (refreshed && wellFormed);
+  console.log(`  verdict               ${matchesFirstDelivery ? "counts MATCH the pbix"
+    : ok ? "counts differ from the first delivery — accepted, the workbook is well-formed (refresh)"
+    : "COUNTS DIFFER FROM THE PBIX"}`);
   return ok;
 }
 
