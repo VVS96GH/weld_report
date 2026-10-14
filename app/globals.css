@@ -1930,6 +1930,9 @@ html {
 }
 
 /* ── data refresh button + dialog (components/RefreshDataButton.tsx) ── */
+.refresh-data-wrapper {
+  display: flex;
+}
 .refresh-dialog-backdrop {
   position: fixed;
   inset: 0;

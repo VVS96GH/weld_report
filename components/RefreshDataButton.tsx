@@ -124,8 +124,10 @@ export function RefreshDataButton() {
     failed: "Обновление не удалось",
   };
 
+  // Wrapped, not a bare sibling: `.header-right > button.header-btn` is the theme
+  // toggle's selector (e2e/navigation.spec.ts), and it must stay unique.
   return (
-    <>
+    <div className="refresh-data-wrapper">
       <button
         type="button"
         className={`header-btn${busy ? " is-running" : ""}`}
@@ -175,6 +177,6 @@ export function RefreshDataButton() {
           </div>
         </div>
       ) : null}
-    </>
+    </div>
   );
 }
