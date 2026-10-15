@@ -90,7 +90,7 @@ export default async function WeldingReportPage(props: PageProps<"/welding/[page
   return (
     <>
       <EdgeFilters widgets={filterWidgets} />
-      <PageView model={model} subtitle={subtitle} />
+      <PageView model={{ ...model, title: entry.title }} subtitle={subtitle} />
     </>
   );
 }
