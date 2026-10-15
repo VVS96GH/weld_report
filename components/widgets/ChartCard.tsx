@@ -689,6 +689,9 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
     () => ({
       responsive: true,
       maintainAspectRatio: false,
+      // drawn at no less than 2x the CSS size: canvas text stays crisp at any
+      // browser zoom or display scaling (owner, 2026-10-15: "числа слегка размыты")
+      devicePixelRatio: typeof window === "undefined" ? 2 : Math.max(2, Math.ceil(window.devicePixelRatio || 1)),
       // a smaller ring leaves the outside labels room inside the chart, so they
       // reach neither the card title nor the legend below (owner, 2026-10-15)
       ...(circular && notes.includes("legend-bottom") ? { radius: "72%" } : {}),
