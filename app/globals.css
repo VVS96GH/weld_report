@@ -3733,3 +3733,90 @@ html {
   font-weight: 700;
   line-height: 1;
 }
+
+/* ── one type style across the site (owner, 2026-10-15), reference: the RT Backlog
+   Forecast page in the T.EN theme. Visual titles read as its card headers; body
+   text, notes and buttons use the site's sans; figures stay mono/tabular. ── */
+[data-mood="ten"] .rs-head,
+[data-mood="ten"] .wp-title,
+[data-mood="ten"] .error-title {
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  text-decoration: none;
+  text-align: start;
+  color: var(--heading);
+  padding-bottom: 8px;
+  margin: 0 0 10px;
+  border-bottom: 1px solid var(--border);
+}
+[data-mood="ten"] .rs-head--center {
+  text-align: start;
+}
+[data-mood="ten"] .error-card-head .error-title {
+  border-bottom: 0;
+  padding-bottom: 0;
+  margin: 0;
+}
+[data-mood="ten"] .error-card-head {
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+/* the page banners as the other pages' h2 */
+[data-mood="ten"] .wp-banner h2 {
+  font-size: inherit;
+  letter-spacing: inherit;
+}
+/* body copy */
+[data-mood="ten"] .rs-cum-text,
+[data-mood="ten"] .error-desc,
+[data-mood="ten"] .error-empty,
+[data-mood="ten"] .error-count,
+[data-mood="ten"] .rs-cum-msg,
+[data-mood="ten"] .rs-notes-state {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  color: var(--muted);
+}
+[data-mood="ten"] .rs-cum-text strong {
+  color: var(--fg);
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 12px;
+}
+[data-mood="ten"] .rs-notes-text {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--fg);
+}
+/* table bodies: labels sans, figures mono, as Project status */
+[data-mood="ten"] .rs-status,
+[data-mood="ten"] .error-table,
+[data-mood="ten"] .wp-matrix {
+  font-size: 12px;
+}
+[data-mood="ten"] .rs-status td,
+[data-mood="ten"] .wp-matrix td {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+[data-mood="ten"] .rs-status thead th,
+[data-mood="ten"] .error-table thead th {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+/* buttons: one face for every button and link-button */
+[data-mood="ten"] .ms-btn,
+[data-mood="ten"] .rs-cum-actions a.ms-btn {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
