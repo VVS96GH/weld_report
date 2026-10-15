@@ -684,10 +684,66 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
 
   const thresholds = widget.chart_type === "line" ? thresholdsFor(widget.title) : null;
 
+  // Doughnuts start turned so their smallest labelled slice points right, where its
+  // outside label has the most room; a drag turns the ring by hand, a double click
+  // puts it back (owner, 2026-10-15: "возможность ротации … изначально максимально
+  // удобно для восприятия").
+  const startRotation = useMemo(() => {
+    if (!circular || notes.includes("label-name-pct")) return 0;
+    const vals = (widget.datasets[0]?.data ?? []).map((v) => Math.max(0, toNum(v) ?? 0));
+    const total = vals.reduce((a, b) => a + b, 0);
+    if (total <= 0) return 0;
+    let best = -1;
+    vals.forEach((v, i) => {
+      const share = v / total;
+      if (share >= 0.02 && share < 0.12 && (best < 0 || v < vals[best]!)) best = i;
+    });
+    if (best < 0) return 0;
+    const before = vals.slice(0, best).reduce((a, b) => a + b, 0);
+    const mid = ((before + vals[best]! / 2) / total) * 360;
+    return 90 - mid;
+  }, [circular, notes, widget.datasets]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const chartRef = useRef<any>(null);
+  const spin = useRef<{ angle: number; rotation: number } | null>(null);
+  const pointerAngle = (e: React.PointerEvent) => {
+    const c = chartRef.current;
+    const arc = c?.getDatasetMeta(0)?.data?.[0];
+    if (!c || !arc) return null;
+    const r = c.canvas.getBoundingClientRect();
+    return (Math.atan2(e.clientY - r.top - arc.y, e.clientX - r.left - arc.x) * 180) / Math.PI;
+  };
+  const spinHandlers = circular
+    ? {
+        onPointerDown: (e: React.PointerEvent) => {
+          const a = pointerAngle(e);
+          if (a === null) return;
+          spin.current = { angle: a, rotation: chartRef.current.options.rotation ?? 0 };
+          (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+        },
+        onPointerMove: (e: React.PointerEvent) => {
+          if (!spin.current) return;
+          const a = pointerAngle(e);
+          if (a === null) return;
+          chartRef.current.options.rotation = spin.current.rotation + (a - spin.current.angle);
+          chartRef.current.update("none");
+        },
+        onPointerUp: () => {
+          spin.current = null;
+        },
+        onDoubleClick: () => {
+          if (!chartRef.current) return;
+          chartRef.current.options.rotation = startRotation;
+          chartRef.current.update();
+        },
+      }
+    : null;
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const options: any = useMemo(
     () => ({
       responsive: true,
+      ...(circular ? { rotation: startRotation } : {}),
       maintainAspectRatio: false,
       // drawn at no less than 2x the CSS size: canvas text stays crisp at any
       // browser zoom or display scaling (owner, 2026-10-15: "числа слегка размыты")
@@ -769,7 +825,7 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
             return horizontal ? { x: value, y: category } : { x: category, y: value };
           })(),
     }),
-    [palette, stackedX, stackedY, percentAxis, horizontal, circular, widget.chart_type, widget.datasets.length, start, end, thresholds, notes, yearAxis, yearTitle, yCenter, visibleMax],
+    [palette, stackedX, stackedY, percentAxis, horizontal, circular, widget.chart_type, widget.datasets.length, start, end, thresholds, notes, yearAxis, yearTitle, yCenter, visibleMax, startRotation],
   );
 
   // Trend charts fed by the not-yet-seeded weld_weekly_snapshot table (e.g. page 1's
@@ -794,10 +850,18 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
       chart = <Chart key={version} type="line" data={data} options={options} />;
       break;
     case "doughnut":
-      chart = <Chart key={version} type="doughnut" data={data} options={options} plugins={[centerTotalPlugin]} />;
+      chart = (
+        <div className="chart-spin" title="Drag to turn the ring · double-click to reset" {...spinHandlers}>
+          <Chart ref={chartRef} key={version} type="doughnut" data={data} options={options} plugins={[centerTotalPlugin]} />
+        </div>
+      );
       break;
     case "pie":
-      chart = <Chart key={version} type="pie" data={data} options={options} plugins={[centerTotalPlugin]} />;
+      chart = (
+        <div className="chart-spin" title="Drag to turn the pie · double-click to reset" {...spinHandlers}>
+          <Chart ref={chartRef} key={version} type="pie" data={data} options={options} plugins={[centerTotalPlugin]} />
+        </div>
+      );
       break;
     case "bar":
     default:

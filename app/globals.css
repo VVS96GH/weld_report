@@ -3820,3 +3820,15 @@ html {
   font-weight: 600;
   letter-spacing: 0.02em;
 }
+
+/* a doughnut turns by drag (components/widgets/ChartCard.tsx) */
+.chart-spin {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+  touch-action: none;
+}
+.chart-spin:active {
+  cursor: grabbing;
+}
