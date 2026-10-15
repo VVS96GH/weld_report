@@ -32,7 +32,8 @@ for (const scheme of ["dark", "light"] as Scheme[]) {
 
     test("renders the filters, KPI tiles, tables and charts without horizontal overflow", async ({ page }) => {
       await expect(page.getByRole("group", { name: "Report filters" })).toBeVisible();
-      await expect(page.locator(".filter-select")).toHaveCount(3);
+      // the three slicers; the saved-views button (2026-10-15) is not one
+      await expect(page.locator(".filter-select:not(.fviews-btn)")).toHaveCount(3);
       expect(await page.locator(".stat-box, .pbi-card").count()).toBeGreaterThanOrEqual(7);
       expect(await page.locator(".data-table").count()).toBeGreaterThanOrEqual(3);
       expect(await documentOverflow(page)).toBeLessThanOrEqual(OVERFLOW_TOLERANCE_PX);
@@ -44,7 +45,7 @@ for (const scheme of ["dark", "light"] as Scheme[]) {
     // shared page nav shows it there.
     test("the flange report is page 3 of the page nav", async ({ page }) => {
       await expect(page.locator(".page-indicator")).toHaveText(`Page 3 / ${WELDING_TOTAL_PAGES}`);
-      await expect(page.locator("#page-select")).toHaveValue("3");
+      await expect(page.locator("#page-select")).toHaveAttribute("data-value", "3");
       await expect(page.getByRole("link", { name: "Flange" })).toHaveAttribute("aria-current", "page");
     });
   });

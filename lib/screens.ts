@@ -146,6 +146,7 @@ export const SCREENS: readonly ScreenDef[] = [
     nav: "Project status",
     filters: [],
     pages: () => [2],
+    passthrough: ["ha", "area", "subco", "wtype", "wcat"],
   },
   {
     id: "subco",
@@ -195,28 +196,8 @@ export const SCREENS: readonly ScreenDef[] = [
       return n ? [n] : null;
     },
   },
-  {
-    id: "demo",
-    title: "Demo widgets",
-    nav: "Demo",
-    filters: [],
-    pages: () => [],
-  },
-  {
-    id: "demo2",
-    title: "Demo widgets 2",
-    nav: "Demo 2",
-    filters: [],
-    pages: () => [],
-  },
 ];
 
-/** The "Demo" screen (2026-09-16): four advanced widget forms over the project scope
- *  (lib/pages/demo.ts + components/DemoView.tsx). It owns no mockup page, so the
- *  registry's page coverage is unchanged. */
-export const DEMO_SCREEN_ID = "demo";
-/** "Demo 2" (2026-09-16): burn-down, HA readiness, NDE lead time (lib/pages/demo2.ts). */
-export const DEMO2_SCREEN_ID = "demo2";
 
 export const SCREEN_IDS = SCREENS.map((s) => s.id);
 

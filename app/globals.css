@@ -941,7 +941,7 @@ body {
   text-align: center;
 }
 .stat-value {
-  font-size: 1.4rem;
+  font-size: 14px; /* owner, 2026-10-15: metric figures 14 px, labels stay 11 px */
   font-weight: 700;
   color: var(--accent-primary);
 }
@@ -1543,9 +1543,9 @@ html {
   font-family: var(--font-display);
   /* owner request 2026-09-07: lighter and smaller so a seven-digit figure ("2,209,169")
      stays inside a 150px tile, and ONE fixed size for every tile so a wide tile never
-     shows a bigger figure than a narrow one */
+     shows a bigger figure than a narrow one; 14 px since 2026-10-15 (owner) */
   font-weight: 600;
-  font-size: 20px;
+  font-size: 14px;
   line-height: 1.15;
   letter-spacing: -0.01em;
   color: var(--attention);
@@ -2131,6 +2131,7 @@ html {
   font-size: 0.75rem;
 }
 .wp-matrix thead th {
+  text-wrap: balance;
   position: sticky;
   top: 0;
   z-index: 2;
@@ -2173,7 +2174,7 @@ html {
   display: inline-block;
   margin-bottom: 2px;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0;
 }
 .wp-level0 .wp-rowhead,
 .wp-level0 td {
@@ -2200,6 +2201,8 @@ html {
 }
 /* the pbix headers are long measure names: wrap them, in their own case */
 [data-mood="ten"] .wp-matrix thead th {
+  /* balanced lines: no lone word or sign ("Welder", "%", "R") on the last line */
+  text-wrap: balance;
   white-space: normal;
   text-transform: none;
   letter-spacing: normal;
@@ -2420,6 +2423,738 @@ html {
   color: var(--muted);
 }
 
+/* ── compact filters (2026-10-15): one row of chips + pills, saved views,
+   side panel (components/FilterBar.tsx, MultiSelect.tsx, SavedViews.tsx) ── */
+.fbar.fbar--bar {
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+}
+.fbar--bar > .filter-group.fchip,
+.fbar--bar > .filter-group.fviews {
+  flex: 0 1 auto;
+  flex-direction: row;
+  align-items: center;
+  gap: 2px;
+}
+.fchip,
+.fviews {
+  flex-direction: row;
+  align-items: center;
+  gap: 2px;
+}
+.fchip-btn {
+  display: inline-flex;
+  align-items: center;
+  width: auto;
+  max-width: min(420px, 100%);
+  min-height: 44px; /* the project's touch-target rule (e2e: 44 px) */
+  padding-block: 4px;
+  padding-inline: 14px;
+  border-radius: 999px;
+  justify-content: flex-start;
+  gap: 6px;
+}
+.fchip-label {
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.fchip .ms-summary,
+.fviews .ms-summary {
+  font-weight: 600;
+}
+.fchip.is-set .fchip-btn,
+.fviews-btn.is-set {
+  border-color: var(--accent-primary);
+  background: color-mix(in srgb, var(--accent-primary) 18%, var(--bg-input));
+}
+.fchip-clear {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  border-radius: 50%;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 0.9rem;
+  line-height: 1;
+}
+.fchip-clear:hover {
+  background: var(--bg-card-hover);
+}
+.fbar-clear {
+  min-height: 44px;
+  padding-inline: 8px;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  text-decoration: underline;
+}
+/* saved views */
+.filter-group.fviews {
+  flex: 0 0 auto;
+}
+.fviews-btn {
+  gap: 8px;
+}
+.fviews-panel {
+  min-width: 280px;
+}
+.fviews-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 6px;
+}
+.fviews-item.is-active {
+  background: var(--bg-card-hover);
+}
+.fviews-apply {
+  flex: 1;
+  text-align: start;
+  padding: 8px 10px;
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+  border-radius: 6px;
+}
+.fviews-apply:hover {
+  background: var(--bg-card-hover);
+}
+.fviews-del {
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.fviews-save {
+  display: flex;
+  gap: 6px;
+  padding-inline: 8px;
+}
+.fviews-save .ms-search {
+  flex: 1;
+  margin: 0;
+}
+.fviews-note {
+  margin: 0;
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+/* applied filters next to the page title */
+.nav-filter-summary {
+  max-width: min(46vw, 560px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+/* side panel (Welder Performance) */
+/* above the page cards, so its pop-ups (saved views) are never painted over */
+.fdrawer-bar {
+  position: relative;
+  z-index: 40;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+/* the edge tab: a slim vertical "FILTERS" handle on the right edge of the window */
+.fdrawer-tab {
+  position: fixed;
+  inset-inline-end: 0;
+  /* high on the right edge, just under the page nav (owner, 2026-10-15) */
+  top: 132px;
+  z-index: 495;
+  transform: none;
+  /* leaving: 0.60 s (owner, 2026-10-15: +30 %) */
+  transition:
+    transform 0.6s var(--ease-glide, cubic-bezier(0.32, 0.72, 0, 1)),
+    background-color 0.25s ease,
+    box-shadow 0.25s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 32px;
+  min-height: 108px;
+  padding: 10px 5px;
+  border: 1px solid var(--border-color);
+  border-inline-end: 0;
+  border-radius: 12px 0 0 12px;
+  background: var(--accent-primary);
+  color: var(--on-accent, white);
+  box-shadow: var(--shadow-card);
+  cursor: pointer;
+  font-family: inherit;
+}
+.fdrawer-tab-text {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+.fdrawer-tab-icon {
+  font-size: 0.8rem;
+}
+.fdrawer-tab:focus-visible {
+  outline: 2px solid var(--fg, white);
+  outline-offset: 2px;
+}
+[data-mood="ten"] .fdrawer-tab {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.fchip-static {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding-inline: 12px 4px;
+  border-radius: 999px;
+  border: 1px solid var(--accent-primary);
+  background: color-mix(in srgb, var(--accent-primary) 14%, var(--bg-input));
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.fdrawer-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 480;
+  background: rgb(0 0 0 / 0.4);
+}
+/* as tall as its filters, not the whole window: the page stays visible below it;
+   a 50 % see-through backing (owner, 2026-10-15; was 10 %) */
+.fdrawer {
+  position: fixed;
+  inset-block-start: 0;
+  max-height: 100dvh;
+  border-end-start-radius: 14px;
+  border-block-end: 1px solid var(--border-color);
+  inset-inline-end: 0;
+  z-index: 490;
+  width: var(--fdrawer-w);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  background: color-mix(in srgb, var(--bg-card) 50%, transparent);
+  backdrop-filter: blur(2px);
+  border-inline-start: 1px solid var(--border-color);
+  box-shadow: var(--shadow-card);
+  transform: translateX(105%);
+  /* a long, soft glide (phone-style): quick start, long gentle settle;
+     visibility switches only after the slide out has finished */
+  transition: transform 0.6s var(--ease-glide), visibility 0s linear 0.6s; /* leaving: 0.60 s */
+  visibility: hidden;
+}
+.fdrawer.is-open {
+  transform: none;
+  visibility: visible;
+  transition: transform 0.69s var(--ease-glide), visibility 0s; /* appearing: 0.69 s */
+}
+@media (prefers-reduced-motion: reduce) {
+  .fdrawer {
+    transition: none;
+  }
+}
+.fdrawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.fdrawer-head h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+.fdrawer .fbar--stack {
+  flex-direction: column;
+  align-items: stretch;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+}
+.fdrawer .fbar--stack > .filter-group {
+  flex: none;
+  width: 100%;
+}
+.fdrawer .fchip-btn {
+  flex: 1;
+  max-width: none;
+}
+.fdrawer .fchip,
+.fdrawer .fviews {
+  flex-wrap: wrap;
+}
+/* Joint ID: label, button and its list stacked, all inside the panel */
+.fdrawer .wp-joint {
+  flex-direction: column;
+  align-items: stretch;
+}
+.fdrawer .wp-joint .ms-panel {
+  box-sizing: border-box;
+}
+/* in the side panel a pop-up opens UNDER its chip, full width, in the flow */
+.fdrawer .ms-panel {
+  background: color-mix(in srgb, var(--bg-card) 50%, transparent);
+  position: static;
+  flex: 1 0 100%;
+  width: 100%;
+  max-width: none;
+  margin-top: 6px;
+  box-shadow: none;
+}
+.fdrawer .ms-option span {
+  white-space: normal;
+}
+.fdrawer .wp-joint {
+  flex: none;
+  width: 100%;
+}
+.fdrawer-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-color);
+}
+.fdrawer-section-head {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+}
+[data-mood="ten"] .fdrawer-section {
+  border-top-color: var(--border);
+}
+[data-mood="ten"] .fdrawer-section-head {
+  color: var(--muted);
+}
+.fdrawer-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.fdrawer-foot .fbar-clear {
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+.fdrawer .fdrawer-done {
+  align-self: flex-end;
+  min-height: 40px;
+}
+[data-mood="ten"] .fchip-label {
+  color: var(--muted);
+}
+[data-mood="ten"] .fchip.is-set .fchip-btn,
+[data-mood="ten"] .fviews-btn.is-set {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 20%, var(--surface-2));
+}
+[data-mood="ten"] .fchip-clear {
+  border-color: var(--border);
+  background: var(--surface);
+  color: var(--fg);
+}
+/* the filter panel and its lists: 50 % see-through (owner, 2026-10-15) */
+[data-mood="ten"] .fdrawer {
+  background: color-mix(in srgb, var(--surface) 50%, transparent);
+  border-color: var(--border);
+}
+[data-mood="ten"] .fdrawer .ms-panel {
+  background: color-mix(in srgb, var(--surface) 50%, transparent);
+}
+[data-mood="ten"] .fchip-static {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface-2));
+  color: var(--fg);
+}
+[data-mood="ten"] .fviews-apply {
+  color: var(--fg);
+}
+[data-mood="ten"] .nav-filter-summary {
+  color: var(--chrome-fg);
+  opacity: 0.85;
+}
+
+.fviews-hint {
+  margin: 0;
+  padding: 10px 12px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-secondary, inherit);
+}
+
+/* one screen for a dashboard page (owner, 2026-10-15): the saved views and the
+   applied picks sit on the title's line, at its right, not on a line of their own */
+@media (min-width: 900px) {
+  .fdrawer-bar:has(+ .page-section) {
+    float: right;
+    max-width: 60%;
+    margin: 0 28px 0 16px;
+    justify-content: flex-end;
+  }
+}
+.kpi-panel {
+  align-self: start;
+}
+/* KPI card in the chart grid: 3 tiles across, value over caption, centred (owner, 2026-10-15) */
+.kpi-panel {
+  padding: 12px;
+}
+.kpi-panel-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: 1fr;
+  gap: 6px;
+  align-content: start;
+}
+.kpi-panel .stat-box,
+[data-mood] .kpi-panel .stat-box {
+  flex: none;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  padding: 6px 4px;
+  gap: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+/* captions as the pbix cards write them: normal case, whole words */
+.kpi-panel .stat-label,
+[data-mood] .kpi-panel .stat-label {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: normal;
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 11px;
+  line-height: 1.25;
+  margin-top: 3px;
+}
+/* the small provenance lines stay off these tiles (owner, 2026-10-15); a hover shows them */
+.kpi-panel .stat-sub,
+[data-mood] .kpi-panel .stat-sub {
+  display: none;
+}
+@media (max-width: 420px) {
+  .kpi-panel-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* HA ▸ Area tree: a ⊞ / ⊟ toggle before each HA (owner, 2026-10-15) */
+.ms-tree-row {
+  display: flex;
+  align-items: center;
+}
+.ms-tree-row > .ms-option {
+  flex: 1;
+  min-width: 0;
+}
+/* areas sit under their HA name, past the toggle and the HA box */
+.ms-tree-group .ms-option.ms-option--child,
+[data-mood] .ms-tree-group .ms-option.ms-option--child {
+  padding-inline-start: 62px;
+}
+.ms-tree-toggle {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--accent-primary);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+.ms-tree-toggle:hover {
+  background: color-mix(in srgb, var(--accent-primary) 14%, transparent);
+}
+.ms-tree-toggle:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 1px;
+}
+
+/* collapsible group rows (HA Flange Status): methods indented under their HA */
+.data-table .dt-child th {
+  padding-inline-start: 34px;
+}
+.data-table .dt-group th .error-expand {
+  font-weight: 600;
+}
+
+/* the page jump menu (owner, 2026-10-15): the filter-list look, opaque */
+.page-jump {
+  position: relative;
+  min-width: 0;
+  /* the width the old <select> had (its longest title): the bar does not move */
+  width: 400px;
+  max-width: 100%;
+}
+@media (max-width: 767px) {
+  .page-jump {
+    flex: 1 1 100%;
+    width: auto;
+  }
+}
+.page-jump-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  text-align: start;
+  cursor: pointer;
+}
+.page-jump-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.page-jump-panel,
+[data-mood] .page-jump-panel {
+  top: calc(100% + 6px);
+  inset-inline-start: 0;
+  width: max(100%, 380px);
+  max-width: min(460px, 92vw);
+  max-height: min(70vh, 640px);
+  overflow-y: auto;
+  padding: 6px;
+  z-index: 520;
+  background: var(--bg-card);
+}
+[data-mood="ten"] .page-jump-panel {
+  background: var(--surface);
+}
+.page-jump-item,
+.page-jump-group-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 34px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  text-align: start;
+  text-decoration: none;
+  cursor: pointer;
+}
+.page-jump-item:hover,
+.page-jump-group-btn:hover {
+  background: color-mix(in srgb, var(--accent-primary) 14%, transparent);
+}
+.page-jump-item.is-current {
+  background: color-mix(in srgb, var(--accent-primary) 28%, transparent);
+  font-weight: 600;
+}
+.page-jump-item--child {
+  padding-inline-start: 40px;
+  animation: wp-fade-in 0.22s ease both;
+}
+.page-jump-group-btn {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+/* RT % sub-groups inside a sub-contractor group */
+.page-jump-sub-btn {
+  padding-inline-start: 34px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  animation: wp-fade-in 0.22s ease both;
+}
+.page-jump-item--grandchild {
+  padding-inline-start: 66px;
+}
+.page-jump-toggle {
+  width: 18px;
+  color: var(--accent-primary);
+  font-size: 15px;
+}
+.page-jump-count {
+  margin-inline-start: auto;
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.7;
+}
+@media (prefers-reduced-motion: reduce) {
+  .page-jump-item--child,
+  .page-jump-sub-btn {
+    animation: none;
+  }
+}
+
+/* ── motion (owner, 2026-10-15: "лёгкий эффект скольжения и лёгкости") ──
+   short, soft transitions on every control; pop-ups glide in; expanded rows and
+   a new page fade up. All of it is switched off for prefers-reduced-motion. */
+:root {
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  /* the glide of phone sheets and drawers */
+  --ease-glide: cubic-bezier(0.32, 0.72, 0, 1);
+  --fdrawer-w: min(400px, 92vw);
+}
+.report-pill,
+.nav-btn,
+.ms-btn,
+.fchip-btn,
+.fchip-clear,
+.fviews-apply,
+.fviews-del,
+.fbar-clear,
+.wp-nav-item,
+.wp-nav-trigger,
+.error-expand,
+.header-btn,
+.page-select,
+.filter-select,
+.ms-option,
+.fdrawer-tab,
+.fchip-static {
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.14s var(--ease-out-soft);
+}
+.report-pill:active,
+.nav-btn:active,
+.ms-btn:active,
+.fchip-btn:active,
+.fchip-clear:active,
+.wp-nav-trigger:active,
+.header-btn:active {
+  transform: scale(0.96);
+}
+.fchip-btn:hover,
+.fviews-btn:hover {
+  box-shadow: 0 2px 10px rgb(0 0 0 / 0.18);
+}
+/* a hover nudges the handle out a little; when the panel is open the handle
+   rides on its left edge, like a pulled tab */
+.fdrawer-tab:hover {
+  transform: translateX(-4px);
+}
+.fdrawer-tab[aria-expanded="true"] {
+  transform: translateX(calc(-1 * var(--fdrawer-w)));
+  /* appearing: 0.69 s (+50 %) */
+  transition:
+    transform 0.69s var(--ease-glide),
+    background-color 0.25s ease,
+    box-shadow 0.25s ease;
+}
+@keyframes wp-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes wp-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes wp-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.ms-panel,
+.wp-nav-menu,
+.refresh-dialog {
+  animation: wp-pop-in 0.3s var(--ease-glide) both;
+  transform-origin: top left;
+}
+.fdrawer-scrim,
+.refresh-dialog-backdrop {
+  animation: wp-fade-in 0.36s ease both;
+}
+.wp-matrix tbody tr,
+.error-matrix tbody tr,
+.rs-welder {
+  animation: wp-fade-in 0.22s ease both;
+}
+.main-content > * {
+  animation: wp-fade-up 0.32s var(--ease-out-soft) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ms-panel,
+  .wp-nav-menu,
+  .refresh-dialog,
+  .fdrawer-scrim,
+  .refresh-dialog-backdrop,
+  .wp-matrix tbody tr,
+  .error-matrix tbody tr,
+  .rs-welder,
+  .main-content > * {
+    animation: none;
+  }
+  .report-pill,
+  .nav-btn,
+  .ms-btn,
+  .fchip-btn,
+  .fchip-clear,
+  .fdrawer-tab,
+  .fdrawer,
+  .fdrawer.is-open {
+    transition: none;
+  }
+  .report-pill:active,
+  .nav-btn:active,
+  .ms-btn:active,
+  .fchip-btn:active,
+  .fchip-clear:active,
+  .wp-nav-trigger:active,
+  .header-btn:active {
+    transform: none;
+  }
+}
+
 /* ── data refresh button + dialog (components/RefreshDataButton.tsx) ── */
 .refresh-data-wrapper {
   display: flex;
@@ -2630,8 +3365,9 @@ html {
   justify-content: center;
   min-width: 0;
 }
-.pbi-card-value { font-size: 20px; font-weight: 700; color: var(--pbi-fg); line-height: 1.1; }
-.pbi-card--big .pbi-card-value { font-size: 22px; }
+/* metric figures 14 px on every page (owner, 2026-10-15), the big tile included */
+.pbi-card-value { font-size: 14px; font-weight: 700; color: var(--pbi-fg); line-height: 1.1; }
+.pbi-card--big .pbi-card-value { font-size: 14px; }
 .pbi-card-label { font-size: 11px; color: var(--pbi-muted); margin-top: 3px; }
 .pbi-card-stack { display: flex; flex-direction: column; gap: 8px; }
 .pbi-card-stack .pbi-card { flex: 1 1 auto; }
@@ -2732,3 +3468,129 @@ html {
   display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap;
 }
 .demo-burn-card .demo-svg { max-width: 1180px; }
+
+/* Welder Performance matrices: soft, barely visible column separators (owner, 2026-10-15) */
+.wp-matrix.data-table th + th,
+.wp-matrix.data-table th + td,
+.wp-matrix.data-table td + td,
+[data-mood] .wp-matrix.data-table th + th,
+[data-mood] .wp-matrix.data-table th + td,
+[data-mood] .wp-matrix.data-table td + td {
+  border-inline-start: 1px solid color-mix(in srgb, currentColor 10%, transparent);
+}
+.wp-matrix.data-table thead th + th,
+[data-mood] .wp-matrix.data-table thead th + th {
+  border-inline-start-color: color-mix(in srgb, currentColor 16%, transparent);
+}
+.data-table .dt-child {
+  animation: wp-fade-in 0.22s ease both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .data-table .dt-child {
+    animation: none;
+  }
+}
+.pbi-matrix .pbi-matrix-child {
+  animation: wp-fade-in 0.22s ease both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pbi-matrix .pbi-matrix-child {
+    animation: none;
+  }
+}
+
+/* ── report pages (PageView): compact tables, one screen where it fits
+   (owner, 2026-10-15: "умести страницу под размер экрана, сузь колонки,
+   перенеси текст в заголовках") ── */
+.pv-page .section-title,
+[data-mood] .pv-page .section-title {
+  margin-block: 2px 2px;
+  padding-bottom: 0;
+}
+.pv-page .table-scroll {
+  margin-bottom: 4px;
+}
+.pv-page .data-table th,
+.pv-page .data-table td,
+[data-mood] .pv-page .data-table th,
+[data-mood] .pv-page .data-table td {
+  padding-block: 3px;
+  padding-inline: 8px;
+  line-height: 1.3;
+}
+/* headers wrap onto balanced lines instead of widening their column */
+.pv-page .data-table thead th,
+[data-mood] .pv-page .data-table thead th {
+  white-space: normal;
+  text-wrap: balance;
+  vertical-align: bottom;
+  padding-block: 3px;
+  font-size: 11px;
+  letter-spacing: 0.03em;
+  line-height: 1.12;
+  min-width: 52px;
+}
+.pv-page .dashboard-grid {
+  margin-bottom: 2px;
+}
+.pv-page .card:has(> .text-note-body) {
+  padding: 6px 14px;
+}
+.pv-page .card:has(> .text-note-body) .card-header,
+[data-mood] .pv-page .card:has(> .text-note-body) .card-header {
+  margin-bottom: 4px;
+  padding-bottom: 4px;
+  font-size: 11px;
+}
+.pv-page .text-note-body,
+[data-mood] .pv-page .text-note-body {
+  font-size: 11.5px;
+  line-height: 1.4;
+  max-width: none;
+}
+/* tables as wide as their columns need, not stretched to the page (owner,
+   2026-10-15): one even step per column, the label column a little wider */
+.pv-page .data-table,
+[data-mood] .pv-page .data-table {
+  width: auto;
+  max-width: 100%;
+}
+.pv-page .data-table th,
+.pv-page .data-table td,
+[data-mood] .pv-page .data-table th,
+[data-mood] .pv-page .data-table td {
+  min-width: 74px;
+  padding-inline: 10px;
+}
+/* the step: a value column is as wide as its numbers, never narrower than
+   76px, and its header wraps inside 118px rather than widening it */
+.pv-page .data-table th:not(:first-child),
+.pv-page .data-table td:not(:first-child),
+[data-mood] .pv-page .data-table th:not(:first-child),
+[data-mood] .pv-page .data-table td:not(:first-child) {
+  min-width: 60px;
+  padding-inline: 8px;
+}
+/* a header broken by hand keeps exactly those lines */
+.pv-page .data-table .th-text.th-text--set {
+  max-width: none;
+  white-space: nowrap;
+}
+.pv-page .data-table .th-text {
+  display: inline-block;
+  max-width: 118px;
+  white-space: normal;
+  text-wrap: balance;
+}
+/* the frame hugs the table instead of running to the page edge */
+.pv-page .table-scroll,
+[data-mood] .pv-page .table-scroll {
+  width: fit-content;
+  max-width: 100%;
+}
+.pv-page .data-table th:first-child,
+.pv-page .data-table td:first-child,
+[data-mood] .pv-page .data-table th:first-child,
+[data-mood] .pv-page .data-table td:first-child {
+  min-width: 110px;
+}

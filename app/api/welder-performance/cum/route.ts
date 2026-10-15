@@ -9,7 +9,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { NextRequest } from "next/server";
 
-import { query, withAsOf } from "@/lib/db";
+import { queryFresh, withAsOf } from "@/lib/db";
 import { chartCutoff } from "@/lib/metrics/trend";
 import { resolvePageSource } from "@/lib/page-source";
 import {
@@ -18,7 +18,8 @@ import {
 
 export const dynamic = "force-dynamic";
 
-const run: Run = (sql, params) => query(sql, params);
+// the CUM table changes between refreshes ("Insert into CUM file"): read it fresh
+const run: Run = (sql, params) => queryFresh(sql, params);
 
 function kindOf(request: NextRequest): CumKind | null {
   const k = request.nextUrl.searchParams.get("kind");

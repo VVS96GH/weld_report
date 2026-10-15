@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-import { FilterBar } from "@/components/FilterBar";
+import { EdgeFilters } from "@/components/EdgeFilters";
+import { useKeepInView } from "@/components/useKeepInView";
 import { usePageSubtitle } from "@/components/ReportShell";
 import type { Column, Level, Matrix, WpPageData, WpRow } from "@/lib/pages/welder-performance";
 
@@ -21,14 +22,28 @@ function dmy(iso: string): string {
 }
 
 /** "L.2w Joints Welded" → "L.2W" on its own line, the rest on the next one. */
+/** "|" in a label is a line break the owner placed ("RT Total|Films"). */
+function withBreaks(text: string) {
+  // "%" and the "A" / "R" marks stay with the word before them: no lone sign on a line
+  const glued = text.replace(/ (%|"[AR]")/g, (_m, sign: string) => `\u00a0${sign}`);
+  const parts = glued.split("|");
+  return parts.map((p, i) => (
+    <span key={i}>
+      {i > 0 ? <br /> : null}
+      {p}
+    </span>
+  ));
+}
+
+/** "Last 2wk Joints Welded" / "Last 1 m.th …" → the window on its own line, the rest below. */
 function HeadLabel({ label }: { label: string }) {
-  const m = /^(L\.2w|L\.1m) (.*)$/.exec(label);
-  if (!m) return <>{label}</>;
+  const m = /^(Last 2wk|Last 1 m\.th) (.*)$/.exec(label);
+  if (!m) return <>{withBreaks(label)}</>;
   return (
     <>
-      <span className="wp-h-prefix">{m[1].toUpperCase()}</span>
+      <span className="wp-h-prefix">{m[1]}</span>
       <br />
-      {m[2]}
+      {withBreaks(m[2])}
     </>
   );
 }
@@ -259,6 +274,8 @@ function JointPicker({ value, pageSlug }: { value: string[]; pageSlug: string })
   const [list, setList] = useState<{ joints: string[]; more: boolean } | null>(null);
   const [loading, setLoading] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  useKeepInView(panelRef, open);
   const reqId = useRef(0);
 
   function apply(next: string[]) {
@@ -348,7 +365,7 @@ function JointPicker({ value, pageSlug }: { value: string[]; pageSlug: string })
         </span>
       </button>
       {open ? (
-        <div className="ms-panel wp-joint-panel" role="group" aria-labelledby="wp-joint-l">
+        <div className="ms-panel wp-joint-panel" role="group" aria-labelledby="wp-joint-l" ref={panelRef}>
           <input
             type="search"
             className="ms-search"
@@ -415,10 +432,14 @@ export function WelderPerfView({ data, note }: { data: WpPageData | null; note?:
             report counts it. Inco is not included. Expand a
             sub-contractor to see its welders, a welder to see the joints.
           </p>
-          <div className="wp-filters">
-            <FilterBar widgets={data.filters} alsoReset={["joint"]} />
-            <JointPicker key={data.joint.join(",")} value={data.joint} pageSlug={data.page.slug} />
-          </div>
+          <EdgeFilters
+            widgets={data.filters}
+            extra={{
+              node: <JointPicker key={data.joint.join(",")} value={data.joint} pageSlug={data.page.slug} />,
+              ids: ["joint"],
+              chips: data.joint.length ? [{ label: "Joint ID", value: data.joint.join(","), ids: ["joint"] }] : [],
+            }}
+          />
           <MatrixCard key={`rt-${data.query}`} data={data} matrix="rt" />
           <MatrixCard key={`ut-${data.query}`} data={data} matrix="ut" />
         </>

@@ -7,7 +7,7 @@ import type { KpiWidget } from "@/lib/page-model";
  */
 export function KpiCard({ widget }: { widget: KpiWidget }) {
   return (
-    <div className="stat-box">
+    <div className="stat-box" title={widget.sub ?? undefined}>
       <div className="stat-value num">{widget.value}</div>
       <div className="stat-label">{widget.label}</div>
       {widget.sub ? <div className="stat-sub">{widget.sub}</div> : null}

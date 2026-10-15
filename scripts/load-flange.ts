@@ -75,6 +75,7 @@ interface Stats {
   dateTypoFixes: number;
   dirtySubcontractor: number;
   usDateValues: number;
+  serialDateValues: number;
   dateUnparsed: Map<string, number>;
   dirtyFutureJointDate: number;
   jointIds: Set<string>;
@@ -85,7 +86,7 @@ function newStats(source: FlangeSource): Stats {
     source, sheetRows: 0, kept: 0, headerRow: -1, headerWidth: 0,
     dropped: new Map(), methods: new Map(), ha: new Map(), subcon: new Map(),
     dateTypoFixes: 0, dirtySubcontractor: 0, dirtyFutureJointDate: 0, jointIds: new Set(),
-    usDateValues: 0, dateUnparsed: new Map(),
+    usDateValues: 0, serialDateValues: 0, dateUnparsed: new Map(),
   };
 }
 
@@ -127,6 +128,10 @@ function haFromSystem(system: string): string | null {
  * DAX rule on 226,438 of 226,504 rows with ZERO disagreements. `HA-NA - Not
  * Applicable` resolves to NULL, not to a bucket.
  */
+/** Rows whose HA the DAX takes from the guide: no [System], "System-NA", or a 2nd digit not 1-4. */
+const NO_SYSTEM_HA =
+  "(system IS NULL OR system = 'System-NA - Not Applicable' OR substr(system, 2, 1) NOT IN ('1','2','3','4'))";
+
 function haFromProcessPlant(pp: string): string | null {
   const m = /^HA([1-4])\b/.exec(pp.trim());
   return m ? `HA${m[1]}` : null;
@@ -165,6 +170,16 @@ function parseOvDate(v: string, col: string, stats: Stats): string | null {
     if (mo >= 1 && mo <= 12 && d >= 1 && d <= 31) {
       stats.usDateValues += 1;
       return `${m[3]}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    }
+  }
+  // An Excel day serial stored as text (`'46282'` = 17-Sep-2026): the pbix's
+  // type step turns it into that date (owner, 2026-10-15: 38 CCC HA2 PCC joints
+  // were Const-n here, PCC in the pbix). 1899-12-30 is Excel's day zero.
+  if (/^\d{5}$/.test(cleaned)) {
+    const n = Number(cleaned);
+    if (n >= 36526 && n <= 73051) {
+      stats.serialDateValues += 1;
+      return new Date(Date.UTC(1899, 11, 30) + n * 86_400_000).toISOString().slice(0, 10);
     }
   }
   bump(stats.dateUnparsed, `${col}=${JSON.stringify(raw).slice(0, 30)}`);
@@ -369,6 +384,9 @@ function report(stats: Stats, t0: number): boolean {
   console.log(`  sub_contractor        ${[...stats.subcon].sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k}=${fmt(v)}`).join(", ")}`);
   if (stats.dateTypoFixes > 0) console.log(`  -0024 -> -2024 repairs${String(stats.dateTypoFixes).padStart(11)}`);
   console.log(`  dirty rows KEPT (RF-05)  TBD sub-contractor ${stats.dirtySubcontractor}, joint_date >= 2027 ${stats.dirtyFutureJointDate}`);
+  if (stats.serialDateValues > 0) {
+    console.log(`  Excel serial dates   ${fmt(stats.serialDateValues).padStart(11)}  (text day numbers, as the pbix types them)`);
+  }
   if (stats.usDateValues > 0) {
     console.log(`  m/d/yyyy dates parsed ${fmt(stats.usDateValues).padStart(11)}  (month-first: measured, the first component never exceeds 12)`);
   }
@@ -440,15 +458,30 @@ async function main(): Promise<void> {
       }
       const n = await copyRows(client, "flange", [...FLANGE_COLUMNS], lines(), { label: source });
       // The DAX's HA fallback: LOOKUPVALUE('HA l0_abs_guide'[Handover Area],
-      // [Location Number], [PDS Area]). It keys on PDS Area rather than System,
-      // so it runs here, after the rows land, and only where [System] gave
-      // nothing. A row the guide does not know keeps a NULL HA and its own
-      // "(blank)" row -- RF-03 -- rather than a guessed area.
+      // [Location Number], [PDS Area Final]). It keys on PDS Area rather than
+      // System, so it runs here, after the rows land, and only where [System]
+      // gave nothing. [PDS Area Final] is the calculated column
+      //   IF(ISBLANK([PDS Area "VPR"]), [PDS Area], [PDS Area "VPR"])
+      // where [PDS Area "VPR"] = MAXX of the weld table's PDS Area over the rows
+      // with this flange's ISO Number (owner, 2026-10-15: no flange is "(blank)"
+      // in the pbix; 77 were here, because their own PDS Area -- "65", "6032A"…
+      // -- is not a location in the guide). A row the guide still does not know
+      // keeps a NULL HA and its own "(blank)" row -- RF-03.
+      // The pbix appends the CCC export (ovAssets_1619) into Flange Progress, so
+      // the same column decides its HA too: a CCC row without a usable [System]
+      // takes the guide's area, not Process Plant (owner, 2026-10-15: 99 CCC TBN
+      // flanges are HA2 in the pbix, Process Plant said HA1).
       const haFilled = await client.query(
-        `UPDATE flange f SET ha = g.handover_area
-           FROM ref_ha_guide g
-          WHERE f.ha IS NULL AND g.location_number = f.pds_area
+        `WITH iso AS (
+           SELECT w.iso_number, max(w.pds_area) AS vpr FROM weld w
+            WHERE w.iso_number IN (SELECT iso_number FROM flange WHERE source = $1 AND ${NO_SYSTEM_HA})
+            GROUP BY 1)
+         UPDATE flange f SET ha = g.handover_area
+           FROM ref_ha_guide g, flange f2 LEFT JOIN iso ON iso.iso_number = f2.iso_number
+          WHERE f2.ctid = f.ctid AND f.source = $1 AND ${NO_SYSTEM_HA.replace(/\bsystem\b/g, "f.system")}
+            AND g.location_number = coalesce(iso.vpr, f.pds_area)
             AND g.handover_area ~ '^HA[1-4]$'`,
+        [source],
       );
       console.log(`  HA from l0_abs_guide: ${haFilled.rowCount ?? 0} rows filled`);
 

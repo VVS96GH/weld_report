@@ -335,12 +335,30 @@ export async function getFlangePage(
     datasets: [{ label: "Inspected", data: methodSlices.map((m) => m.inspected) }],
     options_notes: `centre = ${int(overall.inspected)}`,
   });
+  // The pbix visual leaves the one "TBD" sub-contractor joint out (its total is
+  // 358,598 where the HA table's is 358,599, owner 2026-10-15): drop the row and
+  // take its counts off this table's Total. The TBD joint is in no other group.
+  const tbd = bySubco.find((r) => r.group === "TBD");
+  const subcoTotal = tbd
+    ? (() => {
+        const t = {
+          ...overall,
+          total: overall.total - tbd.total,
+          inspected: overall.inspected - tbd.inspected,
+          constn: overall.constn - tbd.constn,
+          pcc: overall.pcc - tbd.pcc,
+          leaked: overall.leaked - tbd.leaked,
+          remains: overall.remains - tbd.remains,
+        };
+        return { ...t, pct: t.total ? t.inspected / t.total : null, leakedPct: t.inspected ? t.leaked / t.inspected : null };
+      })()
+    : overall;
   widgets.push(
     statusTable(
       "Subcontractor Flange Status",
       "Subcontractor",
-      bySubco.map((r) => statusRow(r.group, r)),
-      overall,
+      bySubco.filter((r) => r !== tbd).map((r) => statusRow(r.group, r)),
+      subcoTotal,
     ),
   );
   // The HA table carries per-method detail rows under each HA, as the mockup's
@@ -433,7 +451,7 @@ export async function getFlangePage(
     options_notes: "year-axis-title",
   });
 
-  for (const n of notes) widgets.push({ kind: "text", text: n });
+  for (const n of notes) widgets.push({ kind: "text", text: n, note: true });
 
   return {
     page: 0,
@@ -506,7 +524,7 @@ function emptyPage(
     emptyChart("monthlyChart", "Monthly Inspection", "bar", ["Inspected"]),
   );
 
-  for (const n of notes) widgets.push({ kind: "text", text: n });
+  for (const n of notes) widgets.push({ kind: "text", text: n, note: true });
 
   return {
     page: 0,
@@ -594,6 +612,7 @@ export async function getFlangeManagementPage(
     },
     {
       kind: "text",
+      note: true,
       text:
         "Required is every flange in the register for the group; Completed is " +
         "the inspected total (Const-n + PCC) \u2014 the same two measures the HA " +

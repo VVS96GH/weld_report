@@ -131,7 +131,12 @@ function WindowScrollbar({
         aria-valuenow={start}
         aria-valuetext={label}
         aria-label="Visible range"
-        style={{ width: `${thumbPct}%`, insetInlineStart: `${leftPct}%` }}
+        // the thumb never runs past the track end (its 24px minimum width used to cover the count)
+        style={{
+          width: `${thumbPct}%`,
+          insetInlineStart:
+            total > visible ? `calc((100% - max(${thumbPct}%, 24px)) * ${start / (total - visible)})` : `${leftPct}%`,
+        }}
         onPointerDown={(e) => {
           drag.current = { pointerX: e.clientX, startAt: start };
           e.currentTarget.setPointerCapture(e.pointerId);
@@ -301,6 +306,29 @@ function canvasColor(raw: string, probe: HTMLElement | null, ctx: CanvasRenderin
   ctx.fillStyle = resolved;
   const drawn = String(ctx.fillStyle);
   return drawn === sentinel && resolved.toLowerCase() !== sentinel ? null : drawn;
+}
+
+/**
+ * An override keeps only what can be drawn: an empty string, an empty colour
+ * list or a colour the browser cannot parse would otherwise replace a good
+ * default and paint the chart black (a page that read its tokens too early).
+ */
+function usableOverride(o: Partial<Palette> | undefined): Partial<Palette> {
+  if (!o || typeof window === "undefined") return {};
+  const ctx = document.createElement("canvas").getContext("2d");
+  const ok = (c: unknown): c is string => typeof c === "string" && canvasColor(c, null, ctx) !== null;
+  const out: Partial<Palette> = {};
+  for (const [k, v] of Object.entries(o) as [keyof Palette, unknown][]) {
+    if (k === "colors") {
+      const colors = Array.isArray(v) ? v.filter(ok) : [];
+      if (colors.length) out.colors = colors;
+    } else if (k === "font") {
+      if (typeof v === "string" && v.trim()) out.font = v;
+    } else if (ok(v)) {
+      (out as Record<string, unknown>)[k] = v;
+    }
+  }
+  return out;
 }
 
 function readPalette(): Palette {
@@ -514,6 +542,13 @@ function valueLabels(type: string, stacked: boolean, percent: boolean, circular:
   };
 }
 
+/** Round an axis end up to 1, 2, 2.5 or 5 x 10^n (0.46 -> 0.5), so the top tick is a round one. */
+function niceCeil(x: number): number {
+  const mag = 10 ** Math.floor(Math.log10(x));
+  const step = [1, 2, 2.5, 5, 10].find((m) => m * mag >= x - 1e-12) ?? 10;
+  return Number((step * mag).toPrecision(3));
+}
+
 function toNum(v: number | string | null): number | null {
   if (v === null || v === undefined) return null;
   if (typeof v === "number") return Number.isFinite(v) ? v : null;
@@ -568,12 +603,19 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
   }, []);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps -- `version` is the re-read trigger, not an input
-  const palette = useMemo(() => ({ ...readPalette(), ...paletteOverride }), [version, paletteOverride]);
+  const palette = useMemo(() => ({ ...readPalette(), ...usableOverride(paletteOverride) }), [version, paletteOverride]);
 
   const notes = widget.options_notes ?? "";
   const stackedX = notes.includes("stacked (x)");
   const stackedY = notes.includes("stacked (y)");
   const percentAxis = notes.includes("percent-axis");
+  // "y-center" (owner, 2026-10-15, the leak-rate line): the value axis runs to
+  // twice the highest visible point, so a near-flat line sits mid-height and its
+  // labels clear the axis ticks; the points stand off the plot edges.
+  const yCenter = notes.includes("y-center");
+  const visibleMax = yCenter
+    ? Math.max(0, ...widget.datasets.flatMap((d) => d.data.slice(start, end).map((v) => toNum(v) ?? 0)))
+    : 0;
   const horizontal = notes.toLowerCase().includes("indexaxis") && notes.toLowerCase().includes("y");
   const circular = isCircular(widget.chart_type);
   // "year-axis-title" (flange Monthly Inspection, 2026-10-14): labels are
@@ -653,6 +695,8 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
             ? { right: 48, top: 8 }
             : notes.includes("area")
               ? { top: 16, right: 18 } // the last point's total is not clipped by the edge
+              : yCenter
+                ? { top: 12, left: 8, right: 22 }
               : { top: widget.chart_type === "bar" && !(stackedX || stackedY) && widget.datasets.length > 2 ? 34 : 16 },
       },
       plugins: {
@@ -674,6 +718,9 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
             // axis is the other one.
             const category = {
               stacked: stackedX,
+              // only the y-center line sets it: an explicit undefined reads as
+              // `offset: false` and cut the first and last bars in half
+              ...(yCenter ? { offset: true } : {}),
               ticks: {
                 color: palette.text,
                 font: { size: 10, family: palette.font },
@@ -692,8 +739,9 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
               beginAtZero: true,
               // headroom so stack totals / line-point labels never sit on the legend;
               // a thresholded rate is framed by its upper limit instead
-              grace: thresholds ? 0 : "12%",
+              grace: thresholds || yCenter ? 0 : "12%",
               suggestedMax: thresholds ? thresholds.unacceptable * 1.2 : undefined,
+              max: yCenter && visibleMax > 0 ? niceCeil(visibleMax * 2) : undefined,
               ticks: {
                 color: palette.text,
                 font: { size: 10, family: palette.font },
@@ -706,7 +754,7 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
             return horizontal ? { x: value, y: category } : { x: category, y: value };
           })(),
     }),
-    [palette, stackedX, stackedY, percentAxis, horizontal, circular, widget.chart_type, widget.datasets.length, start, end, thresholds, notes, yearAxis, yearTitle],
+    [palette, stackedX, stackedY, percentAxis, horizontal, circular, widget.chart_type, widget.datasets.length, start, end, thresholds, notes, yearAxis, yearTitle, yCenter, visibleMax],
   );
 
   // Trend charts fed by the not-yet-seeded weld_weekly_snapshot table (e.g. page 1's

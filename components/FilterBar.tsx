@@ -6,6 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import type { FilterWidget } from "@/lib/page-model";
 import { MultiSelect, TreeMultiSelect } from "@/components/MultiSelect";
+import { SavedViews } from "@/components/SavedViews";
 
 /**
  * Server-driven filters (flange dashboard): each FilterWidget is a labelled
@@ -20,8 +21,24 @@ const BLANK_PARENT = "(Blank)";
 /**
  * `alsoReset`: params of slicers rendered OUTSIDE the bar (the Welder
  * Performance Joint ID picker) that the Reset link clears too.
+ * `layout`: "bar" — one compact row of chips and pills (2026-10-15); "stack" —
+ * one control per line, for the Welder Performance side panel.
+ * `views`: show the shared saved views of this page (its main bar only).
  */
-export function FilterBar({ widgets, alsoReset = [] }: { widgets: FilterWidget[]; alsoReset?: string[] }) {
+export function FilterBar({
+  widgets,
+  alsoReset = [],
+  layout = "bar",
+  views = false,
+  showReset = true,
+}: {
+  widgets: FilterWidget[];
+  alsoReset?: string[];
+  layout?: "bar" | "stack";
+  views?: boolean;
+  /** false: no "Clear all" here (another bar on the page clears these params too). */
+  showReset?: boolean;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -96,7 +113,8 @@ export function FilterBar({ widgets, alsoReset = [] }: { widgets: FilterWidget[]
       : `Filters applied: ${applied.map((w) => `${w.label} ${w.value.split(",").join(" or ")}`).join(", ")}`;
 
   return (
-    <div className="filter-bar" role="group" aria-label="Report filters" aria-busy={pending}>
+    <div className={`filter-bar fbar fbar--${layout}`} role="group" aria-label="Report filters" aria-busy={pending}>
+      {views ? <SavedViews /> : null}
       {widgets.map((w) => {
         const selectId = `${baseId}-${w.id}`;
         // children are rendered inside their parent's grouped control
@@ -117,6 +135,7 @@ export function FilterBar({ widgets, alsoReset = [] }: { widgets: FilterWidget[]
           return (
             <TreeMultiSelect
               key={`${w.id}:${w.value}:${child.value}`}
+              chip
               label={`${w.label}, ${child.label}`}
               groups={groups}
               value={{ has, pairs: pairs.filter((p) => p.includes(">")) }}
@@ -125,11 +144,14 @@ export function FilterBar({ widgets, alsoReset = [] }: { widgets: FilterWidget[]
           );
         }
         if (w.multi) {
+          // every slicer is a chip, one look on every page (owner, 2026-10-15)
+          const opts = w.options.filter((o) => o !== "All");
           return (
             <MultiSelect
               key={`${w.id}:${w.value}`}
+              chip
               label={w.label}
-              options={w.options.filter((o) => o !== "All")}
+              options={opts}
               value={list(w.value)}
               onApply={(v) => applyList(w.id, v)}
             />
@@ -184,9 +206,9 @@ export function FilterBar({ widgets, alsoReset = [] }: { widgets: FilterWidget[]
           </div>
         );
       })}
-      {applied.length > 0 || outsideApplied ? (
-        <Link href={resetHref} className="nav-btn filter-reset" aria-label="Reset all filters">
-          &#10005; Reset
+      {showReset && (applied.length > 0 || outsideApplied) ? (
+        <Link href={resetHref} className="filter-reset fbar-clear" aria-label="Reset all filters">
+          Clear all
         </Link>
       ) : null}
       <span className="sr-only" aria-live="polite" aria-atomic="true">

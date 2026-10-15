@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 
 import { RejectionSummaryView } from "@/components/RejectionSummaryView";
 import { WelderPerfView } from "@/components/WelderPerfView";
-import { query, withAsOf } from "@/lib/db";
+import { queryFresh, withAsOf } from "@/lib/db";
 import { chartCutoff } from "@/lib/metrics/trend";
 import { resolvePageSource } from "@/lib/page-source";
 import { getSummaryPage } from "@/lib/pages/welder-perf-summary";
@@ -30,7 +30,8 @@ export default async function WelderPerformancePage(props: PageProps<"/welder-pe
   }
   if (kind) {
     const cutoff = chartCutoff((await withAsOf(null)).as_of);
-    const plan = await planAppend((sql, params) => query(sql, params), kind, cutoff);
+    // fresh reads: the CUM table may have been appended to since the last render
+    const plan = await planAppend((sql, params) => queryFresh(sql, params), kind, cutoff);
     const data = await getSummaryPage(kind, { lastDate: plan.lastDate, rows: plan.rows.length });
     return <RejectionSummaryView data={data} />;
   }

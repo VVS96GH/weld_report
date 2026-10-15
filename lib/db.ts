@@ -167,6 +167,19 @@ export function query<T extends QueryResultRow = QueryResultRow>(
 }
 
 /**
+ * The same, never served from the read cache: for the few tables people change
+ * between data refreshes (saved views, welder-performance notes, the CUM
+ * workbook rows after "Insert into CUM file"). Read statements on them must
+ * see the write that just happened.
+ */
+export function queryFresh<T extends QueryResultRow = QueryResultRow>(
+  text: string,
+  params?: readonly unknown[],
+): Promise<T[]> {
+  return impl === cachedPgQuery ? pgQuery<T>(text, params) : impl<T>(text, params);
+}
+
+/**
  * Test seam. `tests/pages.test.ts` swaps in a fixture so the 44 page
  * assemblers can be structurally verified with no database present.
  * Pass `null` to restore the real pool-backed implementation.

@@ -46,7 +46,7 @@ export function ForecastView({ model, subtitle }: { model: PageModel; subtitle: 
   for (const w of model.widgets) {
     if (w.kind === "chart") charts.set(w.canvas_id, w);
     else if (w.kind === "kpi") kpis.set(w.label, w);
-    else if (w.kind === "text") notes.push(w);
+    else if (w.kind === "text" && !w.note) notes.push(w);
   }
   const used = new Set<Widget>();
   const chart = (id: string) => {

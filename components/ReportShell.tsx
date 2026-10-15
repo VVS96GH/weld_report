@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, Suspense, useCallback, useContext, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -8,6 +8,7 @@ import { displayForPath, displayHref, WELDING_PAGE_TITLES, WELDING_REPORT_SUBTIT
 import { SCREENS } from "@/lib/screens";
 import { WP_FIRST } from "@/lib/welder-perf-nav";
 import { WpNavMenu } from "@/components/WpNavMenu";
+import { FilterSummary, PageNavControls } from "@/components/PageNavControls";
 import { ThemeMoodControls } from "@/components/ThemeMoodControls";
 import { RefreshDataButton } from "@/components/RefreshDataButton";
 
@@ -67,7 +68,10 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
 
   const goTo = useCallback(
     (n: number) => {
-      if (n >= 1 && n <= WELDING_TOTAL_PAGES) router.push(displayHref(n));
+      if (n < 1 || n > WELDING_TOTAL_PAGES) return;
+      // ← → between welding pages keep the filters on screen, as Prev / Next do
+      const href = displayHref(n);
+      router.push(href.startsWith("/welding/") ? `${href}${window.location.search}` : href);
     },
     [router],
   );
@@ -152,42 +156,13 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
               </span>
             ) : null}
             {isWelders ? null : <span className="page-title-display">{title}</span>}
+            <Suspense fallback={null}>
+              <FilterSummary />
+            </Suspense>
             {inSequence ? (
-              <div className="nav-controls">
-                {current > 1 ? (
-                  <Link href={displayHref(current - 1)} className="nav-btn" aria-label="Previous page">
-                    &#9664; Prev
-                  </Link>
-                ) : (
-                  <button type="button" className="nav-btn" disabled aria-label="Previous page">
-                    &#9664; Prev
-                  </button>
-                )}
-                <label htmlFor="page-select" className="sr-only">
-                  Jump to page
-                </label>
-                <select
-                  id="page-select"
-                  className="page-select"
-                  value={current}
-                  onChange={(e) => goTo(Number(e.target.value))}
-                >
-                  {WELDING_PAGE_TITLES.map((t, i) => (
-                    <option key={i} value={i + 1}>
-                      {`${i + 1}. ${t}`}
-                    </option>
-                  ))}
-                </select>
-                {current < WELDING_TOTAL_PAGES ? (
-                  <Link href={displayHref(current + 1)} className="nav-btn" aria-label="Next page">
-                    Next &#9654;
-                  </Link>
-                ) : (
-                  <button type="button" className="nav-btn" disabled aria-label="Next page">
-                    Next &#9654;
-                  </button>
-                )}
-              </div>
+              <Suspense fallback={<div className="nav-controls" />}>
+                <PageNavControls current={current} />
+              </Suspense>
             ) : null}
           </>
         )}

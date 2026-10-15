@@ -502,25 +502,20 @@ describe.skipIf(Boolean(skipReason))("the live page", () => {
     expect(ha1.cells.Total!.completed).toBe(141_892);
   });
 
-  it("the l0_abs_guide fallback fixes flange HA; 65 joints stay blank", async () => {
+  it("the l0_abs_guide fallback, keyed on [PDS Area Final], leaves no flange blank", async () => {
     // RF-03 left 6,593 flange joints with a blank HA because HA l0_abs_guide
-    // was absent. It is loaded now (0031), and migration 0037 applies the same
-    // PDS-Area lookup migration 0032 applied to mv_joint. HA1 Required moves
-    // 145,839 -> 148,076 and CCC/MEDGULF/TEKFEN land exactly on the owner's
-    // numbers.
-    //
-    // 65 joints remain blank -- the guide has no PDS Area for them -- and
-    // EVERY remaining difference from the owner is one of them, all GAC:
-    // HA1 +15, HA2 +13, HA3 +32, HA4 +4, plus the one flange with no
-    // tightening method. They keep their own row rather than being folded into
-    // HA1, exactly as RF-03 intends.
+    // was absent; it is loaded now (0031). The pbix's HA column looks the guide
+    // up by [PDS Area Final] -- the weld table's PDS Area for the flange's ISO
+    // Number, else the flange's own -- for every row without a usable [System],
+    // the appended CCC export included (owner, 2026-10-15). With that, no joint
+    // is blank (the pbix shows none) and HA1 is the owner's 148,299.
     const [r] = await query<{ blank: string; ha1: string }>(
       "SELECT count(DISTINCT joint_id) FILTER (WHERE ha IS NULL)::text AS blank," +
         " count(DISTINCT joint_id) FILTER (WHERE ha = 'HA1')::text AS ha1" +
         "  FROM flange",
     );
-    expect(Number(r.blank)).toBe(65);
-    expect(Number(r.ha1)).toBe(148_076);
+    expect(Number(r.blank)).toBe(0);
+    expect(Number(r.ha1)).toBe(148_299);
   });
 
   it("the status tables carry Leaked % over the REGISTER, not over inspected", async () => {
@@ -583,31 +578,25 @@ describe.skipIf(Boolean(skipReason))("the live page", () => {
     }
   });
 
-  it("PCC's two DAX terms do not overlap, so OR and + agree", async () => {
-    // The DAX ADDS its two terms and the second is NOT gated on the PCC date,
-    // so in principle a non-CCC jointed flange with Cat Z/A/B and a PCC date
-    // would be counted twice. We use OR, which counts it once -- a difference
-    // the README has flagged as unresolved since RF-07.
-    //
-    // It is resolved: the intersection is EMPTY, so both readings give 16,880
-    // and the choice cannot be observed on this data. Pinned, so that if the
-    // register ever produces such a row the ambiguity resurfaces loudly rather
-    // than silently changing a number.
-    const [r] = await query<{ or_form: string; add_form: string; overlap: string }>(
+  it("PCC is the DAX's literal + of its two terms; one joint is in both", async () => {
+    // The DAX ADDS its two distinct counts (PCC date; non-CCC jointed Cat Z/A/B).
+    // Since the CCC export joined the register, one joint has a CCC row with a
+    // PCC date and a GAC row in Cat Z/A/B: the pbix counts it twice, 20,394
+    // (owner's table), where OR gives 20,393. The page reproduces the +.
+    const [r] = await query<{ or_form: string; add_form: string }>(
       "SELECT count(DISTINCT f.joint_id) FILTER (WHERE f.pcc_tightening_date IS NOT NULL" +
         "   OR (f.joint_date IS NOT NULL AND f.sub_contractor <> 'CCC'" +
         "       AND f.cat IN ('Z','A','B')))::text AS or_form," +
         " (count(DISTINCT f.joint_id) FILTER (WHERE f.pcc_tightening_date IS NOT NULL)" +
         "  + count(DISTINCT f.joint_id) FILTER (WHERE f.joint_date IS NOT NULL" +
-        "      AND f.sub_contractor <> 'CCC' AND f.cat IN ('Z','A','B')))::text AS add_form," +
-        " count(DISTINCT f.joint_id) FILTER (WHERE f.pcc_tightening_date IS NOT NULL" +
-        "   AND f.joint_date IS NOT NULL AND f.sub_contractor <> 'CCC'" +
-        "   AND f.cat IN ('Z','A','B'))::text AS overlap" +
+        "      AND f.sub_contractor <> 'CCC' AND f.cat IN ('Z','A','B')))::text AS add_form" +
         "  FROM flange f",
     );
-    expect(Number(r.overlap), "the two PCC terms must stay disjoint").toBe(0);
-    expect(Number(r.or_form)).toBe(16_880);
-    expect(Number(r.add_form)).toBe(16_880);
+    expect(Number(r.or_form)).toBe(20_393);
+    expect(Number(r.add_form)).toBe(20_394);
+    const page = await getFlangePage({});
+    const t = page.widgets.find((w) => w.kind === "table" && w.title === "HA Flange Status");
+    expect(t && t.kind === "table" ? t.rows[t.rows.length - 1]![3] : null).toBe("20,394");
   });
 
   it("the monthly and leak axes stop at as_of, measures unchanged", async () => {

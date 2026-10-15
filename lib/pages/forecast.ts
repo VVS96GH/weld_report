@@ -364,7 +364,7 @@ export async function getForecastPage(
       diaMonths,
       true,
     ),
-    ...notes.map((text): TextWidget => ({ kind: "text", text })),
+    ...notes.map((text): TextWidget => ({ kind: "text", text, note: true })),
   ];
 
   return {

@@ -47,7 +47,11 @@ test.describe("page navigation", () => {
 
   test("the page-jump select navigates to page 20", async ({ page }) => {
     await gotoWeldingPage(page, 1);
-    await page.locator("#page-select").selectOption("20");
+    // the jump menu: open it, open CCC, then its RT 100% sub-group, pick page 20
+    await page.locator("#page-select").click();
+    await page.getByRole("button", { name: /CCC/ }).click();
+    await page.locator(".page-jump-sub-btn").filter({ hasText: "RT 100%" }).first().click();
+    await page.locator(".page-jump-panel").getByRole("link", { name: /^20\. / }).click();
     await waitForPage(page, 20);
     await expect(page).toHaveURL(/\/welding\/20$/);
   });

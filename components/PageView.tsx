@@ -9,7 +9,7 @@ import { TextNote } from "@/components/widgets/TextNote";
 
 type Group =
   | { kind: "kpi"; items: KpiWidget[] }
-  | { kind: "chart"; items: ChartWidget[] }
+  | { kind: "chart"; items: ChartWidget[]; kpis?: KpiWidget[] }
   | { kind: "text"; items: TextWidget[] }
   | { kind: "table"; item: TableWidget };
 
@@ -38,20 +38,36 @@ function groupWidgets(widgets: Widget[]): Group[] {
       if (last?.kind === "chart") last.items.push(w);
       else groups.push({ kind: "chart", items: [w] });
     } else if (w.kind === "text") {
+      // methodology notes stay in the model, not on the page (TextWidget.note)
+      if (w.note) continue;
       if (last?.kind === "text") last.items.push(w);
       else groups.push({ kind: "text", items: [w] });
     }
     // "filter" widgets are rendered by the page's filter bar, not in the grid.
   }
+  // A long KPI run right before the charts becomes one 3-across card inside the
+  // chart grid, in the first free slot (owner, 2026-10-15, as the pbix page shows
+  // its cards), instead of a full-width strip above the charts.
+  for (let i = 0; i + 1 < groups.length; i++) {
+    const k = groups[i];
+    const c = groups[i + 1];
+    if (k.kind === "kpi" && k.items.length >= KPI_PANEL_FROM && c.kind === "chart") {
+      c.kpis = k.items;
+      groups.splice(i, 1);
+    }
+  }
   return groups;
 }
+
+/** KPI runs at least this long go into the chart grid as one card. */
+const KPI_PANEL_FROM = 6;
 
 export function PageView({ model, subtitle }: { model: PageModel; subtitle: string }) {
   usePageSubtitle(subtitle);
   const groups = groupWidgets(model.widgets);
 
   return (
-    <section className="page-section active" aria-labelledby="page-heading">
+    <section className="page-section active pv-page" aria-labelledby="page-heading">
       <div className="page-header">
         <h2 id="page-heading">{model.title}</h2>
       </div>
@@ -81,6 +97,15 @@ export function PageView({ model, subtitle }: { model: PageModel; subtitle: stri
                     </div>
                   </div>
                 ))}
+                {g.kpis ? (
+                  <div className="card kpi-panel" role="group" aria-label="Key figures">
+                    <div className="kpi-panel-grid">
+                      {g.kpis.map((k, j) => (
+                        <KpiCard key={j} widget={k} />
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
               </div>
             );
           case "text":

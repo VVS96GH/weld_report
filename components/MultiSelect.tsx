@@ -2,6 +2,8 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 
+import { useKeepInView } from "@/components/useKeepInView";
+
 /**
  * Check-box slicers, the way the pbix renders them (owner request 2026-10-14):
  * a closed control that summarises the pick, and a panel of check boxes.
@@ -74,9 +76,16 @@ function Panel({
   labelledBy: string;
   search?: { value: string; onChange: (v: string) => void };
 }) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  useKeepInView(panelRef, open);
   if (!open) return null;
   return (
-    <div className="ms-panel" role="group" aria-labelledby={labelledBy}>
+    <div
+      className="ms-panel"
+      role="group"
+      aria-labelledby={labelledBy}
+      ref={panelRef}
+    >
       {search ? (
         <input
           type="search"
@@ -93,7 +102,11 @@ function Panel({
         <button type="button" className="ms-btn" onClick={onClear}>
           Clear
         </button>
-        <button type="button" className="ms-btn ms-btn--primary" onClick={onApply}>
+        <button
+          type="button"
+          className="ms-btn ms-btn--primary"
+          onClick={onApply}
+        >
           Apply
         </button>
       </div>
@@ -107,11 +120,14 @@ export function MultiSelect({
   options,
   value,
   onApply,
+  chip = false,
 }: {
   label: string;
   options: string[];
   value: string[];
   onApply: (values: string[]) => void;
+  /** Compact chip: "Label: picks ▾" on one line, with × to clear (2026-10-15). */
+  chip?: boolean;
 }) {
   const baseId = useId();
   const [draft, setDraft] = useState<string[]>(value);
@@ -123,19 +139,32 @@ export function MultiSelect({
   };
   const { open, setOpen, ref } = useDropdown(close);
   const [q, setQ] = useState("");
-  const shownOptions = q ? options.filter((o) => o.toLowerCase().includes(q.toLowerCase())) : options;
+  const shownOptions = q
+    ? options.filter((o) => o.toLowerCase().includes(q.toLowerCase()))
+    : options;
   const toggle = (o: string) =>
-    setDraft((d) => (d.includes(o) ? d.filter((x) => x !== o) : options.filter((x) => x === o || d.includes(x))));
+    setDraft((d) =>
+      d.includes(o)
+        ? d.filter((x) => x !== o)
+        : options.filter((x) => x === o || d.includes(x)),
+    );
 
   return (
-    <div className="filter-group ms" ref={ref}>
-      <label id={`${baseId}-l`} htmlFor={`${baseId}-b`}>
+    <div
+      className={`filter-group ms${chip ? " fchip" : ""}${chip && value.length ? " is-set" : ""}`}
+      ref={ref}
+    >
+      <label
+        id={`${baseId}-l`}
+        htmlFor={`${baseId}-b`}
+        className={chip ? "sr-only" : undefined}
+      >
         {label}
       </label>
       <button
         id={`${baseId}-b`}
         type="button"
-        className="filter-select ms-trigger"
+        className={`filter-select ms-trigger${chip ? " fchip-btn" : ""}`}
         aria-haspopup="true"
         aria-expanded={open}
         onClick={() => {
@@ -144,11 +173,22 @@ export function MultiSelect({
           setOpen(!open);
         }}
       >
+        {chip ? <span className="fchip-label">{label}:</span> : null}
         <span className="ms-summary">{summary(open ? draft : value)}</span>
         <span aria-hidden="true" className="ms-caret">
           ▾
         </span>
       </button>
+      {chip && value.length ? (
+        <button
+          type="button"
+          className="fchip-clear"
+          aria-label={`Clear ${label}`}
+          onClick={() => onApply([])}
+        >
+          ×
+        </button>
+      ) : null}
       <Panel
         open={open}
         labelledBy={`${baseId}-l`}
@@ -157,15 +197,27 @@ export function MultiSelect({
           setOpen(false);
           close(true);
         }}
-        search={options.length >= SEARCH_FROM ? { value: q, onChange: setQ } : undefined}
+        search={
+          options.length >= SEARCH_FROM
+            ? { value: q, onChange: setQ }
+            : undefined
+        }
       >
         <label className="ms-option ms-option--all">
-          <input type="checkbox" checked={draft.length === 0} onChange={() => setDraft([])} />
+          <input
+            type="checkbox"
+            checked={draft.length === 0}
+            onChange={() => setDraft([])}
+          />
           <span>Select all</span>
         </label>
         {shownOptions.map((o) => (
           <label className="ms-option" key={o}>
-            <input type="checkbox" checked={draft.includes(o)} onChange={() => toggle(o)} />
+            <input
+              type="checkbox"
+              checked={draft.includes(o)}
+              onChange={() => toggle(o)}
+            />
             <span>{o}</span>
           </label>
         ))}
@@ -187,16 +239,20 @@ export function TreeMultiSelect({
   groups,
   value,
   onApply,
+  chip = false,
 }: {
   label: string;
   /** HA (or BLANK_GROUP) → its areas, in display order. */
   groups: { key: string; areas: string[] }[];
   value: { has: string[]; pairs: string[] };
   onApply: (next: { has: string[]; pairs: string[] }) => void;
+  /** Compact chip, as MultiSelect's. */
+  chip?: boolean;
 }) {
   const baseId = useId();
   const [draft, setDraft] = useState(value);
-  const key = (v: { has: string[]; pairs: string[] }) => `${v.has.join("\u0000")}|${v.pairs.join("\u0000")}`;
+  const key = (v: { has: string[]; pairs: string[] }) =>
+    `${v.has.join("\u0000")}|${v.pairs.join("\u0000")}`;
   const close = (apply: boolean) => {
     if (apply && key(draft) !== key(value)) onApply(draft);
     else setDraft(value);
@@ -208,7 +264,10 @@ export function TreeMultiSelect({
     setDraft((d) =>
       d.has.includes(g)
         ? { ...d, has: d.has.filter((x) => x !== g) }
-        : { has: [...d.has, g], pairs: d.pairs.filter((p) => !p.startsWith(`${g}${PAIR}`)) },
+        : {
+            has: [...d.has, g],
+            pairs: d.pairs.filter((p) => !p.startsWith(`${g}${PAIR}`)),
+          },
     );
   const toggleArea = (g: string, a: string, areas: string[]) =>
     setDraft((d) => {
@@ -217,41 +276,68 @@ export function TreeMultiSelect({
         // un-tick one area of a whole HA → keep its other areas
         return {
           has: d.has.filter((x) => x !== g),
-          pairs: [...d.pairs, ...areas.filter((x) => x !== a).map((x) => pairOf(g, x))],
+          pairs: [
+            ...d.pairs,
+            ...areas.filter((x) => x !== a).map((x) => pairOf(g, x)),
+          ],
         };
       }
-      if (d.pairs.includes(p)) return { ...d, pairs: d.pairs.filter((x) => x !== p) };
+      if (d.pairs.includes(p))
+        return { ...d, pairs: d.pairs.filter((x) => x !== p) };
       const pairs = [...d.pairs, p];
       const mine = areas.filter((x) => pairs.includes(pairOf(g, x)));
       // every area ticked → the whole HA
       if (areas.length > 0 && mine.length === areas.length) {
-        return { has: [...d.has, g], pairs: pairs.filter((x) => !x.startsWith(`${g}${PAIR}`)) };
+        return {
+          has: [...d.has, g],
+          pairs: pairs.filter((x) => !x.startsWith(`${g}${PAIR}`)),
+        };
       }
       return { ...d, pairs };
     });
 
   const shown = open ? draft : value;
-  const picked = [...shown.has, ...shown.pairs.map((p) => p.replace(PAIR, " ▸ "))];
+  const picked = [
+    ...shown.has,
+    ...shown.pairs.map((p) => p.replace(PAIR, " ▸ ")),
+  ];
   const [q, setQ] = useState("");
+  // HAs start collapsed; ⊞ opens one to its areas (owner, 2026-10-15, like the
+  // Welder Performance matrix rows). A search shows every match, opened.
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const size = groups.reduce((n, g) => n + 1 + g.areas.length, 0);
   const needle = q.toLowerCase();
   const shownGroups = q
     ? groups
         .map((g) =>
-          g.key.toLowerCase().includes(needle) ? g : { ...g, areas: g.areas.filter((a) => a.toLowerCase().includes(needle)) },
+          g.key.toLowerCase().includes(needle)
+            ? g
+            : {
+                ...g,
+                areas: g.areas.filter((a) => a.toLowerCase().includes(needle)),
+              },
         )
-        .filter((g) => g.key.toLowerCase().includes(needle) || g.areas.length > 0)
+        .filter(
+          (g) => g.key.toLowerCase().includes(needle) || g.areas.length > 0,
+        )
     : groups;
 
   return (
-    <div className="filter-group filter-group--tree ms" ref={ref}>
-      <label id={`${baseId}-l`} htmlFor={`${baseId}-b`}>
+    <div
+      className={`filter-group filter-group--tree ms${chip ? " fchip" : ""}${chip && (value.has.length || value.pairs.length) ? " is-set" : ""}`}
+      ref={ref}
+    >
+      <label
+        id={`${baseId}-l`}
+        htmlFor={`${baseId}-b`}
+        className={chip ? "sr-only" : undefined}
+      >
         {label}
       </label>
       <button
         id={`${baseId}-b`}
         type="button"
-        className="filter-select ms-trigger"
+        className={`filter-select ms-trigger${chip ? " fchip-btn" : ""}`}
         aria-haspopup="true"
         aria-expanded={open}
         onClick={() => {
@@ -260,11 +346,22 @@ export function TreeMultiSelect({
           setOpen(!open);
         }}
       >
+        {chip ? <span className="fchip-label">{label}:</span> : null}
         <span className="ms-summary">{summary(picked)}</span>
         <span aria-hidden="true" className="ms-caret">
           ▾
         </span>
       </button>
+      {chip && (value.has.length || value.pairs.length) ? (
+        <button
+          type="button"
+          className="fchip-clear"
+          aria-label={`Clear ${label}`}
+          onClick={() => onApply({ has: [], pairs: [] })}
+        >
+          ×
+        </button>
+      ) : null}
       <Panel
         open={open}
         labelledBy={`${baseId}-l`}
@@ -285,21 +382,41 @@ export function TreeMultiSelect({
         </label>
         {shownGroups.map(({ key: g, areas }) => {
           const whole = draft.has.includes(g);
-          const some = !whole && draft.pairs.some((p) => p.startsWith(`${g}${PAIR}`));
+          const some =
+            !whole && draft.pairs.some((p) => p.startsWith(`${g}${PAIR}`));
+          const isOpen = Boolean(q) || Boolean(expanded[g]);
           return (
             <div className="ms-tree-group" key={g}>
-              <label className="ms-option ms-option--parent">
-                <input
-                  type="checkbox"
-                  checked={whole}
-                  ref={(el) => {
-                    if (el) el.indeterminate = some;
-                  }}
-                  onChange={() => toggleHa(g)}
-                />
-                <span>{g}</span>
-              </label>
-              {areas.map((a) => (
+              <div className="ms-tree-row">
+                {areas.length ? (
+                  <button
+                    type="button"
+                    className="ms-tree-toggle"
+                    aria-expanded={isOpen}
+                    aria-label={`${isOpen ? "Collapse" : "Expand"} ${g}`}
+                    onClick={() => setExpanded((e) => ({ ...e, [g]: !e[g] }))}
+                  >
+                    <span aria-hidden="true">{isOpen ? "⊟" : "⊞"}</span>
+                  </button>
+                ) : (
+                  <span
+                    className="ms-tree-toggle ms-tree-toggle--none"
+                    aria-hidden="true"
+                  />
+                )}
+                <label className="ms-option ms-option--parent">
+                  <input
+                    type="checkbox"
+                    checked={whole}
+                    ref={(el) => {
+                      if (el) el.indeterminate = some;
+                    }}
+                    onChange={() => toggleHa(g)}
+                  />
+                  <span>{g}</span>
+                </label>
+              </div>
+              {(isOpen ? areas : []).map((a) => (
                 <label className="ms-option ms-option--child" key={a}>
                   <input
                     type="checkbox"

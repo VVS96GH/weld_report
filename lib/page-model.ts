@@ -44,6 +44,12 @@ export type ChartWidget = {
 export type TextWidget = {
   kind: "text";
   text: string;
+  /**
+   * A methodology / data-provenance note ("UT coverage: …", "Backlog charts:
+   * the history is …"): kept in the page model and the JSON API as the record
+   * of how a number is made, NOT shown on the page (owner, 2026-10-15).
+   */
+  note?: boolean;
 };
 
 /**

@@ -4,7 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import type { FilterWidget } from "@/lib/page-model";
 import { FORECAST_FILTER_IDS, getForecastPage, getPage, type ForecastFilters, type WeldingFilters } from "@/lib/page-source";
 import { ForecastView } from "@/components/ForecastView";
-import { FilterBar } from "@/components/FilterBar";
+import { EdgeFilters } from "@/components/EdgeFilters";
 import { reportEntry, WELDING_PAGE_TITLES, WELDING_REPORT_SUBTITLE, WELDING_TOTAL_PAGES } from "@/lib/welding-pages";
 import { PageView } from "@/components/PageView";
 
@@ -74,7 +74,7 @@ export default async function WeldingReportPage(props: PageProps<"/welding/[page
     const subtitle = model.meta?.source === "database" ? `Data as of ${model.meta.as_of ?? "unknown"}` : WELDING_REPORT_SUBTITLE;
     return (
       <>
-        <FilterBar widgets={filterWidgets} />
+        <EdgeFilters widgets={filterWidgets} />
         <ForecastView model={model} subtitle={subtitle} />
       </>
     );
@@ -89,7 +89,7 @@ export default async function WeldingReportPage(props: PageProps<"/welding/[page
 
   return (
     <>
-      <FilterBar widgets={filterWidgets} />
+      <EdgeFilters widgets={filterWidgets} />
       <PageView model={model} subtitle={subtitle} />
     </>
   );

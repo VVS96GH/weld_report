@@ -1407,10 +1407,12 @@ export async function getWeldingPage(
   }
   const spec = specPage(n);
   const { as_of, origin } = await withAsOf(opts.as_of ?? null);
-  // Page 1 owns the slicer; every other page ignores it, so its output is
-  // untouched no matter what a caller passes.
-  const requested = n === 1 ? normaliseFilters(opts.filters) : {};
-  const bar = n === 1 ? await filterWidgets(requested) : null;
+  // Pages 1 and 2 own the slicer (page 2 since 2026-10-15, owner: the Project
+  // status screen gets Sub-Contractor / Weld Type / Weld Cat too); every other
+  // page ignores it, so its output is untouched no matter what a caller passes.
+  const sliced = n === 1 || n === 2;
+  const requested = sliced ? normaliseFilters(opts.filters) : {};
+  const bar = sliced ? await filterWidgets(requested) : null;
   // The NDE / PWHT pages own one slicer of their own: Service Class (2026-09-15).
   const ndeSlicers = NDE_PAGES.has(n) ? normaliseFilters(opts.filters) : {};
   const sclass = ndeSlicers.sclass;
@@ -1474,7 +1476,8 @@ export async function getWeldingPage(
     note(ctx, `page ${n} has no build rule yet`);
   }
 
-  for (const msg of ctx.notes) widgets.push(textWidget(msg));
+  // methodology notes: in the model / API, not on the page (TextWidget.note)
+  for (const msg of ctx.notes) widgets.push({ ...textWidget(msg), note: true });
   // The bar goes FIRST, ahead of every data widget.
   if (bar) widgets = [...bar.widgets, ...widgets];
   if (all || allRt) {
@@ -2039,7 +2042,8 @@ async function buildProjectStatusPage(
 ): Promise<Widget[]> {
   // R3-01: project scope = the loaded union minus INCO; ACCIONA is included and
   // supplies the mockup's Acciona row in the sub-contractor table.
-  const scope: Scope = projectScope({ temporaryLines: false });
+  // the page's slicer is AND-ed onto every scope (identity with no filter set)
+  const scope: Scope = withFilters(projectScope({ temporaryLines: false }), ctx.filters);
   const av = await availability("PR_ALL", SOURCES_PR_ALL_LOADED, scope);
   const sources = await loadedSources();
   const scopeNote = projectScopeNote(sources);

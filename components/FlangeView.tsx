@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useState } from "react";
 
 import type { ChartWidget, KpiWidget, PageModel, TableWidget, TextWidget } from "@/lib/page-model";
 import { usePageSubtitle } from "@/components/ReportShell";
@@ -54,12 +54,12 @@ function Card({ widget, big }: { widget: KpiWidget; big?: boolean }) {
   );
 }
 
-function Table({ widget }: { widget: TableWidget }) {
+function Table({ widget, collapsible }: { widget: TableWidget; collapsible?: boolean }) {
   return (
     <div className="pbi-visual pbi-table">
       <div className="pbi-visual-title">{widget.title}</div>
       <div className="table-scroll">
-        <DataTable widget={widget} />
+        <DataTable widget={widget} collapsible={collapsible} />
       </div>
     </div>
   );
@@ -67,7 +67,22 @@ function Table({ widget }: { widget: TableWidget }) {
 
 export function FlangeView({ model, subtitle, management }: { model: PageModel; subtitle: string; management?: PageModel }) {
   usePageSubtitle(subtitle);
-  const palette = useMemo(() => pbiPalette(), []);
+  // The --pbi-* tokens live on .pbi-page, which does not exist yet during the
+  // first render: read them after mount (and again on a theme / mood switch),
+  // or every chart gets empty colours and draws black (owner, 2026-10-15).
+  const [palette, setPalette] = useState<Partial<Palette>>({});
+  useEffect(() => {
+    let raf = requestAnimationFrame(() => setPalette(pbiPalette()));
+    const obs = new MutationObserver(() => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => setPalette(pbiPalette()));
+    });
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme", "data-mood"] });
+    return () => {
+      cancelAnimationFrame(raf);
+      obs.disconnect();
+    };
+  }, []);
 
   const charts = new Map<string, ChartWidget>();
   const kpis = new Map<string, KpiWidget>();
@@ -77,7 +92,7 @@ export function FlangeView({ model, subtitle, management }: { model: PageModel; 
     if (w.kind === "chart") charts.set(w.canvas_id, w);
     else if (w.kind === "kpi") kpis.set(w.label, w);
     else if (w.kind === "table") tables.set(w.title, w);
-    else if (w.kind === "text") notes.push(w);
+    else if (w.kind === "text" && !w.note) notes.push(w);
   }
   const used = new Set<object>();
   const chart = (id: string) => { const c = charts.get(id); if (c) used.add(c); return c; };
@@ -101,7 +116,8 @@ export function FlangeView({ model, subtitle, management }: { model: PageModel; 
   kpi("Inspected");
   kpi("PCC");
   kpi("Leaked");
-  const leakLine = withWindow(chart("leakedTimelineChart"), 6);
+  const leakRaw = withWindow(chart("leakedTimelineChart"), 6);
+  const leakLine = leakRaw ? { ...leakRaw, options_notes: `${leakRaw.options_notes ?? ""} y-center`.trim() } : undefined;
   const siteBar = chart("siteRepairChart");
   const vendorBar = chart("vendorRepairChart");
   const kRegister = kpi("Total Register");
@@ -122,7 +138,7 @@ export function FlangeView({ model, subtitle, management }: { model: PageModel; 
         <div className="pbi-col pbi-col--tables">
           {tSubco ? <Table widget={tSubco} /> : null}
           {tHa1 ? <Table widget={tHa1} /> : null}
-          {tHa ? <Table widget={tHa} /> : null}
+          {tHa ? <Table widget={tHa} collapsible /> : null}
         </div>
 
         <div className="pbi-col pbi-col--visuals">
@@ -176,7 +192,7 @@ export function FlangeView({ model, subtitle, management }: { model: PageModel; 
             <div className="pbi-visual-title pbi-management-title">{management.title}</div>
             {management.widgets.map((w, i) => (w.kind === "table" ? <MatrixTable key={i} widget={w} /> : null))}
           </div>
-          {management.widgets.filter((w): w is TextWidget => w.kind === "text").map((t, i) => (
+          {management.widgets.filter((w): w is TextWidget => w.kind === "text" && !w.note).map((t, i) => (
             <TextNote key={i} widget={t} />
           ))}
         </div>

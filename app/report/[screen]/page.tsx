@@ -4,8 +4,6 @@ import { notFound } from "next/navigation";
 import type { FilterWidget, PageModel, Widget } from "@/lib/page-model";
 import { getPage, type WeldingFilters } from "@/lib/page-source";
 import {
-  DEMO2_SCREEN_ID,
-  DEMO_SCREEN_ID,
   isAllRt,
   isAllSubcos,
   rtSet,
@@ -15,10 +13,8 @@ import {
   SCREENS,
   subcoSet,
 } from "@/lib/screens";
-import { DemoView } from "@/components/DemoView";
-import { Demo2View } from "@/components/Demo2View";
 import { WELDING_REPORT_SUBTITLE } from "@/lib/welding-pages";
-import { FilterBar } from "@/components/FilterBar";
+import { EdgeFilters } from "@/components/EdgeFilters";
 import { PageView } from "@/components/PageView";
 
 // Option A of the consolidation proposal: /report/<screen>?subco=…&rt=… renders the
@@ -76,18 +72,6 @@ export default async function ReportScreen(props: PageProps<"/report/[screen]">)
   const { screen } = await props.params;
   const def = screenById(screen);
   if (!def) notFound();
-
-  if (def.id === DEMO_SCREEN_ID) {
-    // Database only: the demo reads the joint-grain views directly.
-    const { getDemoData } = await import("@/lib/pages/demo");
-    const data = await getDemoData();
-    return <DemoView data={data} subtitle={`Data as of ${data.as_of}`} />;
-  }
-  if (def.id === DEMO2_SCREEN_ID) {
-    const { getDemo2Data } = await import("@/lib/pages/demo2");
-    const data = await getDemo2Data();
-    return <Demo2View data={data} subtitle={`Data as of ${data.as_of}`} />;
-  }
 
   const params = await props.searchParams;
   const values = screenValues(def, Object.fromEntries(def.filters.map((f) => [f.id, first(params, f.id)])));
@@ -148,7 +132,7 @@ export default async function ReportScreen(props: PageProps<"/report/[screen]">)
 
   return (
     <>
-      <FilterBar widgets={[...own, ...forwarded]} />
+      <EdgeFilters widgets={[...own, ...forwarded]} />
       <PageView model={model} subtitle={subtitle} />
     </>
   );

@@ -107,14 +107,14 @@ describe("getWeldingPage — structure equals analysis/mockups/welding-spec.json
       expect(model.id).toBe(spec.id);
       expect(model.title).toBe(spec.title);
 
-      // Page 1 carries a five-widget filter bar ahead of everything the
+      // Pages 1 and 2 (page 2 since 2026-10-15) carry a five-widget filter bar ahead of everything the
       // mockup declares (Sub-Contractor / Weld Type / Weld Cat). It is server
       // chrome, not a mockup widget, so it is checked here and then skipped —
       // the position-for-position comparison below is unchanged.
       // The NDE / PWHT pages (12–40) likewise lead with their own Service Class
       // and PWHT Y/N slicers (2026-09-15).
       let body = model.widgets;
-      const barIds = n === 1 ? ["ha", "area", "subco", "wtype", "wcat"] : n >= 12 && n <= 40 ? ["sclass", "pwht"] : [];
+      const barIds = n === 1 || n === 2 ? ["ha", "area", "subco", "wtype", "wcat"] : n >= 12 && n <= 40 ? ["sclass", "pwht"] : [];
       if (barIds.length > 0) {
         const bar = body.slice(0, barIds.length);
         expect(bar.map((w) => w.kind)).toEqual(Array(barIds.length).fill("filter"));

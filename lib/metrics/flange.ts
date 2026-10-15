@@ -141,11 +141,9 @@ const CONSTN = and([
  * the disjointness, so if the register ever produces such a row the ambiguity
  * resurfaces loudly instead of silently moving a number.
  */
-const PCC = `(f.${C.pccTighteningDate} IS NOT NULL OR ${and([
-  INSPECTED,
-  `f.${C.subcontractor} <> 'CCC'`,
-  `f.${C.cat} IN ('Z','A','B')`,
-])})`;
+const PCC_DATE = `f.${C.pccTighteningDate} IS NOT NULL`;
+const PCC_CAT = and([INSPECTED, `f.${C.subcontractor} <> 'CCC'`, `f.${C.cat} IN ('Z','A','B')`]);
+const PCC = `(${PCC_DATE} OR ${PCC_CAT})`;
 
 /**
  * `Flanges ID BreakDown` — "Leaked Flange Break".
@@ -300,29 +298,44 @@ export async function flangeBreakdown(
   // counts it in both, which is why total (357,787) is less than
   // inspected + remains (358,151) by 364 joints. That is the recon's behaviour
   // and the pinned numbers depend on it.
+  //
+  // The collapse is per GROUP, not per joint (owner, 2026-10-15): DISTINCTCOUNT
+  // in a pbix table row counts a joint in every group it has a row in. Two
+  // joints sit in both registers (GAC / Manual and CCC / TBN): they count in CCC
+  // AND GAC, in Manual AND TBN, and a group's flags come only from that group's
+  // rows. One joint-grain collapse with max(subco) / max(method) put them in
+  // GAC / TBN only and lent TBN their Manual rows' Const-n.
+  // PCC is the DAX's literal `+` of its two distinct counts (PCC date; non-CCC
+  // Cat. Z/A/B): one of those joints is in both, and the pbix counts it twice.
+  const r =
+    `r AS (\n` +
+    `  SELECT f.${C.jointId} AS joint_id, f.${C.ha} AS ha, f.${C.method} AS method,\n` +
+    `         f.${C.subcontractor} AS subco,\n` +
+    `         ${INSPECTED} AS inspected, ${CONSTN} AS constn,\n         ${PCC_DATE} AS pcc_a, coalesce(${PCC_CAT}, false) AS pcc_b,\n` +
+    `         coalesce(${LEAKED}, false) AS leaked, ${REMAINS} AS remains\n` +
+    `    FROM ${T}\n   WHERE ${flangeWhere(filters, p)}\n)`;
+  const counts =
+    `count(*) AS total, count(*) FILTER (WHERE inspected) AS inspected,\n` +
+    `       count(*) FILTER (WHERE constn) AS constn,\n       count(*) FILTER (WHERE pcc_a) + count(*) FILTER (WHERE pcc_b) AS pcc,\n` +
+    `       count(*) FILTER (WHERE leaked) AS leaked, count(*) FILTER (WHERE remains) AS remains`;
+  const flags =
+    `bool_or(inspected) AS inspected, bool_or(constn) AS constn, bool_or(pcc_a) AS pcc_a, bool_or(pcc_b) AS pcc_b,\n` +
+    `             bool_or(leaked) AS leaked, bool_or(remains) AS remains`;
+  // one grouping set: collapse to (joint, group columns), then count joints
+  const set = (cols: ("ha" | "method" | "subco")[]) => {
+    const keys = cols.length ? `, ${cols.join(", ")}` : "";
+    const pick = (c: "ha" | "method" | "subco") => (cols.includes(c) ? c : `NULL::text AS ${c}`);
+    const g = (c: "ha" | "method" | "subco") => `${cols.includes(c) ? 0 : 1} AS g_${c}`;
+    return (
+      `SELECT ${pick("ha")}, ${pick("method")}, ${pick("subco")}, ${g("ha")}, ${g("method")}, ${g("subco")},\n` +
+      `       ${counts}\n` +
+      `  FROM (SELECT joint_id${keys}, ${flags} FROM r GROUP BY joint_id${keys}) j\n` +
+      (cols.length ? ` GROUP BY ${cols.join(", ")}` : "")
+    );
+  };
   const sql =
-    `WITH j AS (\n` +
-    `  SELECT f.${C.jointId} AS joint_id,\n` +
-    `         max(f.${C.ha}) AS ha, max(f.${C.method}) AS method,\n` +
-    `         max(f.${C.subcontractor}) AS subco,\n` +
-    `         bool_or(${INSPECTED}) AS inspected,\n` +
-    `         bool_or(${CONSTN}) AS constn,\n` +
-    `         bool_or(${PCC}) AS pcc,\n` +
-    `         bool_or(${LEAKED}) AS leaked,\n` +
-    `         bool_or(${REMAINS}) AS remains\n` +
-    `    FROM ${T}\n   WHERE ${flangeWhere(filters, p)}\n   GROUP BY 1\n` +
-    `)\n` +
-    `SELECT j.ha, j.method, j.subco,\n` +
-    `       GROUPING(j.ha) AS g_ha, GROUPING(j.method) AS g_method,\n` +
-    `       GROUPING(j.subco) AS g_subco,\n` +
-    `       count(*) AS total,\n` +
-    `       count(*) FILTER (WHERE j.inspected) AS inspected,\n` +
-    `       count(*) FILTER (WHERE j.constn) AS constn,\n` +
-    `       count(*) FILTER (WHERE j.pcc) AS pcc,\n` +
-    `       count(*) FILTER (WHERE j.leaked) AS leaked,\n` +
-    `       count(*) FILTER (WHERE j.remains) AS remains\n` +
-    `  FROM j\n` +
-    ` GROUP BY GROUPING SETS ((j.ha, j.method), (j.ha), (j.method), (j.subco), ())`;
+    `WITH ${r}\n` +
+    [set(["ha", "method"]), set(["ha"]), set(["method"]), set(["subco"]), set([])].join("\nUNION ALL\n");
   const rows = z.array(BreakdownRow).parse(await query(sql, p.list()));
 
   const out: FlangeBreakdown = {

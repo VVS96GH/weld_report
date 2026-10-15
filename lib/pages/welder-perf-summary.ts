@@ -18,7 +18,7 @@
  */
 import { z } from "zod";
 
-import { query, withAsOf } from "@/lib/db";
+import { query, queryFresh, withAsOf } from "@/lib/db";
 import { chartCutoff } from "@/lib/metrics/trend";
 import { type CumKind, STATUS_LABELS } from "@/lib/welder-perf-cum";
 
@@ -106,8 +106,9 @@ export async function getSummaryPage(kind: CumKind, pending: { lastDate: string 
   const [tRows, dRows, trRows, notes] = await Promise.all([
     query(tableSql, [cutoff, subs]),
     query(donutSql, [cutoff, subs]),
-    query(trendSql, [kind, subs]),
-    query(`SELECT sub_contractor AS sub, body FROM welder_perf_note WHERE kind = $1 AND cutoff = $2::date`, [kind, cutoff]),
+    // the CUM rows and the notes change between refreshes: never from the read cache
+    queryFresh(trendSql, [kind, subs]),
+    queryFresh(`SELECT sub_contractor AS sub, body FROM welder_perf_note WHERE kind = $1 AND cutoff = $2::date`, [kind, cutoff]),
   ]);
   const table = z.array(TableRow).parse(tRows);
   const donut = z.array(z.object({ sub: z.string(), st: z.string(), qty: n })).parse(dRows);
@@ -183,10 +184,10 @@ export async function getSummaryPage(kind: CumKind, pending: { lastDate: string 
 /** Save one sub-contractor's note for a cut-off (empty text deletes it). */
 export async function saveNote(kind: CumKind, cutoff: string, sub: string, body: string): Promise<void> {
   if (!body.trim()) {
-    await query(`DELETE FROM welder_perf_note WHERE kind = $1 AND cutoff = $2::date AND sub_contractor = $3`, [kind, cutoff, sub]);
+    await queryFresh(`DELETE FROM welder_perf_note WHERE kind = $1 AND cutoff = $2::date AND sub_contractor = $3`, [kind, cutoff, sub]);
     return;
   }
-  await query(
+  await queryFresh(
     `INSERT INTO welder_perf_note (kind, cutoff, sub_contractor, body, updated_at) VALUES ($1, $2::date, $3, $4, now())
      ON CONFLICT (kind, cutoff, sub_contractor) DO UPDATE SET body = EXCLUDED.body, updated_at = now()`,
     [kind, cutoff, sub, body],

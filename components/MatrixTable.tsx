@@ -1,3 +1,7 @@
+"use client";
+
+import { useState } from "react";
+
 import type { TableWidget } from "@/lib/page-model";
 
 /**
@@ -5,7 +9,8 @@ import type { TableWidget } from "@/lib/page-model";
  * derived from the column names ("Manual Required" → group "Manual", sub-column
  * "Required"), HA parent rows shaded, sub-contractor child rows (two-space indent
  * in the first cell) indented, every "Completed %" column shaded, Total row bold —
- * the pbix table's own reading conventions.
+ * the pbix table's own reading conventions. An HA starts collapsed; ⊞ opens it to
+ * its sub-contractors (owner, 2026-10-15, like the Welder Performance matrix).
  */
 export function MatrixTable({ widget }: { widget: TableWidget }) {
   const [first, ...rest] = widget.columns;
@@ -34,6 +39,15 @@ export function MatrixTable({ widget }: { widget: TableWidget }) {
   const isPct = (col: string) => /%$/.test(col.trim());
   const rows = widget.rows;
   const lastIsTotal = rows.length > 0 && rows[rows.length - 1][0] === "Total";
+  const [open, setOpen] = useState<Record<number, boolean>>({});
+  // each child row's parent (the nearest row above it that is not indented)
+  const parentOf: number[] = [];
+  let lastParent = -1;
+  rows.forEach((row, ri) => {
+    if (!row[0].startsWith("  ")) lastParent = ri;
+    parentOf[ri] = lastParent;
+  });
+  const hasKids = (ri: number) => rows[ri + 1]?.[0].startsWith("  ") ?? false;
 
   return (
     <div className="table-scroll">
@@ -58,9 +72,24 @@ export function MatrixTable({ widget }: { widget: TableWidget }) {
             const child = row[0].startsWith("  ");
             const total = lastIsTotal && ri === rows.length - 1;
             const cls = total ? "row-header" : child ? "pbi-matrix-child" : "pbi-matrix-parent";
+            if (child && !open[parentOf[ri]]) return null;
+            const kids = !child && !total && hasKids(ri);
             return (
               <tr key={ri} className={cls}>
-                <th scope="row">{row[0].trim()}</th>
+                <th scope="row">
+                  {kids ? (
+                    <button
+                      type="button"
+                      className="error-expand"
+                      aria-expanded={Boolean(open[ri])}
+                      onClick={() => setOpen((o) => ({ ...o, [ri]: !o[ri] }))}
+                    >
+                      <span aria-hidden="true">{open[ri] ? "⊟" : "⊞"}</span> {row[0].trim()}
+                    </button>
+                  ) : (
+                    row[0].trim()
+                  )}
+                </th>
                 {row.slice(1).map((cell, ci) => (
                   <td key={ci} className={`num ${isPct(rest[ci] ?? "") ? "pbi-matrix-pct" : ""}`.trim()}>{cell}</td>
                 ))}
