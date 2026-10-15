@@ -695,13 +695,17 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
       // a smaller ring leaves the outside labels room inside the chart, so they
       // reach neither the card title nor the legend below (owner, 2026-10-15)
       ...(circular && notes.includes("legend-bottom") ? { radius: "72%" } : {}),
+      // a ring with "name value (pct)" labels outside leaves them room on both sides
+      ...(circular && notes.includes("label-name-pct") ? { radius: "78%" } : {}),
       indexAxis: horizontal ? "y" : "x",
       // Room for the totals above the tallest stack / the labels outside the ring.
       layout: {
         padding: circular
           ? notes.includes("legend-bottom")
             ? { top: 20, bottom: 4, left: 30, right: 30 }
-            : { top: 18, bottom: 18, left: 24, right: 24 }
+            : notes.includes("label-name-pct")
+              ? { top: 18, bottom: 18, left: 24, right: 24 } // "Torquing 60,030 (28.81%)" is not cut at the edge
+              : { top: 18, bottom: 18, left: 24, right: 24 }
           : horizontal
             ? { right: 48, top: 8 }
             : notes.includes("area")

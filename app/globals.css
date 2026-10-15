@@ -3606,3 +3606,116 @@ html {
 [data-mood] .pv-page .data-table td:first-child {
   min-width: 110px;
 }
+
+/* ── Flange in the site's own look (owner, 2026-10-15: "стилистика такая же как на
+   других страницах"): the --pbi-* tokens re-pointed at the theme, the visuals as
+   site cards. Same layout and numbers; both themes follow the site tokens. ── */
+/* :root[data-theme] beats the dark-scheme ground set on .pbi-page in tokens.css */
+:root[data-mood="ten"] .pbi-page,
+:root[data-mood="ten"][data-theme] .pbi-page {
+  --pbi-bg: var(--surface);
+  --pbi-fg: var(--fg);
+  --pbi-muted: var(--muted);
+  --pbi-border: var(--border);
+  --pbi-grid: var(--chart-grid-line);
+  --pbi-head: var(--brand-dark);
+  --pbi-subrow: var(--surface-2);
+  --pbi-title: var(--muted);
+  --pbi-banner-1: var(--surface-2);
+  --pbi-banner-2: var(--surface-2);
+  --pbi-bar: var(--chart-7);
+  --pbi-navy: var(--chart-1);
+  --pbi-navy-2: var(--chart-2);
+  --pbi-teal: var(--chart-4);
+  --pbi-grey: var(--chart-3);
+  --pbi-line: var(--chart-1);
+  --pbi-pct: color-mix(in srgb, var(--chart-1) 22%, var(--surface));
+  --pbi-group: var(--surface-2);
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+[data-mood="ten"] .pbi-page .pbi-visual,
+[data-mood="ten"] .pbi-page .pbi-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+}
+[data-mood="ten"] .pbi-page .pbi-visual {
+  padding: 12px 14px;
+}
+/* visual titles as the site's card headers */
+[data-mood="ten"] .pbi-page .pbi-visual-title {
+  color: var(--muted);
+  text-decoration: none;
+  text-align: start;
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+/* section banners as the site's section titles */
+[data-mood="ten"] .pbi-page .pbi-banner {
+  background: transparent;
+  border: 0;
+  justify-content: flex-start;
+  padding-inline: 2px;
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+[data-mood="ten"] .pbi-page .pbi-banner-date {
+  background: var(--surface-2);
+  color: var(--fg);
+  border-color: var(--border);
+  border-radius: 8px;
+  margin-inline-start: auto;
+  letter-spacing: 0.04em;
+}
+[data-mood="ten"] .pbi-page .pbi-card-value {
+  color: var(--fg); /* white on the dark card (owner, 2026-10-15) */
+  font-family: var(--font-display);
+}
+/* tables: the site's header band, quiet rows */
+[data-mood="ten"] .pbi-page .data-table {
+  border-color: var(--border);
+  border-radius: var(--r);
+  overflow: hidden;
+}
+[data-mood="ten"] .pbi-page .data-table thead th,
+[data-mood="ten"] .pbi-page .pbi-matrix .pbi-matrix-group,
+[data-mood="ten"] .pbi-page .pbi-matrix .pbi-matrix-corner,
+[data-mood="ten"] .pbi-page .pbi-matrix thead tr:nth-child(2) th {
+  background: var(--brand-dark);
+  color: var(--chrome-fg, white);
+  border-color: color-mix(in srgb, var(--chrome-fg, white) 12%, transparent);
+}
+[data-mood="ten"] .pbi-page .data-table th,
+[data-mood="ten"] .pbi-page .data-table td {
+  border-color: color-mix(in srgb, currentColor 10%, transparent);
+}
+[data-mood="ten"] .pbi-page .data-table .row-header th,
+[data-mood="ten"] .pbi-page .data-table .row-header td {
+  background: var(--surface-2);
+  color: var(--fg);
+}
+[data-mood="ten"] .pbi-page .data-table tbody tr:hover th,
+[data-mood="ten"] .pbi-page .data-table tbody tr:hover td {
+  background: color-mix(in srgb, var(--accent-primary) 16%, var(--surface));
+}
+[data-mood="ten"] .pbi-page .pbi-matrix .pbi-matrix-parent th,
+[data-mood="ten"] .pbi-page .pbi-matrix .pbi-matrix-parent td {
+  color: var(--fg);
+}
+[data-mood="ten"] .pbi-page .pbi-matrix tbody .pbi-matrix-parent td.pbi-matrix-pct {
+  background: color-mix(in srgb, var(--chart-1) 38%, var(--surface));
+  color: var(--fg);
+}
+[data-mood="ten"] .pbi-page .pbi-management-title {
+  color: var(--fg);
+}
