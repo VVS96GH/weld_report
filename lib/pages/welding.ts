@@ -523,6 +523,16 @@ const GROUP_SERVICE_CLASS_NDT: GroupSpec = {
 };
 /** The NDE / PWHT pages' Weld Cat slicer options. */
 const NDE_WELD_CATS = ["F", "S", "J"];
+/**
+ * The Service Class SLICER's values: the pbix slicer "Service class ▸ Service Class ."
+ * lists Service class + Service Cat + NDT Remarks + RT % ("1B1JL H 0", owner
+ * 2026-10-15), which is `service_class_cat_ndt` with its double spaces folded.
+ * The page's tables keep their own grouping; only the slicer reads this.
+ */
+const GROUP_SLICER_CLASS: GroupSpec = {
+  key: "service_class_slicer",
+  sql: "regexp_replace(w.service_class_cat_ndt, '\\s+', ' ', 'g')",
+};
 const GROUP_RT_PCT: GroupSpec = { key: "rt_pct", sql: "w.rt_pct::text" };
 /** `RT %` → `Weld Cat` as one key (`100|F`): the RT Status table opens an RT % to its cats (owner, 2026-10-15). */
 const GROUP_RT_CAT: GroupSpec = { key: "rt_cat", sql: "(w.rt_pct::text || '|' || w.weld_cat)" };
@@ -2450,7 +2460,7 @@ async function buildNdePage(
   // to be validated, otherwise after the bundles — they then overlap the page's own
   // queries instead of delaying them (2026-09-21: ALL / ALL went 2.9 s → 1.6 s).
   const optionsScope: Scope = { ...scope };
-  const optionsP = Promise.all([serviceClassOptions(optionsScope, classGroup), pwhtYnOptions(optionsScope)]);
+  const optionsP = Promise.all([serviceClassOptions(optionsScope, GROUP_SLICER_CLASS), pwhtYnOptions(optionsScope)]);
   optionsP.catch(() => undefined); // surfaced by the await below; never an unhandled rejection
   // Multi-select (2026-10-14): both slicers take comma-joined lists, OR-ed.
   const requestedClass = filterValues(ctx.filters.sclass);
@@ -2467,7 +2477,7 @@ async function buildNdePage(
     if (keptClass.length < (requestedClass?.length ?? 0) || keptPwht.length < (requestedPwht?.length ?? 0)) {
       note(ctx, FILTER_UNKNOWN_NOTE);
     }
-    if (keptClass.length) scope.serviceClasses = { sql: classGroup.sql, values: keptClass };
+    if (keptClass.length) scope.serviceClasses = { sql: GROUP_SLICER_CLASS.sql, values: keptClass };
     if (keptPwht.length) scope.pwhtYns = keptPwht;
   }
   // Weld Cat slicer (owner, 2026-10-15): F / S / J, OR-ed; an unknown value is dropped
