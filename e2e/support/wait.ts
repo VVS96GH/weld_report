@@ -1,5 +1,6 @@
 import { expect, type Page } from "@playwright/test";
 
+import { menuPosition } from "@/lib/page-order";
 import { WELDING_TOTAL_PAGES } from "@/lib/welding-pages";
 
 /**
@@ -21,9 +22,9 @@ export async function gotoWeldingPage(page: Page, n: number): Promise<void> {
   await waitForPage(page, n);
 }
 
-/** Wait for the shell to show page `n` after an in-page navigation (no goto). */
+/** Wait for the shell to show display page `n` (the indicator counts the menu order) after an in-page navigation (no goto). */
 export async function waitForPage(page: Page, n: number): Promise<void> {
-  await expect(page.locator(".page-indicator")).toHaveText(`Page ${n} / ${WELDING_TOTAL_PAGES}`, {
+  await expect(page.locator(".page-indicator")).toHaveText(`Page ${menuPosition(n)} / ${WELDING_TOTAL_PAGES}`, {
     timeout: 15_000,
   });
   await expect(page.locator("#page-heading")).not.toHaveText("", { timeout: 15_000 });

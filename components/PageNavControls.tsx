@@ -5,95 +5,14 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 
 import { useKeepInView } from "@/components/useKeepInView";
-import {
-  displayHref,
-  WELDING_PAGE_TITLES,
-  WELDING_TOTAL_PAGES,
-} from "@/lib/welding-pages";
+import { menuNeighbours, pageOptions, rtSplit } from "@/lib/page-order";
+import { displayHref, WELDING_PAGE_TITLES } from "@/lib/welding-pages";
 
 /**
  * Prev / page select / Next across the reading order. Between welding pages the
  * filters on screen go along (owner, 2026-10-15: pick CCC once, every page opens
  * filtered); the other reports have their own slicers, so they open clean.
  */
-/** Pages 10..51 grouped by sub-contractor in the jump list (owner, 2026-10-15; 48-51,
- *  "Weld Rejection Detail - <sub>", join their sub-contractor too). */
-const GROUPED_FROM = 10;
-const GROUPED_TO = 51;
-const GROUP_ORDER = ["CCC", "GAC", "TEKFEN", "MEDGULF"];
-
-/** The Welder Performance pages (4-7) are one group too (owner, 2026-10-15). */
-const WP_GROUP = "Welder Performance";
-const isWpPage = (title: string) =>
-  /^(Performance|Rej\.Summary) Last /i.test(title);
-
-type PageOption = { page: number } | { group: string; pages: number[] };
-
-/** The project-wide pages make the first group (owner, 2026-10-15). */
-const PROJECT_GROUP = "Project";
-const PROJECT_PAGES = [1, 2, 3, 9];
-
-/**
- * The jump list, top to bottom: Project, Welder Performance, the four
- * sub-contractors, then every page no group takes (Errors, at the bottom for now).
- */
-function pageOptions(): PageOption[] {
-  const subs = new Map<string, number[]>(GROUP_ORDER.map((g) => [g, []]));
-  const wp: number[] = [];
-  const loose: PageOption[] = [];
-  WELDING_PAGE_TITLES.forEach((t, i) => {
-    const n = i + 1;
-    if (PROJECT_PAGES.includes(n)) return;
-    if (isWpPage(t)) {
-      wp.push(n);
-      return;
-    }
-    const up = t.toUpperCase();
-    const sub = GROUP_ORDER.find((g) => up.startsWith(g) || up.endsWith(`- ${g}`));
-    if (n >= GROUPED_FROM && n <= GROUPED_TO && sub) {
-      subs.get(sub)!.push(n);
-      return;
-    }
-    loose.push({ page: n });
-  });
-  return [
-    { group: PROJECT_GROUP, pages: PROJECT_PAGES.filter((n) => n <= WELDING_PAGE_TITLES.length) },
-    ...(wp.length ? [{ group: WP_GROUP, pages: wp }] : []),
-    ...GROUP_ORDER.filter((g) => subs.get(g)!.length).map((g) => ({ group: g, pages: subs.get(g)! })),
-    ...loose,
-  ];
-}
-
-/**
- * Inside a sub-contractor group, the RT % pages come in sub-groups (owner,
- * 2026-10-15: "RT 100%" holds its NDE status and its PWHT status page), in the
- * order the report has them; pages without an RT % stay at the group's level.
- */
-function rtSplit(
-  pages: number[],
-): (number | { rt: string; pages: number[] })[] {
-  const out: (number | { rt: string; pages: number[] })[] = [];
-  for (const n of pages) {
-    const title = WELDING_PAGE_TITLES[n - 1] ?? "";
-    // "RT 100%" in a sub-contractor group; "Last 2 Weeks" / "Last 1 Month" in Welder Performance
-    const pct = /\bRT\s*(\d+)\s*%/i.exec(title)?.[1];
-    const rt = pct
-      ? `RT ${pct}%`
-      : /\b(Last \d+ (?:Weeks?|Months?))\b/i.exec(title)?.[1];
-    if (!rt) {
-      out.push(n);
-      continue;
-    }
-    const sub = out.find(
-      (x): x is { rt: string; pages: number[] } =>
-        typeof x !== "number" && x.rt === rt,
-    );
-    if (sub) sub.pages.push(n);
-    else out.push({ rt, pages: [n] });
-  }
-  return out;
-}
-
 /**
  * The page jump list as a drop-down panel like the filter lists (owner,
  * 2026-10-15): it glides down, is opaque, and the sub-contractor groups start
@@ -166,7 +85,7 @@ function PageJump({
       aria-current={n === current ? "page" : undefined}
       onClick={() => setOpen(false)}
     >
-      {`${n}. ${WELDING_PAGE_TITLES[n - 1]}`}
+      {WELDING_PAGE_TITLES[n - 1]}
     </Link>
   );
   return (
@@ -186,7 +105,9 @@ function PageJump({
         data-value={current}
         onClick={() => setOpen((o) => (hover ? true : !o))}
       >
-        <span className="page-jump-label">{`${current}. ${WELDING_PAGE_TITLES[current - 1]}`}</span>
+        <span className="page-jump-label">
+          {WELDING_PAGE_TITLES[current - 1]}
+        </span>
         <span aria-hidden="true" className="ms-caret">
           ▾
         </span>
@@ -271,14 +192,12 @@ export function PageNavControls({ current }: { current: number }) {
       ? `${href}?${qs}`
       : href;
   };
+  // Prev / Next walk the menu's order, not the page numbers (owner, 2026-10-15)
+  const { prev, next } = menuNeighbours(current);
   return (
     <div className="nav-controls">
-      {current > 1 ? (
-        <Link
-          href={carry(current - 1)}
-          className="nav-btn"
-          aria-label="Previous page"
-        >
+      {prev ? (
+        <Link href={carry(prev)} className="nav-btn" aria-label="Previous page">
           &#9664; Prev
         </Link>
       ) : (
@@ -292,12 +211,8 @@ export function PageNavControls({ current }: { current: number }) {
         </button>
       )}
       <PageJump current={current} href={carry} />
-      {current < WELDING_TOTAL_PAGES ? (
-        <Link
-          href={carry(current + 1)}
-          className="nav-btn"
-          aria-label="Next page"
-        >
+      {next ? (
+        <Link href={carry(next)} className="nav-btn" aria-label="Next page">
           Next &#9654;
         </Link>
       ) : (

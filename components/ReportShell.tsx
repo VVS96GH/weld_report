@@ -4,6 +4,7 @@ import { createContext, Suspense, useCallback, useContext, useEffect, useState }
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
+import { menuNeighbours, menuPosition } from "@/lib/page-order";
 import { displayForPath, displayHref, WELDING_PAGE_TITLES, WELDING_REPORT_SUBTITLE, WELDING_TOTAL_PAGES } from "@/lib/welding-pages";
 import { SCREENS } from "@/lib/screens";
 import { WP_FIRST } from "@/lib/welder-perf-nav";
@@ -80,8 +81,9 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
     if (!onWelding) return; // ← → paging only on the welding pages (the others have their own inputs)
     function onKeyDown(e: KeyboardEvent) {
       if (e.target instanceof HTMLSelectElement || e.target instanceof HTMLInputElement) return;
-      if (e.key === "ArrowLeft") goTo(current - 1);
-      if (e.key === "ArrowRight") goTo(current + 1);
+      const { prev, next } = menuNeighbours(current);
+      if (e.key === "ArrowLeft" && prev) goTo(prev);
+      if (e.key === "ArrowRight" && next) goTo(next);
     }
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
@@ -152,7 +154,7 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
             {isWelders ? <WpNavMenu slug={wpSlug} /> : null}
             {inSequence ? (
               <span className="page-indicator">
-                Page {current} / {WELDING_TOTAL_PAGES}
+                Page {menuPosition(current)} / {WELDING_TOTAL_PAGES}
               </span>
             ) : null}
             {isWelders ? null : <span className="page-title-display">{title}</span>}
