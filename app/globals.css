@@ -3832,3 +3832,22 @@ html {
 .chart-spin:active {
   cursor: grabbing;
 }
+
+/* Welder Performance pages in the reference sizes (owner check, 2026-10-15):
+   the page title as every page's h2, figures in regular weight, header spacing
+   as the other tables (their "Last 2wk …" case is the owner's, kept) */
+[data-mood="ten"] .wp-banner h2,
+[data-mood="ten"] .rs-page .wp-banner h2 {
+  font-size: 21.6px;
+  letter-spacing: -0.01em;
+}
+[data-mood="ten"] .wp-matrix tbody td {
+  font-weight: 400;
+}
+[data-mood="ten"] .wp-matrix tbody tr.wp-level0 td,
+[data-mood="ten"] .wp-matrix tbody tr.row-header td {
+  font-weight: 600;
+}
+[data-mood="ten"] .wp-matrix thead th {
+  letter-spacing: 0.03em;
+}
