@@ -5,7 +5,11 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 
 import { useKeepInView } from "@/components/useKeepInView";
-import { displayHref, WELDING_PAGE_TITLES, WELDING_TOTAL_PAGES } from "@/lib/welding-pages";
+import {
+  displayHref,
+  WELDING_PAGE_TITLES,
+  WELDING_TOTAL_PAGES,
+} from "@/lib/welding-pages";
 
 /**
  * Prev / page select / Next across the reading order. Between welding pages the
@@ -18,16 +22,29 @@ const GROUPED_FROM = 10;
 const GROUPED_TO = 51;
 const GROUP_ORDER = ["CCC", "GAC", "TEKFEN", "MEDGULF"];
 
+/** The Welder Performance pages (4-7) are one group too (owner, 2026-10-15). */
+const WP_GROUP = "Welder Performance";
+const isWpPage = (title: string) =>
+  /^(Performance|Rej\.Summary) Last /i.test(title);
+
 type PageOption = { page: number } | { group: string; pages: number[] };
 
 function pageOptions(): PageOption[] {
   const groups = new Map<string, number[]>(GROUP_ORDER.map((g) => [g, []]));
   const out: PageOption[] = [];
   let placed = false;
+  const wp: number[] = [];
   WELDING_PAGE_TITLES.forEach((t, i) => {
     const n = i + 1;
+    if (isWpPage(t)) {
+      if (wp.length === 0) out.push({ group: WP_GROUP, pages: wp });
+      wp.push(n);
+      return;
+    }
     const up = t.toUpperCase();
-    const sub = GROUP_ORDER.find((g) => up.startsWith(g) || up.endsWith(`- ${g}`));
+    const sub = GROUP_ORDER.find(
+      (g) => up.startsWith(g) || up.endsWith(`- ${g}`),
+    );
     if (n >= GROUPED_FROM && n <= GROUPED_TO && sub) {
       groups.get(sub)!.push(n);
       if (!placed) {
@@ -40,7 +57,14 @@ function pageOptions(): PageOption[] {
     out.push({ page: n });
   });
   return out.flatMap((o): PageOption[] =>
-    "group" in o ? GROUP_ORDER.filter((g) => groups.get(g)!.length).map((g) => ({ group: g, pages: groups.get(g)! })) : [o],
+    "group" in o && o.group === WP_GROUP
+      ? [o]
+      : "group" in o
+        ? GROUP_ORDER.filter((g) => groups.get(g)!.length).map((g) => ({
+            group: g,
+            pages: groups.get(g)!,
+          }))
+        : [o],
   );
 }
 
@@ -49,15 +73,25 @@ function pageOptions(): PageOption[] {
  * 2026-10-15: "RT 100%" holds its NDE status and its PWHT status page), in the
  * order the report has them; pages without an RT % stay at the group's level.
  */
-function rtSplit(pages: number[]): (number | { rt: string; pages: number[] })[] {
+function rtSplit(
+  pages: number[],
+): (number | { rt: string; pages: number[] })[] {
   const out: (number | { rt: string; pages: number[] })[] = [];
   for (const n of pages) {
-    const rt = /\bRT\s*(\d+)\s*%/i.exec(WELDING_PAGE_TITLES[n - 1] ?? "")?.[1];
+    const title = WELDING_PAGE_TITLES[n - 1] ?? "";
+    // "RT 100%" in a sub-contractor group; "Last 2 Weeks" / "Last 1 Month" in Welder Performance
+    const pct = /\bRT\s*(\d+)\s*%/i.exec(title)?.[1];
+    const rt = pct
+      ? `RT ${pct}%`
+      : /\b(Last \d+ (?:Weeks?|Months?))\b/i.exec(title)?.[1];
     if (!rt) {
       out.push(n);
       continue;
     }
-    const sub = out.find((x): x is { rt: string; pages: number[] } => typeof x !== "number" && x.rt === rt);
+    const sub = out.find(
+      (x): x is { rt: string; pages: number[] } =>
+        typeof x !== "number" && x.rt === rt,
+    );
     if (sub) sub.pages.push(n);
     else out.push({ rt, pages: [n] });
   }
@@ -69,7 +103,13 @@ function rtSplit(pages: number[]): (number | { rt: string; pages: number[] })[] 
  * 2026-10-15): it glides down, is opaque, and the sub-contractor groups start
  * collapsed under ⊞. Same place in the bar as the old <select>.
  */
-function PageJump({ current, href }: { current: number; href: (n: number) => string }) {
+function PageJump({
+  current,
+  href,
+}: {
+  current: number;
+  href: (n: number) => string;
+}) {
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const box = useRef<HTMLDivElement>(null);
@@ -105,7 +145,8 @@ function PageJump({ current, href }: { current: number; href: (n: number) => str
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
-      if (box.current && !box.current.contains(e.target as Node)) setOpen(false);
+      if (box.current && !box.current.contains(e.target as Node))
+        setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
@@ -119,7 +160,10 @@ function PageJump({ current, href }: { current: number; href: (n: number) => str
   }, [open]);
   // the list scrolls to the open page when it opens
   useEffect(() => {
-    if (open) panel.current?.querySelector<HTMLElement>("[aria-current='page']")?.scrollIntoView({ block: "nearest" });
+    if (open)
+      panel.current
+        ?.querySelector<HTMLElement>("[aria-current='page']")
+        ?.scrollIntoView({ block: "nearest" });
   }, [open]);
   const item = (n: number, child = false, grandchild = false) => (
     <Link
@@ -133,7 +177,12 @@ function PageJump({ current, href }: { current: number; href: (n: number) => str
     </Link>
   );
   return (
-    <div className="page-jump" ref={box} onMouseEnter={onEnter} onMouseLeave={onLeave}>
+    <div
+      className="page-jump"
+      ref={box}
+      onMouseEnter={onEnter}
+      onMouseLeave={onLeave}
+    >
       <button
         id="page-select"
         type="button"
@@ -150,7 +199,12 @@ function PageJump({ current, href }: { current: number; href: (n: number) => str
         </span>
       </button>
       {open ? (
-        <div className="ms-panel page-jump-panel" ref={panel} role="navigation" aria-label="Pages">
+        <div
+          className="ms-panel page-jump-panel"
+          ref={panel}
+          role="navigation"
+          aria-label="Pages"
+        >
           {pageOptions().map((o) => {
             if (!("group" in o)) return item(o.page);
             const isOpen = Boolean(expanded[o.group]);
@@ -160,7 +214,9 @@ function PageJump({ current, href }: { current: number; href: (n: number) => str
                   type="button"
                   className="page-jump-group-btn"
                   aria-expanded={isOpen}
-                  onClick={() => setExpanded((e) => ({ ...e, [o.group]: !e[o.group] }))}
+                  onClick={() =>
+                    setExpanded((e) => ({ ...e, [o.group]: !e[o.group] }))
+                  }
                 >
                   <span aria-hidden="true" className="page-jump-toggle">
                     {isOpen ? "⊟" : "⊞"}
@@ -179,15 +235,24 @@ function PageJump({ current, href }: { current: number; href: (n: number) => str
                             type="button"
                             className="page-jump-group-btn page-jump-sub-btn"
                             aria-expanded={subOpen}
-                            onClick={() => setExpanded((e) => ({ ...e, [key]: !e[key] }))}
+                            onClick={() =>
+                              setExpanded((e) => ({ ...e, [key]: !e[key] }))
+                            }
                           >
-                            <span aria-hidden="true" className="page-jump-toggle">
+                            <span
+                              aria-hidden="true"
+                              className="page-jump-toggle"
+                            >
                               {subOpen ? "⊟" : "⊞"}
                             </span>
-                            {`RT ${x.rt}%`}
-                            <span className="page-jump-count">{x.pages.length}</span>
+                            {x.rt}
+                            <span className="page-jump-count">
+                              {x.pages.length}
+                            </span>
                           </button>
-                          {subOpen ? x.pages.map((n) => item(n, true, true)) : null}
+                          {subOpen
+                            ? x.pages.map((n) => item(n, true, true))
+                            : null}
                         </div>
                       );
                     })
@@ -207,26 +272,48 @@ export function PageNavControls({ current }: { current: number }) {
   const qs = searchParams.toString();
   const carry = (n: number) => {
     const href = displayHref(n);
-    return qs && pathname.startsWith("/welding/") && href.startsWith("/welding/") ? `${href}?${qs}` : href;
+    return qs &&
+      pathname.startsWith("/welding/") &&
+      href.startsWith("/welding/")
+      ? `${href}?${qs}`
+      : href;
   };
   return (
     <div className="nav-controls">
       {current > 1 ? (
-        <Link href={carry(current - 1)} className="nav-btn" aria-label="Previous page">
+        <Link
+          href={carry(current - 1)}
+          className="nav-btn"
+          aria-label="Previous page"
+        >
           &#9664; Prev
         </Link>
       ) : (
-        <button type="button" className="nav-btn" disabled aria-label="Previous page">
+        <button
+          type="button"
+          className="nav-btn"
+          disabled
+          aria-label="Previous page"
+        >
           &#9664; Prev
         </button>
       )}
       <PageJump current={current} href={carry} />
       {current < WELDING_TOTAL_PAGES ? (
-        <Link href={carry(current + 1)} className="nav-btn" aria-label="Next page">
+        <Link
+          href={carry(current + 1)}
+          className="nav-btn"
+          aria-label="Next page"
+        >
           Next &#9654;
         </Link>
       ) : (
-        <button type="button" className="nav-btn" disabled aria-label="Next page">
+        <button
+          type="button"
+          className="nav-btn"
+          disabled
+          aria-label="Next page"
+        >
           Next &#9654;
         </button>
       )}
@@ -246,8 +333,15 @@ export function FilterSummary() {
   const parts: string[] = [];
   for (const [k, v] of searchParams) {
     if (NOT_FILTERS.has(k) || k.includes(".") || !v) continue;
-    const vals = v.split(",").filter(Boolean).map((x) => (x.includes(">") ? x.slice(x.indexOf(">") + 1) : x));
-    parts.push(vals.length > 3 ? `${vals.slice(0, 2).join(", ")} +${vals.length - 2}` : vals.join(", "));
+    const vals = v
+      .split(",")
+      .filter(Boolean)
+      .map((x) => (x.includes(">") ? x.slice(x.indexOf(">") + 1) : x));
+    parts.push(
+      vals.length > 3
+        ? `${vals.slice(0, 2).join(", ")} +${vals.length - 2}`
+        : vals.join(", "),
+    );
   }
   if (!parts.length) return null;
   const text = parts.join(" · ");
