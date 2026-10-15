@@ -16,7 +16,7 @@ import { displayHref, WELDING_PAGE_TITLES } from "@/lib/welding-pages";
 /**
  * The page jump list as a drop-down panel like the filter lists (owner,
  * 2026-10-15): it glides down, is opaque, and the sub-contractor groups start
- * collapsed under ⊞. Same place in the bar as the old <select>.
+ * collapsed under +. Same place in the bar as the old <select>.
  */
 function PageJump({
   current,
@@ -133,7 +133,7 @@ function PageJump({
                   }
                 >
                   <span aria-hidden="true" className="page-jump-toggle">
-                    {isOpen ? "⊟" : "⊞"}
+                    {isOpen ? "−" : "+"}
                   </span>
                   {o.group}
                   <span className="page-jump-count">{o.pages.length}</span>
@@ -157,7 +157,7 @@ function PageJump({
                               aria-hidden="true"
                               className="page-jump-toggle"
                             >
-                              {subOpen ? "⊟" : "⊞"}
+                              {subOpen ? "−" : "+"}
                             </span>
                             {x.rt}
                             <span className="page-jump-count">

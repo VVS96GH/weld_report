@@ -302,7 +302,7 @@ export function TreeMultiSelect({
     ...shown.pairs.map((p) => p.replace(PAIR, " ▸ ")),
   ];
   const [q, setQ] = useState("");
-  // HAs start collapsed; ⊞ opens one to its areas (owner, 2026-10-15, like the
+  // HAs start collapsed; + opens one to its areas (owner, 2026-10-15, like the
   // Welder Performance matrix rows). A search shows every match, opened.
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const size = groups.reduce((n, g) => n + 1 + g.areas.length, 0);
@@ -396,7 +396,7 @@ export function TreeMultiSelect({
                     aria-label={`${isOpen ? "Collapse" : "Expand"} ${g}`}
                     onClick={() => setExpanded((e) => ({ ...e, [g]: !e[g] }))}
                   >
-                    <span aria-hidden="true">{isOpen ? "⊟" : "⊞"}</span>
+                    <span aria-hidden="true">{isOpen ? "−" : "+"}</span>
                   </button>
                 ) : (
                   <span

@@ -68,7 +68,7 @@ function StatusRows({ s, open, toggle }: { s: SummarySub["statuses"][number]; op
       <tr>
         <th scope="row">
           <button type="button" className="error-expand" aria-expanded={open} onClick={toggle}>
-            <span aria-hidden="true">{open ? "⊟" : "⊞"}</span>{" "}
+            <span aria-hidden="true">{open ? "−" : "+"}</span>{" "}
             <span className={`rs-dot rs-dot--${rank(s.status) + 1}`} aria-hidden="true" /> {s.status}
           </button>
         </th>

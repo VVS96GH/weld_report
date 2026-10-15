@@ -37,7 +37,7 @@ function NodeRows({
             <span className="error-leaf">{node.label}</span>
           ) : (
             <button type="button" className="error-expand" aria-expanded={isOpen} onClick={() => toggle(path)}>
-              <span aria-hidden="true">{isOpen ? "⊟" : "⊞"}</span> {node.label}
+              <span aria-hidden="true">{isOpen ? "−" : "+"}</span> {node.label}
             </button>
           )}
         </td>

@@ -140,7 +140,7 @@ function RowLines({
         <th scope="row" className="wp-rowhead" style={{ paddingInlineStart: `${10 + depth * 16}px` }}>
           {next ? (
             <button type="button" className="error-expand" aria-expanded={isOpen} onClick={toggle}>
-              <span aria-hidden="true">{isOpen ? "⊟" : "⊞"}</span> {label}
+              <span aria-hidden="true">{isOpen ? "−" : "+"}</span> {label}
             </button>
           ) : (
             <span className="error-leaf">{label}</span>

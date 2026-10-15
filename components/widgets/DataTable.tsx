@@ -61,7 +61,7 @@ function HeaderText({ col }: { col: string }) {
 const isChild = (row: string[]) => /^\s{2}/.test(row[0] ?? "");
 
 /**
- * With `collapsible`, a row followed by indented detail rows gets ⊞ / ⊟ and its
+ * With `collapsible`, a row followed by indented detail rows gets + / − and its
  * details start hidden (owner, 2026-10-15: the HA Flange Status table opens an HA
  * to its methods, like the Welder Performance matrix).
  */
@@ -119,7 +119,7 @@ export function DataTable({ widget, collapsible = false }: { widget: TableWidget
                             aria-expanded={shown}
                             onClick={() => setOpen((o) => ({ ...o, [ri]: !o[ri] }))}
                           >
-                            <span aria-hidden="true">{shown ? "⊟" : "⊞"}</span> {row[0]}
+                            <span aria-hidden="true">{shown ? "−" : "+"}</span> {row[0]}
                           </button>
                         </th>
                         {renderCells(row).slice(1)}

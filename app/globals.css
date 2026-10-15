@@ -2865,7 +2865,7 @@ html {
   }
 }
 
-/* HA ▸ Area tree: a ⊞ / ⊟ toggle before each HA (owner, 2026-10-15) */
+/* HA ▸ Area tree: a + / − toggle before each HA (owner, 2026-10-15) */
 .ms-tree-row {
   display: flex;
   align-items: center;
@@ -3718,4 +3718,18 @@ html {
 }
 [data-mood="ten"] .pbi-page .pbi-management-title {
   color: var(--fg);
+}
+
+/* expand / collapse marks: a plain + / − in the accent colour, no box (owner, 2026-10-15) */
+.error-expand > span[aria-hidden="true"]:first-child,
+.page-jump-toggle,
+.ms-tree-toggle > span {
+  display: inline-block;
+  width: 14px;
+  text-align: center;
+  color: var(--accent-primary);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
 }

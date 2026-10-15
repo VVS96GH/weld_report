@@ -9,7 +9,7 @@ import type { TableWidget } from "@/lib/page-model";
  * derived from the column names ("Manual Required" → group "Manual", sub-column
  * "Required"), HA parent rows shaded, sub-contractor child rows (two-space indent
  * in the first cell) indented, every "Completed %" column shaded, Total row bold —
- * the pbix table's own reading conventions. An HA starts collapsed; ⊞ opens it to
+ * the pbix table's own reading conventions. An HA starts collapsed; + opens it to
  * its sub-contractors (owner, 2026-10-15, like the Welder Performance matrix).
  */
 export function MatrixTable({ widget }: { widget: TableWidget }) {
@@ -84,7 +84,7 @@ export function MatrixTable({ widget }: { widget: TableWidget }) {
                       aria-expanded={Boolean(open[ri])}
                       onClick={() => setOpen((o) => ({ ...o, [ri]: !o[ri] }))}
                     >
-                      <span aria-hidden="true">{open[ri] ? "⊟" : "⊞"}</span> {row[0].trim()}
+                      <span aria-hidden="true">{open[ri] ? "−" : "+"}</span> {row[0].trim()}
                     </button>
                   ) : (
                     row[0].trim()
