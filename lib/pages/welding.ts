@@ -522,6 +522,8 @@ const GROUP_SERVICE_CLASS_NDT: GroupSpec = {
   sql: "w.service_class_cat_ndt",
 };
 const GROUP_RT_PCT: GroupSpec = { key: "rt_pct", sql: "w.rt_pct::text" };
+/** `RT %` → `Weld Cat` as one key (`100|F`): the RT Status table opens an RT % to its cats (owner, 2026-10-15). */
+const GROUP_RT_CAT: GroupSpec = { key: "rt_cat", sql: "(w.rt_pct::text || '|' || w.weld_cat)" };
 
 /**
  * `Weld Cat` → `Service Class` as ONE grouping key (`F|1C3AS ABDF`), so a class
@@ -2489,6 +2491,7 @@ async function buildNdePage(
     byCat,
     byCatClass,
     byRtPct,
+    byRtCat,
     agingTotal,
     agingByCat,
     agingByCatClass,
@@ -2497,6 +2500,7 @@ async function buildNdePage(
     bundleBy(scope, GROUP_WELD_CAT, av),
     bundleBy(scope, catClassGroup, av),
     bundleBy(scope, GROUP_RT_PCT, av),
+    bundleBy(scope, GROUP_RT_CAT, av),
     wantAging ? backlogAging(scope, ctx.asOf, family) : Promise.resolve(null),
     wantAging
       ? backlogAgingBy(scope, ctx.asOf, family, GROUP_WELD_CAT)
@@ -2582,7 +2586,7 @@ async function buildNdePage(
           .filter((k): k is string => k !== null && splitCatClass(k).cat === c)
           .sort((a, b) => splitCatClass(a).cls.localeCompare(splitCatClass(b).cls))) {
           rows.push({
-            label: CHILD_INDENT + splitCatClass(k).cls.trim(),
+            label: CHILD_INDENT + (splitCatClass(k).cls.trim() || "(blank)"),
             bundle: attach(byCatClass.get(k)!, agingByCatClass.get(k), gapByGroup.get(k) ?? 0),
           });
         }
@@ -2605,10 +2609,18 @@ async function buildNdePage(
           : [String(conf.rtPct)];
       for (const pctKey of pctKeys) {
         const pctBundle = byRtPct.get(pctKey);
-        if (pctBundle) rows.push({ label: pctKey, bundle: attach(pctBundle, conf.rtPct === undefined ? undefined : agingTotal ?? undefined) });
-      }
-      for (const c of orderedCats(byCat.keys())) {
-        rows.push({ label: c, bundle: attach(byCat.get(c)!, agingByCat.get(c)) });
+        if (!pctBundle) continue;
+        rows.push({ label: pctKey, bundle: attach(pctBundle, conf.rtPct === undefined ? undefined : agingTotal ?? undefined) });
+        // each RT % opens to its weld cats (indented children, + on the page)
+        const cats = [...byRtCat.keys()]
+          .filter((k): k is string => k !== null && k.startsWith(`${pctKey}|`))
+          .map((k) => k.slice(pctKey.length + 1));
+        for (const c of orderedCats(cats)) {
+          rows.push({
+            label: CHILD_INDENT + c,
+            bundle: attach(byRtCat.get(`${pctKey}|${c}`)!, conf.rtPct === undefined ? undefined : agingByCat.get(c)),
+          });
+        }
       }
       out.push(metricTable(w, rows, totalB));
     } else {

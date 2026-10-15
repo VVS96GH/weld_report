@@ -121,7 +121,8 @@ export function PageView({ model, subtitle }: { model: PageModel; subtitle: stri
               <div key={i}>
                 <div className="section-title">{g.item.title}</div>
                 <div className="table-scroll">
-                  <DataTable widget={g.item} />
+                  {/* a table with indented detail rows opens them under + (owner, 2026-10-15) */}
+                  <DataTable widget={g.item} collapsible={g.item.rows.some((r) => /^\s{2}/.test(r[0] ?? ""))} />
                 </div>
               </div>
             );
