@@ -29,43 +29,39 @@ const isWpPage = (title: string) =>
 
 type PageOption = { page: number } | { group: string; pages: number[] };
 
+/** The project-wide pages make the first group (owner, 2026-10-15). */
+const PROJECT_GROUP = "Project";
+const PROJECT_PAGES = [1, 2, 3, 9];
+
+/**
+ * The jump list, top to bottom: Project, Welder Performance, the four
+ * sub-contractors, then every page no group takes (Errors, at the bottom for now).
+ */
 function pageOptions(): PageOption[] {
-  const groups = new Map<string, number[]>(GROUP_ORDER.map((g) => [g, []]));
-  const out: PageOption[] = [];
-  let placed = false;
+  const subs = new Map<string, number[]>(GROUP_ORDER.map((g) => [g, []]));
   const wp: number[] = [];
+  const loose: PageOption[] = [];
   WELDING_PAGE_TITLES.forEach((t, i) => {
     const n = i + 1;
+    if (PROJECT_PAGES.includes(n)) return;
     if (isWpPage(t)) {
-      if (wp.length === 0) out.push({ group: WP_GROUP, pages: wp });
       wp.push(n);
       return;
     }
     const up = t.toUpperCase();
-    const sub = GROUP_ORDER.find(
-      (g) => up.startsWith(g) || up.endsWith(`- ${g}`),
-    );
+    const sub = GROUP_ORDER.find((g) => up.startsWith(g) || up.endsWith(`- ${g}`));
     if (n >= GROUPED_FROM && n <= GROUPED_TO && sub) {
-      groups.get(sub)!.push(n);
-      if (!placed) {
-        placed = true;
-        // the groups take the place of the first grouped page, in GROUP_ORDER
-        out.push({ group: "__groups__", pages: [] });
-      }
+      subs.get(sub)!.push(n);
       return;
     }
-    out.push({ page: n });
+    loose.push({ page: n });
   });
-  return out.flatMap((o): PageOption[] =>
-    "group" in o && o.group === WP_GROUP
-      ? [o]
-      : "group" in o
-        ? GROUP_ORDER.filter((g) => groups.get(g)!.length).map((g) => ({
-            group: g,
-            pages: groups.get(g)!,
-          }))
-        : [o],
-  );
+  return [
+    { group: PROJECT_GROUP, pages: PROJECT_PAGES.filter((n) => n <= WELDING_PAGE_TITLES.length) },
+    ...(wp.length ? [{ group: WP_GROUP, pages: wp }] : []),
+    ...GROUP_ORDER.filter((g) => subs.get(g)!.length).map((g) => ({ group: g, pages: subs.get(g)! })),
+    ...loose,
+  ];
 }
 
 /**
