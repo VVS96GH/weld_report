@@ -116,10 +116,9 @@ function PageJump({
   const panel = useRef<HTMLDivElement>(null);
   useKeepInView(panel, open);
   // where there is a mouse the menu opens on hover (owner, 2026-10-15), after a
-  // short dwell, and closes a moment after the pointer leaves; a tap elsewhere
+  // short dwell; a tap elsewhere
   const [hover, setHover] = useState(false);
   const openTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     const mq = window.matchMedia("(hover: hover) and (pointer: fine)");
     const set = () => setHover(mq.matches);
@@ -129,18 +128,16 @@ function PageJump({
       cancelAnimationFrame(raf);
       mq.removeEventListener("change", set);
       if (openTimer.current) clearTimeout(openTimer.current);
-      if (closeTimer.current) clearTimeout(closeTimer.current);
     };
   }, []);
   const onEnter = () => {
     if (!hover) return;
-    if (closeTimer.current) clearTimeout(closeTimer.current);
     openTimer.current = setTimeout(() => setOpen(true), 120);
   };
+  // leaving does not close it (owner, 2026-10-15): only a click elsewhere,
+  // Escape or picking a page does; it just cancels an open still pending
   const onLeave = () => {
-    if (!hover) return;
     if (openTimer.current) clearTimeout(openTimer.current);
-    closeTimer.current = setTimeout(() => setOpen(false), 450);
   };
   useEffect(() => {
     if (!open) return;
