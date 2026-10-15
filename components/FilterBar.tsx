@@ -154,6 +154,8 @@ export function FilterBar({
               options={opts}
               value={list(w.value)}
               onApply={(v) => applyList(w.id, v)}
+              // Service Class: the class first, + opens its variants ("1A1A" → "1A1A ABDF", …)
+              groupOf={w.id === "sclass" ? (o) => o.split(/\s+/)[0] ?? o : undefined}
             />
           );
         }

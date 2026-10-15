@@ -121,6 +121,7 @@ export function MultiSelect({
   value,
   onApply,
   chip = false,
+  groupOf,
 }: {
   label: string;
   options: string[];
@@ -128,6 +129,11 @@ export function MultiSelect({
   onApply: (values: string[]) => void;
   /** Compact chip: "Label: picks ▾" on one line, with × to clear (2026-10-15). */
   chip?: boolean;
+  /**
+   * Show the options under parents (owner, 2026-10-15: Service Class first, + opens
+   * its variants). The picked values stay the options themselves.
+   */
+  groupOf?: (option: string) => string;
 }) {
   const baseId = useId();
   const [draft, setDraft] = useState<string[]>(value);
@@ -148,6 +154,27 @@ export function MultiSelect({
         ? d.filter((x) => x !== o)
         : options.filter((x) => x === o || d.includes(x)),
     );
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const groups: { key: string; items: string[] }[] = [];
+  if (groupOf) {
+    for (const o of shownOptions) {
+      const k = groupOf(o);
+      const g = groups.find((x) => x.key === k);
+      if (g) g.items.push(o);
+      else groups.push({ key: k, items: [o] });
+    }
+  }
+  const toggleGroup = (items: string[]) =>
+    setDraft((d) => {
+      const all = items.every((o) => d.includes(o));
+      return all ? d.filter((x) => !items.includes(x)) : options.filter((x) => d.includes(x) || items.includes(x));
+    });
+  const optionRow = (o: string, child = false) => (
+    <label className={`ms-option${child ? " ms-option--child" : ""}`} key={o}>
+      <input type="checkbox" checked={draft.includes(o)} onChange={() => toggle(o)} />
+      <span>{o}</span>
+    </label>
+  );
 
   return (
     <div
@@ -211,16 +238,48 @@ export function MultiSelect({
           />
           <span>Select all</span>
         </label>
-        {shownOptions.map((o) => (
-          <label className="ms-option" key={o}>
-            <input
-              type="checkbox"
-              checked={draft.includes(o)}
-              onChange={() => toggle(o)}
-            />
-            <span>{o}</span>
-          </label>
-        ))}
+        {groupOf
+          ? groups.map(({ key: g, items }) => {
+              // a parent with one variant of its own name is just that option
+              if (items.length === 1 && items[0] === g)
+                return (
+                  <div className="ms-tree-row" key={g}>
+                    <span className="ms-tree-toggle ms-tree-toggle--none" aria-hidden="true" />
+                    {optionRow(g)}
+                  </div>
+                );
+              const all = items.every((o) => draft.includes(o));
+              const some = !all && items.some((o) => draft.includes(o));
+              const isOpen = Boolean(q) || Boolean(expanded[g]);
+              return (
+                <div className="ms-tree-group" key={g}>
+                  <div className="ms-tree-row">
+                    <button
+                      type="button"
+                      className="ms-tree-toggle"
+                      aria-expanded={isOpen}
+                      aria-label={`${isOpen ? "Collapse" : "Expand"} ${g}`}
+                      onClick={() => setExpanded((e) => ({ ...e, [g]: !e[g] }))}
+                    >
+                      <span aria-hidden="true">{isOpen ? "−" : "+"}</span>
+                    </button>
+                    <label className="ms-option ms-option--parent">
+                      <input
+                        type="checkbox"
+                        checked={all}
+                        ref={(el) => {
+                          if (el) el.indeterminate = some;
+                        }}
+                        onChange={() => toggleGroup(items)}
+                      />
+                      <span>{g}</span>
+                    </label>
+                  </div>
+                  {isOpen ? items.map((o) => optionRow(o, true)) : null}
+                </div>
+              );
+            })
+          : shownOptions.map((o) => optionRow(o))}
       </Panel>
     </div>
   );

@@ -169,7 +169,7 @@ export const SCREENS: readonly ScreenDef[] = [
     nav: "NDE by RT %",
     filters: [subcoFilter(), rtFilter([100, 30, 20, 10, 5])],
     // the page's own Service Class and PWHT Y/N slicers (lib/pages/welding.ts buildNdePage)
-    passthrough: ["sclass", "pwht"],
+    passthrough: ["wcat", "sclass", "pwht"],
     pages: (v) => {
       const n = NDE_PAGES[axisKey(v.subco, SUBCO_ALL)]?.[axisKey(v.rt, RT_ALL)];
       return n ? [n] : null;
@@ -180,7 +180,7 @@ export const SCREENS: readonly ScreenDef[] = [
     title: "PWHT Status by RT %",
     nav: "PWHT by RT %",
     filters: [subcoFilter(), rtFilter([100, 10, 5])],
-    passthrough: ["sclass", "pwht"],
+    passthrough: ["wcat", "sclass", "pwht"],
     pages: (v) => {
       const n = PWHT_PAGES[axisKey(v.subco, SUBCO_ALL)]?.[axisKey(v.rt, RT_ALL)];
       return n ? [n] : null;

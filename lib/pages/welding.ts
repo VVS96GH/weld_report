@@ -521,6 +521,8 @@ const GROUP_SERVICE_CLASS_NDT: GroupSpec = {
   key: "service_class_cat_ndt",
   sql: "w.service_class_cat_ndt",
 };
+/** The NDE / PWHT pages' Weld Cat slicer options. */
+const NDE_WELD_CATS = ["F", "S", "J"];
 const GROUP_RT_PCT: GroupSpec = { key: "rt_pct", sql: "w.rt_pct::text" };
 /** `RT %` → `Weld Cat` as one key (`100|F`): the RT Status table opens an RT % to its cats (owner, 2026-10-15). */
 const GROUP_RT_CAT: GroupSpec = { key: "rt_cat", sql: "(w.rt_pct::text || '|' || w.weld_cat)" };
@@ -1419,6 +1421,7 @@ export async function getWeldingPage(
   const ndeSlicers = NDE_PAGES.has(n) ? normaliseFilters(opts.filters) : {};
   const sclass = ndeSlicers.sclass;
   const pwht = ndeSlicers.pwht;
+  const wcatNde = ndeSlicers.wcat;
   // Only values that actually exist are applied — an unknown one is reported
   // as "All" in the widget AND dropped from the query, so the page can never
   // show a filter it did not honour.
@@ -1432,7 +1435,7 @@ export async function getWeldingPage(
         wtype: applied(3),
         wcat: applied(4),
       }
-    : { sclass, pwht };
+    : { sclass, pwht, wcat: wcatNde };
   const ctx: Ctx = { asOf: as_of, asOfOrigin: origin, notes: new Set(), filters };
   if (bar?.unknown) note(ctx, FILTER_UNKNOWN_NOTE);
   // ALL applies to the per-party families only; pages 1/2 are project-wide already.
@@ -2467,6 +2470,9 @@ async function buildNdePage(
     if (keptClass.length) scope.serviceClasses = { sql: classGroup.sql, values: keptClass };
     if (keptPwht.length) scope.pwhtYns = keptPwht;
   }
+  // Weld Cat slicer (owner, 2026-10-15): F / S / J, OR-ed; an unknown value is dropped
+  const keptCat = (filterValues(ctx.filters.wcat) ?? []).filter((v) => NDE_WELD_CATS.includes(v));
+  if (keptCat.length) scope.weldCats = keptCat;
   if (isCcc || all) note(ctx, PWHT_CCC_NEW_NOTE);
   const av = await availability(variant, sourcesFor(conf.sub), scope);
   const family =
@@ -2568,8 +2574,16 @@ async function buildNdePage(
     value: keptPwht.length ? keptPwht.join(FILTER_SEP) : FILTER_ALL,
     multi: true,
   };
+  const catFilter: FilterWidget = {
+    kind: "filter",
+    id: "wcat",
+    label: "Weld Cat",
+    options: [FILTER_ALL, ...NDE_WELD_CATS],
+    value: keptCat.length ? keptCat.join(FILTER_SEP) : FILTER_ALL,
+    multi: true,
+  };
   // The slicers go FIRST, ahead of every data widget (as page 1's bar does).
-  const out: Widget[] = [classFilter, pwhtFilter];
+  const out: Widget[] = [catFilter, classFilter, pwhtFilter];
   for (const w of spec.widgets) {
     if (w.kind !== "table") {
       out.push(emptyWidget(w));
