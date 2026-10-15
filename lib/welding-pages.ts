@@ -8,6 +8,8 @@
  * If the underlying report structure changes, regenerate this list from the spec:
  *   node -e "console.log(JSON.stringify(require('./analysis/mockups/welding-spec.json').global.pageTitles))"
  */
+import { WP_NAV } from "@/lib/welder-perf-nav";
+
 export const WELDING_DATA_PAGE_TITLES: readonly string[] = [
   "Welding Progress (Project)",
   "Project Welding & NDE Status",
@@ -67,14 +69,29 @@ export const WELDING_DATA_PAGES = WELDING_DATA_PAGE_TITLES.length;
  */
 export type ReportEntry =
   | { kind: "data"; data: number; title: string }
-  | { kind: "forecast"; title: string };
+  | { kind: "forecast"; title: string }
+  /** Another report placed in the reading order: /welding/<n> sends there. */
+  | { kind: "link"; title: string; href: string };
 
 export const FORECAST_TITLE = "RT Backlog Forecast";
 export const FORECAST_DISPLAY_PAGE = 2;
 
+/**
+ * The other reports, read as pages 3..8 (owner request 2026-10-15): Flange, the
+ * four Welder Performance pages, Errors. Their own URLs stay; the page nav and
+ * Prev/Next walk through them in this order.
+ */
+export const LINKED_FIRST_DISPLAY_PAGE = 3;
+export const LINKED_PAGES: readonly { title: string; href: string }[] = [
+  { title: "Flange Inspection Dashboard", href: "/flange" },
+  ...WP_NAV.flatMap((g) => g.pages.map((p) => ({ title: p.label, href: `/welder-performance/${p.slug}` }))),
+  { title: "Errors", href: "/errors" },
+];
+
 export const REPORT_ORDER: readonly ReportEntry[] = (() => {
   const entries: ReportEntry[] = WELDING_DATA_PAGE_TITLES.map((title, i) => ({ kind: "data", data: i + 1, title }));
   entries.splice(FORECAST_DISPLAY_PAGE - 1, 0, { kind: "forecast", title: FORECAST_TITLE });
+  entries.splice(LINKED_FIRST_DISPLAY_PAGE - 1, 0, ...LINKED_PAGES.map((l) => ({ kind: "link" as const, ...l })));
   return entries;
 })();
 
@@ -86,6 +103,21 @@ export const WELDING_TOTAL_PAGES = REPORT_ORDER.length;
 /** Display page → report entry (undefined outside 1..WELDING_TOTAL_PAGES). */
 export function reportEntry(display: number): ReportEntry | undefined {
   return Number.isInteger(display) ? REPORT_ORDER[display - 1] : undefined;
+}
+
+/** The display page of a linked report's URL ("/flange", "/errors", …), or null. */
+export function displayForPath(pathname: string | null): number | null {
+  if (!pathname) return null;
+  const welding = /^\/welding\/(\d+)$/.exec(pathname);
+  if (welding) return Number(welding[1]);
+  const i = REPORT_ORDER.findIndex((e) => e.kind === "link" && (pathname === e.href || pathname.startsWith(`${e.href}/`)));
+  return i < 0 ? null : i + 1;
+}
+
+/** Where display page n lives: its own route for a linked report, else /welding/n. */
+export function displayHref(n: number): string {
+  const e = REPORT_ORDER[n - 1];
+  return e?.kind === "link" ? e.href : `/welding/${n}`;
 }
 
 /** Data page (1..44) → display page. */

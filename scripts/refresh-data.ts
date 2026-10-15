@@ -96,6 +96,10 @@ const STEPS: Step[] = [
       "sources/WPQ RECORD REGISTER/CUM WPS Status.xlsx",
       "sources/WPQ RECORD REGISTER/WPS PWHT Status.xlsx",
     ], afterMatviews: true, about: "WPQ register" },
+  { id: "welder-cum", script: "db:load:welder-cum", files: [
+      "sources/CUM FILE Welders Performance For Graphic/CUM FILE Welders Performance.  Rejection Rate. Summary Status  2 Weeks Since RT Date .xlsx",
+      "sources/CUM FILE Welders Performance For Graphic/CUM FILE Welders Performance.  Rejection Rate. Summary Status  1 Month Since RT Date .xlsx",
+    ], about: "welder performance CUM workbooks (trend charts)" },
   { id: "flange", script: "db:load:flange",
     files: ["sources/Flange Progress.xlsx", "sources/ovAssets_1619.xlsx"],
     afterMatviews: true, about: "flange register" },

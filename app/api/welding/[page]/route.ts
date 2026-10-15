@@ -47,6 +47,9 @@ export async function GET(
       if (value) filters[key] = value;
     }
     const entry = reportEntry(n)!;
+    if (entry.kind === "link") {
+      return Response.json({ error: `page ${n} is the ${entry.title} report, at ${entry.href}` }, { status: 404 });
+    }
     if (entry.kind === "forecast") {
       const ff: ForecastFilters = {};
       for (const key of FORECAST_FILTER_IDS) {

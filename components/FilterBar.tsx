@@ -17,7 +17,11 @@ import { MultiSelect, TreeMultiSelect } from "@/components/MultiSelect";
 /** URL value that selects rows whose parent (HA) is blank — the pbix slicer's "(Blank)". */
 const BLANK_PARENT = "(Blank)";
 
-export function FilterBar({ widgets }: { widgets: FilterWidget[] }) {
+/**
+ * `alsoReset`: params of slicers rendered OUTSIDE the bar (the Welder
+ * Performance Joint ID picker) that the Reset link clears too.
+ */
+export function FilterBar({ widgets, alsoReset = [] }: { widgets: FilterWidget[]; alsoReset?: string[] }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -78,10 +82,12 @@ export function FilterBar({ widgets }: { widgets: FilterWidget[] }) {
   }
 
   const applied = widgets.filter((w) => w.value !== "All");
+  const outsideApplied = alsoReset.some((id) => searchParams.has(id));
   // Reset clears THIS bar's params only: a page may carry several bars (the
   // Errors page has one per check) and another bar's picks must survive.
   const resetParams = new URLSearchParams(searchParams.toString());
   for (const w of widgets) resetParams.delete(w.id);
+  for (const id of alsoReset) resetParams.delete(id);
   const resetQs = resetParams.toString();
   const resetHref = resetQs ? `${pathname}?${resetQs}` : pathname;
   const announcement =
@@ -178,7 +184,7 @@ export function FilterBar({ widgets }: { widgets: FilterWidget[] }) {
           </div>
         );
       })}
-      {applied.length > 0 ? (
+      {applied.length > 0 || outsideApplied ? (
         <Link href={resetHref} className="nav-btn filter-reset" aria-label="Reset all filters">
           &#10005; Reset
         </Link>

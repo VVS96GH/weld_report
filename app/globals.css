@@ -11,6 +11,12 @@
    ============================================================ */
 
 :root {
+  /* Welder Performance status colours (owner, 2026-10-14: red / orange / yellow must
+     be told apart at a glance), the same in every theme and mood, as in the pbix */
+  --wp-status-ok: #3dae2b;
+  --wp-status-monitor: #ffd400;
+  --wp-status-critical: #ff8a00;
+  --wp-status-disq: #e01e1e;
   /* ===== Power BI mood — dark (base tokens; [data-mood] blocks below override) ===== */
   --bg-primary: #1e1e1e;
   --bg-secondary: #252526;
@@ -1680,6 +1686,11 @@ html {
    ============================================================ */
 .report-switcher {
   display: inline-flex;
+  /* five reports since 2026-10-14: on a phone the pills scroll inside the
+     switcher instead of widening the page */
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
   gap: 4px;
   padding: 3px;
   border-radius: var(--pill, 999px);
@@ -1688,6 +1699,7 @@ html {
 }
 .report-pill {
   display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
   min-height: 36px;
   padding-inline: 14px;
@@ -2043,6 +2055,369 @@ html {
 }
 [data-mood="ten"] .error-count.has-errors {
   color: var(--fg);
+}
+
+/* ── Welder Performance tab (components/WelderPerfView.tsx) ── */
+.wp-banner h2 {
+  font-size: 1.1rem;
+  letter-spacing: 0.02em;
+}
+.wp-since {
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.wp-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.wp-filters .filter-bar {
+  margin-bottom: 0;
+  flex: 1 1 640px;
+  min-width: 0;
+}
+.wp-filters .wp-joint {
+  flex: 0 0 220px;
+}
+/* the Joint ID panel opens leftwards (the slicer sits at the right edge) and is
+   wide enough for a full joint number */
+.wp-joint-panel {
+  inset-inline-start: auto;
+  inset-inline-end: 0;
+  width: min(340px, 92vw);
+}
+/* every slicer the same width, in one row on a wide screen — the last status
+   slicer sits at the end of the row, not stretched over a row of its own */
+.wp-filters .filter-bar .filter-group {
+  flex: 1 1 0;
+  min-width: 128px;
+}
+@media (min-width: 1700px) {
+  .wp-filters,
+  .wp-filters .filter-bar {
+    flex-wrap: nowrap;
+  }
+  .wp-filters .filter-bar {
+    flex: 1 1 0;
+  }
+  .wp-filters .filter-bar .filter-group {
+    min-width: 0;
+  }
+  .wp-filters .ms,
+  .wp-filters .filter-select {
+    min-width: 0;
+    width: 100%;
+  }
+}
+.wp-card {
+  margin-bottom: 16px;
+  padding: 12px;
+}
+.wp-title {
+  margin: 0 0 10px;
+  font-size: 1rem;
+  text-align: center;
+  color: var(--text-primary);
+}
+.wp-scroll {
+  max-height: 70vh;
+  overflow: auto;
+}
+.wp-matrix {
+  width: max-content;
+  min-width: 100%;
+  font-size: 0.75rem;
+}
+.wp-matrix thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: break-word;
+  text-transform: none;
+  letter-spacing: normal;
+  line-height: 1.25;
+  width: 92px;
+  min-width: 92px;
+  max-width: 92px;
+  vertical-align: top;
+  text-align: start;
+  background: var(--bg-elevated);
+}
+.wp-matrix .wp-rowhead {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  min-width: 220px;
+  max-width: 260px;
+  text-align: start;
+  font-weight: 400;
+  background: var(--bg-card);
+}
+.wp-matrix thead .wp-rowhead {
+  z-index: 3;
+  width: 220px;
+  max-width: 260px;
+}
+.wp-matrix thead .wp-col-window {
+  box-shadow: inset 0 -4px 0 var(--attention, var(--accent));
+}
+.wp-matrix thead .wp-col-window2 {
+  box-shadow: inset 0 -4px 0 var(--ok, var(--accent));
+}
+.wp-h-prefix {
+  display: inline-block;
+  margin-bottom: 2px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.wp-level0 .wp-rowhead,
+.wp-level0 td {
+  font-weight: 600;
+}
+.wp-loading {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+.wp-st {
+  white-space: nowrap;
+}
+.wp-st--ok {
+  background: color-mix(in srgb, var(--wp-status-ok) 35%, transparent);
+}
+.wp-st--watch {
+  background: color-mix(in srgb, var(--wp-status-monitor) 40%, transparent);
+}
+.wp-st--crit {
+  background: color-mix(in srgb, var(--wp-status-critical) 45%, transparent);
+}
+.wp-st--act {
+  background: color-mix(in srgb, var(--wp-status-disq) 40%, transparent);
+}
+/* the pbix headers are long measure names: wrap them, in their own case */
+[data-mood="ten"] .wp-matrix thead th {
+  white-space: normal;
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 11px;
+  padding-inline: 6px;
+  text-align: start;
+}
+[data-mood="ten"] .wp-matrix td {
+  padding-inline: 8px;
+}
+[data-mood="ten"] .wp-since,
+[data-mood="ten"] .wp-loading {
+  color: var(--muted);
+}
+[data-mood="ten"] .wp-title {
+  color: var(--fg);
+}
+
+/* ── Welder Performance: section nav + Rejection Summary (components/RejectionSummaryView.tsx) ── */
+.wp-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.wp-nav-group {
+  position: relative;
+  display: inline-flex;
+}
+.wp-nav-trigger {
+  gap: 6px;
+  border: 0;
+  cursor: pointer;
+  background: transparent;
+}
+.wp-nav-caret {
+  font-size: 0.7em;
+}
+.wp-nav-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  inset-inline-start: 0;
+  z-index: 400;
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  box-shadow: var(--shadow-card);
+}
+.wp-nav-item {
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.wp-nav-item:hover,
+.wp-nav-item:focus-visible {
+  background: var(--bg-card-hover);
+}
+.wp-nav-item[aria-current="page"] {
+  color: var(--accent-primary);
+}
+[data-mood="ten"] .wp-nav-menu {
+  background: var(--surface);
+  border-color: var(--border);
+}
+[data-mood="ten"] .wp-nav-item {
+  color: var(--fg);
+}
+[data-mood="ten"] .wp-nav-item[aria-current="page"] {
+  color: var(--accent);
+}
+.rs-cum {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+.rs-cum-text {
+  flex: 1 1 360px;
+  font-size: 0.8rem;
+}
+.rs-cum-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.rs-cum-actions a.ms-btn {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+.rs-cum-msg {
+  flex: 1 1 100%;
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+.rs-row {
+  display: grid;
+  grid-template-columns: minmax(340px, 1.25fr) minmax(220px, 1fr) minmax(200px, 0.9fr) minmax(340px, 2fr);
+  gap: 16px;
+  padding: 12px;
+  margin-bottom: 16px;
+  align-items: start;
+}
+@media (max-width: 1280px) {
+  .rs-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media (max-width: 720px) {
+  .rs-row {
+    grid-template-columns: 1fr;
+  }
+}
+.rs-head {
+  margin: 0 0 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-decoration: underline;
+  color: var(--text-primary);
+}
+.rs-head--center {
+  text-align: center;
+}
+.rs-table {
+  min-width: 0;
+  overflow-x: auto;
+}
+.rs-status {
+  width: 100%;
+  font-size: 0.75rem;
+}
+.rs-status th,
+.rs-status td {
+  white-space: normal;
+}
+[data-mood="ten"] .rs-status th,
+[data-mood="ten"] .rs-status td {
+  white-space: normal;
+  padding-inline: 8px;
+  position: static;
+}
+.rs-status th[scope="row"] {
+  text-align: start;
+}
+.rs-welder th[scope="row"] {
+  padding-inline-start: 34px;
+  font-size: 0.7rem;
+}
+.rs-wratio {
+  color: var(--text-secondary);
+}
+.rs-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  vertical-align: middle;
+}
+.rs-dot--1 {
+  background: var(--wp-status-ok);
+}
+.rs-dot--2 {
+  background: var(--wp-status-monitor);
+}
+.rs-dot--3 {
+  background: var(--wp-status-critical);
+}
+.rs-dot--4 {
+  background: var(--wp-status-disq);
+}
+.rs-notes-text {
+  width: 100%;
+  min-height: 150px;
+  resize: vertical;
+  padding: 8px;
+  font: inherit;
+  font-size: 0.75rem;
+  color: var(--text-primary);
+  background: var(--bg-input, var(--bg-card));
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+.rs-notes-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 6px;
+}
+.rs-notes-state {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}
+.rs-chart-box {
+  position: relative;
+  height: 220px;
+}
+.rs-chart-box--donut {
+  height: 200px;
+}
+[data-mood="ten"] .rs-head,
+[data-mood="ten"] .rs-notes-text {
+  color: var(--fg);
+}
+[data-mood="ten"] .rs-wratio,
+[data-mood="ten"] .rs-notes-state,
+[data-mood="ten"] .rs-cum-msg {
+  color: var(--muted);
 }
 
 /* ── data refresh button + dialog (components/RefreshDataButton.tsx) ── */

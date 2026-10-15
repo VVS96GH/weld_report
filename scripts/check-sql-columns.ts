@@ -343,10 +343,23 @@ function main(): void {
     check(`${mv} has the UNIQUE index CONCURRENTLY requires`,
       new RegExp(`CREATE UNIQUE INDEX[^;]*ON ${mv}\\b`).test(allSql));
   }
-  // The loaders refresh exactly these three, in this order.
-  check("POST_LOAD_MATVIEWS lists mv_weekly_progress, mv_joint, mv_joint_wps in order",
+  // The Welder Performance views (0045): mv_welder_perf reads weld; the two status
+  // views read mv_welder_perf, so they are refreshed after it, online.
+  check("mv_welder_perf is defined in the migration log", mvNames.has("mv_welder_perf"));
+  {
+    const wCols = schema.matviews.filter((m) => m.name === "mv_welder_perf").flatMap((b) =>
+      [...b.body.matchAll(/\bw\.([a-z_][a-z0-9_]*)/g)].map((x) => x[1]));
+    check(`mv_welder_perf reads ${new Set(wCols).size} distinct w.<column>, all in weld`,
+      missing(wCols, weld).length === 0, missing(wCols, weld).join(", "));
+  }
+  for (const mv of ["mv_welder_status", "mv_welder_sub_status"]) {
+    check(`${mv} has the UNIQUE index CONCURRENTLY requires`,
+      new RegExp(`CREATE UNIQUE INDEX[^;]*ON ${mv}\\b`).test(allSql));
+  }
+  // The loaders refresh exactly these, in this order.
+  check("POST_LOAD_MATVIEWS lists the six views in dependency order",
     POST_LOAD_MATVIEWS.map((m) => m.name).join(",")
-      === "mv_weekly_progress,mv_joint,mv_joint_wps",
+      === "mv_weekly_progress,mv_joint,mv_joint_wps,mv_welder_perf,mv_welder_status,mv_welder_sub_status",
     POST_LOAD_MATVIEWS.map((m) => m.name).join(","));
   check("every matview the loaders refresh exists in the migration log",
     POST_LOAD_MATVIEWS.every((m) => mvNames.has(m.name)),

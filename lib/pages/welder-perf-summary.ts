@@ -1,0 +1,194 @@
+/**
+ * The "Rejection Summary" pages of the Welder Performance tab (pbix pages "Rep.
+ * Project Welders Performance. Cumulative Rejection Rate. Summary Report" 2
+ * Weeks and 1 Month): per sub-contractor a status table (status ▸ welder, welder
+ * count, RT FILM ratio), a notes box, a status doughnut and the trend of the
+ * owner's cumulative workbook (lib/welder-perf-cum.ts).
+ *
+ * The visuals' own filters, verbatim from the pbix:
+ *   status tables  BW/CLET/GW/MW, welded, status not blank, Days Since Last RT
+ *                  2 weeks: > 0 and < 15 (GAC: >= 0 and < 15, which in DAX also
+ *                  admits a BLANK Days Since); 1 month: > 0 and < 30
+ *   doughnuts      Days Since Last RT > 0 and < 15 (1 month: < 29), status not blank,
+ *                  BW/CLET/GW/MW (a page-level filter: CCC 161 ok, not 162)
+ * The 2-week ratio is the measure `Last 2 weeks RT FILM Ratio %`, whose own
+ * `Days Since Last RT >= 0 && <= 15` REPLACES the visual's filter on that column
+ * (owner's 09-Oct page: CCC 0.15 %, GAC ok 0.35 %); the 1-month one is
+ * Avg(`RT Film Ratio % "PR all" For Welder LAST 1 MONTH`) over the visual's rows.
+ */
+import { z } from "zod";
+
+import { query, withAsOf } from "@/lib/db";
+import { chartCutoff } from "@/lib/metrics/trend";
+import { type CumKind, STATUS_LABELS } from "@/lib/welder-perf-cum";
+
+export const SUMMARY_SUBS = ["CCC", "GAC", "TEKFEN", "MEDGULF"] as const;
+
+export type SummaryWelder = { welder: string; ratio: number | null; welderRatio: number | null };
+export type SummaryStatus = { status: string; qty: number; ratio: number | null; welders: SummaryWelder[] };
+export type SummarySub = {
+  sub: string;
+  statuses: SummaryStatus[];
+  total: { qty: number; ratio: number | null };
+  donut: { status: string; qty: number }[];
+  trend: { periods: string[]; series: { status: string; data: (number | null)[] }[] };
+  /** Disq.F welders, pre-filled into an empty note. */
+  disq: string[];
+  note: string | null;
+};
+export type SummaryPage = {
+  kind: CumKind;
+  cutoff: string;
+  since: string;
+  subs: SummarySub[];
+  /** Rows a paste into the workbook would add now, and the workbook's last RT date. */
+  cum: { lastDate: string | null; pending: number; file: string };
+};
+
+const n = z.coerce.number();
+const nn = z.union([z.null(), z.coerce.number()]);
+
+const statusSql = (kind: CumKind, r: string) => {
+  const [l1, l2, l3, l4] = STATUS_LABELS[kind].map((s) => `'${s}'`);
+  return `CASE WHEN ${r} >= 0 AND ${r} < 0.05 THEN ${l1} WHEN ${r} >= 0.05 AND ${r} < 0.075 THEN ${l2}
+               WHEN ${r} >= 0.075 AND ${r} < 0.10 THEN ${l3} WHEN ${r} >= 0.10 AND ${r} <= 1 THEN ${l4} END`;
+};
+
+/** The base rows: welder status / ratio at the cut-off, Days Since Last RT as `d`. */
+function baseCte(kind: CumKind): string {
+  const col = kind === "2w" ? "rt_w_15" : "rt_w_30";
+  return `v AS (
+  SELECT p.*, ws.${col} AS wr, ${statusSql(kind, `ws.${col}`)} AS st, $1::date - p.last_rt_date AS d
+    FROM mv_welder_perf p JOIN mv_welder_status ws USING (welder_id)
+   WHERE p.sub_contractor = ANY($2) AND (p.weld_date IS NULL OR p.weld_date <= $1::date)
+)`;
+}
+
+/** The status table's row filter (the visual's). */
+function tableWindow(kind: CumKind): string {
+  return kind === "2w"
+    ? `((sub_contractor = 'GAC' AND (d IS NULL OR d BETWEEN 0 AND 14)) OR (sub_contractor <> 'GAC' AND d BETWEEN 1 AND 14))`
+    : `d BETWEEN 1 AND 29`;
+}
+
+const TableRow = z.object({ sub: z.string(), st: z.string(), welder: z.string(), r: nn, f: nn, wsum: nn, wcnt: nn, wr: nn });
+
+export async function getSummaryPage(kind: CumKind, pending: { lastDate: string | null; rows: number }): Promise<SummaryPage> {
+  const { as_of } = await withAsOf(null);
+  const cutoff = chartCutoff(as_of);
+  const subs = [...SUMMARY_SUBS];
+  const visual = `weld_type IN ('BW','CLET','GW','MW') AND weld_date IS NOT NULL AND st IS NOT NULL`;
+
+  // status table, per welder: the welders the visual shows, and their ratio
+  const tableSql =
+    `WITH ${baseCte(kind)},\n` +
+    `vis AS (SELECT DISTINCT sub_contractor, welder_id, st FROM v WHERE ${visual} AND ${tableWindow(kind)})\n` +
+    `SELECT vis.sub_contractor AS sub, vis.st, vis.welder_id AS welder,\n` +
+    // 2 weeks: the measure, its own window 0..15 (+ BLANK) replacing the visual's
+    `       sum(v.films_r) FILTER (WHERE v.d IS NULL OR v.d BETWEEN 0 AND 15) AS r,\n` +
+    `       sum(v.films) FILTER (WHERE v.d IS NULL OR v.d BETWEEN 0 AND 15) AS f,\n` +
+    // 1 month: Avg of the welder column over the visual's rows (row-weighted)
+    `       sum(v.wr * v.n_rows) FILTER (WHERE ${tableWindow(kind)}) AS wsum,\n` +
+    `       sum(v.n_rows) FILTER (WHERE ${tableWindow(kind)}) AS wcnt,\n` +
+    `       max(v.wr) AS wr\n` +
+    `  FROM vis JOIN v USING (sub_contractor, welder_id, st)\n` +
+    ` WHERE v.${visual.replace(/ AND /g, " AND v.")}\n` +
+    ` GROUP BY 1, 2, 3`;
+  const donutSql =
+    `WITH ${baseCte(kind)}\n` +
+    `SELECT sub_contractor AS sub, st, count(DISTINCT welder_id) AS qty FROM v\n` +
+    ` WHERE st IS NOT NULL AND weld_type IN ('BW','CLET','GW','MW') AND d BETWEEN 1 AND ${kind === "2w" ? 14 : 28}\n GROUP BY 1, 2`;
+  const trendSql =
+    `SELECT sub_contractor AS sub, period, status AS st, count(DISTINCT welder_id) AS qty,
+            min(last_rt_date)::text AS first_day
+       FROM ref_welder_perf_cum WHERE kind = $1 AND sub_contractor = ANY($2) AND period IS NOT NULL AND status IS NOT NULL
+      GROUP BY 1, 2, 3`;
+  const [tRows, dRows, trRows, notes] = await Promise.all([
+    query(tableSql, [cutoff, subs]),
+    query(donutSql, [cutoff, subs]),
+    query(trendSql, [kind, subs]),
+    query(`SELECT sub_contractor AS sub, body FROM welder_perf_note WHERE kind = $1 AND cutoff = $2::date`, [kind, cutoff]),
+  ]);
+  const table = z.array(TableRow).parse(tRows);
+  const donut = z.array(z.object({ sub: z.string(), st: z.string(), qty: n })).parse(dRows);
+  const trend = z.array(z.object({ sub: z.string(), period: z.string(), st: z.string(), qty: n, first_day: z.string() })).parse(trRows);
+  const noteBy = new Map(z.array(z.object({ sub: z.string(), body: z.string() })).parse(notes).map((x) => [x.sub, x.body]));
+  const labels = STATUS_LABELS[kind];
+  const periodNo = (p: string) => Number(/^\s*(\d+)/.exec(p)?.[1] ?? 0);
+  // one period range for every chart: the workbook's latest 7 periods (owner, 2026-10-14)
+  const lastPeriod = Math.max(0, ...trend.map((t) => periodNo(t.period)));
+
+  const out: SummarySub[] = subs.map((sub) => {
+    const mine = table.filter((r) => r.sub === sub);
+    const ratioOf = (rows: typeof mine) => {
+      if (kind === "1m") {
+        const c = rows.reduce((s, r) => s + (r.wcnt ?? 0), 0);
+        return c > 0 ? rows.reduce((s, r) => s + (r.wsum ?? 0), 0) / c : null;
+      }
+      const f = rows.reduce((s, r) => s + (r.f ?? 0), 0);
+      return f > 0 ? rows.reduce((s, r) => s + (r.r ?? 0), 0) / f : null;
+    };
+    const statuses: SummaryStatus[] = labels
+      .map((st) => {
+        const rows = mine.filter((r) => r.st === st).sort((a, b) => a.welder.localeCompare(b.welder));
+        return {
+          status: st,
+          qty: rows.length,
+          ratio: ratioOf(rows),
+          welders: rows.map((r) => ({
+            welder: r.welder,
+            ratio: kind === "1m" ? (r.wcnt ? (r.wsum ?? 0) / r.wcnt : null) : r.f && r.f > 0 ? (r.r ?? 0) / r.f : null,
+            welderRatio: r.wr,
+          })),
+        };
+      })
+      .filter((s) => s.qty > 0);
+    // periods of this sub-contractor in the workbook, latest 9 (the pbix charts show 8-10)
+    const tr = trend.filter((t) => t.sub === sub);
+    const periods = [...new Set(tr.map((t) => t.period))]
+      .filter((p) => periodNo(p) > lastPeriod - 7)
+      .sort((a, b) => periodNo(a) - periodNo(b));
+    const series = labels
+      .map((st) => ({
+        status: st,
+        data: periods.map((p) => tr.find((t) => t.period === p && t.st === st)?.qty ?? null),
+      }))
+      .filter((s) => s.data.some((v) => v !== null));
+    return {
+      sub,
+      statuses,
+      total: { qty: mine.length, ratio: ratioOf(mine) },
+      donut: labels
+        .map((st) => ({ status: st, qty: donut.find((d) => d.sub === sub && d.st === st)?.qty ?? 0 }))
+        .filter((d) => d.qty > 0),
+      trend: { periods, series },
+      disq: mine.filter((r) => r.st === labels[3]).map((r) => r.welder).sort(),
+      note: noteBy.get(sub) ?? null,
+    };
+  });
+  const back = (iso: string, days: number) => {
+    const t = new Date(`${iso}T00:00:00Z`);
+    t.setUTCDate(t.getUTCDate() - days);
+    return t.toISOString().slice(0, 10);
+  };
+  return {
+    kind,
+    cutoff,
+    since: back(cutoff, kind === "2w" ? 14 : 28),
+    subs: out,
+    cum: { lastDate: pending.lastDate, pending: pending.rows, file: kind },
+  };
+}
+
+/** Save one sub-contractor's note for a cut-off (empty text deletes it). */
+export async function saveNote(kind: CumKind, cutoff: string, sub: string, body: string): Promise<void> {
+  if (!body.trim()) {
+    await query(`DELETE FROM welder_perf_note WHERE kind = $1 AND cutoff = $2::date AND sub_contractor = $3`, [kind, cutoff, sub]);
+    return;
+  }
+  await query(
+    `INSERT INTO welder_perf_note (kind, cutoff, sub_contractor, body, updated_at) VALUES ($1, $2::date, $3, $4, now())
+     ON CONFLICT (kind, cutoff, sub_contractor) DO UPDATE SET body = EXCLUDED.body, updated_at = now()`,
+    [kind, cutoff, sub, body],
+  );
+}

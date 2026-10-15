@@ -22,7 +22,9 @@ import { PDFDocument } from "pdf-lib";
 
 const BASE = process.env.BASE_URL ?? "http://localhost:3000";
 const OUT = process.env.OUT ?? "Weld Progress Report.pdf";
-const WELDING_PAGES = Number(process.env.WELDING_PAGES ?? 45);
+// 45 report pages + Flange, the four Welder Performance pages and Errors read as
+// pages 3..8 (lib/welding-pages.ts LINKED_PAGES): /welding/3..8 redirect there.
+const WELDING_PAGES = Number(process.env.WELDING_PAGES ?? 51);
 
 const HIDE_CSS =
   ".header{position:static!important}.page-nav{position:static!important}" +
@@ -42,7 +44,6 @@ const page = await ctx.newPage();
 
 const targets = [];
 for (let n = 1; n <= WELDING_PAGES; n++) targets.push(`/welding/${n}`);
-targets.push("/flange");
 
 const merged = await PDFDocument.create();
 for (const [i, url] of targets.entries()) {

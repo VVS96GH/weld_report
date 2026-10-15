@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import type { FilterWidget } from "@/lib/page-model";
 import { FORECAST_FILTER_IDS, getForecastPage, getPage, type ForecastFilters, type WeldingFilters } from "@/lib/page-source";
@@ -62,6 +62,9 @@ export default async function WeldingReportPage(props: PageProps<"/welding/[page
 
   const params = await props.searchParams;
   const entry = reportEntry(n)!;
+  // Pages 3..8 are other reports placed in the reading order (Flange, Welder
+  // Performance, Errors): the number sends there.
+  if (entry.kind === "link") redirect(entry.href);
 
   // Display page 2 is the RT Backlog Forecast (pbix page 20), inserted into the
   // report's reading order; every other display page maps to its mockup data page.

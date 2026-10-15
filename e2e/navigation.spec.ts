@@ -15,20 +15,34 @@ test.beforeEach(async ({}, testInfo) => {
 });
 
 test.describe("page navigation", () => {
+  // Pages 3..8 are other reports (Flange, Welder Performance, Errors); the welding
+  // pages proper resume at 9.
   test("prev/next buttons change the URL and the page title", async ({ page }) => {
-    await gotoWeldingPage(page, 4);
+    await gotoWeldingPage(page, 10);
 
     await page.getByRole("link", { name: "Next page" }).click();
-    await waitForPage(page, 5);
-    await expect(page).toHaveURL(/\/welding\/5$/);
-    await expect(page).toHaveTitle(new RegExp(escapeRegExp(WELDING_PAGE_TITLES[4])));
+    await waitForPage(page, 11);
+    await expect(page).toHaveURL(/\/welding\/11$/);
+    await expect(page).toHaveTitle(new RegExp(escapeRegExp(WELDING_PAGE_TITLES[10])));
 
     await page.getByRole("link", { name: "Previous page" }).click();
-    await waitForPage(page, 4);
+    await waitForPage(page, 10);
     await page.getByRole("link", { name: "Previous page" }).click();
-    await waitForPage(page, 3);
-    await expect(page).toHaveURL(/\/welding\/3$/);
-    await expect(page).toHaveTitle(new RegExp(escapeRegExp(WELDING_PAGE_TITLES[2])));
+    await waitForPage(page, 9);
+    await expect(page).toHaveURL(/\/welding\/9$/);
+    await expect(page).toHaveTitle(new RegExp(escapeRegExp(WELDING_PAGE_TITLES[8])));
+  });
+
+  test("the linked reports sit in the reading order (2 -> Flange, Errors -> 9)", async ({ page }) => {
+    await gotoWeldingPage(page, 2);
+    await page.getByRole("link", { name: "Next page" }).click();
+    await expect(page).toHaveURL(/\/flange$/);
+    await expect(page.locator(".page-indicator")).toHaveText(`Page 3 / ${WELDING_TOTAL_PAGES}`);
+    await page.goto("/errors");
+    await expect(page.locator(".page-indicator")).toHaveText(`Page 8 / ${WELDING_TOTAL_PAGES}`);
+    await page.getByRole("link", { name: "Next page" }).click();
+    await waitForPage(page, 9);
+    await expect(page).toHaveURL(/\/welding\/9$/);
   });
 
   test("the page-jump select navigates to page 20", async ({ page }) => {
@@ -39,14 +53,14 @@ test.describe("page navigation", () => {
   });
 
   test("keyboard ArrowRight navigates to the next page", async ({ page }) => {
-    await gotoWeldingPage(page, 4);
+    await gotoWeldingPage(page, 10);
     // Move focus off the select/inputs first so the arrow key reaches the
     // document-level keydown handler in ReportShell rather than being
     // consumed by a focused form control.
     await page.locator("#page-heading").click();
     await page.keyboard.press("ArrowRight");
-    await waitForPage(page, 5);
-    await expect(page).toHaveURL(/\/welding\/5$/);
+    await waitForPage(page, 11);
+    await expect(page).toHaveURL(/\/welding\/11$/);
   });
 
   test("the page after the last renders the 404 page", async ({ page }) => {

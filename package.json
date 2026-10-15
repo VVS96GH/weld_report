@@ -31,6 +31,7 @@
     "db:load:welders": "node --env-file-if-exists=.env --import tsx scripts/load-welders.ts",
     "db:load:flange": "node --env-file-if-exists=.env --import tsx scripts/load-flange.ts",
     "db:load:wps": "node --env-file-if-exists=.env --import tsx scripts/load-wps-register.ts",
+    "db:load:welder-cum": "node --env-file-if-exists=.env --import tsx scripts/load-welder-perf-cum.ts",
     "db:refresh": "node --env-file-if-exists=.env --import tsx scripts/refresh-data.ts",
     "export:pdf": "node scripts/export-pdf.mjs"
   },

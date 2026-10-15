@@ -279,21 +279,54 @@ const FALLBACK_PALETTE: Palette = {
   seriesS: null,
 };
 
+/**
+ * A colour token as the canvas can draw it, or null. The token is resolved
+ * through the browser (a probe element's computed `color`, always rgb/rgba)
+ * and then checked on a canvas: a colour syntax the browser cannot draw —
+ * a colleague's browser on 2026-10-15 drew every flange chart black — falls
+ * back instead of turning black.
+ */
+function canvasColor(raw: string, probe: HTMLElement | null, ctx: CanvasRenderingContext2D | null): string | null {
+  const v = raw.trim();
+  if (!v) return null;
+  let resolved = v;
+  if (probe) {
+    probe.style.color = "";
+    probe.style.color = v;
+    if (probe.style.color) resolved = getComputedStyle(probe).color || v;
+  }
+  if (!ctx) return resolved;
+  const sentinel = "#010203"; // token-lint: allow-hex — a marker no token uses
+  ctx.fillStyle = sentinel;
+  ctx.fillStyle = resolved;
+  const drawn = String(ctx.fillStyle);
+  return drawn === sentinel && resolved.toLowerCase() !== sentinel ? null : drawn;
+}
+
 function readPalette(): Palette {
   if (typeof window === "undefined") return FALLBACK_PALETTE;
   const styles = getComputedStyle(document.documentElement);
-  const colors = PALETTE_VARS.map((v) => styles.getPropertyValue(v).trim()).filter(Boolean);
-  return {
-    colors: colors.length > 0 ? colors : FALLBACK_PALETTE.colors,
-    primary: styles.getPropertyValue("--accent-primary").trim() || FALLBACK_PALETTE.primary,
-    grid: styles.getPropertyValue("--chart-grid").trim() || FALLBACK_PALETTE.grid,
-    text: styles.getPropertyValue("--text-secondary").trim() || FALLBACK_PALETTE.text,
-    attention: styles.getPropertyValue("--chart-attention").trim() || null,
-    font: styles.getPropertyValue("--font-mono").trim() || undefined,
-    fg: styles.getPropertyValue("--fg").trim() || styles.getPropertyValue("--text-primary").trim() || FALLBACK_PALETTE.fg,
-    seriesF: styles.getPropertyValue("--series-f").trim() || null,
-    seriesS: styles.getPropertyValue("--series-s").trim() || null,
-  };
+  const probe = document.createElement("span");
+  probe.style.display = "none";
+  document.body.appendChild(probe);
+  const ctx = document.createElement("canvas").getContext("2d");
+  const read = (name: string) => canvasColor(styles.getPropertyValue(name), probe, ctx);
+  try {
+    const colors = PALETTE_VARS.map(read).filter((c): c is string => c !== null);
+    return {
+      colors: colors.length > 0 ? colors : FALLBACK_PALETTE.colors,
+      primary: read("--accent-primary") ?? FALLBACK_PALETTE.primary,
+      grid: read("--chart-grid") ?? FALLBACK_PALETTE.grid,
+      text: read("--text-secondary") ?? FALLBACK_PALETTE.text,
+      attention: read("--chart-attention"),
+      font: styles.getPropertyValue("--font-mono").trim() || undefined,
+      fg: read("--fg") ?? read("--text-primary") ?? FALLBACK_PALETTE.fg,
+      seriesF: read("--series-f"),
+      seriesS: read("--series-s"),
+    };
+  } finally {
+    probe.remove();
+  }
 }
 
 // Coral is the highlighter (T.EN spec §1.4): rejection and backlog series take the
@@ -307,6 +340,21 @@ const ATTENTION_SERIES = /\b(rej|reject|rejected|backlog|b\.log|not done)\b|"R"/
 const F_SERIES = /^"?F"?( Weld( only)?)?$/i;
 const S_SERIES = /^"?S"?( Weld)?$|^"F"\+"S"/i;
 
+/** `color` at `alpha`, whatever CSS colour syntax the token uses (the canvas normalises it). */
+function withAlpha(color: string, alpha: number): string {
+  if (typeof document === "undefined") return color;
+  const ctx = document.createElement("canvas").getContext("2d");
+  if (!ctx) return color;
+  ctx.fillStyle = color;
+  const norm = String(ctx.fillStyle);
+  const hex = /^#([0-9a-f]{6})$/i.exec(norm);
+  if (hex) {
+    const n = parseInt(hex[1], 16);
+    return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
+  }
+  return norm.replace(/rgba?\(([^)]+?)(,\s*[\d.]+)?\)/, (_m, rgb: string) => `rgba(${rgb.split(",").slice(0, 3).join(",")}, ${alpha})`);
+}
+
 function seriesColor(label: string, index: number, palette: Palette): string {
   if (palette.attention && ATTENTION_SERIES.test(label)) return palette.attention;
   if (palette.seriesF && F_SERIES.test(label)) return palette.seriesF;
@@ -315,6 +363,42 @@ function seriesColor(label: string, index: number, palette: Palette): string {
 }
 
 type DatalabelCtx = { dataset: { data: unknown[] }; dataIndex: number; chart: ChartJS };
+
+type AreaCtx = DatalabelCtx & { datasetIndex: number };
+
+/**
+ * Stacked-area labels (the pbix "Status Report" trends): the stack total above
+ * the top line and the first series (ok) under its own line — nothing for the
+ * thin middle series, whose labels would sit on top of each other (owner,
+ * 2026-10-14). The tooltip still gives every series.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function areaLabels(palette: Palette): any {
+  const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : null);
+  const at = (ctx: AreaCtx) => ctx.chart.data.datasets.map((d) => num(d.data[ctx.dataIndex]));
+  const topIndex = (ctx: AreaCtx) => {
+    const vals = at(ctx);
+    for (let i = vals.length - 1; i >= 0; i -= 1) if (vals[i] !== null && vals[i] !== 0) return i;
+    return 0;
+  };
+  const total = (ctx: AreaCtx) => at(ctx).reduce<number>((a, b) => a + (b ?? 0), 0);
+  return {
+    display: (ctx: AreaCtx) => {
+      if (num(ctx.dataset.data[ctx.dataIndex]) === null) return false;
+      const top = topIndex(ctx);
+      if (ctx.datasetIndex === top) return true;
+      // the ok line gets its own label only when something is stacked above it
+      return ctx.datasetIndex === 0 && total(ctx) !== num(ctx.dataset.data[ctx.dataIndex]);
+    },
+    formatter: (v: unknown, ctx: AreaCtx) => fmtValue(ctx.datasetIndex === topIndex(ctx) ? total(ctx) : v, false),
+    align: (ctx: AreaCtx) => (ctx.datasetIndex === topIndex(ctx) ? "top" : "bottom"),
+    anchor: (ctx: AreaCtx) => (ctx.datasetIndex === topIndex(ctx) ? "end" : "start"),
+    offset: 4,
+    clamp: true,
+    color: palette.fg,
+    font: { size: 10, family: palette.font, weight: 600 },
+  };
+}
 
 /** Per-type chartjs-plugin-datalabels config; `display: false` is the registered default. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -525,12 +609,18 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
       };
     }
     const thresholds = widget.chart_type === "line" ? thresholdsFor(widget.title) : null;
+    const area = (widget.options_notes ?? "").includes("area");
     const datasets = widget.datasets.map((ds, i) => {
       // With threshold lines the rate itself is the neutral series (pbix: blue) and
       // the red is reserved for the "Unacceptable" limit.
       const color = thresholds ? palette.colors[0] ?? palette.primary : seriesColor(ds.label, i, palette);
       const base = { label: ds.label, data: slice(ds.data).map(toNum), stack: ds.stack };
       if (widget.chart_type === "line") {
+        // "area" (Welder Performance trends, the pbix stacked-area visual): each series
+        // fills down to the one below it, translucent so the stack stays readable
+        if (area) {
+          return { ...base, borderColor: color, backgroundColor: withAlpha(color, 0.3), fill: i === 0 ? "origin" : "-1", tension: 0.25, pointRadius: 3 };
+        }
         return { ...base, borderColor: color, backgroundColor: color, tension: thresholds ? 0 : 0.3, pointRadius: thresholds ? 3 : 2 };
       }
       return { ...base, backgroundColor: color, borderColor: color };
@@ -561,13 +651,15 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
           ? { top: 18, bottom: 18, left: 24, right: 24 }
           : horizontal
             ? { right: 48, top: 8 }
-            : { top: widget.chart_type === "bar" && !(stackedX || stackedY) && widget.datasets.length > 2 ? 34 : 16 },
+            : notes.includes("area")
+              ? { top: 16, right: 18 } // the last point's total is not clipped by the edge
+              : { top: widget.chart_type === "bar" && !(stackedX || stackedY) && widget.datasets.length > 2 ? 34 : 16 },
       },
       plugins: {
         // pbix-style named slice labels already name every slice, so the legend goes
         legend: { display: !(circular && notes.includes("label-name-pct")), labels: { color: palette.text, boxWidth: 12, font: { size: 10, family: palette.font } } },
         tooltip: { enabled: true },
-        datalabels: valueLabels(widget.chart_type, stackedX || stackedY, percentAxis, circular, palette, widget.datasets.length, end - start, horizontal, notes.includes("label-name-pct")),
+        datalabels: notes.includes("area") ? areaLabels(palette) : valueLabels(widget.chart_type, stackedX || stackedY, percentAxis, circular, palette, widget.datasets.length, end - start, horizontal, notes.includes("label-name-pct")),
         centerTotal: circular && notes.includes("center-total") ? { color: palette.fg, font: palette.font ?? "sans-serif" } : undefined,
         stackTotals:
           widget.chart_type === "bar" && (stackedX || stackedY)

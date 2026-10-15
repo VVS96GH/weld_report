@@ -4,8 +4,10 @@ import { createContext, useCallback, useContext, useEffect, useState } from "rea
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
-import { WELDING_PAGE_TITLES, WELDING_REPORT_SUBTITLE, WELDING_TOTAL_PAGES } from "@/lib/welding-pages";
+import { displayForPath, displayHref, WELDING_PAGE_TITLES, WELDING_REPORT_SUBTITLE, WELDING_TOTAL_PAGES } from "@/lib/welding-pages";
 import { SCREENS } from "@/lib/screens";
+import { WP_FIRST } from "@/lib/welder-perf-nav";
+import { WpNavMenu } from "@/components/WpNavMenu";
 import { ThemeMoodControls } from "@/components/ThemeMoodControls";
 import { RefreshDataButton } from "@/components/RefreshDataButton";
 
@@ -41,27 +43,37 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
   const isFlange = pathname?.startsWith("/flange") ?? false;
   // The Errors page (2026-10-14): data errors for the sub-contractors to correct.
   const isErrors = pathname?.startsWith("/errors") ?? false;
+  // The WELDER PERFORMANCE tab (2026-10-14): its own pages, 2 weeks / 1 month, …
+  const wpSlug = pathname?.match(/^\/welder-performance(?:\/([a-z0-9-]+))?/)?.[1] ?? (pathname?.startsWith("/welder-performance") ? WP_FIRST : null);
+  const isWelders = wpSlug !== null;
   // Consolidation option A: /report/<screen> — 7 screens with filters instead of the page list.
   const screenId = pathname?.match(/^\/report\/([a-z]+)/)?.[1] ?? null;
   const isScreens = screenId !== null;
-  const current = currentPageFromPathname(pathname) ?? 1;
+  // The reading order (lib/welding-pages.ts): the welding pages and, as pages 3..8,
+  // Flange, the Welder Performance pages and Errors — one page nav across them.
+  const display = displayForPath(pathname);
+  const inSequence = display !== null;
+  const current = display ?? 1;
+  const onWelding = currentPageFromPathname(pathname) !== null;
   const title = isFlange
     ? "Flange Inspection Dashboard"
     : isErrors
       ? "Errors"
+      : isWelders
+      ? "Welder Performance"
       : isScreens
       ? (SCREENS.find((sc) => sc.id === screenId)?.title ?? "")
       : (WELDING_PAGE_TITLES[current - 1] ?? "");
 
   const goTo = useCallback(
     (n: number) => {
-      if (n >= 1 && n <= WELDING_TOTAL_PAGES) router.push(`/welding/${n}`);
+      if (n >= 1 && n <= WELDING_TOTAL_PAGES) router.push(displayHref(n));
     },
     [router],
   );
 
   useEffect(() => {
-    if (isFlange || isScreens || isErrors) return; // ← → paging is a welding-report affordance only
+    if (!onWelding) return; // ← → paging only on the welding pages (the others have their own inputs)
     function onKeyDown(e: KeyboardEvent) {
       if (e.target instanceof HTMLSelectElement || e.target instanceof HTMLInputElement) return;
       if (e.key === "ArrowLeft") goTo(current - 1);
@@ -69,7 +81,7 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
     }
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [current, goTo, isFlange, isScreens, isErrors]);
+  }, [current, goTo, onWelding]);
 
   return (
     <SubtitleContext.Provider value={{ setSubtitle }}>
@@ -104,7 +116,7 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
       <nav className="page-nav" aria-label="Report navigation">
         {/* Report switcher: two pill links; the current report carries aria-current. */}
         <div className="report-switcher" role="group" aria-label="Report">
-          <Link href="/welding/1" className="report-pill" aria-current={isFlange || isScreens || isErrors ? undefined : "page"}>
+          <Link href="/welding/1" className="report-pill" aria-current={isFlange || isScreens || isErrors || isWelders ? undefined : "page"}>
             Welding
           </Link>
           <Link href="/flange" className="report-pill" aria-current={isFlange ? "page" : undefined}>
@@ -113,13 +125,14 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
           <Link href="/report/overview" className="report-pill" aria-current={isScreens ? "page" : undefined}>
             Screens
           </Link>
+          <Link href="/welder-performance" className="report-pill" aria-current={isWelders ? "page" : undefined}>
+            Welder Performance
+          </Link>
           <Link href="/errors" className="report-pill" aria-current={isErrors ? "page" : undefined}>
             Errors
           </Link>
         </div>
-        {isFlange || isErrors ? (
-          <span className="page-title-display">{title}</span>
-        ) : isScreens ? (
+        {isScreens ? (
           <div className="screen-tabs" role="group" aria-label="Screens">
             {SCREENS.map((sc) => (
               <Link key={sc.id} href={`/report/${sc.id}`} className="report-pill" aria-current={sc.id === screenId ? "page" : undefined}>
@@ -132,45 +145,50 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
           </div>
         ) : (
           <>
-            <span className="page-indicator">
-              Page {current} / {WELDING_TOTAL_PAGES}
-            </span>
-            <span className="page-title-display">{title}</span>
-            <div className="nav-controls">
-              {current > 1 ? (
-                <Link href={`/welding/${current - 1}`} className="nav-btn" aria-label="Previous page">
-                  &#9664; Prev
-                </Link>
-              ) : (
-                <button type="button" className="nav-btn" disabled aria-label="Previous page">
-                  &#9664; Prev
-                </button>
-              )}
-              <label htmlFor="page-select" className="sr-only">
-                Jump to page
-              </label>
-              <select
-                id="page-select"
-                className="page-select"
-                value={current}
-                onChange={(e) => goTo(Number(e.target.value))}
-              >
-                {WELDING_PAGE_TITLES.map((t, i) => (
-                  <option key={i} value={i + 1}>
-                    {`${i + 1}. ${t}`}
-                  </option>
-                ))}
-              </select>
-              {current < WELDING_TOTAL_PAGES ? (
-                <Link href={`/welding/${current + 1}`} className="nav-btn" aria-label="Next page">
-                  Next &#9654;
-                </Link>
-              ) : (
-                <button type="button" className="nav-btn" disabled aria-label="Next page">
-                  Next &#9654;
-                </button>
-              )}
-            </div>
+            {isWelders ? <WpNavMenu slug={wpSlug} /> : null}
+            {inSequence ? (
+              <span className="page-indicator">
+                Page {current} / {WELDING_TOTAL_PAGES}
+              </span>
+            ) : null}
+            {isWelders ? null : <span className="page-title-display">{title}</span>}
+            {inSequence ? (
+              <div className="nav-controls">
+                {current > 1 ? (
+                  <Link href={displayHref(current - 1)} className="nav-btn" aria-label="Previous page">
+                    &#9664; Prev
+                  </Link>
+                ) : (
+                  <button type="button" className="nav-btn" disabled aria-label="Previous page">
+                    &#9664; Prev
+                  </button>
+                )}
+                <label htmlFor="page-select" className="sr-only">
+                  Jump to page
+                </label>
+                <select
+                  id="page-select"
+                  className="page-select"
+                  value={current}
+                  onChange={(e) => goTo(Number(e.target.value))}
+                >
+                  {WELDING_PAGE_TITLES.map((t, i) => (
+                    <option key={i} value={i + 1}>
+                      {`${i + 1}. ${t}`}
+                    </option>
+                  ))}
+                </select>
+                {current < WELDING_TOTAL_PAGES ? (
+                  <Link href={displayHref(current + 1)} className="nav-btn" aria-label="Next page">
+                    Next &#9654;
+                  </Link>
+                ) : (
+                  <button type="button" className="nav-btn" disabled aria-label="Next page">
+                    Next &#9654;
+                  </button>
+                )}
+              </div>
+            ) : null}
           </>
         )}
       </nav>

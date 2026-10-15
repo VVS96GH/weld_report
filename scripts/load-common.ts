@@ -349,6 +349,11 @@ export const POST_LOAD_MATVIEWS: { name: string; concurrently: boolean }[] = [
   { name: "mv_joint", concurrently: true },
   // 2,194,756 rows, ~7 s.
   { name: "mv_joint_wps", concurrently: true },
+  // 2.5 M rows, ~33 s; no unique key (its grain has NULLs), so a plain refresh.
+  { name: "mv_welder_perf", concurrently: false },
+  // Read mv_welder_perf, so after it. Small, keyed: online.
+  { name: "mv_welder_status", concurrently: true },
+  { name: "mv_welder_sub_status", concurrently: true },
 ];
 
 export interface RefreshResult {

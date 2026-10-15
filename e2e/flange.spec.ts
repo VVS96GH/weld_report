@@ -1,5 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 
+import { WELDING_TOTAL_PAGES } from "@/lib/welding-pages";
+
 import { setStoredTheme, type Scheme } from "./support/theme";
 import { gotoWeldingPage } from "./support/wait";
 
@@ -38,9 +40,11 @@ for (const scheme of ["dark", "light"] as Scheme[]) {
       expect(await documentOverflow(page)).toBeLessThanOrEqual(OVERFLOW_TOLERANCE_PX);
     });
 
-    test("the welding paging controls are not shown on the flange report", async ({ page }) => {
-      await expect(page.locator(".page-indicator")).toHaveCount(0);
-      await expect(page.locator("#page-select")).toHaveCount(0);
+    // Flange is page 3 of the reading order (owner request 2026-10-15), so the
+    // shared page nav shows it there.
+    test("the flange report is page 3 of the page nav", async ({ page }) => {
+      await expect(page.locator(".page-indicator")).toHaveText(`Page 3 / ${WELDING_TOTAL_PAGES}`);
+      await expect(page.locator("#page-select")).toHaveValue("3");
       await expect(page.getByRole("link", { name: "Flange" })).toHaveAttribute("aria-current", "page");
     });
   });
