@@ -3235,7 +3235,7 @@ html {
   grid-template-columns: minmax(0, 5fr) minmax(170px, 1.4fr) minmax(0, 6fr);
   gap: 14px;
   align-items: start;
-  margin-bottom: 16px;
+  margin-bottom: 0;
 }
 .forecast-col {
   display: flex;
@@ -3246,42 +3246,54 @@ html {
 .forecast-col .card {
   min-width: 0;
 }
+/* sized to one 1920x937 screen (owner, 2026-10-15) */
+.forecast-layout .card {
+  padding-block: 12px;
+}
+.forecast-layout .card-header {
+  margin-bottom: 4px;
+  padding-bottom: 6px;
+}
+/* the chart heights follow the window height, so the page fits whatever the
+   browser leaves for it (owner, 2026-10-15); a floor keeps them readable */
 .forecast-bar .chart-container {
-  height: 300px;
+  height: clamp(200px, calc((100dvh - 420px) * 0.56), 340px);
 }
 .forecast-done-row {
   display: grid;
-  grid-template-columns: minmax(150px, 1fr) minmax(0, 2fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
   gap: 14px;
   align-items: stretch;
 }
-.forecast-done-kpi {
-  margin-bottom: 0;
-}
-.forecast-done-kpi .stat-box {
-  height: 100%;
-}
-.forecast-donut-small .chart-container {
-  height: 220px;
-}
+.forecast-donut-small .chart-container,
 .forecast-donut .chart-container {
-  height: 320px;
+  height: clamp(190px, calc((100dvh - 420px) * 0.44), 300px);
 }
 .forecast-stack {
   flex-direction: column;
   margin-bottom: 0;
+  gap: 10px;
 }
 .forecast-stack .stat-box {
   flex: 0 0 auto;
+  padding-block: 10px;
 }
 .forecast-monthly .chart-container {
-  height: 300px;
+  height: clamp(140px, calc((100dvh - 572px) / 2), 260px);
+}
+/* the small provenance lines stay off these cards, as on page 1; a hover shows them */
+.forecast-layout .stat-sub,
+[data-mood] .forecast-layout .stat-sub {
+  display: none;
 }
 .forecast-cards {
   margin-bottom: 0;
+  gap: 10px;
 }
 .forecast-cards .stat-box {
   flex: 1 1 120px;
+  padding-block: 8px;
+  min-height: 0;
 }
 @media (max-width: 1100px) {
   .forecast-layout {

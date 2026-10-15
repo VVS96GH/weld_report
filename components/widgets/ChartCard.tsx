@@ -441,7 +441,8 @@ function valueLabels(type: string, stacked: boolean, percent: boolean, circular:
       display: (ctx: DatalabelCtx) => {
         const v = ctx.dataset.data[ctx.dataIndex];
         const total = ctx.dataset.data.reduce<number>((a, b) => a + (typeof b === "number" ? b : 0), 0);
-        return typeof v === "number" && total > 0 && v / total >= 0.02;
+        // "auto": a label that would collide with another is not drawn (tooltip keeps it)
+        return typeof v === "number" && total > 0 && v / total >= 0.02 ? "auto" : false;
       },
       formatter: (v: unknown, ctx: DatalabelCtx) => {
         if (!namePct) return fmtValue(v, false);
@@ -517,7 +518,9 @@ function valueLabels(type: string, stacked: boolean, percent: boolean, circular:
     return {
       display: (ctx: DatalabelCtx) => {
         const v = ctx.dataset.data[ctx.dataIndex];
-        return typeof v === "number" && v !== 0;
+        // thin bars sit closer than a line of text: "auto" drops a label that would
+        // overlap its neighbour (owner, 2026-10-15) — the tooltip still has it
+        return typeof v === "number" && v !== 0 ? "auto" : false;
       },
       formatter: (v: unknown) => fmtValue(v, percent),
       color: palette.fg,
@@ -686,11 +689,16 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
     () => ({
       responsive: true,
       maintainAspectRatio: false,
+      // a smaller ring leaves the outside labels room inside the chart, so they
+      // reach neither the card title nor the legend below (owner, 2026-10-15)
+      ...(circular && notes.includes("legend-bottom") ? { radius: "72%" } : {}),
       indexAxis: horizontal ? "y" : "x",
       // Room for the totals above the tallest stack / the labels outside the ring.
       layout: {
         padding: circular
-          ? { top: 18, bottom: 18, left: 24, right: 24 }
+          ? notes.includes("legend-bottom")
+            ? { top: 20, bottom: 4, left: 30, right: 30 }
+            : { top: 18, bottom: 18, left: 24, right: 24 }
           : horizontal
             ? { right: 48, top: 8 }
             : notes.includes("area")
@@ -701,7 +709,7 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
       },
       plugins: {
         // pbix-style named slice labels already name every slice, so the legend goes
-        legend: { display: !(circular && notes.includes("label-name-pct")), labels: { color: palette.text, boxWidth: 12, font: { size: 10, family: palette.font } } },
+        legend: { display: !(circular && notes.includes("label-name-pct")), position: notes.includes("legend-bottom") ? "bottom" : "top", labels: { padding: notes.includes("legend-bottom") ? 18 : 10, color: palette.text, boxWidth: 12, font: { size: 10, family: palette.font } } },
         tooltip: { enabled: true },
         datalabels: notes.includes("area") ? areaLabels(palette) : valueLabels(widget.chart_type, stackedX || stackedY, percentAxis, circular, palette, widget.datasets.length, end - start, horizontal, notes.includes("label-name-pct")),
         centerTotal: circular && notes.includes("center-total") ? { color: palette.fg, font: palette.font ?? "sans-serif" } : undefined,

@@ -10,9 +10,9 @@ import { TextNote } from "@/components/widgets/TextNote";
  * The RT Backlog Forecast page laid out as the pbix page 20 is (owner request
  * 2026-09-08: "расположить графики как на этой странице"):
  *
- *   left   — the per-sub-contractor forecast bar, with "Total RT/UT Done" and the
- *            Done / Backlog doughnut beneath it, then the forecast-by-RT% doughnut
- *   middle — the six headline cards, stacked
+ *   left   — the per-sub-contractor forecast bar, the Done / Backlog and the
+ *            forecast-by-RT% doughnuts side by side beneath it
+ *   middle — "Total RT/UT Done" and the six headline cards, stacked
  *   right  — the joint monthly chart, its row of RT cards, the dia monthly chart,
  *            its row of dia cards
  *
@@ -24,7 +24,7 @@ import { TextNote } from "@/components/widgets/TextNote";
 
 const RIGHT_RT_CARDS = ["RT B.Log", "Numb RT/UT_", "RT Avrg Prod-on (week-end filtered)", "Months to keep RT B.log", "PWHT B.Log PBI Rule"];
 const RIGHT_DIA_CARDS = ["RT Dia B.Log", "Total Welded RT Dia", "RT Dia Avrg Prod-on", "Months to keep Dia RT B.log"];
-const MIDDLE_CARDS = ["RT B.Log Talisman", "RT Total Forecast B.log", "RT Dia Total Forecast B.log", "Numb RT/UT 2024", "RT Avrg Prod-on 2024-26 per Month", "QTY Years"];
+const MIDDLE_CARDS = ["Total RT/UT Done", "RT B.Log Talisman", "RT Total Forecast B.log", "RT Dia Total Forecast B.log", "Numb RT/UT 2024", "RT Avrg Prod-on 2024-26 per Month", "QTY Years"];
 
 function Chart({ widget, className }: { widget: ChartWidget; className?: string }) {
   return (
@@ -61,12 +61,16 @@ export function ForecastView({ model, subtitle }: { model: PageModel; subtitle: 
   };
   const cards = (labels: string[]) => labels.map(kpi).filter((k): k is KpiWidget => Boolean(k));
 
+  // one screen (owner, 2026-10-15): the monthly charts show the last 12 months,
+  // the scrollbar reaches the rest; the doughnuts keep their legend below so
+  // the outside labels never reach the title
+  const hint = (w: ChartWidget | undefined, extra: string) =>
+    w ? { ...w, options_notes: `${w.options_notes ?? ""} ${extra}`.trim() } : undefined;
   const bar = chart("forecast_bar");
-  const doneKpi = kpi("Total RT/UT Done");
-  const donutDone = chart("forecast_donut_done");
-  const donutBacklog = chart("forecast_donut_backlog");
-  const joint = chart("forecast_joint_monthly");
-  const dia = chart("forecast_dia_monthly");
+  const donutDone = hint(chart("forecast_donut_done"), "legend-bottom");
+  const donutBacklog = hint(chart("forecast_donut_backlog"), "legend-bottom");
+  const joint = hint(chart("forecast_joint_monthly"), "window 12");
+  const dia = hint(chart("forecast_dia_monthly"), "window 12");
   const middle = cards(MIDDLE_CARDS);
   const rightRt = cards(RIGHT_RT_CARDS);
   const rightDia = cards(RIGHT_DIA_CARDS);
@@ -82,14 +86,9 @@ export function ForecastView({ model, subtitle }: { model: PageModel; subtitle: 
         <div className="forecast-col forecast-col--left">
           {bar ? <Chart widget={bar} className="forecast-bar" /> : null}
           <div className="forecast-done-row">
-            {doneKpi ? (
-              <div className="stats-row forecast-done-kpi">
-                <KpiCard widget={doneKpi} />
-              </div>
-            ) : null}
             {donutDone ? <Chart widget={donutDone} className="forecast-donut-small" /> : null}
+            {donutBacklog ? <Chart widget={donutBacklog} className="forecast-donut" /> : null}
           </div>
-          {donutBacklog ? <Chart widget={donutBacklog} className="forecast-donut" /> : null}
         </div>
 
         <div className="forecast-col forecast-col--middle">
