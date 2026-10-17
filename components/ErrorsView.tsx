@@ -4,7 +4,16 @@ import { useState } from "react";
 
 import { FilterBar } from "@/components/FilterBar";
 import { usePageSubtitle } from "@/components/ReportShell";
+import { ColHead, colThProps } from "@/components/ColHead";
+import { tableKeyOf, useTablePrefs } from "@/lib/col-prefs";
 import type { ErrorCheckResult, ErrorNode, ErrorsPage } from "@/lib/pages/errors";
+import { nextSort, sortBy, type SortState } from "@/lib/table-sort";
+
+/** Nodes in the header-arrow order: column 0 the label, then the split columns, then the total. */
+function sortNodes(nodes: ErrorNode[], columns: string[], sort: SortState): ErrorNode[] {
+  if (!sort) return nodes;
+  return sortBy(nodes, (n) => (sort.col === 0 ? n.label : sort.col <= columns.length ? (n.counts[columns[sort.col - 1]] ?? null) : n.total), sort);
+}
 
 const num = (n: number | undefined) => (n ? n.toLocaleString("en-US") : "");
 
@@ -19,7 +28,9 @@ function NodeRows({
   columns,
   open,
   toggle,
+  sort,
 }: {
+  sort: SortState;
   node: ErrorNode;
   path: string;
   depth: number;
@@ -49,9 +60,10 @@ function NodeRows({
         <td className="num">{num(node.total)}</td>
       </tr>
       {isOpen
-        ? node.children.map((ch) => (
+        ? sortNodes(node.children, columns, sort).map((ch) => (
             <NodeRows
               key={ch.label}
+              sort={sort}
               node={ch}
               path={`${path}\u0000${ch.label}`}
               depth={depth + 1}
@@ -80,6 +92,11 @@ function CheckCard({ check, n }: { check: ErrorCheckResult; n: number }) {
   const columns = check.totalLabel ? [] : check.matrix.columns;
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const toggle = (p: string) => setOpen((o) => ({ ...o, [p]: !o[p] }));
+  const [sort, setSort] = useState<SortState>(null);
+  const tkey = tableKeyOf(["errors", check.id]);
+  const prefs = useTablePrefs(tkey);
+  const onSort = (col: number) => setSort((cur) => nextSort(cur, col));
+  const ariaSort = (col: number) => (sort?.col === col ? (sort.dir === "asc" ? "ascending" : "descending") : undefined);
   const everything = allPaths(nodes);
   const allOpen = everything.length > 0 && everything.every((p) => open[p]);
   const csv = `/api/errors/${check.id}${check.csvQuery ? `?${check.csvQuery}` : ""}`;
@@ -122,13 +139,17 @@ function CheckCard({ check, n }: { check: ErrorCheckResult; n: number }) {
             <table className="data-table error-flat">
               <thead>
                 <tr>
-                  {check.table.columns.map((c) => (
-                    <th key={c}>{c}</th>
+                  {check.table.columns.map((c, ci) => (
+                    <th key={c} aria-sort={ariaSort(ci)} {...colThProps(prefs, c)}>
+                      <ColHead table={tkey} col={c} index={ci} sort={sort} onSort={onSort}>
+                        {c}
+                      </ColHead>
+                    </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {check.table.rows.map((r, i) => (
+                {sortBy(check.table.rows, (r) => r[sort?.col ?? 0], sort).map((r, i) => (
                   <tr key={i}>
                     {r.map((v, j) => (
                       <td key={j} className={typeof v === "number" ? "num" : undefined}>
@@ -155,18 +176,28 @@ function CheckCard({ check, n }: { check: ErrorCheckResult; n: number }) {
           <table className="data-table error-matrix">
             <thead>
               <tr>
-                <th>{check.rowLabel}</th>
-                {columns.map((c) => (
-                  <th key={c} className="num">
-                    {c || "(blank)"}
+                <th aria-sort={ariaSort(0)} {...colThProps(prefs, check.rowLabel)}>
+                  <ColHead table={tkey} col={check.rowLabel} index={0} sort={sort} onSort={onSort}>
+                    {check.rowLabel}
+                  </ColHead>
+                </th>
+                {columns.map((c, ci) => (
+                  <th key={c} className="num" aria-sort={ariaSort(ci + 1)} {...colThProps(prefs, c || "(blank)")}>
+                    <ColHead table={tkey} col={c || "(blank)"} index={ci + 1} sort={sort} onSort={onSort}>
+                      {c || "(blank)"}
+                    </ColHead>
                   </th>
                 ))}
-                <th className="num">{check.totalLabel ?? "Total"}</th>
+                <th className="num" aria-sort={ariaSort(columns.length + 1)} {...colThProps(prefs, (check.totalLabel ?? "Total"))}>
+                  <ColHead table={tkey} col={(check.totalLabel ?? "Total")} index={columns.length + 1} sort={sort} onSort={onSort}>
+                    {check.totalLabel ?? "Total"}
+                  </ColHead>
+                </th>
               </tr>
             </thead>
             <tbody>
-              {nodes.map((n) => (
-                <NodeRows key={n.label} node={n} path={n.label} depth={0} columns={columns} open={open} toggle={toggle} />
+              {sortNodes(nodes, columns, sort).map((n) => (
+                <NodeRows key={n.label} sort={sort} node={n} path={n.label} depth={0} columns={columns} open={open} toggle={toggle} />
               ))}
               <tr className="row-header">
                 <td>Total</td>

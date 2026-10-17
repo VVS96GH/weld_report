@@ -2,7 +2,10 @@
 
 import { Fragment, useState } from "react";
 
+import { ColHead, colThProps } from "@/components/ColHead";
+import { tableKeyOf, useTablePrefs } from "@/lib/col-prefs";
 import type { TableWidget } from "@/lib/page-model";
+import { nextSort, sortGroupedRows, type SortState } from "@/lib/table-sort";
 
 function rowsEqual(a: string[], b: string[]): boolean {
   return a.length === b.length && a.every((cell, i) => cell === b[i]);
@@ -67,12 +70,20 @@ const isChild = (row: string[]) => /^\s{2}/.test(row[0] ?? "");
  */
 export function DataTable({ widget, collapsible = false }: { widget: TableWidget; collapsible?: boolean }) {
   const [open, setOpen] = useState<Record<number, boolean>>({});
+  const [sort, setSort] = useState<SortState>(null);
+  const tkey = tableKeyOf(widget.columns);
+  const prefs = useTablePrefs(tkey);
   const lastRow = widget.rows[widget.rows.length - 1];
   // `total_row` marks WHICH row gets the mockup's `.row-header` styling — it isn't a
   // separate row. The extractor (and both the fixture and DB assemblers) already
   // include the mockup's Total row in `rows`, so append it only when it's genuinely
   // absent from `rows`; otherwise style that last row in place instead of duplicating it.
   const totalIsLastRow = widget.total_row !== undefined && lastRow !== undefined && rowsEqual(widget.total_row, lastRow);
+
+  // Row order after the header arrows: groups keep their detail rows, the Total stays last.
+  const isTotalAt = (ri: number) => totalIsLastRow && ri === widget.rows.length - 1;
+  const order = sortGroupedRows(widget.rows, sort, isChild, isTotalAt);
+  const onSort = (col: number) => setSort((cur) => nextSort(cur, col));
 
   const renderCells = (row: string[]) =>
     row.map((cell, ci) =>
@@ -92,20 +103,23 @@ export function DataTable({ widget, collapsible = false }: { widget: TableWidget
       <thead>
         <tr>
           {widget.columns.map((col, i) => (
-            <th key={i} scope="col">
-              {/* a box with a max width: a long header wraps instead of widening its column */}
-              <HeaderText col={col} />
+            <th key={i} scope="col" aria-sort={sort?.col === i ? (sort.dir === "asc" ? "ascending" : "descending") : undefined} {...colThProps(prefs, col)}>
+              <ColHead table={tkey} col={col} index={i} sort={sort} onSort={onSort}>
+                {/* a box with a max width: a long header wraps instead of widening its column */}
+                <HeaderText col={col} />
+              </ColHead>
             </th>
           ))}
         </tr>
       </thead>
       <tbody>
         {collapsible
-          ? widget.rows.map((row, ri) => {
+          ? order.map((ri, oi) => {
+              const row = widget.rows[ri];
               if (isChild(row)) return null;
               const kids: string[][] = [];
-              for (let k = ri + 1; k < widget.rows.length && isChild(widget.rows[k]); k++) kids.push(widget.rows[k]);
-              const isTotal = totalIsLastRow && ri === widget.rows.length - 1;
+              for (let k = oi + 1; k < order.length && isChild(widget.rows[order[k]]); k++) kids.push(widget.rows[order[k]]);
+              const isTotal = isTotalAt(ri);
               const shown = Boolean(open[ri]);
               return (
                 <Fragment key={ri}>
@@ -138,9 +152,9 @@ export function DataTable({ widget, collapsible = false }: { widget: TableWidget
                 </Fragment>
               );
             })
-          : widget.rows.map((row, ri) => (
-              <tr key={ri} className={totalIsLastRow && ri === widget.rows.length - 1 ? "row-header" : undefined}>
-                {renderCells(row)}
+          : order.map((ri) => (
+              <tr key={ri} className={isTotalAt(ri) ? "row-header" : undefined}>
+                {renderCells(widget.rows[ri])}
               </tr>
             ))}
         {widget.total_row && !totalIsLastRow ? <tr className="row-header">{renderCells(widget.total_row)}</tr> : null}

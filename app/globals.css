@@ -3851,3 +3851,68 @@ html {
 [data-mood="ten"] .wp-matrix thead th {
   letter-spacing: 0.03em;
 }
+
+/* ── Table headers: sort arrow, drag-to-resize grip, rename (owner, 2026-10-17) ──
+   The arrow sits under the header text like Power BI's; the grip is the header's
+   right edge; a hand-sized column (th[data-sized]) wraps its header text. */
+:where(.data-table thead th) { position: relative; }
+[data-mood] .pbi-page .data-table thead th { position: relative; }
+.th-label { cursor: text; }
+.th-sort {
+  display: block;
+  margin: 1px 0 0 auto;
+  padding: 0 2px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-size: 8px;
+  line-height: 1;
+  opacity: 0.35;
+  cursor: pointer;
+  transition: opacity 0.15s var(--ease-glide, ease);
+}
+th:first-child > .th-sort { margin-inline: 0 auto; }
+th:hover > .th-sort, .th-sort:focus-visible { opacity: 0.75; }
+.th-sort.th-sort--on { opacity: 1; color: var(--accent, #4aa3ff); }
+.th-resize {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 6px;
+  z-index: 2;
+  cursor: col-resize;
+  touch-action: none;
+}
+.th-resize::after {
+  content: "";
+  position: absolute;
+  top: 20%;
+  bottom: 20%;
+  left: 3px;
+  width: 1px;
+  background: currentColor;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+th:hover > .th-resize::after, .th-resize:active::after { opacity: 0.5; }
+.data-table th[data-sized] { white-space: normal; overflow-wrap: anywhere; }
+.data-table th[data-sized] .th-text,
+[data-mood] .data-table th[data-sized] .th-text,
+.pv-page .data-table th[data-sized] .th-text,
+.pv-page .data-table th[data-sized] .th-text.th-text--set {
+  display: inline;
+  max-width: none;
+  white-space: normal;
+}
+.th-rename {
+  width: 100%;
+  min-width: 60px;
+  font: inherit;
+  text-transform: none;
+  color: var(--fg, #fff);
+  background: var(--surface, #12233f);
+  border: 1px solid var(--accent, #4aa3ff);
+  border-radius: 4px;
+  padding: 2px 4px;
+}

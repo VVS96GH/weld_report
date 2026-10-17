@@ -141,7 +141,7 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
         {isScreens ? (
           <div className="screen-tabs" role="group" aria-label="Screens">
             {SCREENS.map((sc) => (
-              <Link key={sc.id} href={`/report/${sc.id}`} className="report-pill" aria-current={sc.id === screenId ? "page" : undefined}>
+              <Link key={sc.id} href={`/report/${sc.id}${sc.defaultQuery ? `?${sc.defaultQuery}` : ""}`} className="report-pill" aria-current={sc.id === screenId ? "page" : undefined}>
                 {sc.nav}
               </Link>
             ))}

@@ -4,9 +4,19 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { EdgeFilters } from "@/components/EdgeFilters";
+import { ColHead, colThProps } from "@/components/ColHead";
+import { tableKeyOf, useTablePrefs } from "@/lib/col-prefs";
 import { useKeepInView } from "@/components/useKeepInView";
 import { usePageSubtitle } from "@/components/ReportShell";
 import type { Column, Level, Matrix, WpPageData, WpRow } from "@/lib/pages/welder-performance";
+import { nextSort, sortBy, type SortState } from "@/lib/table-sort";
+
+/** Rows in the header-arrow order: column 0 is the row label, column i the i-th value column. */
+function sortRows<T>(items: T[], row: (item: T) => WpRow, columns: readonly Column[], sort: SortState): T[] {
+  if (!sort) return items;
+  const key = sort.col === 0 ? null : columns[sort.col - 1]?.key;
+  return sortBy(items, (i) => (key ? row(i).values[key] : row(i).label), sort);
+}
 
 const NEXT: Record<Level, Level | null> = { sub: "welder", welder: "joint", joint: "report", report: null };
 /** Row levels, for the header tooltip; the header itself reads "Sub-Contractor" as in the pbix. */
@@ -90,7 +100,9 @@ function RowLines({
   setOpen,
   kids,
   setKids,
+  sort,
 }: {
+  sort: SortState;
   node: TreeNode;
   depth: number;
   columns: readonly Column[];
@@ -170,9 +182,10 @@ function RowLines({
         </tr>
       ) : null}
       {isOpen && Array.isArray(children)
-        ? children.map((ch) => (
+        ? sortRows(children, (ch) => ch.row, columns, sort).map((ch) => (
             <RowLines
               key={ch.row.label}
+              sort={sort}
               node={ch}
               depth={depth + 1}
               columns={columns}
@@ -195,6 +208,11 @@ function MatrixCard({ data, matrix }: { data: WpPageData; matrix: Matrix }) {
   const res = data[matrix];
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [kids, setKids] = useState<Record<string, TreeNode[] | "loading" | "error">>({});
+  const [sort, setSort] = useState<SortState>(null);
+  const tkey = tableKeyOf(["wp", matrix, ...def.columns.map((c) => c.key)]);
+  const prefs = useTablePrefs(tkey);
+  const onSort = (col: number) => setSort((cur) => nextSort(cur, col));
+  const ariaSort = (col: number) => (sort?.col === col ? (sort.dir === "asc" ? "ascending" : "descending") : undefined);
   const id = `wp-${matrix}`;
   return (
     <section className="card wp-card" aria-labelledby={id}>
@@ -208,24 +226,31 @@ function MatrixCard({ data, matrix }: { data: WpPageData; matrix: Matrix }) {
           <table className="data-table wp-matrix">
             <thead>
               <tr>
-                <th scope="col" className="wp-rowhead" title={LEVEL_LABEL[matrix]}>
-                  Sub-Contractor
+                <th scope="col" className="wp-rowhead" title={LEVEL_LABEL[matrix]} aria-sort={ariaSort(0)} {...colThProps(prefs, "Sub-Contractor")}>
+                  <ColHead table={tkey} col="Sub-Contractor" index={0} sort={sort} onSort={onSort}>
+                    Sub-Contractor
+                  </ColHead>
                 </th>
-                {def.columns.map((c) => (
+                {def.columns.map((c, ci) => (
                   <th
                     key={c.key}
                     scope="col"
                     className={c.group === "window" ? "wp-col-window" : c.group === "window2" ? "wp-col-window2" : undefined}
+                    aria-sort={ariaSort(ci + 1)}
+                    {...colThProps(prefs, c.key)}
                   >
-                    <HeadLabel label={c.label} />
+                    <ColHead table={tkey} col={c.key} index={ci + 1} sort={sort} onSort={onSort}>
+                      <HeadLabel label={c.label} />
+                    </ColHead>
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {res.rows.map((row) => (
+              {sortRows(res.rows, (r) => r, def.columns, sort).map((row) => (
                 <RowLines
                   key={row.label}
+                  sort={sort}
                   node={{ row, level: "sub", scope: {} }}
                   depth={0}
                   columns={def.columns}

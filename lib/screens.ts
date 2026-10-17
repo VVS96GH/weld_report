@@ -28,6 +28,8 @@ export type ScreenDef = {
   pages: (values: Record<string, string>) => number[] | null;
   /** The screen forwards these search params to page 1's own slicers. */
   passthrough?: readonly string[];
+  /** Query the screen's nav chip opens with (filters pre-applied; "Clear all" drops them). */
+  defaultQuery?: string;
 };
 
 /**
@@ -181,6 +183,7 @@ export const SCREENS: readonly ScreenDef[] = [
     nav: "PWHT by RT %",
     filters: [subcoFilter(), rtFilter([100, 10, 5])],
     passthrough: ["wcat", "sclass", "pwht"],
+    defaultQuery: "wcat=F,S&pwht=Y",
     pages: (v) => {
       const n = PWHT_PAGES[axisKey(v.subco, SUBCO_ALL)]?.[axisKey(v.rt, RT_ALL)];
       return n ? [n] : null;
