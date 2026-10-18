@@ -15,7 +15,7 @@ import { getWeldingPage, type WeldingFilters } from "@/lib/pages/welding";
 import { FORECAST_FILTER_IDS, getForecastPage, type ForecastFilters } from "@/lib/page-source";
 import { reportEntry, WELDING_TOTAL_PAGES as TOTAL_PAGES } from "@/lib/welding-pages";
 
-const FILTER_PARAMS = ["ha", "area", "subco", "wtype", "wcat", "sclass", "pwht", "rtpct", "wps", "film"] as const;
+const FILTER_PARAMS = ["ha", "area", "subco", "wtype", "wcat", "sclass", "pwht", "rtpct", "wps", "film", "wtype2", "mtype"] as const;
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 

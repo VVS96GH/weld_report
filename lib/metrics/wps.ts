@@ -118,10 +118,19 @@ export async function wpsRejectionTable(
     });
 }
 
-/** RT % values present under a WPS page's scope, highest first (the RT % slicer). */
-export async function wpsRtPctOptions(scope: Scope): Promise<number[]> {
+/** The Weld Rejection Detail slicers' options under a page's scope: RT % (highest first), weld and material types. */
+export async function wpsFilterOptions(scope: Scope): Promise<{ rt: number[]; weldTypes: string[]; materials: string[] }> {
   const p = new Params();
-  const sql = `SELECT DISTINCT w.rt_pct FROM ${WPS_FROM} WHERE ${and([scopeWhere(scope, p), "w.wps_no IS NOT NULL", "w.rt_pct IS NOT NULL"])} ORDER BY 1 DESC`;
-  const rows = await query<{ rt_pct: number }>(sql, p.list());
-  return rows.map((r) => Number(r.rt_pct));
+  const where = and([scopeWhere(scope, p), "w.wps_no IS NOT NULL"]);
+  const sql =
+    `SELECT 'rt' AS k, w.rt_pct::text AS v FROM ${WPS_FROM} WHERE ${where} AND w.rt_pct IS NOT NULL GROUP BY 2\n` +
+    `UNION SELECT 'wt', w.weld_type FROM ${WPS_FROM} WHERE ${where} AND w.weld_type IS NOT NULL GROUP BY 2\n` +
+    `UNION SELECT 'mt', jm.material_type FROM ${WPS_FROM} JOIN mv_joint_material jm ON jm.source = w.source AND jm.joint_id = w.joint_id WHERE ${where} GROUP BY 2`;
+  const rows = await query<{ k: string; v: string }>(sql, p.list());
+  const of = (k: string) => rows.filter((r) => r.k === k).map((r) => r.v);
+  return {
+    rt: of("rt").map(Number).sort((a, b) => b - a),
+    weldTypes: of("wt").sort((a, b) => a.localeCompare(b)),
+    materials: of("mt").sort((a, b) => a.localeCompare(b)),
+  };
 }

@@ -96,7 +96,7 @@ import {
   type WeldingStats,
   type WeldTypePivot,
 } from "@/lib/metrics/welding";
-import { wpsRejectionTable, wpsRtPctOptions } from "@/lib/metrics/wps";
+import { wpsFilterOptions, wpsRejectionTable } from "@/lib/metrics/wps";
 import { approvedWpsCount, qualifiedWelders } from "@/lib/metrics/refs";
 import {
   latestWeekEnd,
@@ -1455,7 +1455,7 @@ export async function getWeldingPage(
         wtype: applied(3),
         wcat: applied(4),
       }
-    : { sclass, pwht, wcat: wcatNde, rtpct: rtpctNde, wps: ndeSlicers.wps, film: ndeSlicers.film };
+    : { sclass, pwht, wcat: wcatNde, rtpct: rtpctNde, wps: ndeSlicers.wps, film: ndeSlicers.film, wtype2: ndeSlicers.wtype2, mtype: ndeSlicers.mtype };
   const ctx: Ctx = { asOf: as_of, clock, asOfOrigin: origin, notes: new Set(), filters };
   if (bar?.unknown) note(ctx, FILTER_UNKNOWN_NOTE);
   // ALL applies to the per-party families only; pages 1/2 are project-wide already.
@@ -2802,12 +2802,16 @@ async function buildWpsPage(
     excludeWeldTypes: isAll(conf.sub) ? ["THD", "DMY"] : [...new Set(["THD", ...(conf.excludeWeldTypes ?? [])])],
     wpsPresent: true,
   });
-  const [optRows, optRt] = await Promise.all([
+  const [optRows, optOther] = await Promise.all([
     Promise.all(confs.map((c) => wpsRejectionTable(baseOf(c)))),
-    Promise.all(confs.map((c) => wpsRtPctOptions(baseOf(c)))),
+    Promise.all(confs.map((c) => wpsFilterOptions(baseOf(c)))),
   ]);
   const wpsOptions = [...new Set(optRows.flat().map((r) => r.wps_no))].sort((a, b) => a.localeCompare(b));
-  const rtOptions = [...new Set(optRt.flat())].sort((a, b) => b - a);
+  const rtOptions = [...new Set(optOther.flatMap((o) => o.rt))].sort((a, b) => b - a);
+  const wtOptions = [...new Set(optOther.flatMap((o) => o.weldTypes))].sort((a, b) => a.localeCompare(b));
+  const mtOptions = [...new Set(optOther.flatMap((o) => o.materials))].sort((a, b) => a.localeCompare(b));
+  const keptWt = (filterValues(ctx.filters.wtype2) ?? []).filter((v) => wtOptions.includes(v));
+  const keptMt = (filterValues(ctx.filters.mtype) ?? []).filter((v) => mtOptions.includes(v));
   const keptWps = (filterValues(ctx.filters.wps) ?? []).filter((v) => wpsOptions.includes(v));
   const keptRt = (filterValues(ctx.filters.rtpct) ?? []).map(Number).filter((v) => rtOptions.includes(v));
   const keptFilm = (filterValues(ctx.filters.film) ?? []).filter((v) => WPS_FILM_BANDS.some((b) => b.label === v));
@@ -2819,6 +2823,8 @@ async function buildWpsPage(
         ...baseOf(conf),
         ...(keptWps.length ? { wpsNos: keptWps } : {}),
         ...(keptRt.length ? { rtPcts: keptRt } : {}),
+        ...(keptWt.length ? { weldTypes: keptWt } : {}),
+        ...(keptMt.length ? { materialTypes: keptMt } : {}),
       };
       const [rows, total] = await Promise.all([
         wpsRejectionTable(scope).then((r) => r.filter((x) => inBand(x.rt_film_ratio))),
@@ -2836,6 +2842,8 @@ async function buildWpsPage(
   const out: Widget[] = [
     { kind: "filter", id: "wps", label: "WPS No.", options: [FILTER_ALL, ...wpsOptions], value: keptWps.length ? keptWps.join(FILTER_SEP) : FILTER_ALL, multi: true },
     { kind: "filter", id: "rtpct", label: "RT %", options: [FILTER_ALL, ...rtOptions.map(String)], value: keptRt.length ? keptRt.join(FILTER_SEP) : FILTER_ALL, multi: true },
+    { kind: "filter", id: "wtype2", label: "Weld Type", options: [FILTER_ALL, ...wtOptions], value: keptWt.length ? keptWt.join(FILTER_SEP) : FILTER_ALL, multi: true },
+    { kind: "filter", id: "mtype", label: "Material Type", options: [FILTER_ALL, ...mtOptions], value: keptMt.length ? keptMt.join(FILTER_SEP) : FILTER_ALL, multi: true },
     { kind: "filter", id: "film", label: "RT FILM Ratio %", options: [FILTER_ALL, ...WPS_FILM_BANDS.map((b) => b.label)], value: keptFilm.length ? keptFilm.join(FILTER_SEP) : FILTER_ALL, multi: true },
   ];
   let i = 0;

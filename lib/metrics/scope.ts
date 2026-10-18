@@ -267,6 +267,8 @@ export type Scope = {
   wpsPresent?: boolean;
   /** `WPS No. IN (…)` (the Weld Rejection Detail slicer; `wps_no` is on both joint views). */
   wpsNos?: readonly string[];
+  /** `Material Type IN (…)` — through `mv_joint_material` (0049), a joint matching any. */
+  materialTypes?: readonly string[];
   /**
    * `PWHT Weld Status` is not blank — the extra table filter the PWHT-by-RT%
    * pages carry (§3.3 "as 19 + `PWHT Weld Status` not blank").
@@ -443,6 +445,11 @@ export function scopeConditions(
     // §8.1 types `dia_inch_factor` as boolean, §6.2 as char(1) 'Y'/'N'.
     // Casting to text accepts either shape ('Y' or 'true'); flagged to DB-LANE.
     c.push(`${a}.dia_inch_factor::text IN ('Y','y','true','t')`);
+  }
+  if (scope.materialTypes?.length) {
+    c.push(
+      `EXISTS (SELECT 1 FROM mv_joint_material jm WHERE jm.source = ${a}.source AND jm.joint_id = ${a}.joint_id AND jm.material_type = ANY(${p.any(scope.materialTypes)}))`,
+    );
   }
   if (scope.wpsNos?.length) {
     c.push(`${a}.wps_no = ANY(${p.any(scope.wpsNos)})`);
@@ -670,6 +677,9 @@ export type WeldingFilters = {
   pwht?: string;
   /** NDE / PWHT pages only: RT % values, comma-joined; absent = the page's own RT %. */
   rtpct?: string;
+  /** Weld Rejection Detail pages: weld types / material types, comma-joined. */
+  wtype2?: string;
+  mtype?: string;
   /** Weld Rejection Detail pages: WPS numbers, comma-joined; absent = All. */
   wps?: string;
   /** Weld Rejection Detail pages: RT FILM Ratio % bands (WPS_FILM_BANDS), comma-joined. */
@@ -755,6 +765,8 @@ export function normaliseFilters(f: WeldingFilters | undefined): WeldingFilters 
     pwht: clean(f?.pwht),
     rtpct: clean(f?.rtpct),
     wps: clean(f?.wps),
+    wtype2: clean(f?.wtype2),
+    mtype: clean(f?.mtype),
     film: clean(f?.film),
   };
 }
