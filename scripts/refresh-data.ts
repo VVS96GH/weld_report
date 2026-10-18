@@ -32,6 +32,7 @@
 import { createHash } from "node:crypto";
 import { spawn, spawnSync } from "node:child_process";
 import { createReadStream, existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { TREND_RT_PWHT_FILE } from "./lib/source-path";
 import path from "node:path";
 import { Client } from "pg";
 import { formatRefreshes, refreshMatviews, requireEnvUrl } from "./load-common";
@@ -59,7 +60,7 @@ const STEPS: Step[] = [
   { id: "weld-dump", script: "db:load", files: [WELD_DUMP],
     forces: ["weld-length"], matviews: true, about: "Weld Dump (GAC / TEKFEN / MEDGULF)" },
   { id: "snapshot", script: "db:seed:snapshot", files: [
-      "sources/CUM Trend file RT and PWHT/CUM Trend file RT and PWHT Backlog .xlsx",
+      TREND_RT_PWHT_FILE,
       "sources/CUM Trend RT% UT% RejRate/CUM Trend RT% UT% RejRate.xlsx",
       "sources/CUM Trend Active Welders/CUM Trend Active Welders.xlsx",
       "sources/CUM MPI Done .xlsx",

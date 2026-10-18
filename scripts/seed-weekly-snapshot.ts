@@ -41,10 +41,11 @@ import {
   toNum,
   type NormalisedLabel,
 } from "./lib/xlsx";
+import { TREND_RT_PWHT_FILE } from "./lib/source-path";
 
 const SOURCE = "WEEKLY_SNAPSHOT";
 
-const FILE_TREND_REPORT = "sources/CUM Trend file RT and PWHT/CUM Trend file RT and PWHT Backlog .xlsx";
+const FILE_TREND_REPORT = TREND_RT_PWHT_FILE;
 const SHEET_TREND_REPORT = "TREND";
 const FILE_TREND_RT_UT = "sources/CUM Trend RT% UT% RejRate/CUM Trend RT% UT% RejRate.xlsx";
 const SHEET_TREND_RT_UT = "TREND RT UT";
