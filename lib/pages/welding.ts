@@ -603,17 +603,11 @@ const GROUP_SUBCON: GroupSpec = {
 
 /**
  * Table column headers that name a metric this layer cannot compute from the
- * loaded sources. They render blank, and the page discloses why.
+ * loaded sources. They render blank, and the page discloses why. Empty since
+ * 2026-10-18: the UT lengths (M34-M36) are computed now that the UT trackers
+ * and the weld-length dimension are loaded (page 1's cards already read them).
  */
-const UNAVAILABLE_HEADERS = new Map<string, string>([
-  ["UT Def Len m", "the UT tracker workbooks are not loaded (M34)"],
-  ["UT Def Len.m", "the UT tracker workbooks are not loaded (M34)"],
-  ["UT Def. Len.m", "the UT tracker workbooks are not loaded (M34)"],
-  ["UT Insp Len m", "the UT tracker workbooks are not loaded (M35)"],
-  ["% Rej UT Len", "the UT tracker workbooks are not loaded (M36)"],
-  ["UT Rej% Len", "the UT tracker workbooks are not loaded (M36)"],
-  ["% of Rej UT by Length", "the UT tracker workbooks are not loaded (M36)"],
-]);
+const UNAVAILABLE_HEADERS = new Map<string, string>();
 
 /** Column headers whose metric is M44/M48/M49 — gated on the `spool` masters. */
 const FABRICATED_HEADERS = new Map<string, keyof FabricatedStats>([
@@ -727,7 +721,18 @@ function metricCell(header: string, b: Bundle): string | null {
           : b.ut.ut_done / b.welding.joints_welded,
       );
     case "UT Weld Len.m":
+    case "UT Insp Len m":
       return cellNum(b.ut.ut_weld_length_m, 2);
+    // M34 / M36 — defect length and its share of the inspected length
+    case "UT Def Len m":
+    case "UT Def Len.m":
+    case "UT Def. Len.m":
+      return cellNum(b.ut.ut_rej_length_m, 3);
+    case "% Rej UT Len":
+    case "UT Rej% Len":
+    case "% of Rej UT by Length":
+      // blank, not 0.00 %, where nothing was rejected (as the pbix shows it)
+      return cellPct(b.ut.ut_weld_length_m && b.ut.ut_rej_length_m ? b.ut.ut_rej_length_m / b.ut.ut_weld_length_m : null);
     case "% Rej UT Joint":
     case "% of Rej UT by Joint (EP)":
       return cellPct(b.ut.ut_rejection_rate_joint);
