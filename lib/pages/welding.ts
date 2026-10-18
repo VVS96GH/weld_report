@@ -36,7 +36,7 @@
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { withAsOf } from "@/lib/db";
+import { agingClock, withAsOf } from "@/lib/db";
 import type {
   ChartWidget,
   FilterWidget,
@@ -953,6 +953,8 @@ function emptyWidget(spec: SpecWidget): Widget {
 
 type Ctx = {
   asOf: string;
+  /** The aging clock (DAX TODAY()), see agingClock in lib/db.ts. */
+  clock: string;
   asOfOrigin: string;
   notes: Set<string>;
   /** Page-1 slicer; `{}` everywhere else. */
@@ -1031,11 +1033,6 @@ const PROVISIONAL_NOTE =
   "workbook is 0 for every sub-contractor in every week since 2024-06-28, so " +
   "this line is seeded honest history, not a live backlog. It will step when " +
   "the first ETL-computed week lands.";
-
-const CCC_AGING_NOTE =
-  "CCC aging buckets are blank on purpose (ruling R2-05): RT Selected Date is " +
-  "empty on all 5,430,732 rows of the CCC export, so M51 has no clock. No " +
-  "substitute date is used.";
 
 const HA_NOTE =
   "M52's coverage ratio is computed one grain coarser than the DAX: weld.ha is " +
@@ -1184,6 +1181,10 @@ const NDE_PAGES = new Map<
   [40, { sub: "MEDGULF", rtPct: 20, kind: "nde" }],
 ]);
 
+/** The TEKFEN graph page; with `opts.tmcp` it renders the TMCP-pipe twin. */
+const TEKFEN_GRAPH_PAGE = 10;
+const TEKFEN_TMCP_LABEL = "TEKFEN TMCP Pipe (9C3AQN 46 Inch)";
+
 /** mockup page → subcontractor scope for the status pages 4–6 and 8–11. */
 const SUBCON_PAGES = new Map<number, SubconConf[]>([
   [3, [{ sub: "CCC" }]],
@@ -1230,6 +1231,8 @@ function baseScope(conf: SubconConf): Scope {
     excludeSubContractors: isAll(conf.sub) ? PROJECT_EXCLUDED_SUBCONTRACTORS : undefined,
     serviceCat: conf.serviceCat,
     tmcpPipe: conf.tmcpPipe,
+    // the pbix TMCP page counts 9C3AQN at 30/34/46"; the TEKFEN page keeps the 46-only rule
+    tmcpPrAll: conf.tmcpPipe === true ? true : undefined,
     // Every pbix page in this family carries `Temporary Lines "WD" IN {null}`.
     temporaryLines: false,
   };
@@ -1315,6 +1318,8 @@ export type WeldingPageOpts = {
   subcoSet?: readonly string[];
   /** Screens multi-select: 2+ RT % values → the ALL-RT structure over just them. */
   rtSet?: readonly number[];
+  /** Page 10 as "TEKFEN TMCP Pipe (9C3AQN 46 Inch)" (owner, 2026-10-18: TEKFEN has two pages). */
+  tmcp?: boolean;
 };
 
 /**
@@ -1425,6 +1430,7 @@ export async function getWeldingPage(
   }
   const spec = specPage(n);
   const { as_of, origin } = await withAsOf(opts.as_of ?? null);
+  const clock = await agingClock(opts.as_of ?? null);
   // Pages 1 and 2 own the slicer (page 2 since 2026-10-15, owner: the Project
   // status screen gets Sub-Contractor / Weld Type / Weld Cat too); every other
   // page ignores it, so its output is untouched no matter what a caller passes.
@@ -1456,7 +1462,7 @@ export async function getWeldingPage(
         wcat: applied(4),
       }
     : { sclass, pwht, wcat: wcatNde };
-  const ctx: Ctx = { asOf: as_of, asOfOrigin: origin, notes: new Set(), filters };
+  const ctx: Ctx = { asOf: as_of, clock, asOfOrigin: origin, notes: new Set(), filters };
   if (bar?.unknown) note(ctx, FILTER_UNKNOWN_NOTE);
   // ALL applies to the per-party families only; pages 1/2 are project-wide already.
   // Screens multi-select: 2+ parties / RT % values render the ALL structure over
@@ -1478,8 +1484,15 @@ export async function getWeldingPage(
   } else if (n === 2) {
     widgets = await buildProjectStatusPage(spec, ctx);
   } else if (SUBCON_PAGES.has(n)) {
-    const confs = SUBCON_PAGES.get(n)!;
+    const tmcp = n === TEKFEN_GRAPH_PAGE && Boolean(opts.tmcp);
+    const confs = tmcp ? [{ sub: "TEKFEN", tmcpPipe: true }] : SUBCON_PAGES.get(n)!;
     widgets = await buildSubconPage(spec, all ? [allConf(confs[0]!, subs)] : confs, ctx);
+    // the TMCP twin names its scope as the pbix page does
+    if (tmcp) {
+      widgets = widgets.map((w) =>
+        w.kind === "chart" || w.kind === "table" ? { ...w, title: w.title.replace(/TEKFEN/g, TEKFEN_TMCP_LABEL) } : w,
+      );
+    }
   } else if (NDE_PAGES.has(n)) {
     const conf = NDE_PAGES.get(n)!;
     widgets = await buildNdePage(
@@ -2222,8 +2235,9 @@ async function buildSubconPage(
         // visual DOES carry `TMCP Pipe IN {null}` — we follow the owner, not
         // the visual, and say so in lib/metrics/README.md. Only TEKFEN sets
         // `tmcpPipe` at all, so this is a no-op on the other pages; applied
-        // uniformly so the rule lives in one place.
-        tmcpPipe: undefined,
+        // uniformly so the rule lives in one place. The TMCP-pipe twin page is
+        // the exception: it reads TMCP pipe only (owner, 2026-10-18).
+        tmcpPipe: conf.tmcpPipe === true ? true : undefined,
       };
       const [pivot, thisWeek, byCat, total, totalNoJ, prByCat, prTotal, weekly, dist] =
         await Promise.all([
@@ -2307,8 +2321,10 @@ async function buildSubconPage(
         const src = {
           sources: SOURCES_PR_ALL_LOADED,
           ...partyArgs(blk.conf.sub, blk.conf.subs),
-          // the Slug Catcher page counts SG joints only (owner, 2026-10-18)
+          // the Slug Catcher page counts SG joints only, the TMCP page TMCP pipe
+          // only (owner, 2026-10-18)
           ...(blk.conf.serviceCat === "SG" ? { serviceCat: "SG" as const } : {}),
+          ...(blk.conf.tmcpPipe === true ? { tmcpPipe: true } : {}),
           cutoff: chartCutoff(ctx.asOf),
         };
         const [points, rtCur, pwhtCur] = await Promise.all([
@@ -2320,7 +2336,7 @@ async function buildSubconPage(
             aggregate: true,
             excludeProject: true,
             // SG page: the workbook's `GAC SG` rows only
-            ...(blk.conf.serviceCat === "SG" ? { scope: snapshotScopeFor(blk.conf) } : {}),
+            ...(blk.conf.serviceCat === "SG" || blk.conf.tmcpPipe === true ? { scope: snapshotScopeFor(blk.conf) } : {}),
             weeks: w.labels.length,
             upTo: chartCutoff(ctx.asOf),
           }),
@@ -2549,9 +2565,10 @@ async function buildNdePage(
   // the shop and part on site (owner, 2026-09-15). Group by the PAIR, never by
   // class alone, so a class's shop and field joints land under their own cat.
   const catClassGroup = weldCatClassGroup(classGroup);
-  // R2-05: `RT Selected Date` is empty on every CCC row, so M51/M66 have no
-  // clock for CCC. Honest-empty, never a substituted date.
-  const wantAging = !isCcc;
+  // CCC too (owner, 2026-10-18): the pbix CCC pages bind the "PR all" aging
+  // measures, whose clock is `No of Days "PR all"` = DATEDIFF(Weld Date, TODAY())
+  // — the weld date, not RT Selected Date (which CCC lacks; the old R2-05 reading).
+  const wantAging = true;
   const [
     total,
     byCat,
@@ -2567,17 +2584,16 @@ async function buildNdePage(
     bundleBy(scope, catClassGroup, av),
     bundleBy(scope, GROUP_RT_PCT, av),
     bundleBy(scope, GROUP_RT_CAT, av),
-    wantAging ? backlogAging(scope, ctx.asOf, family) : Promise.resolve(null),
+    wantAging ? backlogAging(scope, ctx.clock, family) : Promise.resolve(null),
     wantAging
-      ? backlogAgingBy(scope, ctx.asOf, family, GROUP_WELD_CAT)
+      ? backlogAgingBy(scope, ctx.clock, family, GROUP_WELD_CAT)
       : Promise.resolve(new Map<string | null, AgingBuckets>()),
     wantAging
-      ? backlogAgingBy(scope, ctx.asOf, family, catClassGroup)
+      ? backlogAgingBy(scope, ctx.clock, family, catClassGroup)
       : Promise.resolve(new Map<string | null, AgingBuckets>()),
   ]);
   if (!av.spool) note(ctx, FABRICATED_NOTE);
   noteIf(ctx, utCoverageNote(av.ut));
-  if (isCcc) note(ctx, CCC_AGING_NOTE);
   if (!av.sourceLoaded) note(ctx, sourceNote(conf.sub));
 
   // M52 appears BOTH as a column of the details table and as its own table on

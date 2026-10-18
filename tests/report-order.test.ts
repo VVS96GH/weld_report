@@ -24,7 +24,8 @@ describe("report display order", () => {
   it("is the 44 data pages plus the forecast at page 2 and six linked reports from page 3", () => {
     expect(WELDING_DATA_PAGES).toBe(44);
     expect(LINKED_PAGES).toHaveLength(6);
-    expect(WELDING_TOTAL_PAGES).toBe(51);
+    // 44 data pages + forecast + 6 linked reports + the TEKFEN TMCP twin of data page 10
+    expect(WELDING_TOTAL_PAGES).toBe(52);
     expect(reportEntry(FORECAST_DISPLAY_PAGE)).toEqual({ kind: "forecast", title: FORECAST_TITLE });
     expect(WELDING_PAGE_TITLES[FORECAST_DISPLAY_PAGE - 1]).toBe(FORECAST_TITLE);
     expect(WELDING_PAGE_TITLES.slice(2, 8)).toEqual([
@@ -38,7 +39,7 @@ describe("report display order", () => {
   });
 
   it("keeps every data page exactly once, in mockup order", () => {
-    const data = REPORT_ORDER.filter((e) => e.kind === "data").map((e) => (e.kind === "data" ? e.data : 0));
+    const data = REPORT_ORDER.filter((e) => e.kind === "data" && !e.tmcp).map((e) => (e.kind === "data" ? e.data : 0));
     expect(data).toEqual(Array.from({ length: 44 }, (_, i) => i + 1));
     for (let d = 1; d <= 44; d++) {
       const display = dataToDisplay(d);
@@ -46,7 +47,7 @@ describe("report display order", () => {
       expect(WELDING_PAGE_TITLES[display - 1]).toBe(WELDING_DATA_PAGE_TITLES[d - 1]);
     }
     expect(reportEntry(0)).toBeUndefined();
-    expect(reportEntry(52)).toBeUndefined();
+    expect(reportEntry(53)).toBeUndefined();
   });
 
   it("maps the linked reports both ways", () => {

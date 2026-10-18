@@ -458,6 +458,8 @@ type BacklogSlice = {
   haArea?: readonly HaAreaPick[];
   /** The GAC Slug Catcher page: `Service Cat = "SG"` only. */
   serviceCat?: "SG";
+  /** The TEKFEN TMCP pipe page: `tmcp_pipe` only. */
+  tmcpPipe?: boolean;
 };
 
 /** ` AND …` for the backlog queries over `mv_joint` (unaliased columns). */
@@ -469,6 +471,7 @@ function subContractorSql(opts: BacklogSlice, p: Params): string {
   if (opts.weldCats?.length) c.push(`weld_cat = ANY(${p.any(opts.weldCats)})`);
   if (opts.haArea?.length) c.push(haAreaCondition(opts.haArea, p, "mv_joint"));
   if (opts.serviceCat === "SG") c.push(`service_cat = 'SG'`);
+  if (opts.tmcpPipe === true) c.push(`split_part(service_class_cat_ndt, ' ', 1) = '9C3AQN' AND dia_inch IN (30, 34, 46)`);
   return c.map((x) => ` AND ${x}`).join("");
 }
 
@@ -689,7 +692,9 @@ export async function weeklyInspections(opts: {
   }
   if (opts.serviceCat === "SG") conds.push(`w.service_cat = 'SG'`);
   else if (opts.serviceCat === "NONSG") conds.push(`w.service_cat IS DISTINCT FROM 'SG'`);
-  if (opts.tmcpPipe !== undefined) conds.push(`w.tmcp_pipe = ${p.add(opts.tmcpPipe)}`);
+  // the "PR all" TMCP rule (Scope.tmcpPrAll): 9C3AQN at 30/34/46"
+  if (opts.tmcpPipe === true) conds.push(`(w.service_class = '9C3AQN' AND w.dia_inch IN (30, 34, 46))`);
+  else if (opts.tmcpPipe === false) conds.push(`NOT w.tmcp_pipe`);
   const weeks = p.any(opts.weeks);
   // Friday on or after the date: Calendar[Week_End_Date]
   const wk = (d: string) => `(${d} + ((5 - extract(isodow FROM ${d})::int + 7) % 7))`;

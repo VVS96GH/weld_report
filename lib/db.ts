@@ -211,6 +211,29 @@ export type AsOf = {
   origin: "request" | "max_weld_date" | "fallback_today";
 };
 
+/**
+ * The aging clock — DAX `TODAY()` in `No of Days "PR all"` / `"WD"` (owner,
+ * 2026-10-18). The pbix evaluates it on the day it is refreshed, i.e. the day
+ * the exports are loaded, NOT the last weld date: CCC NDE RT 100 % reads
+ * 116 / 46 / 24 / 182 only with the 18-Oct clock (16-Oct gives 56 / 80 / 30 /
+ * 24 / 178). So: the day the latest weld export was loaded; `requested` (an
+ * explicit `?as_of=`) wins, for reproducing a past page.
+ */
+export async function agingClock(requested?: string | null): Promise<string> {
+  if (requested && ISO_DATE.test(requested)) return requested;
+  try {
+    const rows = await query<{ d: string | null }>(
+      `SELECT max(started_at)::date::text AS d FROM load
+        WHERE source IN ('WELD_DUMP', 'CCC_WELDER_RECORD', 'ACCIONA', 'INCO')`,
+    );
+    const d = rows[0]?.d;
+    if (d && ISO_DATE.test(d.slice(0, 10))) return d.slice(0, 10);
+  } catch {
+    /* fall through */
+  }
+  return todayIso();
+}
+
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 function todayIso(): string {

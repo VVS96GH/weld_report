@@ -181,17 +181,8 @@ describe("honest-empty: no fabricated zeros with no data", () => {
     }
   });
 
-  it("the CCC NDE pages disclose the R2-05 aging blackout", async () => {
-    for (const n of [12, 14, 16, 18]) {
-      const model = await getWeldingPage(n);
-      expect(
-        model.widgets.some(
-          (w) => w.kind === "text" && /ruling R2-05/.test(w.text),
-        ),
-        `page ${n}`,
-      ).toBe(true);
-    }
-  });
+  // R2-05 (CCC aging blank) was superseded 2026-10-18: the pbix CCC pages age
+  // by the weld date ("PR all"), so CCC buckets are computed.
 });
 
 describe("ALL sub-contractor rendering (allSubcos)", () => {

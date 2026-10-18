@@ -5,30 +5,30 @@
  */
 import type { PageModel, Widget } from "@/lib/page-model";
 
-export const relabel = (s: string): string => s.replace(/\bback\s?log\b/gi, "B.Log");
+export const relabel = (text: string): string => text.replace(/\bback\s?log\b/gi, "B.Log");
 
-export function relabelWidget(w: Widget): Widget {
-  switch (w.kind) {
+export function relabelWidget(widget: Widget): Widget {
+  switch (widget.kind) {
     case "kpi":
-      return { ...w, label: relabel(w.label), sub: w.sub === undefined ? undefined : relabel(w.sub) };
+      return { ...widget, label: relabel(widget.label), sub: widget.sub === undefined ? undefined : relabel(widget.sub) };
     case "table":
       return {
-        ...w,
-        title: relabel(w.title),
-        columns: w.columns.map(relabel),
-        rows: w.rows.map((r) => r.map(relabel)),
-        total_row: w.total_row?.map(relabel),
+        ...widget,
+        title: relabel(widget.title),
+        columns: widget.columns.map(relabel),
+        rows: widget.rows.map((r) => r.map(relabel)),
+        total_row: widget.total_row?.map(relabel),
       };
     case "chart":
       return {
-        ...w,
-        title: relabel(w.title),
-        labels: w.labels.map(relabel),
-        datasets: w.datasets.map((d) => ({ ...d, label: relabel(d.label) })),
+        ...widget,
+        title: relabel(widget.title),
+        labels: widget.labels.map(relabel),
+        datasets: widget.datasets.map((d) => ({ ...d, label: relabel(d.label) })),
       };
     default:
       // filters keep their values (they go back to the server); notes are prose
-      return w;
+      return widget;
   }
 }
 

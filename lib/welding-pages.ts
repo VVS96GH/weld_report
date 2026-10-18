@@ -22,7 +22,7 @@ export const WELDING_DATA_PAGE_TITLES: readonly string[] = [
   "GAC WELDING STATUS Graph (Other than Slug Catcher)",
   "GAC WELDING STATUS Graph (Slug Catcher Area)",
   "TEKFEN WELDING STATUS Graph",
-  "MEDGULF WELDING STATUS Graph (Other than Slug Catcher)",
+  "MEDGULF WELDING STATUS Graph",
   "CCC NDE RT 100% STATUS",
   "CCC PWHT STATUS by RT 100%",
   "CCC RT 5% STATUS",
@@ -69,12 +69,13 @@ export const WELDING_DATA_PAGES = WELDING_DATA_PAGE_TITLES.length;
  * numbers; lib/pages/welding.ts and lib/screens.ts keep data numbers.
  */
 export type ReportEntry =
-  | { kind: "data"; data: number; title: string }
+  | { kind: "data"; data: number; title: string; tmcp?: boolean }
   | { kind: "forecast"; title: string }
   /** Another report placed in the reading order: /welding/<n> sends there. */
   | { kind: "link"; title: string; href: string };
 
 export const FORECAST_TITLE = "RT Backlog Forecast";
+export const TEKFEN_TMCP_TITLE = "TEKFEN WELDING STATUS Graph TMCP Pipe (9C3AQN 46 Inch)";
 export const FORECAST_DISPLAY_PAGE = 2;
 
 /**
@@ -93,6 +94,9 @@ export const REPORT_ORDER: readonly ReportEntry[] = (() => {
   const entries: ReportEntry[] = WELDING_DATA_PAGE_TITLES.map((title, i) => ({ kind: "data", data: i + 1, title }));
   entries.splice(FORECAST_DISPLAY_PAGE - 1, 0, { kind: "forecast", title: FORECAST_TITLE });
   entries.splice(LINKED_FIRST_DISPLAY_PAGE - 1, 0, ...LINKED_PAGES.map((l) => ({ kind: "link" as const, ...l })));
+  // Appended so no existing page number moves; the menu shows it after the
+  // TEKFEN graph page (lib/page-order.ts MENU_AFTER). Owner, 2026-10-18.
+  entries.push({ kind: "data", data: 10, tmcp: true, title: TEKFEN_TMCP_TITLE });
   return entries;
 })();
 

@@ -27,6 +27,8 @@ export type WeldingPageOpts = {
   subcoSet?: readonly string[];
   /** Screens multi-select: 2+ RT % values → the ALL-RT structure over just them. */
   rtSet?: readonly number[];
+  /** Page 10 as "TEKFEN TMCP Pipe (9C3AQN 46 Inch)" (owner, 2026-10-18: TEKFEN has two pages). */
+  tmcp?: boolean;
 };
 
 /**

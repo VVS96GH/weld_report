@@ -1,4 +1,4 @@
-import { WELDING_PAGE_TITLES } from "@/lib/welding-pages";
+import { TEKFEN_TMCP_TITLE, WELDING_PAGE_TITLES } from "@/lib/welding-pages";
 
 /**
  * The page menu's order (owner, 2026-10-15): pages are grouped (Project, Welder
@@ -9,7 +9,25 @@ import { WELDING_PAGE_TITLES } from "@/lib/welding-pages";
 /** Pages 10..51 grouped by sub-contractor in the jump list (owner, 2026-10-15; 48-51,
  *  "Weld Rejection Detail - <sub>", join their sub-contractor too). */
 const GROUPED_FROM = 10;
-const GROUPED_TO = 51;
+const GROUPED_TO = WELDING_PAGE_TITLES.length;
+
+/** Pages appended at the end of the report that the menu shows after another one. */
+const MENU_AFTER = new Map<number, number>([
+  // the TEKFEN TMCP graph page follows the TEKFEN graph page
+  [WELDING_PAGE_TITLES.indexOf(TEKFEN_TMCP_TITLE) + 1, WELDING_PAGE_TITLES.indexOf("TEKFEN WELDING STATUS Graph") + 1],
+]);
+
+/** `pages` with every MENU_AFTER page moved right behind its anchor. */
+function placeAfter(pages: number[]): number[] {
+  const out = pages.filter((n) => !MENU_AFTER.has(n));
+  for (const n of pages) {
+    const anchor = MENU_AFTER.get(n);
+    if (anchor === undefined) continue;
+    const at = out.indexOf(anchor);
+    out.splice(at < 0 ? out.length : at + 1, 0, n);
+  }
+  return out;
+}
 const GROUP_ORDER = ["CCC", "GAC", "TEKFEN", "MEDGULF"];
 
 /** The Welder Performance pages (4-7) are one group too (owner, 2026-10-15). */
@@ -56,7 +74,7 @@ export function pageOptions(): PageOption[] {
     ...(wp.length ? [{ group: WP_GROUP, pages: wp }] : []),
     ...GROUP_ORDER.filter((g) => subs.get(g)!.length).map((g) => ({
       group: g,
-      pages: subs.get(g)!,
+      pages: placeAfter(subs.get(g)!),
     })),
     ...loose,
   ];

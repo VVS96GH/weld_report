@@ -255,6 +255,12 @@ export type Scope = {
   temporaryLines?: boolean;
   /** TEKFEN pages split on `TMCP Pipe`. */
   tmcpPipe?: boolean;
+  /**
+   * Read `tmcpPipe` with the "PR all" rule — `[Service class] = "9C3AQN" &&
+   * [Dia inch] IN {30, 34, 46}` — instead of the dump's 46-only `TMCP Pipe`
+   * (the TEKFEN status pages, owner 2026-10-18: 4 TRN joints at 30").
+   */
+  tmcpPrAll?: boolean;
   /** `Dia Inch Factor = 'Y'` (the BW/CLET dia-inch weighting flag). */
   diaInchFactorY?: boolean;
   /** `WPS No. <> ""`. */
@@ -419,7 +425,10 @@ export function scopeConditions(
   if (scope.temporaryLines !== undefined) {
     c.push(`${a}.temporary_lines = ${p.add(scope.temporaryLines)}`);
   }
-  if (scope.tmcpPipe !== undefined) {
+  if (scope.tmcpPipe !== undefined && scope.tmcpPrAll) {
+    const prall = `(split_part(${a}.service_class_cat_ndt, ' ', 1) = '9C3AQN' AND ${a}.dia_inch IN (30, 34, 46))`;
+    c.push(scope.tmcpPipe ? prall : `NOT coalesce(${prall}, false)`);
+  } else if (scope.tmcpPipe !== undefined) {
     c.push(`${a}.tmcp_pipe = ${p.add(scope.tmcpPipe)}`);
   }
   if (scope.diaInchFactorY) {
