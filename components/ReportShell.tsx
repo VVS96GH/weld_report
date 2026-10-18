@@ -12,6 +12,7 @@ import { WpNavMenu } from "@/components/WpNavMenu";
 import { FilterSummary, PageNavControls } from "@/components/PageNavControls";
 import { ThemeMoodControls } from "@/components/ThemeMoodControls";
 import { RefreshDataButton } from "@/components/RefreshDataButton";
+import { relabel } from "@/lib/labels";
 
 type SubtitleApi = { setSubtitle: (s: string) => void };
 const SubtitleContext = createContext<SubtitleApi | null>(null);
@@ -157,7 +158,7 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
                 Page {menuPosition(current)} / {WELDING_TOTAL_PAGES}
               </span>
             ) : null}
-            {isWelders ? null : <span className="page-title-display">{title}</span>}
+            {isWelders ? null : <span className="page-title-display">{relabel(title)}</span>}
             <Suspense fallback={null}>
               <FilterSummary />
             </Suspense>

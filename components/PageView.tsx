@@ -2,6 +2,7 @@
 
 import type { ChartWidget, KpiWidget, PageModel, TableWidget, TextWidget, Widget } from "@/lib/page-model";
 import { usePageSubtitle } from "@/components/ReportShell";
+import { relabelModel } from "@/lib/labels";
 import { KpiCard } from "@/components/widgets/KpiCard";
 import { DataTable } from "@/components/widgets/DataTable";
 import { ChartCard } from "@/components/widgets/ChartCard";
@@ -62,7 +63,8 @@ function groupWidgets(widgets: Widget[]): Group[] {
 /** KPI runs at least this long go into the chart grid as one card. */
 const KPI_PANEL_FROM = 6;
 
-export function PageView({ model, subtitle }: { model: PageModel; subtitle: string }) {
+export function PageView({ model: source, subtitle }: { model: PageModel; subtitle: string }) {
+  const model = relabelModel(source);
   usePageSubtitle(subtitle);
   const groups = groupWidgets(model.widgets);
 

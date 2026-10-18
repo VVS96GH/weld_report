@@ -6,6 +6,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 
 import { useKeepInView } from "@/components/useKeepInView";
 import { menuNeighbours, pageOptions, rtSplit } from "@/lib/page-order";
+import { relabel } from "@/lib/labels";
 import { displayHref, WELDING_PAGE_TITLES } from "@/lib/welding-pages";
 
 /**
@@ -85,7 +86,7 @@ function PageJump({
       aria-current={n === current ? "page" : undefined}
       onClick={() => setOpen(false)}
     >
-      {WELDING_PAGE_TITLES[n - 1]}
+      {relabel(WELDING_PAGE_TITLES[n - 1] ?? "")}
     </Link>
   );
   return (
@@ -106,7 +107,7 @@ function PageJump({
         onClick={() => setOpen((o) => (hover ? true : !o))}
       >
         <span className="page-jump-label">
-          {WELDING_PAGE_TITLES[current - 1]}
+          {relabel(WELDING_PAGE_TITLES[current - 1] ?? "")}
         </span>
         <span aria-hidden="true" className="ms-caret">
           ▾

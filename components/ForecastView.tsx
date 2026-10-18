@@ -1,5 +1,6 @@
 "use client";
 
+import { relabelModel } from "@/lib/labels";
 import type { ChartWidget, KpiWidget, PageModel, TextWidget, Widget } from "@/lib/page-model";
 import { usePageSubtitle } from "@/components/ReportShell";
 import { KpiCard } from "@/components/widgets/KpiCard";
@@ -37,17 +38,20 @@ function Chart({ widget, className }: { widget: ChartWidget; className?: string 
   );
 }
 
-export function ForecastView({ model, subtitle }: { model: PageModel; subtitle: string }) {
+export function ForecastView({ model: source, subtitle }: { model: PageModel; subtitle: string }) {
+  const model = relabelModel(source);
   usePageSubtitle(subtitle);
 
   const charts = new Map<string, ChartWidget>();
   const kpis = new Map<string, KpiWidget>();
   const notes: TextWidget[] = [];
-  for (const w of model.widgets) {
+  // cards are looked up by their pbix label (MIDDLE_CARDS…), shown relabelled
+  model.widgets.forEach((w, i) => {
+    const orig = source.widgets[i];
     if (w.kind === "chart") charts.set(w.canvas_id, w);
-    else if (w.kind === "kpi") kpis.set(w.label, w);
+    else if (w.kind === "kpi" && orig.kind === "kpi") kpis.set(orig.label, w);
     else if (w.kind === "text" && !w.note) notes.push(w);
-  }
+  });
   const used = new Set<Widget>();
   const chart = (id: string) => {
     const c = charts.get(id);
