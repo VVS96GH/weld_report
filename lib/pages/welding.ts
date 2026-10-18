@@ -2802,9 +2802,10 @@ async function buildWpsPage(
   // are what the page holds before any slicer; unknown picks are dropped.
   const baseOf = (conf: SubconConf): Scope => ({
     ...baseScope(conf),
-    // Each party's own visual filter (the pbix, 2026-10-18): CCC drops THD, the
-    // others DMY; `WPS No.` not blank everywhere (`wpsPresent`; "-" stays).
-    excludeWeldTypes: isAll(conf.sub) ? ["THD", "DMY"] : conf.excludeWeldTypes,
+    // Owner ruling, 2026-10-18: THD and DMY out on EVERY party's page (the pbix
+    // visuals drop only one of them each — CCC THD, the others DMY); `WPS No.`
+    // not blank everywhere (`wpsPresent`; the "-" WPS stays).
+    excludeWeldTypes: ["THD", "DMY"],
     wpsPresent: true,
   });
   const [optRows, optOther] = await Promise.all([
