@@ -54,7 +54,6 @@ import {
   fabricatedAggs,
   fabricatedStatsFromRow,
   type FabricatedStats,
-  hasHaValues,
   rtAggs,
   rtAggsPrAll,
   rtBacklogAggs,
@@ -1034,11 +1033,6 @@ const PROVISIONAL_NOTE =
   "workbook is 0 for every sub-contractor in every week since 2024-06-28, so " +
   "this line is seeded honest history, not a live backlog. It will step when " +
   "the first ETL-computed week lands.";
-
-const HA_NOTE =
-  "M52's coverage ratio is computed one grain coarser than the DAX: weld.ha is " +
-  "empty for this scope, because the HA l0_abs_guide lookup file is not in " +
-  "sources/ and Subsystem Code / System no did not yield a handover area.";
 
 const BACKLOG_PROVENANCE_NOTE =
   "Backlog charts: the history is the weekly trend workbook, summed over every " +
@@ -2613,18 +2607,22 @@ async function buildNdePage(
       w.columns.some((c) => COVERAGE_GAP_HEADERS.has(c)),
   );
   // The coverage gap (M52) is defined against ONE RT % target; over every RT % it has none.
-  const gapByGroup = wantGap && conf.rtPct !== undefined
-    ? new Map(
-        (
-          await coverageGapByServiceClass(scope, conf.rtPct / 100, catClassGroup, {
-            byHa: await hasHaValues(scope),
-          })
-        ).map((r) => [r.group, r.backlog_joints] as const),
-      )
-    : new Map<string | null, number>();
-  const gapTotal = wantGap
-    ? [...gapByGroup.values()].reduce((a, v) => a + v, 0)
+  // `RT5% Backlog Joints "PRall" (One Formula)` computes inside ALLEXCEPT(table,
+  // HA, Service Class, Service Class + Service Cat+NDT Remarks): every other
+  // filter — the party, Weld Cat, the page's own — is dropped (owner,
+  // 2026-10-18; 1W3AX H 5 = 108, 1A1A H 5 = 57, 1C6AS H 5 = 4 as the pbix). So a
+  // class row reads the class project-wide, and the weld-cat / Total rows (no
+  // class in context) read the whole RT % — never a sum of the rows.
+  const gapClassRows = wantGap && conf.rtPct !== undefined
+    ? await coverageGapProject(conf.rtPct, classGroup)
     : null;
+  const gapByClass = new Map((gapClassRows?.byClass ?? []).map((r) => [(r.group ?? "").trim(), r.backlog_joints] as const));
+  const gapByGroup = new Map<string | null, number>(
+    [...byCatClass.keys()]
+      .filter((k): k is string => k !== null)
+      .map((k) => [k, gapByClass.get(splitCatClass(k).cls.trim()) ?? 0] as const),
+  );
+  const gapTotal = wantGap ? (gapClassRows?.whole ?? null) : null;
 
   const attach = (
     b: Bundle,
@@ -2698,7 +2696,9 @@ async function buildNdePage(
         out.push(emptyTable(w));
         note(ctx, "The RT-coverage gap (M52) needs one RT % target; pick an RT % to see it.");
       } else {
-        out.push(await coverageGapTable(w, scope, conf.rtPct, classGroup, ctx));
+        // rows: the classes on this page (its party), each read project-wide
+        const pageClasses = new Set([...byCatClass.keys()].filter((k): k is string => k !== null).map((k) => splitCatClass(k).cls.trim()));
+        out.push(coverageGapTable(w, gapClassRows ?? (await coverageGapProject(conf.rtPct, classGroup)), pageClasses));
       }
     } else if (key === "RT%") {
       const rows: RowSpec[] = [];
@@ -2848,23 +2848,39 @@ function snapshotScopeFor(conf: SubconConf): string | undefined {
  * Rows with a gap of 0 are dropped, exactly as the mockup does
  * (`>0`, §3.3 mk 14).
  */
-async function coverageGapTable(
-  spec: SpecTable,
-  scope: Scope,
+/**
+ * M52 by class, project-wide, as the pbix measure's ALLEXCEPT reads it (see
+ * buildNdePage): `whole` is the measure with no class in context.
+ */
+async function coverageGapProject(
   rtPct: number,
-  group: GroupSpec,
-  ctx: Ctx,
-): Promise<TableWidget> {
-  const target = rtPct / 100;
-  const byHa = await hasHaValues(scope);
-  if (!byHa) note(ctx, HA_NOTE);
-  const rows = await coverageGapByServiceClass(scope, target, group, { byHa });
-  const body = rows
-    .filter((r) => r.backlog_joints > 0)
+  classGroup: GroupSpec,
+): Promise<{ byClass: Array<{ group: string | null; backlog_joints: number }>; whole: number }> {
+  const scope: Scope = { sources: SOURCES_PR_ALL_LOADED, rtPct };
+  const [byClass, whole] = await Promise.all([
+    coverageGapByServiceClass(scope, rtPct / 100, classGroup),
+    // one group: every row of the scope shares its RT %
+    coverageGapByServiceClass(scope, rtPct / 100, { key: "grp", sql: "w.rt_pct::text" }),
+  ]);
+  return { byClass, whole: whole[0]?.backlog_joints ?? 0 };
+}
+
+/**
+ * The "RT Backlog" table of the CCC 5/10/20 % pages: classes with a gap, the
+ * pbix visual's `NOT IN {'1A1A  H 5'}` honoured; Total = the measure at the
+ * grand total (not the sum of the rows).
+ */
+function coverageGapTable(
+  spec: SpecTable,
+  gap: { byClass: Array<{ group: string | null; backlog_joints: number }>; whole: number },
+  pageClasses: ReadonlySet<string>,
+): TableWidget {
+  const body = gap.byClass
+    .filter((r) => pageClasses.has((r.group ?? "").trim()))
+    .filter((r) => r.backlog_joints > 0 && (r.group ?? "").trim().replace(/\s+/g, " ") !== "1A1A H 5")
     .sort((a, b) => b.backlog_joints - a.backlog_joints)
     .map((r) => [r.group ?? "", fixed(2).format(r.backlog_joints)]);
-  const total = rows.reduce((a, r) => a + r.backlog_joints, 0);
-  const totalRow = ["Total", total === 0 ? "" : fixed(2).format(total)];
+  const totalRow = ["Total", gap.whole === 0 ? "" : fixed(2).format(gap.whole)];
   return {
     kind: "table",
     title: spec.title ?? "",
