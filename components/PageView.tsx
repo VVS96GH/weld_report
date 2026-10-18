@@ -60,6 +60,21 @@ function groupWidgets(widgets: Widget[]): Group[] {
   return groups;
 }
 
+/**
+ * The weld-type pivots ("Cumulative Welding Status", "Welding Status for this
+ * Week") show only the weld types the scope has, as the pbix matrix does
+ * (owner, 2026-10-18): a column blank in every row goes. Display only.
+ */
+function dropEmptyTypeColumns(t: TableWidget): TableWidget {
+  if (!/welding status/i.test(t.title)) return t;
+  const keep = t.columns.map(
+    (_, i) => i === 0 || i === t.columns.length - 1 || t.rows.some((r) => (r[i] ?? "").trim() !== ""),
+  );
+  if (keep.every(Boolean)) return t;
+  const pick = (r: string[]) => r.filter((_, i) => keep[i]);
+  return { ...t, columns: pick(t.columns), rows: t.rows.map(pick), total_row: t.total_row ? pick(t.total_row) : undefined };
+}
+
 /** KPI runs at least this long go into the chart grid as one card. */
 const KPI_PANEL_FROM = 6;
 
@@ -126,7 +141,7 @@ export function PageView({ model: source, subtitle }: { model: PageModel; subtit
                 <div className="section-title">{g.item.title}</div>
                 <div className="table-scroll">
                   {/* a table with indented detail rows opens them under + (owner, 2026-10-15) */}
-                  <DataTable widget={g.item} collapsible={g.item.rows.some((r) => /^\s{2}/.test(r[0] ?? ""))} />
+                  <DataTable widget={dropEmptyTypeColumns(g.item)} collapsible={g.item.rows.some((r) => /^\s{2}/.test(r[0] ?? ""))} />
                 </div>
               </div>
             );
