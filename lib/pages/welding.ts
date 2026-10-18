@@ -2518,7 +2518,11 @@ async function buildNdePage(
     // non-blank by construction) and restricts Joints Welded / PWHT Done.
     // CCC rows carry no `PWHT Weld Status` at all (its PWHT comes from the
     // joint record), so applying it there would empty the page.
-    pwhtStatusPresent: conf.kind === "pwht" && !isCcc && !all ? true : undefined,
+    // Exception read off the pbix (2026-10-18): "MEDGULF-PWHT STATUS by RT 10%"
+    // filters its details matrix on Weld Date only — no PWHT Weld Status — so it
+    // lists the 855 joints welded (F 178 / S 677) with nothing done or in backlog.
+    pwhtStatusPresent:
+      conf.kind === "pwht" && !isCcc && !all && !(conf.sub === "MEDGULF" && conf.rtPct === 10) ? true : undefined,
   };
   if (all) note(ctx, ALL_CLASS_NOTE);
   if (all && conf.kind === "pwht") note(ctx, ALL_PWHT_NOTE);
