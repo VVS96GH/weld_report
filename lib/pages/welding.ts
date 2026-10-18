@@ -1098,6 +1098,12 @@ type SubconConf = {
   /** `Weld Type NOT IN {…}` — the per-WPS pivots drop `DMY` (§3.4). */
   excludeWeldTypes?: readonly string[];
   /**
+   * Weld Rejection Detail: the visual's Joints Welded is `Joint Uniq "PR all"
+   * Welded` (repairs and rewelds NOT counted) instead of the `… & R/RW` twin the
+   * other visuals use — the GAC "Except SG" pivot only (pbix, 2026-10-18).
+   */
+  wpsNoRepairs?: boolean;
+  /**
    * Screens multi-select (2026-10-14): with `sub = ALL`, only these parties —
    * the ALL structure over their union. Absent = the whole project scope.
    */
@@ -1203,7 +1209,7 @@ const WPS_PAGES = new Map<number, SubconConf[]>([
   [
     42,
     [
-      { sub: "GAC", serviceCat: "NONSG", excludeWeldTypes: ["DMY"] },
+      { sub: "GAC", serviceCat: "NONSG", excludeWeldTypes: ["DMY"], wpsNoRepairs: true },
       { sub: "GAC", serviceCat: "SG" },
     ],
   ],
@@ -2796,10 +2802,9 @@ async function buildWpsPage(
   // are what the page holds before any slicer; unknown picks are dropped.
   const baseOf = (conf: SubconConf): Scope => ({
     ...baseScope(conf),
-    // Owner, 2026-10-18: the CCC visual's `Weld Type <> THD` (and `WPS No.` not
-    // blank — `wpsPresent`; the "-" WPS stays) goes for every party, on top of
-    // the DMY exclusion their own visuals carry.
-    excludeWeldTypes: isAll(conf.sub) ? ["THD", "DMY"] : [...new Set(["THD", ...(conf.excludeWeldTypes ?? [])])],
+    // Each party's own visual filter (the pbix, 2026-10-18): CCC drops THD, the
+    // others DMY; `WPS No.` not blank everywhere (`wpsPresent`; "-" stays).
+    excludeWeldTypes: isAll(conf.sub) ? ["THD", "DMY"] : conf.excludeWeldTypes,
     wpsPresent: true,
   });
   const [optRows, optOther] = await Promise.all([
@@ -2834,7 +2839,7 @@ async function buildWpsPage(
         // 371,613 = page 4 GAC 375,152 − GAC DMY 3,539, i.e. a distinct count.
         bundleTotal(scope, av),
       ]);
-      return { rows, total };
+      return { rows, total, noRepairs: Boolean(conf.wpsNoRepairs) };
     }),
   );
   if (!av.sourceLoaded) note(ctx, sourceNote(confs[0]!.sub));
@@ -2855,6 +2860,9 @@ async function buildWpsPage(
     const blk = blocks[Math.min(i, blocks.length - 1)];
     i++;
     const rows = blk?.rows ?? [];
+    // Joints Welded per the visual's measure: `… & R/RW` (repairs counted) or,
+    // on the GAC Except-SG pivot, plain `Joint Uniq "PR all" Welded`.
+    const weldedOf = (r: (typeof rows)[number]) => (blk?.noRepairs ? r.joints_welded : r.joints_welded_incl_repair_reweld);
     const body = [...rows]
       .sort(
         (a, b) => (b.rejection_rate_joint ?? -1) - (a.rejection_rate_joint ?? -1),
@@ -2864,9 +2872,9 @@ async function buildWpsPage(
       // CCC total 1,268,989 as the pbix).
       .map((r) => [
         r.wps_no,
-        cellInt(r.joints_welded_incl_repair_reweld),
+        cellInt(weldedOf(r)),
         cellInt(r.tested_joints),
-        cellPct(r.joints_welded_incl_repair_reweld ? r.tested_joints / r.joints_welded_incl_repair_reweld : null),
+        cellPct(weldedOf(r) ? r.tested_joints / weldedOf(r) : null),
         cellInt(r.accepted),
         cellInt(r.rejected),
         cellInt(r.rt_total_films),
@@ -2881,7 +2889,7 @@ async function buildWpsPage(
       // a band filter hides rows by their own ratio, so the Total is the
       // visible rows' (the pbix total under a measure filter)
       const sum = (f: (r: (typeof rows)[number]) => number) => rows.reduce((a, r) => a + f(r), 0);
-      const welded = sum((r) => r.joints_welded_incl_repair_reweld);
+      const welded = sum(weldedOf);
       const tested = sum((r) => r.tested_joints);
       const rej = sum((r) => r.rejected);
       const films = sum((r) => r.rt_total_films);
@@ -2900,7 +2908,7 @@ async function buildWpsPage(
         cellPct(tested ? rej / tested : null),
       ];
     } else if (b?.present) {
-      const welded = b.welding.joints_welded_incl_repair_reweld;
+      const welded = blk?.noRepairs ? b.welding.joints_welded : b.welding.joints_welded_incl_repair_reweld;
       const rt = b.rt;
       total = [
         "Total",
