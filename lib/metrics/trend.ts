@@ -17,7 +17,7 @@
 
 import { z } from "zod";
 import { query } from "@/lib/db";
-import { haAreaCondition, Params, zCount, zSum, zText, type HaAreaPick } from "./scope";
+import { haAreaCondition, JOINT_FROM, Params, scopeWhere, zCount, zSum, zText, type HaAreaPick, type Scope } from "./scope";
 
 /**
  * M81 — the flat reference lines on the rejection-rate charts. Hard-coded
@@ -456,6 +456,8 @@ type BacklogSlice = {
   weldTypes?: readonly string[];
   weldCats?: readonly string[];
   haArea?: readonly HaAreaPick[];
+  /** The GAC Slug Catcher page: `Service Cat = "SG"` only. */
+  serviceCat?: "SG";
 };
 
 /** ` AND …` for the backlog queries over `mv_joint` (unaliased columns). */
@@ -466,6 +468,7 @@ function subContractorSql(opts: BacklogSlice, p: Params): string {
   if (opts.weldTypes?.length) c.push(`weld_type = ANY(${p.any(opts.weldTypes)})`);
   if (opts.weldCats?.length) c.push(`weld_cat = ANY(${p.any(opts.weldCats)})`);
   if (opts.haArea?.length) c.push(haAreaCondition(opts.haArea, p, "mv_joint"));
+  if (opts.serviceCat === "SG") c.push(`service_cat = 'SG'`);
   return c.map((x) => ` AND ${x}`).join("");
 }
 
@@ -664,6 +667,9 @@ export async function weeklyInspections(opts: {
   subContractors?: readonly string[];
   excludeSubContractors?: readonly string[];
   excludeWeldCats?: readonly string[];
+  /** R-09 slug-catcher split and the TEKFEN TMCP pipe pages (row columns of `weld`). */
+  serviceCat?: "SG" | "NONSG";
+  tmcpPipe?: boolean;
 }): Promise<Map<string, { mtpt: number; tested: number }>> {
   const out = new Map<string, { mtpt: number; tested: number }>();
   if (opts.weeks.length === 0) return out;
@@ -681,6 +687,9 @@ export async function weeklyInspections(opts: {
   if (opts.excludeWeldCats?.length) {
     conds.push(`(w.weld_cat IS NULL OR NOT (w.weld_cat = ANY(${p.any(opts.excludeWeldCats)})))`);
   }
+  if (opts.serviceCat === "SG") conds.push(`w.service_cat = 'SG'`);
+  else if (opts.serviceCat === "NONSG") conds.push(`w.service_cat IS DISTINCT FROM 'SG'`);
+  if (opts.tmcpPipe !== undefined) conds.push(`w.tmcp_pipe = ${p.add(opts.tmcpPipe)}`);
   const weeks = p.any(opts.weeks);
   // Friday on or after the date: Calendar[Week_End_Date]
   const wk = (d: string) => `(${d} + ((5 - extract(isodow FROM ${d})::int + 7) % 7))`;
@@ -712,4 +721,29 @@ export async function weeklyInspections(opts: {
     /* honest-empty: the chart shows no MT+PT series */
   }
   return out;
+}
+
+/**
+ * M06 for a page scope `mv_weekly_progress` cannot express (Service Cat SG /
+ * non-SG, TMCP pipe): the last `weeks` weeks that have welds in that scope,
+ * joints welded by weld cat, straight off `mv_joint` (owner, 2026-10-18: the
+ * GAC Slug Catcher page showed all of GAC). Only `joints_welded` is filled —
+ * the inspection series come from {@link weeklyInspections}.
+ */
+export async function weeklyProgressScoped(scope: Scope, weeks: number, upTo?: string): Promise<WeeklyProgressPoint[]> {
+  const p = new Params();
+  const where = [scopeWhere(scope, p), `w.is_welded_norepair`, `w.weld_week_end IS NOT NULL`];
+  if (upTo !== undefined) where.push(`w.weld_week_end <= ${p.add(upTo)}::date`);
+  const w = where.filter(Boolean).join(" AND ");
+  const sql =
+    `WITH weeks AS (SELECT DISTINCT w.weld_week_end FROM ${JOINT_FROM} WHERE ${w} ORDER BY 1 DESC LIMIT ${p.add(weeks)})\n` +
+    `SELECT w.weld_week_end::text AS week_end_date, w.weld_cat, count(*) AS joints_welded,\n` +
+    `       0 AS tested, 0 AS rejected, 0 AS films_taken, 0 AS films_rejected\n` +
+    `  FROM ${JOINT_FROM} JOIN weeks USING (weld_week_end)\n` +
+    ` WHERE ${w} GROUP BY 1, 2 ORDER BY 1, 2`;
+  try {
+    return z.array(WeeklyRow).parse(await query(sql, p.list()));
+  } catch {
+    return [];
+  }
 }

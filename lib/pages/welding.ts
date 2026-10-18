@@ -105,6 +105,7 @@ import {
   SNAPSHOT_SCOPES,
   weeklyProgress,
   weeklyInspections,
+  weeklyProgressScoped,
   weeklySnapshot,
   chartCutoff,
   rtBacklogCurrent,
@@ -2236,13 +2237,17 @@ async function buildSubconPage(
         bundleTotal({ ...scope, excludeWeldCats: ["J"] }, av),
         bundleBy(prScope, GROUP_WELD_CAT, prAv),
         bundleTotal(prScope, prAv),
-        weeklyProgress({
-          ...partyArgs(conf.sub, conf.subs),
-          weeks: 8,
-          upTo: chartCutoff(ctx.asOf),
-          excludeWeldCats: ["J"],
-          sources: sourcesFor(conf.sub),
-        }),
+        // SG / non-SG / TMCP blocks: mv_weekly_progress has no service cat,
+        // so those read mv_joint under the block's own scope.
+        conf.serviceCat || conf.tmcpPipe !== undefined
+          ? weeklyProgressScoped({ ...scope, excludeWeldCats: ["J"] }, 8, chartCutoff(ctx.asOf))
+          : weeklyProgress({
+              ...partyArgs(conf.sub, conf.subs),
+              weeks: 8,
+              upTo: chartCutoff(ctx.asOf),
+              excludeWeldCats: ["J"],
+              sources: sourcesFor(conf.sub),
+            }),
         weldTypeDistribution({ ...scope, excludeWeldTypes: ["THD"] }),
       ]);
       // MT+PT and Tested Joints per week by inspection date (weeklyInspections)
@@ -2251,6 +2256,8 @@ async function buildSubconPage(
         sources: sourcesFor(conf.sub),
         ...partyArgs(conf.sub, conf.subs),
         excludeWeldCats: ["J"],
+        serviceCat: conf.serviceCat,
+        tmcpPipe: conf.tmcpPipe,
       });
       return { conf, pivot, thisWeek, byCat, total, totalNoJ, prByCat, prTotal, weekly, insp, dist };
     }),
@@ -2300,6 +2307,8 @@ async function buildSubconPage(
         const src = {
           sources: SOURCES_PR_ALL_LOADED,
           ...partyArgs(blk.conf.sub, blk.conf.subs),
+          // the Slug Catcher page counts SG joints only (owner, 2026-10-18)
+          ...(blk.conf.serviceCat === "SG" ? { serviceCat: "SG" as const } : {}),
           cutoff: chartCutoff(ctx.asOf),
         };
         const [points, rtCur, pwhtCur] = await Promise.all([
@@ -2310,6 +2319,8 @@ async function buildSubconPage(
             subContractors: blk.conf.subs,
             aggregate: true,
             excludeProject: true,
+            // SG page: the workbook's `GAC SG` rows only
+            ...(blk.conf.serviceCat === "SG" ? { scope: snapshotScopeFor(blk.conf) } : {}),
             weeks: w.labels.length,
             upTo: chartCutoff(ctx.asOf),
           }),
