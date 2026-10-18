@@ -1226,8 +1226,6 @@ function baseScope(conf: SubconConf): Scope {
     excludeSubContractors: isAll(conf.sub) ? PROJECT_EXCLUDED_SUBCONTRACTORS : undefined,
     serviceCat: conf.serviceCat,
     tmcpPipe: conf.tmcpPipe,
-    // the pbix TMCP page counts 9C3AQN at 30/34/46"; the TEKFEN page keeps the 46-only rule
-    tmcpPrAll: conf.tmcpPipe === true ? true : undefined,
     // Every pbix page in this family carries `Temporary Lines "WD" IN {null}`.
     temporaryLines: false,
   };
@@ -2217,7 +2215,9 @@ async function buildSubconPage(
   });
   const blocks = await Promise.all(
     confs.map(async (conf) => {
-      const scope = baseScope(conf);
+      // the pbix TMCP status page counts 9C3AQN at 30/34/46"; the TEKFEN page
+      // keeps the 46-only rule (mv_joint carries both inputs; mv_joint_wps does not)
+      const scope: Scope = { ...baseScope(conf), tmcpPrAll: conf.tmcpPipe === true ? true : undefined };
       const statusScope = { ...scope, weldCats: WELD_STATUS_CATS };
       // The "Cumulative RT/UT Joints Tested and Accepted" table reads the
       // "PR all" family with `Weld Type IN {BW, CLET, GW, MW}` — see
@@ -2692,7 +2692,18 @@ async function buildNdePage(
       continue;
     }
     const key = w.columns[0];
-    if (key === "Service Class+Weld Cat" || key === "Weld Cat") {
+    // The CCC PWHT 5/10 % pages' "PWHT Backlog" matrix is Weld Cat × RT %: its
+    // columns are the RT % value and Total, both `PWHT All BACKLOG All WELD TYPE
+    // "PR all"` (owner, 2026-10-18: F 116 / S 3 / Total 119 on RT 5 %).
+    const rtMatrix = key === "Weld Cat" && w.columns.length > 1 && w.columns.slice(1).every((c) => /^\d+$/.test(c) || c === "Total");
+    if (rtMatrix) {
+      const table = metricTable(
+        { ...w, columns: [key, ...w.columns.slice(1).map(() => "PWHT Backlog All Types")] },
+        orderedCats(byCat.keys()).map((c) => ({ label: c, bundle: attach(byCat.get(c)!, agingByCat.get(c)) })),
+        detailTotalB,
+      );
+      out.push({ ...table, columns: w.columns });
+    } else if (key === "Service Class+Weld Cat" || key === "Weld Cat") {
       // Hierarchical detail table: each weld cat, then ITS service classes
       // (indented), the way the pbix matrix expands.
       const rows: RowSpec[] = [];
