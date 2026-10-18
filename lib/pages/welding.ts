@@ -1443,6 +1443,7 @@ export async function getWeldingPage(
   const sclass = ndeSlicers.sclass;
   const pwht = ndeSlicers.pwht;
   const wcatNde = ndeSlicers.wcat;
+  const rtpctNde = ndeSlicers.rtpct;
   // Only values that actually exist are applied — an unknown one is reported
   // as "All" in the widget AND dropped from the query, so the page can never
   // show a filter it did not honour.
@@ -1456,7 +1457,7 @@ export async function getWeldingPage(
         wtype: applied(3),
         wcat: applied(4),
       }
-    : { sclass, pwht, wcat: wcatNde };
+    : { sclass, pwht, wcat: wcatNde, rtpct: rtpctNde };
   const ctx: Ctx = { asOf: as_of, clock, asOfOrigin: origin, notes: new Set(), filters };
   if (bar?.unknown) note(ctx, FILTER_UNKNOWN_NOTE);
   // ALL applies to the per-party families only; pages 1/2 are project-wide already.
@@ -2492,6 +2493,15 @@ async function buildNdePage(
 ): Promise<Widget[]> {
   const isCcc = conf.sub === "CCC";
   const all = isAll(conf.sub);
+  // RT % slicer (owner, 2026-10-18, as the pbix page's RT % box): the RT %
+  // values this party has pages for; the page's own RT % until another is
+  // picked. Several picked → those RT %, OR-ed.
+  const rtOptions = [...new Set([...NDE_PAGES.values()].filter((c) => c.sub === conf.sub).map((c) => c.rtPct))].sort((a, b) => b - a);
+  const keptRt = (filterValues(ctx.filters.rtpct) ?? []).map(Number).filter((v) => rtOptions.includes(v));
+  const pageRt = conf.rtPct;
+  if (pageRt !== undefined && keptRt.length && !(keptRt.length === 1 && keptRt[0] === pageRt)) {
+    conf = keptRt.length === 1 ? { ...conf, rtPct: keptRt[0] } : { ...conf, rtPct: undefined, rtPcts: keptRt };
+  }
   const variant = variantFor(conf.sub);
   const classGroup = serviceClassGroup(conf.sub);
   const scope: Scope = {
@@ -2666,8 +2676,16 @@ async function buildNdePage(
     value: keptCat.length ? keptCat.join(FILTER_SEP) : FILTER_ALL,
     multi: true,
   };
+  const rtFilter: FilterWidget = {
+    kind: "filter",
+    id: "rtpct",
+    label: "RT %",
+    options: rtOptions.map(String),
+    value: keptRt.length ? keptRt.join(FILTER_SEP) : pageRt !== undefined ? String(pageRt) : FILTER_ALL,
+    multi: true,
+  };
   // The slicers go FIRST, ahead of every data widget (as page 1's bar does).
-  const out: Widget[] = [catFilter, classFilter, pwhtFilter];
+  const out: Widget[] = [...(rtOptions.length && pageRt !== undefined ? [rtFilter] : []), catFilter, classFilter, pwhtFilter];
   for (const w of spec.widgets) {
     if (w.kind !== "table") {
       out.push(emptyWidget(w));

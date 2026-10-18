@@ -663,6 +663,8 @@ export type WeldingFilters = {
   sclass?: string;
   /** NDE / PWHT pages (12–40) only: one PWHT Y/N token (`Y` / `N` / `25.01`); absent = All. */
   pwht?: string;
+  /** NDE / PWHT pages only: RT % values, comma-joined; absent = the page's own RT %. */
+  rtpct?: string;
 };
 
 export const FILTER_ALL = "All";
@@ -742,6 +744,7 @@ export function normaliseFilters(f: WeldingFilters | undefined): WeldingFilters 
     wcat: clean(f?.wcat),
     sclass: clean(f?.sclass),
     pwht: clean(f?.pwht),
+    rtpct: clean(f?.rtpct),
   };
 }
 

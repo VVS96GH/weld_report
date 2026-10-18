@@ -114,7 +114,7 @@ describe("getWeldingPage — structure equals analysis/mockups/welding-spec.json
       // The NDE / PWHT pages (12–40) likewise lead with their own Service Class
       // and PWHT Y/N slicers (2026-09-15).
       let body = model.widgets;
-      const barIds = n === 1 || n === 2 ? ["ha", "area", "subco", "wtype", "wcat"] : n >= 12 && n <= 40 ? ["wcat", "sclass", "pwht"] : [];
+      const barIds = n === 1 || n === 2 ? ["ha", "area", "subco", "wtype", "wcat"] : n >= 12 && n <= 40 ? ["rtpct", "wcat", "sclass", "pwht"] : [];
       if (barIds.length > 0) {
         const bar = body.slice(0, barIds.length);
         expect(bar.map((w) => w.kind)).toEqual(Array(barIds.length).fill("filter"));
