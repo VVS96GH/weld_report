@@ -2796,7 +2796,10 @@ async function buildWpsPage(
   // are what the page holds before any slicer; unknown picks are dropped.
   const baseOf = (conf: SubconConf): Scope => ({
     ...baseScope(conf),
-    excludeWeldTypes: isAll(conf.sub) ? ["THD", "DMY"] : conf.excludeWeldTypes,
+    // Owner, 2026-10-18: the CCC visual's `Weld Type <> THD` (and `WPS No.` not
+    // blank — `wpsPresent`; the "-" WPS stays) goes for every party, on top of
+    // the DMY exclusion their own visuals carry.
+    excludeWeldTypes: isAll(conf.sub) ? ["THD", "DMY"] : [...new Set(["THD", ...(conf.excludeWeldTypes ?? [])])],
     wpsPresent: true,
   });
   const [optRows, optRt] = await Promise.all([
