@@ -25,7 +25,7 @@ describe("report display order", () => {
     expect(WELDING_DATA_PAGES).toBe(44);
     expect(LINKED_PAGES).toHaveLength(6);
     // 44 data pages + forecast + 6 linked reports + the TEKFEN TMCP twin of data page 10
-    expect(WELDING_TOTAL_PAGES).toBe(53);
+    expect(WELDING_TOTAL_PAGES).toBe(54);
     expect(reportEntry(FORECAST_DISPLAY_PAGE)).toEqual({ kind: "forecast", title: FORECAST_TITLE });
     expect(WELDING_PAGE_TITLES[FORECAST_DISPLAY_PAGE - 1]).toBe(FORECAST_TITLE);
     expect(WELDING_PAGE_TITLES.slice(2, 8)).toEqual([
@@ -47,7 +47,7 @@ describe("report display order", () => {
       expect(WELDING_PAGE_TITLES[display - 1]).toBe(WELDING_DATA_PAGE_TITLES[d - 1]);
     }
     expect(reportEntry(0)).toBeUndefined();
-    expect(reportEntry(54)).toBeUndefined();
+    expect(reportEntry(55)).toBeUndefined();
   });
 
   it("maps the linked reports both ways", () => {

@@ -76,6 +76,7 @@ export type ReportEntry =
 
 export const FORECAST_TITLE = "RT Backlog Forecast";
 export const WPS_MATERIAL_TITLE = "WPS No / Type of Material";
+export const PROJECT_NDE_TITLE = "Project NDE & PWHT Status by Service Class";
 export const TEKFEN_TMCP_TITLE = "TEKFEN WELDING STATUS Graph TMCP Pipe (9C3AQN 46 Inch)";
 export const FORECAST_DISPLAY_PAGE = 2;
 
@@ -100,6 +101,7 @@ export const REPORT_ORDER: readonly ReportEntry[] = (() => {
   entries.push({ kind: "data", data: 10, tmcp: true, title: TEKFEN_TMCP_TITLE });
   // the WPS / Material page (owner, 2026-10-18), its own route like Errors
   entries.push({ kind: "link", title: WPS_MATERIAL_TITLE, href: "/wps-material" });
+  entries.push({ kind: "link", title: PROJECT_NDE_TITLE, href: "/project-nde" });
   return entries;
 })();
 

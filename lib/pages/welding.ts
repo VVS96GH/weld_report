@@ -412,7 +412,7 @@ export type Availability = {
  * scope's grand total. This is the "batch per widget group" the brief asks
  * for: a 14-column table costs one query, not fourteen.
  */
-async function bundleTotal(scope: Scope, av: Availability): Promise<Bundle> {
+export async function bundleTotal(scope: Scope, av: Availability): Promise<Bundle> {
   const p = new Params();
   const sql = buildGroupedSelect({
     groups: [],
@@ -424,7 +424,7 @@ async function bundleTotal(scope: Scope, av: Availability): Promise<Bundle> {
 }
 
 /** The same bundle grouped by one dimension. */
-async function bundleBy(
+export async function bundleBy(
   scope: Scope,
   group: GroupSpec,
   av: Availability,
@@ -491,7 +491,7 @@ async function bundleByWithTotal(
 }
 
 /** Probe the batch-2 tables once per page rather than once per widget. */
-async function availability(
+export async function availability(
   variant: Variant,
   sources: readonly string[],
   scope: Scope = { sources },
@@ -513,7 +513,7 @@ async function availability(
   };
 }
 
-const GROUP_WELD_CAT: GroupSpec = { key: "weld_cat", sql: "w.weld_cat" };
+export const GROUP_WELD_CAT: GroupSpec = { key: "weld_cat", sql: "w.weld_cat" };
 const GROUP_SERVICE_CLASS: GroupSpec = {
   key: "service_class_cat_wd",
   sql: "w.service_class_cat_wd",
@@ -635,7 +635,7 @@ const COVERAGE_GAP_HEADERS = new Set([
  * function knows (weld-type pivot columns, row keys), so callers can fall
  * through to their own handling.
  */
-function metricCell(header: string, b: Bundle): string | null {
+export function metricCell(header: string, b: Bundle): string | null {
   if (UNAVAILABLE_HEADERS.has(header)) return "";
   // No result row for this group: unknown, not zero.
   if (!b.present) return "";

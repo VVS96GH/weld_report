@@ -1,4 +1,4 @@
-import { TEKFEN_TMCP_TITLE, WELDING_PAGE_TITLES, WPS_MATERIAL_TITLE } from "@/lib/welding-pages";
+import { PROJECT_NDE_TITLE, TEKFEN_TMCP_TITLE, WELDING_PAGE_TITLES, WPS_MATERIAL_TITLE } from "@/lib/welding-pages";
 
 /**
  * The page menu's order (owner, 2026-10-15): pages are grouped (Project, Welder
@@ -39,7 +39,7 @@ export type PageOption = { page: number } | { group: string; pages: number[] };
 
 /** The project-wide pages make the first group (owner, 2026-10-15). */
 const PROJECT_GROUP = "Project";
-const PROJECT_PAGES = [1, 2, 3, 9, WELDING_PAGE_TITLES.indexOf(WPS_MATERIAL_TITLE) + 1].filter((n) => n > 0);
+const PROJECT_PAGES = [1, 2, 3, 9, ...[WPS_MATERIAL_TITLE, PROJECT_NDE_TITLE].map((t) => WELDING_PAGE_TITLES.indexOf(t) + 1)].filter((n) => n > 0);
 
 /**
  * The jump list, top to bottom: Project, Welder Performance, the four

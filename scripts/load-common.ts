@@ -353,6 +353,8 @@ export const POST_LOAD_MATVIEWS: { name: string; concurrently: boolean }[] = [
   { name: "mv_joint_material", concurrently: true },
   // joint × WPS × material × welder (0050), for the WPS / Material page. Keyed: online.
   { name: "mv_joint_pairs", concurrently: true },
+  // NDT Remarks / Thickness / PAUT per joint (0051), the Project NDE & PWHT page. Keyed: online.
+  { name: "mv_joint_attr", concurrently: true },
   // 2.5 M rows, ~33 s; no unique key (its grain has NULLs), so a plain refresh.
   { name: "mv_welder_perf", concurrently: false },
   // Read mv_welder_perf, so after it. Small, keyed: online.

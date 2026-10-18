@@ -3962,3 +3962,15 @@ th:hover > .th-resize::after, .th-resize:active::after { opacity: 0.5; }
 /* the pbix's colours: RT FILM Rej Ratio % red, RT/UT Ratio % pale green */
 .wm-matrix td.wm-film { color: var(--color-danger); font-weight: 600; }
 .wm-matrix td.wm-ratio { color: var(--indicator-up, var(--fg)); }
+
+/* ── Project NDE & PWHT Status by Service Class (owner, 2026-10-18) ── */
+.pn-top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+.pn-top > div:first-child { flex: 1 1 560px; min-width: 0; }
+.pn-cards { flex: 0 1 520px; }
+.pn-main { max-height: 62vh; }

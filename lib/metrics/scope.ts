@@ -270,6 +270,12 @@ export type Scope = {
   /** `Material Type IN (…)` — through `mv_joint_material` (0049), a joint matching any. */
   materialTypes?: readonly string[];
   /**
+   * Extra predicates already rendered by the caller, `{a}` standing for the
+   * alias. Only for values the caller validated against options read from the
+   * database and quoted with {@link sqlLit} (the Project NDE & PWHT page).
+   */
+  extraSql?: readonly string[];
+  /**
    * `PWHT Weld Status` is not blank — the extra table filter the PWHT-by-RT%
    * pages carry (§3.3 "as 19 + `PWHT Weld Status` not blank").
    */
@@ -445,6 +451,9 @@ export function scopeConditions(
     // §8.1 types `dia_inch_factor` as boolean, §6.2 as char(1) 'Y'/'N'.
     // Casting to text accepts either shape ('Y' or 'true'); flagged to DB-LANE.
     c.push(`${a}.dia_inch_factor::text IN ('Y','y','true','t')`);
+  }
+  if (scope.extraSql?.length) {
+    for (const x of scope.extraSql) c.push(x.replaceAll("{a}", a));
   }
   if (scope.materialTypes?.length) {
     c.push(
@@ -696,6 +705,9 @@ export const FILTER_ALL = "All";
  * "HA, Area Classification" tree can pick one area under one HA only.
  */
 export const FILTER_SEP = ",";
+
+/** A SQL string literal (single quotes doubled) — for {@link Scope.extraSql}. */
+export const sqlLit = (v: string) => `'${v.replaceAll("'", "''")}'`;
 export const PAIR_SEP = ">";
 
 /** The values of one slicer param; `undefined` when nothing is picked. */
