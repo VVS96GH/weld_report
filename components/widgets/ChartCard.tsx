@@ -270,6 +270,8 @@ export type Palette = {
   /** The pbix "Weld Qty" pair: F gold / S navy (`--series-f` / `--series-s`, T.EN mood). */
   seriesF: string | null;
   seriesS: string | null;
+  /** MT+PT series: red, as in the pbix Welding Status charts (`--color-danger`). */
+  seriesMtPt: string | null;
 };
 
 const FALLBACK_PALETTE: Palette = {
@@ -278,6 +280,7 @@ const FALLBACK_PALETTE: Palette = {
   grid: "rgba(255,255,255,0.08)", // token-lint: allow-hex — legacy mood fallback
   text: "#cccccc", // token-lint: allow-hex — legacy mood fallback
   attention: null,
+  seriesMtPt: null,
   font: undefined,
   fg: "#cccccc", // token-lint: allow-hex — legacy mood fallback
   seriesF: null,
@@ -351,6 +354,7 @@ function readPalette(): Palette {
       fg: read("--fg") ?? read("--text-primary") ?? FALLBACK_PALETTE.fg,
       seriesF: read("--series-f"),
       seriesS: read("--series-s"),
+      seriesMtPt: read("--color-danger"),
     };
   } finally {
     probe.remove();
@@ -367,6 +371,8 @@ const ATTENTION_SERIES = /\b(rej|reject|rejected|backlog|b\.log|not done)\b|"R"/
 // and '"F"+"S" Weld Qty' series; everything else keeps its palette slot.
 const F_SERIES = /^"?F"?( Weld( only)?)?$/i;
 const S_SERIES = /^"?S"?( Weld)?$|^"F"\+"S"/i;
+// Owner, 2026-10-18: MT+PT is red on every Welding Status chart, as in the pbix.
+const MT_PT_SERIES = /^MT ?\+ ?PT( Qty)?$/i;
 
 /** `color` at `alpha`, whatever CSS colour syntax the token uses (the canvas normalises it). */
 function withAlpha(color: string, alpha: number): string {
@@ -384,6 +390,7 @@ function withAlpha(color: string, alpha: number): string {
 }
 
 function seriesColor(label: string, index: number, palette: Palette): string {
+  if (palette.seriesMtPt && MT_PT_SERIES.test(label)) return palette.seriesMtPt;
   if (palette.attention && ATTENTION_SERIES.test(label)) return palette.attention;
   if (palette.seriesF && F_SERIES.test(label)) return palette.seriesF;
   if (palette.seriesS && S_SERIES.test(label)) return palette.seriesS;

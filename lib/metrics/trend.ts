@@ -646,3 +646,70 @@ export async function pwhtBacklogCurrent(opts: BacklogSlice & {
     return null;
   }
 }
+
+/**
+ * Per-week inspection counts by the INSPECTION date, for the per-party Welding
+ * Status charts (owner, 2026-10-18; pbix `chart7_welding`):
+ *   - `MT + PT "PR all"` = joints with an MT report counted on the week of
+ *     `MT Date "PR All"` plus joints with a PT report on the week of
+ *     `PT Date "PR All"` (both `USERELATIONSHIP` to Calendar[Date]);
+ *   - `Numb RT/UT "PR all" 2` = tested joints on the week of `RT Date`.
+ * The "PR All" twins fall back to the CCC joint-record columns. Row grain
+ * (`weld`), as the DAX reads the fact table; `Weld Date > 0` on every term.
+ */
+export async function weeklyInspections(opts: {
+  weeks: readonly string[];
+  sources: readonly string[];
+  subContractor?: string;
+  subContractors?: readonly string[];
+  excludeSubContractors?: readonly string[];
+  excludeWeldCats?: readonly string[];
+}): Promise<Map<string, { mtpt: number; tested: number }>> {
+  const out = new Map<string, { mtpt: number; tested: number }>();
+  if (opts.weeks.length === 0) return out;
+  const p = new Params();
+  const conds = [
+    `w.source::text = ANY(${p.any(opts.sources)}::text[])`,
+    `w.weld_date IS NOT NULL`,
+    `NOT w.is_cancelled`,
+  ];
+  if (opts.subContractors?.length) conds.push(`w.sub_contractor = ANY(${p.any(opts.subContractors)})`);
+  else if (opts.subContractor !== undefined) conds.push(`w.sub_contractor = ${p.add(opts.subContractor)}`);
+  if (opts.excludeSubContractors?.length) {
+    conds.push(`(w.sub_contractor IS NULL OR NOT (w.sub_contractor = ANY(${p.any(opts.excludeSubContractors)})))`);
+  }
+  if (opts.excludeWeldCats?.length) {
+    conds.push(`(w.weld_cat IS NULL OR NOT (w.weld_cat = ANY(${p.any(opts.excludeWeldCats)})))`);
+  }
+  const weeks = p.any(opts.weeks);
+  // Friday on or after the date: Calendar[Week_End_Date]
+  const wk = (d: string) => `(${d} + ((5 - extract(isodow FROM ${d})::int + 7) % 7))`;
+  const where = conds.join(" AND ");
+  const sql =
+    `WITH r AS (SELECT w.joint_id, coalesce(w.mt_date, w.mt_date_ccc) AS mt_d, coalesce(w.pt_date, w.pt_date_ccc) AS pt_d,\n` +
+    `                  coalesce(w.mt_report, w.mt_report_ccc) AS mt_r, coalesce(w.pt_report, w.pt_report_ccc) AS pt_r,\n` +
+    `                  w.rt_date, w.rt_report, w.rt_acc_rej\n` +
+    `             FROM weld w WHERE ${where}),\n` +
+    `     k AS (\n` +
+    `  SELECT 'mtpt' AS kind, ${wk("mt_d")}::date AS wk, 'MT' || joint_id AS id FROM r WHERE mt_r IS NOT NULL AND mt_d IS NOT NULL\n` +
+    `  UNION ALL\n` +
+    `  SELECT 'mtpt', ${wk("pt_d")}::date, 'PT' || joint_id FROM r WHERE pt_r IS NOT NULL AND pt_d IS NOT NULL\n` +
+    `  UNION ALL\n` +
+    `  SELECT 'tested', ${wk("rt_date")}::date, joint_id FROM r\n` +
+    `   WHERE rt_report IS NOT NULL AND rt_date IS NOT NULL\n` +
+    `     AND rt_acc_rej IS DISTINCT FROM 'RS' AND rt_acc_rej IS DISTINCT FROM 'U/Review')\n` +
+    `SELECT wk::text AS wk, kind, count(DISTINCT id) AS n FROM k\n` +
+    ` WHERE wk = ANY(${weeks}::date[]) GROUP BY 1, 2`;
+  try {
+    const rows = await query<{ wk: string; kind: string; n: string }>(sql, p.list());
+    for (const r of rows) {
+      const cur = out.get(r.wk) ?? { mtpt: 0, tested: 0 };
+      if (r.kind === "mtpt") cur.mtpt = Number(r.n);
+      else cur.tested = Number(r.n);
+      out.set(r.wk, cur);
+    }
+  } catch {
+    /* honest-empty: the chart shows no MT+PT series */
+  }
+  return out;
+}

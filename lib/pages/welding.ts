@@ -104,6 +104,7 @@ import {
   SNAPSHOT_METRICS,
   SNAPSHOT_SCOPES,
   weeklyProgress,
+  weeklyInspections,
   weeklySnapshot,
   chartCutoff,
   rtBacklogCurrent,
@@ -1018,11 +1019,6 @@ function utLengthNote(ut: UtCoverage, dimensionLoaded: boolean): string | null {
 
 const FABRICATED_NOTE =
   "FABRICATED columns need Spool Dump.txt, which is not in sources/.";
-
-const MT_PT_SERIES_NOTE =
-  "The 'MT+PT Qty' series on the weekly progress chart is empty: " +
-  "mv_weekly_progress does not carry MT/PT counts, so there is nothing to " +
-  "plot per week (the page-total MT/PT Done KPI is computed).";
 
 const PROVISIONAL_NOTE =
   "Provisional series (ruling R2-09): the RT Backlog column of the trend " +
@@ -2223,7 +2219,7 @@ async function buildSubconPage(
         // uniformly so the rule lives in one place.
         tmcpPipe: undefined,
       };
-      const [pivot, thisWeek, byCat, total, prByCat, prTotal, weekly, dist] =
+      const [pivot, thisWeek, byCat, total, totalNoJ, prByCat, prTotal, weekly, dist] =
         await Promise.all([
         weldTypePivot(statusScope),
         weekEnd
@@ -2231,6 +2227,8 @@ async function buildSubconPage(
           : Promise.resolve(null),
         bundleBy(scope, GROUP_WELD_CAT, av),
         bundleTotal(scope, av),
+        // the pbix Joints Welded card here: `Weld Cat NOT IN {J}` (owner, 2026-10-18)
+        bundleTotal({ ...scope, excludeWeldCats: ["J"] }, av),
         bundleBy(prScope, GROUP_WELD_CAT, prAv),
         bundleTotal(prScope, prAv),
         weeklyProgress({
@@ -2242,7 +2240,14 @@ async function buildSubconPage(
         }),
         weldTypeDistribution({ ...scope, excludeWeldTypes: ["THD"] }),
       ]);
-      return { conf, pivot, thisWeek, byCat, total, prByCat, prTotal, weekly, dist };
+      // MT+PT and Tested Joints per week by inspection date (weeklyInspections)
+      const insp = await weeklyInspections({
+        weeks: [...new Set(weekly.map((p) => p.week_end_date))],
+        sources: sourcesFor(conf.sub),
+        ...partyArgs(conf.sub, conf.subs),
+        excludeWeldCats: ["J"],
+      });
+      return { conf, pivot, thisWeek, byCat, total, totalNoJ, prByCat, prTotal, weekly, insp, dist };
     }),
   );
   if (!weekEnd) note(ctx, TREND_NOTE);
@@ -2276,16 +2281,13 @@ async function buildSubconPage(
       // contradicts it. Above all it must not inherit that table's
       // `Weld Type IN {BW, CLET, GW, MW}` filter, which belongs to the NDE
       // visual and would cut TEKFEN from 369,931 to 115,558.
-      out.push(subconKpi(w, w.label === "Joints Welded" ? blk.total : blk.prTotal));
+      out.push(subconKpi(w, w.label === "Joints Welded" ? blk.totalNoJ : blk.prTotal));
     } else if (w.kind === "chart") {
       if (/weldtype|weld_type/i.test(w.canvas_id)) {
         out.push(donutChart(w, blk.dist));
       } else if (/progress|welding/i.test(w.canvas_id)) {
-        out.push(subconProgressChart(w, blk.weekly));
+        out.push(subconProgressChart(w, blk.weekly, blk.insp));
         if (blk.weekly.length === 0) note(ctx, TREND_NOTE);
-        if (w.datasets.some((d) => d.label === "MT+PT Qty")) {
-          note(ctx, MT_PT_SERIES_NOTE);
-        }
       } else if (isBacklogChart(w.canvas_id)) {
         // Same series as page 1, filtered to this party -- every scope it has
         // (a GAC page sums GAC + GAC SG), the PROJECT sentinel dropped.
@@ -2409,6 +2411,7 @@ function subconKpi(spec: SpecKpi, b: Bundle): KpiWidget {
 function subconProgressChart(
   spec: SpecChart,
   points: Awaited<ReturnType<typeof weeklyProgress>>,
+  insp: Map<string, { mtpt: number; tested: number }>,
 ): ChartWidget {
   const weeks = [...new Set(points.map((p) => p.week_end_date))].sort();
   const sum = (wk: string, field: "joints_welded" | "tested"): number =>
@@ -2426,10 +2429,13 @@ function subconProgressChart(
     if (label === '"F"+"S" Weld Qty') {
       return { label, data: weeks.map((wk) => sum(wk, "joints_welded")) };
     }
+    // pbix `Numb RT/UT "PR all" 2` and `MT + PT "PR all"`: by inspection date
     if (label === "Tested Joints") {
-      return { label, data: weeks.map((wk) => sum(wk, "tested")) };
+      return { label, data: weeks.map((wk) => insp.get(wk)?.tested ?? 0) };
     }
-    // MT+PT Qty is not in mv_weekly_progress — honest-empty series.
+    if (label === "MT+PT Qty") {
+      return { label, data: weeks.map((wk) => insp.get(wk)?.mtpt ?? 0) };
+    }
     return { label, data: weeks.map(() => null) };
   });
   return {
