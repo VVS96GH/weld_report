@@ -97,6 +97,8 @@ export const REPORT_ORDER: readonly ReportEntry[] = (() => {
   // Appended so no existing page number moves; the menu shows it after the
   // TEKFEN graph page (lib/page-order.ts MENU_AFTER). Owner, 2026-10-18.
   entries.push({ kind: "data", data: 10, tmcp: true, title: TEKFEN_TMCP_TITLE });
+  // the WPS / Material page (owner, 2026-10-18), its own route like Errors
+  entries.push({ kind: "link", title: "WPS / Material", href: "/wps-material" });
   return entries;
 })();
 

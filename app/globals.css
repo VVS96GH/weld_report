@@ -3945,3 +3945,20 @@ th:hover > .th-resize::after, .th-resize:active::after { opacity: 0.5; }
 .fchip.fchip--wide .fchip-btn {
   width: 100%;
 }
+
+/* ── WPS / Material page (owner, 2026-10-18): two matrices side by side ── */
+.wm-cards { margin-bottom: 14px; }
+.wm-split {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+@media (max-width: 1100px) {
+  .wm-split { grid-template-columns: 1fr; }
+}
+.wm-matrix .wp-rowhead { min-width: 180px; }
+.wm-matrix thead th + th { width: 78px; min-width: 78px; max-width: 78px; }
+/* the pbix's colours: RT FILM Rej Ratio % red, RT/UT Ratio % pale green */
+.wm-matrix td.wm-film { color: var(--color-danger); font-weight: 600; }
+.wm-matrix td.wm-ratio { color: var(--indicator-up, var(--fg)); }
