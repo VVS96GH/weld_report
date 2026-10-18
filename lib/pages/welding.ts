@@ -62,6 +62,7 @@ import {
   rtBacklogStatsFromRow,
   RT_BACKLOG_EP,
   RT_BACKLOG_PRALL,
+  type BacklogFamily,
   rtPrAllStatsFromRow,
   rtStatsFromRow,
   spoolMasterLoaded,
@@ -2569,8 +2570,15 @@ async function buildNdePage(
   // measures, whose clock is `No of Days "PR all"` = DATEDIFF(Weld Date, TODAY())
   // — the weld date, not RT Selected Date (which CCC lacks; the old R2-05 reading).
   const wantAging = true;
+  // CCC PWHT pages: the details matrix carries `PWHT Y/N CCC IN {"Y"}` (the
+  // status matrix does not), and its aging is the measure's CCC term — weld
+  // date, `PWHT Y/N CCC = "Y"`, no CCC PWHT report (owner, 2026-10-18).
+  const cccPwht = isCcc && conf.kind === "pwht";
+  const detailScope: Scope = cccPwht ? { ...scope, pwhtYnCccRawY: true } : scope;
+  const agingFamily: BacklogFamily = cccPwht ? { flag: "pwht_backlog_ccc", dateCol: "weld_date" } : family;
   const [
     total,
+    detailTotal,
     byCat,
     byCatClass,
     byRtPct,
@@ -2580,16 +2588,17 @@ async function buildNdePage(
     agingByCatClass,
   ] = await Promise.all([
     bundleTotal(scope, av),
-    bundleBy(scope, GROUP_WELD_CAT, av),
-    bundleBy(scope, catClassGroup, av),
+    cccPwht ? bundleTotal(detailScope, av) : Promise.resolve(null),
+    bundleBy(detailScope, GROUP_WELD_CAT, av),
+    bundleBy(detailScope, catClassGroup, av),
     bundleBy(scope, GROUP_RT_PCT, av),
     bundleBy(scope, GROUP_RT_CAT, av),
-    wantAging ? backlogAging(scope, ctx.clock, family) : Promise.resolve(null),
+    wantAging ? backlogAging(detailScope, ctx.clock, agingFamily) : Promise.resolve(null),
     wantAging
-      ? backlogAgingBy(scope, ctx.clock, family, GROUP_WELD_CAT)
+      ? backlogAgingBy(detailScope, ctx.clock, agingFamily, GROUP_WELD_CAT)
       : Promise.resolve(new Map<string | null, AgingBuckets>()),
     wantAging
-      ? backlogAgingBy(scope, ctx.clock, family, catClassGroup)
+      ? backlogAgingBy(detailScope, ctx.clock, agingFamily, catClassGroup)
       : Promise.resolve(new Map<string | null, AgingBuckets>()),
   ]);
   if (!av.spool) note(ctx, FABRICATED_NOTE);
@@ -2630,6 +2639,7 @@ async function buildNdePage(
   };
 
   const totalB = attach(total, agingTotal ?? undefined);
+  const detailTotalB = detailTotal ? attach(detailTotal, agingTotal ?? undefined) : totalB;
 
   const [classOptions, pwhtOptions] = await optionsP;
   if (pwhtOptions.includes(PWHT_AMBIGUOUS_TOKEN)) note(ctx, PWHT_TOKEN_NOTE);
@@ -2681,7 +2691,7 @@ async function buildNdePage(
           });
         }
       }
-      out.push(metricTable(w, rows, totalB));
+      out.push(metricTable(w, rows, detailTotalB));
     } else if (key === "Service Class+NDT Remarks") {
       // §3.3 mk 14/16/18 second table: M52, the RT-coverage gap.
       if (conf.rtPct === undefined) {

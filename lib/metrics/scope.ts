@@ -270,6 +270,12 @@ export type Scope = {
    * pages carry (§3.3 "as 19 + `PWHT Weld Status` not blank").
    */
   pwhtStatusPresent?: boolean;
+  /**
+   * The CCC PWHT-by-RT% details matrix: visual filter `PWHT Y/N CCC IN {"Y"}` —
+   * the RAW joint-record column, not the owner's (NEW) one (owner, 2026-10-18:
+   * reproduces 11,413 joints / 41 backlog on RT 100 %).
+   */
+  pwhtYnCccRawY?: boolean;
   /** §0.3 source discriminator; defaults to the `"EP"` scope. */
   sources?: readonly string[];
   /**
@@ -438,6 +444,9 @@ export function scopeConditions(
   }
   if (scope.wpsPresent) {
     c.push(`${a}.wps_no IS NOT NULL`);
+  }
+  if (scope.pwhtYnCccRawY) {
+    c.push(`${a}.pwht_y_n_ccc = 'Y'`);
   }
   if (scope.pwhtStatusPresent) {
     // `has_pwht_status` is the joint-grain form of `pwht_weld_status IS NOT NULL`.
