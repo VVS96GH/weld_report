@@ -6,7 +6,7 @@ import { getWpsMaterialPage } from "@/lib/pages/wps-material";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = { title: "WPS / Material — Welding Statistics Dashboard" };
+export const metadata: Metadata = { title: "WPS No / Type of Material — Welding Statistics Dashboard" };
 
 // typed by hand: the generated route types (.next/types) do not know this route until the next build
 export default async function WpsMaterialPage(props: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {

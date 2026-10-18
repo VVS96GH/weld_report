@@ -198,7 +198,7 @@ function TreeCard({ data, tree, title }: { data: WmPageData; tree: WmTree; title
  * page split in two — WPS on the left, Materials on the right.
  */
 export function WpsMaterialView({ data, note }: { data: WmPageData | null; note?: string }) {
-  usePageSubtitle("WPS / Material");
+  usePageSubtitle("WPS No / Type of Material");
   return (
     <section className="page-section active wm-page" aria-labelledby="page-heading">
       <div className="page-header">
