@@ -75,13 +75,44 @@ function dropEmptyTypeColumns(t: TableWidget): TableWidget {
   return { ...t, columns: pick(t.columns), rows: t.rows.map(pick), total_row: t.total_row ? pick(t.total_row) : undefined };
 }
 
+/** A reference list ("Defect Code Reference: BT: Burn Through C: Crack …") as a code | meaning table. */
+const REF_RE = /^\s*(Defect Code Reference|WELD TYPE Reference)\s*:\s*/i;
+function referenceTable(text: string): TableWidget | null {
+  const m = REF_RE.exec(text);
+  if (!m) return null;
+  const body = text.slice(m[0].length);
+  // a code is a short upper-case token followed by ":" (BT, R/I, SLAG, L4, WPAD)
+  const parts = body.split(/(?:^|\s)([A-Z][A-Z0-9/]{0,5}):\s/).slice(1);
+  const rows: string[][] = [];
+  for (let i = 0; i + 1 < parts.length; i += 2) rows.push([parts[i]!, parts[i + 1]!.trim()]);
+  if (!rows.length) return null;
+  const isDefect = /defect/i.test(m[1]!);
+  return {
+    kind: "table",
+    title: isDefect ? "Defect Code Reference" : "Weld Type Reference",
+    columns: [isDefect ? "Defect Code" : "Weld Type", "Description"],
+    rows,
+  };
+}
+
 /** KPI runs at least this long go into the chart grid as one card. */
 const KPI_PANEL_FROM = 6;
 
 export function PageView({ model: source, subtitle }: { model: PageModel; subtitle: string }) {
   const model = relabelModel(source);
   usePageSubtitle(subtitle);
-  const groups = groupWidgets(model.widgets);
+  // "Defect Code Reference: BT: Burn Through C: Crack …" → a two-column table
+  const refs: TableWidget[] = [];
+  const widgets = model.widgets.filter((w) => {
+    const t = w.kind === "text" ? referenceTable(w.text) : null;
+    if (t) refs.push(t);
+    return !t;
+  });
+  const refAt = model.widgets.findIndex((w) => w.kind === "text" && referenceTable(w.text));
+  // what comes before the reference lists renders as usual; what follows sits beside them
+  const cut = refAt < 0 ? widgets.length : model.widgets.slice(0, refAt).filter((w) => !(w.kind === "text" && referenceTable(w.text))).length;
+  const before = groupWidgets(widgets.slice(0, cut));
+  const after = groupWidgets(widgets.slice(cut));
 
   return (
     <section className="page-section active pv-page" aria-labelledby="page-heading">
@@ -90,7 +121,31 @@ export function PageView({ model: source, subtitle }: { model: PageModel; subtit
       </div>
       {model.subtitle ? <p className="page-subtitle">{model.subtitle}</p> : null}
 
-      {groups.map((g, i) => {
+      {before.map((g, i) => renderGroup(g, i))}
+      {refs.length ? (
+        // the reference lists as two code | meaning tables beside the tables that
+        // follow them (owner, 2026-10-18: Project Welding & NDE Status)
+        <div className="pv-with-refs">
+          <div className="pv-with-refs-main">{after.map((g, i) => renderGroup(g, i))}</div>
+          <div className="pv-refs">
+            {refs.map((t) => (
+              <div key={t.title}>
+                <div className="section-title">{t.title}</div>
+                <div className="table-scroll">
+                  <DataTable widget={t} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        after.map((g, i) => renderGroup(g, i + before.length))
+      )}
+    </section>
+  );
+}
+
+function renderGroup(g: Group, i: number) {
         switch (g.kind) {
           case "kpi":
             return (
@@ -148,7 +203,4 @@ export function PageView({ model: source, subtitle }: { model: PageModel; subtit
           default:
             return null;
         }
-      })}
-    </section>
-  );
 }

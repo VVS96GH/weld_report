@@ -3974,3 +3974,23 @@ th:hover > .th-resize::after, .th-resize:active::after { opacity: 0.5; }
 .pn-top > div:first-child { flex: 1 1 560px; min-width: 0; }
 .pn-cards { flex: 0 1 520px; }
 .pn-main { max-height: 62vh; }
+
+/* Project Welding & NDE Status: the two reference lists as tables to the right
+   of the RT/UT and RT & PWHT tables (owner, 2026-10-18) */
+.pv-with-refs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-start;
+}
+.pv-with-refs-main { flex: 1 1 760px; min-width: 0; }
+.pv-refs {
+  flex: 0 1 560px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-start;
+}
+.pv-refs > div { flex: 1 1 240px; min-width: 0; }
+.pv-refs .data-table td:nth-child(2),
+.pv-refs .data-table th:nth-child(2) { text-align: start; white-space: normal; }
