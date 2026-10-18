@@ -3935,3 +3935,13 @@ th:hover > .th-resize::after, .th-resize:active::after { opacity: 0.5; }
 :where(.table-scroll .data-table tbody tr.row-header:last-child) > * {
   background: var(--bg-elevated);
 }
+
+/* Joint IDs are long (11040A1-DG6204061C-SP2-9): their chip takes the row's
+   free width (owner, 2026-10-18, Errors page). */
+.fchip.fchip--wide {
+  flex: 1 1 340px;
+  min-width: min(340px, 100%);
+}
+.fchip.fchip--wide .fchip-btn {
+  width: 100%;
+}

@@ -150,6 +150,7 @@ export function FilterBar({
             <MultiSelect
               key={`${w.id}:${w.value}`}
               chip
+              wide={w.label === "Joint ID"}
               label={w.label}
               options={opts}
               value={list(w.value)}

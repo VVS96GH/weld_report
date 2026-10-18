@@ -121,6 +121,7 @@ export function MultiSelect({
   value,
   onApply,
   chip = false,
+  wide = false,
   groupOf,
 }: {
   label: string;
@@ -129,6 +130,8 @@ export function MultiSelect({
   onApply: (values: string[]) => void;
   /** Compact chip: "Label: picks ▾" on one line, with × to clear (2026-10-15). */
   chip?: boolean;
+  /** A wider chip for long values (Joint ID on the Errors page, 2026-10-18). */
+  wide?: boolean;
   /**
    * Show the options under parents (owner, 2026-10-15: Service Class first, + opens
    * its variants). The picked values stay the options themselves.
@@ -178,7 +181,7 @@ export function MultiSelect({
 
   return (
     <div
-      className={`filter-group ms${chip ? " fchip" : ""}${chip && value.length ? " is-set" : ""}`}
+      className={`filter-group ms${chip ? " fchip" : ""}${wide ? " fchip--wide" : ""}${chip && value.length ? " is-set" : ""}`}
       ref={ref}
     >
       <label
