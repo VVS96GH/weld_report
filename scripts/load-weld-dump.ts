@@ -39,6 +39,7 @@ import {
   buildWeldInsert,
   copyColumns,
 } from "./weld-sql";
+import { weldCutoff } from "./lib/weld-cutoff";
 
 /** Every data record holds exactly this many fields (profile.md §1.2c). */
 const FIELD_COUNT = 223;
@@ -405,7 +406,9 @@ async function liveLoad(opts: Options): Promise<void> {
       console.warn(`        skipped record numbers (first 10): ${badExamples.join(", ")}`);
     }
 
-    const rejects = await client.query<Record<string, string>>(buildRejectCountsSql(), [loadId]);
+    const cutoff = weldCutoff(opts.file);
+    console.log(`cutoff  welds dated after ${cutoff} (last Friday before the export) are left out`);
+    const rejects = await client.query<Record<string, string>>(buildRejectCountsSql(cutoff), [loadId]);
     const rej = rejects.rows[0];
 
     // Previous rows of the SAME source go; other sources are untouched.
@@ -420,7 +423,7 @@ async function liveLoad(opts: Options): Promise<void> {
     }
 
     const tIns = Date.now();
-    const ins = await client.query(buildWeldInsert(), [loadId, SOURCE]);
+    const ins = await client.query(buildWeldInsert(cutoff), [loadId, SOURCE]);
     console.log(
       `insert  ${(ins.rowCount ?? 0).toLocaleString()} rows into weld in ${((Date.now() - tIns) / 1000).toFixed(1)} s`,
     );

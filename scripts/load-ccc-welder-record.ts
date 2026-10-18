@@ -31,6 +31,7 @@ import {
   closeLoad, copyLine, copyRows, formatRefreshes, fmt, num, openLoad, parseDate, readDelimited,
   refreshMatviews, requireEnvUrl, secs, sha256File, txt,
 } from "./load-common";
+import { weldCutoff } from "./lib/weld-cutoff";
 import { CCC_WELDER_WELD_COLUMNS as WELD_COLUMNS } from "./load-columns";
 import { applyCccUtOverlay, formatUtOverlay } from "./lib/ut-overlay";
 import {
@@ -39,6 +40,8 @@ import {
 } from "./ccc-columns";
 
 const CSV_FILE = "sources/CSVExport_Welder Record.csv";
+/** Welds dated after this are left out (last Friday before the export). */
+const CUTOFF = weldCutoff(CSV_FILE);
 const XLSX_FILE = "sources/CSVExport_Welder Record - FOR PIC UPDATE  (ACC  REJ ).xlsx";
 const SOURCE = "CCC_WELDER_RECORD";
 const WIDTH = 119;
@@ -47,7 +50,7 @@ const EXPECTED = { csvLines: 5_430_732, csvKept: 4_791_434, xlsxRows: 641_575, t
 
 interface Stats {
   csvLines: number; csvKept: number; csvSkippedTested: number;
-  xlsxRows: number; excludedByM: number; excludedRs1: number; written: number;
+  xlsxRows: number; excludedByM: number; excludedRs1: number; afterCutoff: number; written: number;
   weldTypeChanged: number; rtWeldStatus: Map<string, number>;
   repairReweld: Map<string, number>; dateFailures: Map<string, number>;
   distinctJointIds: number; peakRssMb: number;
@@ -55,7 +58,7 @@ interface Stats {
 
 function newStats(): Stats {
   return {
-    csvLines: 0, csvKept: 0, csvSkippedTested: 0, xlsxRows: 0, excludedByM: 0, excludedRs1: 0, written: 0,
+    csvLines: 0, csvKept: 0, csvSkippedTested: 0, xlsxRows: 0, excludedByM: 0, excludedRs1: 0, afterCutoff: 0, written: 0,
     weldTypeChanged: 0, rtWeldStatus: new Map(), repairReweld: new Map(),
     dateFailures: new Map(), distinctJointIds: 0, peakRssMb: 0,
   };
@@ -99,6 +102,11 @@ function buildRow(
 
   const weldDate = parseDate(g("Weld Date"));
   if (weldDate === null && g("Weld Date").trim() !== "") bump(stats.dateFailures, "weld_date");
+  // the M's `#"Exlude after 16 oct"`, as a rule (scripts/lib/weld-cutoff.ts)
+  if (weldDate !== null && weldDate > CUTOFF) {
+    stats.afterCutoff += 1;
+    return null;
+  }
   const rtDate = parseDate(g("RT/UT Date"));
   if (rtDate === null && g("RT/UT Date").trim() !== "") bump(stats.dateFailures, "rt_date");
 
@@ -241,6 +249,7 @@ function report(stats: Stats, t0: number): boolean {
   console.log(`  union                 ${fmt(stats.csvKept + stats.xlsxRows).padStart(11)}  (expected ${fmt(EXPECTED.total)})`);
   console.log(`  ...minus the M's 4 hard-coded Joint IDs  ${fmt(stats.excludedByM)}`);
   console.log(`  ...minus the RS1 RT B.log step's Joint IDs ${fmt(stats.excludedRs1)}`);
+  console.log(`  ...minus welds dated after ${CUTOFF}  ${fmt(stats.afterCutoff)}`);
   console.log(`  rows into weld        ${fmt(stats.written).padStart(11)}`);
   console.log(`  distinct joint_id     ${fmt(stats.distinctJointIds).padStart(11)}`);
   console.log(`  Weld Type normalised  ${fmt(stats.weldTypeChanged).padStart(11)}  (the 17 ordered ReplaceText steps)`);
@@ -375,6 +384,8 @@ async function live(): Promise<void> {
       xlsx_rows: stats.xlsxRows,
       excluded_by_m: stats.excludedByM,
       excluded_rs1_rt_blog: stats.excludedRs1,
+      weld_cutoff: CUTOFF,
+      after_cutoff: stats.afterCutoff,
       overlay_rows: upd.rowCount ?? 0,
       distinct_joint_ids: stats.distinctJointIds,
       peak_rss_mb: stats.peakRssMb,

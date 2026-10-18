@@ -410,7 +410,7 @@ export function weldInsertColumns(): string[] {
  * `INSERT INTO weld … SELECT … FROM stg_weld_dump s WHERE <M filters>`.
  * $1 = load_id, $2 = source (weld_source).
  */
-export function buildWeldInsert(): string {
+export function buildWeldInsert(cutoff?: string): string {
   const idCols = DERIVED_COLUMNS.filter((d) => d.name === "joint_id" || d.name === "spool_id");
   const otherDerived = DERIVED_COLUMNS.filter(
     (d) => d.name !== "joint_id" && d.name !== "spool_id",
@@ -430,7 +430,7 @@ export function buildWeldInsert(): string {
     `  ${selects.join(",\n  ")}`,
     `FROM stg_weld_dump s`,
     `WHERE s.load_id = $1`,
-    `  ${loadFilterSql()}`,
+    `  ${loadFilterSql(cutoff)}`,
   ].join("\n");
 }
 
@@ -438,8 +438,12 @@ export function buildWeldInsert(): string {
  * The Power Query `Weld Dump` row filters, §0.4 steps 4-6 and 12.
  * Expressed over the staging alias `s` (raw text).
  */
-export function loadFilterSql(): string {
+export function loadFilterSql(cutoff?: string): string {
   return [
+    ...(cutoff
+      ? [`-- the M's per-delivery date exclusion, as a rule: welds after the last Friday (scripts/lib/weld-cutoff.ts)`,
+         `  AND (weld_to_date(s.weld_date) IS NULL OR weld_to_date(s.weld_date) <= DATE '${cutoff}')`]
+      : []),
     `-- #"Exlude Area Class ""0""" (applied twice in the M; idempotent)`,
     `  AND btrim(s.area_classification) NOT IN ('', '0')`,
     `-- #"Revision Status": keep [Revision Status] = ""  (ruling R-02, cancelled welds out)`,
@@ -453,7 +457,7 @@ export function loadFilterSql(): string {
 }
 
 /** Rows the load filter throws away, per reason — for the `load` bookkeeping row. */
-export function buildRejectCountsSql(): string {
+export function buildRejectCountsSql(cutoff?: string): string {
   return `SELECT
   count(*) FILTER (WHERE btrim(s.area_classification) IN ('', '0'))            AS area_class_0_or_blank,
   count(*) FILTER (WHERE btrim(s.area_classification) NOT IN ('', '0')
@@ -468,6 +472,11 @@ export function buildRejectCountsSql(): string {
                      AND btrim(s.sub_contractor) <> ''
                      AND weld_to_date(s.weld_date) IN (${DROPPED_WELD_DATES.map((d) => `DATE '${d}'`).join(", ")}))
                                                                                AS weld_date_excluded_by_m,
+  count(*) FILTER (WHERE btrim(s.area_classification) NOT IN ('', '0')
+                     AND btrim(s.revision_status) = ''
+                     AND btrim(s.sub_contractor) <> ''
+                     AND ${cutoff ? `weld_to_date(s.weld_date) > DATE '${cutoff}'` : "false"})
+                                                                               AS weld_date_after_cutoff,
   count(*)                                                                     AS staged
 FROM stg_weld_dump s
 WHERE s.load_id = $1`;

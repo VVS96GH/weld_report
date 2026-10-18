@@ -116,7 +116,6 @@ import {
   type GroupSpec,
   JOINT_FROM,
   Params,
-  measureScope,
   filterOptions,
   normaliseFilters,
   withFilters,
@@ -1362,6 +1361,7 @@ function subcoArgs(f: WeldingFilters): { subContractor?: string; subContractors?
 
 async function filterWidgets(
   applied: WeldingFilters,
+  hidden: Partial<Record<string, readonly string[]>> = {},
 ): Promise<{ widgets: FilterWidget[]; unknown: boolean }> {
   const [options, areaByHa] = await Promise.all([
     filterOptions(),
@@ -1374,7 +1374,9 @@ async function filterWidgets(
     const opts =
       f.id === "ha"
         ? [...(options.ha ?? []), FILTER_BLANK]
-        : (options[f.id] ?? []);
+        : (options[f.id] ?? []).filter(
+            (o) => !hidden[f.id]?.some((h) => h.toUpperCase() === o.toUpperCase()),
+          );
     // Multi-select (2026-10-14): keep every picked value that exists, drop
     // the rest. An `area` pick may be an `HA>Area` pair from the tree; both
     // halves must exist.
@@ -1426,7 +1428,13 @@ export async function getWeldingPage(
   // page ignores it, so its output is untouched no matter what a caller passes.
   const sliced = n === 1 || n === 2;
   const requested = sliced ? normaliseFilters(opts.filters) : {};
-  const bar = sliced ? await filterWidgets(requested) : null;
+  // Page 1 never shows Weld Cat J or Inco (PAGE1_EXCLUDED_*), so they are not offered.
+  const bar = sliced
+    ? await filterWidgets(
+        requested,
+        n === 1 ? { wcat: PAGE1_EXCLUDED_WELD_CATS, subco: PROJECT_EXCLUDED_SUBCONTRACTORS } : {},
+      )
+    : null;
   // The NDE / PWHT pages own one slicer of their own: Service Class (2026-09-15).
   const ndeSlicers = NDE_PAGES.has(n) ? normaliseFilters(opts.filters) : {};
   const sclass = ndeSlicers.sclass;
@@ -1526,6 +1534,15 @@ export async function getWeldingPage(
 
 // ── page 1 — project KPIs and charts ────────────────────────────────────────
 
+/**
+ * Page 1 leaves out Weld Cat J on every visual, cards included (owner,
+ * 2026-10-18: the pbix page now filters "Weld Qty is not J" and "Sub-Contractor
+ * is not Inco"; Joints Welded 2,142,525 there = 2,142,430 here with both out).
+ */
+const PAGE1_EXCLUDED_WELD_CATS = ["J"] as const;
+/** The pbix RT/UT count cards on page 1 carry `Weld Type IN {BW, CLET, GW, MW}`. */
+const PAGE1_RT_CARD_WELD_TYPES = ["BW", "CLET", "GW", "MW"] as const;
+
 async function buildProjectKpiPage(spec: SpecPage, ctx: Ctx): Promise<Widget[]> {
   // §3.1 / R3-01: every visual on pbix page 21 carries `SC <> Inco`, one of the
   // 69 filters that keep INCO out of project scope. ACCIONA is inside it.
@@ -1536,18 +1553,25 @@ async function buildProjectKpiPage(spec: SpecPage, ctx: Ctx): Promise<Widget[]> 
   // The slicer is AND-ed onto every scope below; with no filters set,
   // `withFilters` is the identity and the page is byte-identical to before.
   const f = ctx.filters;
-  const cardScope: Scope = withFilters(measureScope(), f);
+  // 2026-10-18, read off the pbix card filters (analysis/pbix/raw-2026-10-18):
+  // every card is Inco-out; Joints Welded adds Weld Cat IN {F,S}; the RT/UT
+  // count cards add Weld Type IN {BW,CLET,GW,MW}.
+  const cardScope: Scope = withFilters(projectScope({ excludeWeldCats: PAGE1_EXCLUDED_WELD_CATS }), f);
+  const jointsScope: Scope = withFilters(projectScope({ weldCats: ["F", "S"] }), f);
+  const rtScope: Scope = withFilters(projectScope({ weldTypes: PAGE1_RT_CARD_WELD_TYPES }), f);
   const scope: Scope = withFilters(projectScope(), f);
   const av = await availability("PR_ALL", SOURCES_PR_ALL_LOADED, cardScope);
-  const [b, bNoInco, welders, wpsApproved, weekly, dist] = await Promise.all([
+  const [b, bNoInco, bJoints, bRt, welders, wpsApproved, weekly, dist] = await Promise.all([
     bundleTotal(cardScope, av),
-    bundleTotal(withFilters(projectScope(), f), av),
+    bundleTotal(cardScope, av),
+    bundleTotal(jointsScope, av),
+    bundleTotal(rtScope, av),
     qualifiedWelders(),
     approvedWpsCount(),
     weeklyProgress({
-      // Owner: page 1's Welding Progress Trend shows the LAST 10 WEEKS. The
-      // mockup snapshot declares 14 labels; pages 7-11 keep their own window.
-      weeks: 10,
+      // Owner, 2026-10-18: the last 14 weeks, as the pbix visual ("top 14 by
+      // Week_End_Date"); pages 7-11 keep their own window.
+      weeks: 14,
       upTo: chartCutoff(ctx.asOf),
       excludeWeldCats: ["J"],
       excludeSubContractors: PROJECT_EXCLUDED_SUBCONTRACTORS,
@@ -1609,7 +1633,7 @@ async function buildProjectKpiPage(spec: SpecPage, ctx: Ctx): Promise<Widget[]> 
     if (w.kind === "kpi") {
       switch (w.label) {
         case "Joints Welded":
-          out.push(kpi(w.label, kpiInt(b.welding.joints_welded)));
+          out.push(kpi(w.label, kpiInt(bJoints.welding.joints_welded)));
           break;
         case "MT/PT Done": {
           // R3-01 keeps Inco out of this card. Filtering TO Inco therefore
@@ -1636,16 +1660,18 @@ async function buildProjectKpiPage(spec: SpecPage, ctx: Ctx): Promise<Widget[]> 
           // 207,682 and M13 gives 202,698. The LABEL says "Acc." and the
           // measure behind it does not — that mismatch is the pbix's, and it is
           // recorded in lib/metrics/README.md rather than silently "corrected".
-          out.push(kpi(w.label, kpiInt(b.rt.tested)));
+          // 2026-10-18: the pbix card now reads accepted = tested − rejected
+          // (205,069 + 1,919 rejected = 206,988 tested there).
+          out.push(kpi(w.label, kpiInt(bRt.rt.accepted)));
           break;
         case "RT/UT Rej.Jts":
-          out.push(kpi(w.label, kpiInt(b.rt.rejected)));
+          out.push(kpi(w.label, kpiInt(bRt.rt.rejected)));
           break;
         case "RT Films Taken":
-          out.push(kpi(w.label, kpiInt(b.rt.films)));
+          out.push(kpi(w.label, kpiInt(bRt.rt.films)));
           break;
         case "Rej Films":
-          out.push(kpi(w.label, kpiInt(b.rt.films_rejected)));
+          out.push(kpi(w.label, kpiInt(bRt.rt.films_rejected)));
           break;
         case "%RT FILM Rej":
           // 0.28% = 2,152 / 768,101, Inco INCLUDED — measure scope, like every
@@ -1656,7 +1682,7 @@ async function buildProjectKpiPage(spec: SpecPage, ctx: Ctx): Promise<Widget[]> 
             kind: "kpi",
             label: w.label,
             value: b.present ? kpiPct(b.rt.film_rejection_rate) : HONEST_EMPTY,
-            sub: "all parties incl. Inco",
+            sub: "Inco and Weld Cat J excluded",
           });
           break;
         case "Project_Welder":
@@ -1687,13 +1713,13 @@ async function buildProjectKpiPage(spec: SpecPage, ctx: Ctx): Promise<Widget[]> 
         // tracker was loaded; UT TRACKER (GAC) and (TEK) are still missing, so
         // GAC/TEKFEN contribute nothing and the card says so (R-05).
         case "Numb UT/PAUT":
-          out.push(av.utTracker ? kpi(w.label, kpiInt(b.ut.ut_done)) : emptyKpi(w));
+          out.push(av.utTracker ? kpi(w.label, kpiInt(bRt.ut.ut_done)) : emptyKpi(w));
           break;
         case 'UT/PAUT "A"':
-          out.push(av.utTracker ? kpi(w.label, kpiInt(b.ut.ut_accepted)) : emptyKpi(w));
+          out.push(av.utTracker ? kpi(w.label, kpiInt(bRt.ut.ut_accepted)) : emptyKpi(w));
           break;
         case 'UT/PAUT "R"':
-          out.push(av.utTracker ? kpi(w.label, kpiInt(b.ut.ut_rejected)) : emptyKpi(w));
+          out.push(av.utTracker ? kpi(w.label, kpiInt(bRt.ut.ut_rejected)) : emptyKpi(w));
           break;
         // M35 `[UT Inspected Length by Joint "PR all"]` resolves through
         // [Weld Length "PR all"], and M36 is M34/M35.
@@ -1721,7 +1747,7 @@ async function buildProjectKpiPage(spec: SpecPage, ctx: Ctx): Promise<Widget[]> 
         // M34 — the CCC term needs ref_ut_tracker_ccc.
         case "UT Def.Length":
           out.push(
-            av.utTracker ? kpi(w.label, kpiNum(b.ut.ut_rej_length_m, 3)) : emptyKpi(w),
+            av.utTracker ? kpi(w.label, kpiNum(bRt.ut.ut_rej_length_m, 3)) : emptyKpi(w),
           );
           break;
         default:
@@ -1732,7 +1758,7 @@ async function buildProjectKpiPage(spec: SpecPage, ctx: Ctx): Promise<Widget[]> 
       out.push(weeklyCatChart(w, weekly));
       if (weekly.length === 0) note(ctx, TREND_NOTE);
     } else if (w.kind === "chart" && w.canvas_id === "chart1_weldtype") {
-      out.push(donutChart(w, dist));
+      out.push(donutChart(w, dist, true));
     } else if (w.kind === "chart") {
       if (isBacklogChart(w.canvas_id)) {
         // The pbix chart IS the trend workbook, summed over every party AND
@@ -2036,8 +2062,10 @@ function snapshotChart(
 function donutChart(
   spec: SpecChart,
   dist: Array<{ weld_type: string | null; joints_welded: number }>,
+  all = false,
 ): ChartWidget {
-  const top = dist.slice(0, Math.max(spec.labels.length, 1));
+  // `all`: every weld type, as the pbix donut lists them (page 1, 2026-10-18)
+  const top = all ? dist.filter((d) => d.joints_welded > 0) : dist.slice(0, Math.max(spec.labels.length, 1));
   return {
     kind: "chart",
     canvas_id: spec.canvas_id,

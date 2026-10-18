@@ -92,7 +92,9 @@ export function PageView({ model: source, subtitle }: { model: PageModel; subtit
                   // A trend with many categories (the 14-week welding progress) needs
                   // two grid tracks so its value labels don't collide (owner request
                   // 2026-09-07: totals on every chart).
-                  <div className={c.labels.length >= 10 ? "card card--wide" : "card"} key={j}>
+                  // Doughnuts never widen: page 1's lists every weld type (2026-10-18)
+                  // and must keep its size and place.
+                  <div className={c.labels.length >= 10 && !/doughnut|pie/.test(c.chart_type) ? "card card--wide" : "card"} key={j}>
                     <div className="card-header">{c.title}</div>
                     <div className="chart-container">
                       <ChartCard widget={c} />

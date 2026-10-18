@@ -772,7 +772,10 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
       },
       plugins: {
         // pbix-style named slice labels already name every slice, so the legend goes
-        legend: { display: !(circular && notes.includes("label-name-pct")), position: notes.includes("legend-bottom") ? "bottom" : "top", labels: { padding: notes.includes("legend-bottom") ? 18 : 10, color: palette.text, boxWidth: 12, font: { size: 10, family: palette.font } } },
+        legend: { display: !(circular && notes.includes("label-name-pct")), position: notes.includes("legend-bottom") ? "bottom" : "top", labels: { padding: notes.includes("legend-bottom") ? 18 : 10, color: palette.text, boxWidth: 12, font: { size: 10, family: palette.font },
+          // a doughnut with many slices (page 1 lists every weld type) keeps its
+          // legend to the 7 largest so the chart keeps its size; the rest show on hover
+          ...(circular ? { filter: (item: { index?: number }) => (item.index ?? 0) < 7 } : {}) } },
         tooltip: { enabled: true },
         datalabels: notes.includes("area") ? areaLabels(palette) : valueLabels(widget.chart_type, stackedX || stackedY, percentAxis, circular, palette, widget.datasets.length, end - start, horizontal, notes.includes("label-name-pct")),
         centerTotal: circular && notes.includes("center-total") ? { color: palette.fg, font: palette.font ?? "sans-serif" } : undefined,
