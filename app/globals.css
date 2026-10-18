@@ -3973,7 +3973,9 @@ th:hover > .th-resize::after, .th-resize:active::after { opacity: 0.5; }
 }
 .pn-top > div:first-child { flex: 1 1 560px; min-width: 0; }
 .pn-cards { flex: 0 1 520px; }
-.pn-main { max-height: 62vh; }
+.pn-main { max-height: 62vh; margin-bottom: 0; }
+.pn-page .page-header { margin-bottom: 8px; }
+.pn-page .pn-top { margin-bottom: 6px; }
 
 /* Project Welding & NDE Status: the two reference lists as tables to the right
    of the RT/UT and RT & PWHT tables (owner, 2026-10-18) */

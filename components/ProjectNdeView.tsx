@@ -1,5 +1,7 @@
 "use client";
 
+import { useLayoutEffect, useRef } from "react";
+
 import { EdgeFilters } from "@/components/EdgeFilters";
 import { usePageSubtitle } from "@/components/ReportShell";
 import { DataTable } from "@/components/widgets/DataTable";
@@ -16,6 +18,32 @@ export type ProjectNdeData = { filters: FilterWidget[]; cards: KpiWidget[]; summ
  */
 export function ProjectNdeView({ data, note }: { data: ProjectNdeData | null; note?: string }) {
   usePageSubtitle("Project NDE & PWHT Status by Service Class");
+  // One screen (owner, 2026-10-18): the matrix takes the window's remaining
+  // height and scrolls inside, so the page itself never does.
+  const mainRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = mainRef.current;
+    if (!el) return;
+    const fit = () => {
+      const top = el.getBoundingClientRect().top + window.scrollY;
+      let h = Math.max(240, window.innerHeight - top - 30);
+      el.style.maxHeight = `${h}px`;
+      // whatever still overflows (the page's bottom padding) comes off the matrix too
+      const over = document.documentElement.scrollHeight - window.innerHeight;
+      if (over > 0) {
+        h = Math.max(240, h - over);
+        el.style.maxHeight = `${h}px`;
+      }
+    };
+    fit();
+    // again once the web fonts have settled the header heights
+    const late = window.setTimeout(fit, 400);
+    window.addEventListener("resize", fit);
+    return () => {
+      window.clearTimeout(late);
+      window.removeEventListener("resize", fit);
+    };
+  }, [data]);
   return (
     <section className="page-section active pv-page pn-page" aria-labelledby="page-heading">
       <div className="page-header">
@@ -39,7 +67,7 @@ export function ProjectNdeView({ data, note }: { data: ProjectNdeData | null; no
             </div>
           </div>
           <div className="section-title">{data.main.title}</div>
-          <div className="table-scroll pn-main">
+          <div className="table-scroll pn-main" ref={mainRef}>
             <DataTable widget={data.main} collapsible />
           </div>
         </>
