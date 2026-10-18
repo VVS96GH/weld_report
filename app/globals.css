@@ -3916,3 +3916,22 @@ th:hover > .th-resize::after, .th-resize:active::after { opacity: 0.5; }
   border-radius: 4px;
   padding: 2px 4px;
 }
+
+/* The Total row stays in sight at the bottom of a scrolling table (owner,
+   2026-10-18: Weld Rejection Detail - CCC). Sticky to the scroll box's foot;
+   the first cell keeps its sticky-left too, so it sits above both edges. */
+.table-scroll .data-table tbody tr.row-header:last-child > th,
+.table-scroll .data-table tbody tr.row-header:last-child > td {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  box-shadow: 0 -1px 0 var(--border, rgba(255, 255, 255, 0.15));
+}
+.table-scroll .data-table tbody tr.row-header:last-child > th:first-child {
+  z-index: 3;
+}
+/* an opaque fill so the rows scrolling under it never show through (the T.EN
+   mood's own row-header cell rule wins over this one) */
+:where(.table-scroll .data-table tbody tr.row-header:last-child) > * {
+  background: var(--bg-elevated);
+}
