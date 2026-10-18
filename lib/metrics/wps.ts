@@ -117,3 +117,11 @@ export async function wpsRejectionTable(
       };
     });
 }
+
+/** RT % values present under a WPS page's scope, highest first (the RT % slicer). */
+export async function wpsRtPctOptions(scope: Scope): Promise<number[]> {
+  const p = new Params();
+  const sql = `SELECT DISTINCT w.rt_pct FROM ${WPS_FROM} WHERE ${and([scopeWhere(scope, p), "w.wps_no IS NOT NULL", "w.rt_pct IS NOT NULL"])} ORDER BY 1 DESC`;
+  const rows = await query<{ rt_pct: number }>(sql, p.list());
+  return rows.map((r) => Number(r.rt_pct));
+}

@@ -96,7 +96,7 @@ import {
   type WeldingStats,
   type WeldTypePivot,
 } from "@/lib/metrics/welding";
-import { wpsRejectionTable } from "@/lib/metrics/wps";
+import { wpsRejectionTable, wpsRtPctOptions } from "@/lib/metrics/wps";
 import { approvedWpsCount, qualifiedWelders } from "@/lib/metrics/refs";
 import {
   latestWeekEnd,
@@ -1437,7 +1437,7 @@ export async function getWeldingPage(
       )
     : null;
   // The NDE / PWHT pages own one slicer of their own: Service Class (2026-09-15).
-  const ndeSlicers = NDE_PAGES.has(n) ? normaliseFilters(opts.filters) : {};
+  const ndeSlicers = NDE_PAGES.has(n) || WPS_PAGES.has(n) ? normaliseFilters(opts.filters) : {};
   const sclass = ndeSlicers.sclass;
   const pwht = ndeSlicers.pwht;
   const wcatNde = ndeSlicers.wcat;
@@ -1455,7 +1455,7 @@ export async function getWeldingPage(
         wtype: applied(3),
         wcat: applied(4),
       }
-    : { sclass, pwht, wcat: wcatNde, rtpct: rtpctNde };
+    : { sclass, pwht, wcat: wcatNde, rtpct: rtpctNde, wps: ndeSlicers.wps, film: ndeSlicers.film };
   const ctx: Ctx = { asOf: as_of, clock, asOfOrigin: origin, notes: new Set(), filters };
   if (bar?.unknown) note(ctx, FILTER_UNKNOWN_NOTE);
   // ALL applies to the per-party families only; pages 1/2 are project-wide already.
@@ -2774,6 +2774,14 @@ async function buildNdePage(
 
 // ── pages 42–44 — weld rejection detail per WPS ─────────────────────────────
 
+/** RT FILM Ratio % bands of the Weld Rejection Detail slicer: the charts' 1 % attention / 3 % unacceptable lines. */
+const WPS_FILM_BANDS: { label: string; test: (ratio: number) => boolean }[] = [
+  { label: "0%", test: (r) => r === 0 },
+  { label: "0-1%", test: (r) => r > 0 && r <= 0.01 },
+  { label: "1-3%", test: (r) => r > 0.01 && r <= 0.03 },
+  { label: ">3%", test: (r) => r > 0.03 },
+];
+
 async function buildWpsPage(
   spec: SpecPage,
   confs: SubconConf[],
@@ -2784,15 +2792,33 @@ async function buildWpsPage(
     sourcesFor(confs[0]!.sub),
     baseScope(confs[0]!),
   );
+  // Slicers (owner, 2026-10-18): WPS No., RT %, RT FILM Ratio % band. Options
+  // are what the page holds before any slicer; unknown picks are dropped.
+  const baseOf = (conf: SubconConf): Scope => ({
+    ...baseScope(conf),
+    excludeWeldTypes: isAll(conf.sub) ? ["THD", "DMY"] : conf.excludeWeldTypes,
+    wpsPresent: true,
+  });
+  const [optRows, optRt] = await Promise.all([
+    Promise.all(confs.map((c) => wpsRejectionTable(baseOf(c)))),
+    Promise.all(confs.map((c) => wpsRtPctOptions(baseOf(c)))),
+  ]);
+  const wpsOptions = [...new Set(optRows.flat().map((r) => r.wps_no))].sort((a, b) => a.localeCompare(b));
+  const rtOptions = [...new Set(optRt.flat())].sort((a, b) => b - a);
+  const keptWps = (filterValues(ctx.filters.wps) ?? []).filter((v) => wpsOptions.includes(v));
+  const keptRt = (filterValues(ctx.filters.rtpct) ?? []).map(Number).filter((v) => rtOptions.includes(v));
+  const keptFilm = (filterValues(ctx.filters.film) ?? []).filter((v) => WPS_FILM_BANDS.some((b) => b.label === v));
+  const inBand = (ratio: number | null) =>
+    keptFilm.length === 0 || keptFilm.some((l) => WPS_FILM_BANDS.find((b) => b.label === l)!.test(ratio ?? 0));
   const blocks = await Promise.all(
     confs.map(async (conf) => {
       const scope: Scope = {
-        ...baseScope(conf),
-        excludeWeldTypes: isAll(conf.sub) ? ["THD", "DMY"] : conf.excludeWeldTypes,
-        wpsPresent: true,
+        ...baseOf(conf),
+        ...(keptWps.length ? { wpsNos: keptWps } : {}),
+        ...(keptRt.length ? { rtPcts: keptRt } : {}),
       };
       const [rows, total] = await Promise.all([
-        wpsRejectionTable(scope),
+        wpsRejectionTable(scope).then((r) => r.filter((x) => inBand(x.rt_film_ratio))),
         // The mockup's Total row is the pivot grand total, NOT the sum of the
         // WPS rows: a joint welded under two WPSs would otherwise be counted
         // twice. Evidence (calculation-logic §3.2): mockup page 42 GAC total
@@ -2804,7 +2830,11 @@ async function buildWpsPage(
   );
   if (!av.sourceLoaded) note(ctx, sourceNote(confs[0]!.sub));
   if (isAll(confs[0]!.sub)) note(ctx, ALL_WPS_NOTE);
-  const out: Widget[] = [];
+  const out: Widget[] = [
+    { kind: "filter", id: "wps", label: "WPS No.", options: [FILTER_ALL, ...wpsOptions], value: keptWps.length ? keptWps.join(FILTER_SEP) : FILTER_ALL, multi: true },
+    { kind: "filter", id: "rtpct", label: "RT %", options: [FILTER_ALL, ...rtOptions.map(String)], value: keptRt.length ? keptRt.join(FILTER_SEP) : FILTER_ALL, multi: true },
+    { kind: "filter", id: "film", label: "RT FILM Ratio %", options: [FILTER_ALL, ...WPS_FILM_BANDS.map((b) => b.label)], value: keptFilm.length ? keptFilm.join(FILTER_SEP) : FILTER_ALL, multi: true },
+  ];
   let i = 0;
   for (const w of spec.widgets) {
     if (w.kind !== "table") {
@@ -2818,11 +2848,14 @@ async function buildWpsPage(
       .sort(
         (a, b) => (b.rejection_rate_joint ?? -1) - (a.rejection_rate_joint ?? -1),
       )
+      // Joints Welded is `Joint Uniq "PR all" Welded & R/RW` (repairs and
+      // rewelds counted) and the RT/UT ratio divides by it (owner, 2026-10-18:
+      // CCC total 1,268,989 as the pbix).
       .map((r) => [
         r.wps_no,
-        cellInt(r.joints_welded),
+        cellInt(r.joints_welded_incl_repair_reweld),
         cellInt(r.tested_joints),
-        cellPct(r.rt_ut_ratio),
+        cellPct(r.joints_welded_incl_repair_reweld ? r.tested_joints / r.joints_welded_incl_repair_reweld : null),
         cellInt(r.accepted),
         cellInt(r.rejected),
         cellInt(r.rt_total_films),
@@ -2833,8 +2866,30 @@ async function buildWpsPage(
       ]);
     const b = blk?.total;
     let total: string[];
-    if (b?.present) {
-      const welded = b.welding.joints_welded;
+    if (keptFilm.length) {
+      // a band filter hides rows by their own ratio, so the Total is the
+      // visible rows' (the pbix total under a measure filter)
+      const sum = (f: (r: (typeof rows)[number]) => number) => rows.reduce((a, r) => a + f(r), 0);
+      const welded = sum((r) => r.joints_welded_incl_repair_reweld);
+      const tested = sum((r) => r.tested_joints);
+      const rej = sum((r) => r.rejected);
+      const films = sum((r) => r.rt_total_films);
+      const filmsRej = sum((r) => r.rt_films_rejected);
+      total = [
+        "Total",
+        cellInt(welded),
+        cellInt(tested),
+        cellPct(welded ? tested / welded : null),
+        cellInt(tested - rej),
+        cellInt(rej),
+        cellInt(films),
+        cellInt(films - filmsRej),
+        cellInt(filmsRej),
+        cellPct(films ? filmsRej / films : null),
+        cellPct(tested ? rej / tested : null),
+      ];
+    } else if (b?.present) {
+      const welded = b.welding.joints_welded_incl_repair_reweld;
       const rt = b.rt;
       total = [
         "Total",

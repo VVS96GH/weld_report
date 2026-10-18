@@ -265,6 +265,8 @@ export type Scope = {
   diaInchFactorY?: boolean;
   /** `WPS No. <> ""`. */
   wpsPresent?: boolean;
+  /** `WPS No. IN (…)` (the Weld Rejection Detail slicer; `wps_no` is on both joint views). */
+  wpsNos?: readonly string[];
   /**
    * `PWHT Weld Status` is not blank — the extra table filter the PWHT-by-RT%
    * pages carry (§3.3 "as 19 + `PWHT Weld Status` not blank").
@@ -441,6 +443,9 @@ export function scopeConditions(
     // §8.1 types `dia_inch_factor` as boolean, §6.2 as char(1) 'Y'/'N'.
     // Casting to text accepts either shape ('Y' or 'true'); flagged to DB-LANE.
     c.push(`${a}.dia_inch_factor::text IN ('Y','y','true','t')`);
+  }
+  if (scope.wpsNos?.length) {
+    c.push(`${a}.wps_no = ANY(${p.any(scope.wpsNos)})`);
   }
   if (scope.wpsPresent) {
     c.push(`${a}.wps_no IS NOT NULL`);
@@ -665,6 +670,10 @@ export type WeldingFilters = {
   pwht?: string;
   /** NDE / PWHT pages only: RT % values, comma-joined; absent = the page's own RT %. */
   rtpct?: string;
+  /** Weld Rejection Detail pages: WPS numbers, comma-joined; absent = All. */
+  wps?: string;
+  /** Weld Rejection Detail pages: RT FILM Ratio % bands (WPS_FILM_BANDS), comma-joined. */
+  film?: string;
 };
 
 export const FILTER_ALL = "All";
@@ -745,6 +754,8 @@ export function normaliseFilters(f: WeldingFilters | undefined): WeldingFilters 
     sclass: clean(f?.sclass),
     pwht: clean(f?.pwht),
     rtpct: clean(f?.rtpct),
+    wps: clean(f?.wps),
+    film: clean(f?.film),
   };
 }
 

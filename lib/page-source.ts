@@ -10,7 +10,7 @@ export type { FlangeFilters };
  * The database source applies them as an extra WHERE on every page-1 measure
  * (lib/pages/welding.ts); the fixture source has no filterable data and ignores them.
  */
-export type WeldingFilters = { ha?: string; area?: string; subco?: string; wtype?: string; wcat?: string; sclass?: string; pwht?: string; rtpct?: string };
+export type WeldingFilters = { ha?: string; area?: string; subco?: string; wtype?: string; wcat?: string; sclass?: string; pwht?: string; rtpct?: string; wps?: string; film?: string };
 export type WeldingPageOpts = {
   as_of?: string;
   filters?: WeldingFilters;
