@@ -895,7 +895,7 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
       // a doughnut with its total in the hole gets a wider hole, so the number fits (owner, 2026-10-19)
       ...(circular && notes.includes("center-total") ? { cutout: "64%" } : {}),
       // the forecast page's two doughnuts: a thin ring and smaller labels (owner, 2026-10-19)
-      ...(SMALL_RINGS.has(widget.canvas_id) ? { cutout: "68%" } : {}),
+      ...(SMALL_RINGS.has(widget.canvas_id) ? { cutout: "73%" } : {}),
       maintainAspectRatio: false,
       // drawn at no less than 2x the CSS size: canvas text stays crisp at any
       // browser zoom or display scaling (owner, 2026-10-15: "числа слегка размыты")

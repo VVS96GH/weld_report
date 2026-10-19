@@ -3290,7 +3290,8 @@ html {
 }
 .forecast-donut-small .chart-container,
 .forecast-donut .chart-container {
-  height: clamp(190px, calc((100dvh - 420px) * 0.44), 300px);
+  /* the ring 20 % larger, same thickness (owner, 2026-10-19) */
+  height: clamp(210px, calc((100dvh - 420px) * 0.44 + 20px), 320px);
 }
 .forecast-stack {
   flex-direction: column;
