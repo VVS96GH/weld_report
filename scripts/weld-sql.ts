@@ -88,7 +88,6 @@ const TEXT_TRANSFORMS: Record<string, (col: string) => string> = {
     ` '45441', '29-May-2024'), '45442', '30-May-2024'), '45456', '13-Jun-2024')`,
   // #"Replaced Value NA" .. #"Replaced Value NA Mir" — the six columns, and only
   // these six, where the M blanks the literal "NA".
-  weld_date: (c) => `replace(${c}, 'NA', '')`,
   mir_date: (c) => `replace(${c}, 'NA', '')`,
   // #"Replaced Value6".."Replaced Value12"
   testpack_sub_contractor: (c) =>
@@ -110,6 +109,15 @@ const VALUE_OVERRIDES: Record<string, string> = {
   fitup_date: `nullif(weld_to_date(replace(s.fitup_date, 'NA', '')), DATE '0202-09-05')`,
   cutting_date: `nullif(weld_to_date(replace(s.cutting_date, 'NA', '')), DATE '0202-09-05')`,
   beveling_date: `nullif(weld_to_date(replace(s.beveling_date, 'NA', '')), DATE '0202-09-05')`,
+  // #"Replaced Value NA" for Weld Date, then: a typo year (0024, 0025, 0026 —
+  // three MEDGULF welds in the 18-Oct dump) the M keeps as typed, but a date
+  // before 30-Dec-1899 is a NEGATIVE number in DAX, so `[Weld Date] > 0`, the
+  // test every welded measure uses, is false and the pbix does not count the
+  // joint as welded (MEDGULF 75,888, not 75,891). Stored blank here for the same
+  // effect; the blank-testing measures (RT backlog of BW/GW/CLET/MW, fit-up
+  // days) do not reach these SW/FW welds. Owner check 2026-10-19.
+  weld_date: `CASE WHEN weld_to_date(replace(s.weld_date, 'NA', '')) >= DATE '1899-12-30'
+                   THEN weld_to_date(replace(s.weld_date, 'NA', '')) END`,
   // #"8/3/0202 to null Preheat Date" + #"10/11/0202 to null Preheat Date"
   preheat_date:
     `nullif(nullif(weld_to_date(replace(s.preheat_date, 'NA', '')), DATE '0202-08-03'),` +
