@@ -510,13 +510,13 @@ function areaLabels(palette: Palette): any {
     offset: 4,
     clamp: true,
     color: palette.fg,
-    font: { size: Math.round(11 * palette.scale), family: palette.font, weight: 600 },
+    font: { size: Math.round(12 * palette.scale), family: palette.font, weight: 600 },
   };
 }
 
 /** Per-type chartjs-plugin-datalabels config; `display: false` is the registered default. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function valueLabels(type: string, stacked: boolean, percent: boolean, circular: boolean, palette: Palette, seriesCount: number, categoryCount: number, horizontal = false, namePct = false, pctDigits = 2): any {
+function valueLabels(type: string, stacked: boolean, percent: boolean, circular: boolean, palette: Palette, seriesCount: number, categoryCount: number, horizontal = false, namePct = false, pctDigits = 1): any {
   // value labels a size up (owner, 2026-10-19: 10 px hard to read)
   const font = { size: Math.round(12 * palette.scale), family: palette.font, weight: 600 };
   if (circular) {
@@ -890,7 +890,7 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
           // legend to the 7 largest so the chart keeps its size; the rest show on hover
           ...(circular ? { filter: (item: { index?: number }) => (item.index ?? 0) < 7 } : {}) } },
         tooltip: { enabled: true },
-        datalabels: notes.includes("area") ? areaLabels(palette) : valueLabels(widget.chart_type, stackedX || stackedY, percentAxis, circular, palette, widget.datasets.length, end - start, horizontal, notes.includes("label-name-pct"), widget.canvas_id === "chart1_weldtype" ? 1 : 2),
+        datalabels: notes.includes("area") ? areaLabels(palette) : valueLabels(widget.chart_type, stackedX || stackedY, percentAxis, circular, palette, widget.datasets.length, end - start, horizontal, notes.includes("label-name-pct")),
         centerTotal: circular && notes.includes("center-total") ? { color: palette.fg, font: palette.font ?? "sans-serif" } : undefined,
         barLegendGap: {
           px: widget.chart_type === "bar" && !(stackedX || stackedY) && !horizontal && widget.datasets.length > 2 ? Math.round(26 * palette.scale) : 0,
@@ -952,7 +952,7 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
             return horizontal ? { x: value, y: category } : { x: category, y: value };
           })(),
     }),
-    [palette, stackedX, stackedY, percentAxis, horizontal, circular, widget.chart_type, widget.datasets.length, start, end, thresholds, notes, yearAxis, yearTitle, yCenter, visibleMax, startRotation],
+    [palette, stackedX, stackedY, percentAxis, horizontal, circular, widget.chart_type, widget.datasets.length, widget.canvas_id, start, end, thresholds, notes, yearAxis, yearTitle, yCenter, visibleMax, startRotation],
   );
 
   // Trend charts fed by the not-yet-seeded weld_weekly_snapshot table (e.g. page 1's
