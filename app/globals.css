@@ -4189,3 +4189,17 @@ th:hover > .th-resize::after, .th-resize:active::after { opacity: 0.5; }
   display: inline-flex;
   align-items: center;
 }
+.dg-table thead th[data-sized] .dg-sort {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.dg-table thead th[data-sized] .dg-th {
+  overflow: hidden;
+}
+.dg-sortrow {
+  display: flex;
+  gap: 8px;
+}
+.dg-sortrow .ms-btn {
+  flex: 1;
+}

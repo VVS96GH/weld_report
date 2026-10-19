@@ -5,7 +5,37 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { usePageSubtitle } from "@/components/ReportShell";
 import { SavedViews } from "@/components/SavedViews";
+import { setColPref, useTablePrefs } from "@/lib/col-prefs";
 import type { GridCol } from "@/lib/data-grid-columns";
+
+/** Column widths are shared like every table's (lib/col-prefs), under this key. */
+const PREFS_TABLE = "data-grid";
+
+/** Drag the grip on a header's right edge to set the column width (saved for everyone). */
+function startResize(e: React.PointerEvent<HTMLSpanElement>, col: string) {
+  e.preventDefault();
+  e.stopPropagation();
+  const th = e.currentTarget.closest("th");
+  if (!th) return;
+  const grip = e.currentTarget;
+  grip.setPointerCapture(e.pointerId);
+  const x0 = e.clientX;
+  const w0 = th.getBoundingClientRect().width;
+  let w = Math.round(w0);
+  const move = (ev: PointerEvent) => {
+    w = Math.max(40, Math.min(1200, Math.round(w0 + ev.clientX - x0)));
+    setColPref(PREFS_TABLE, col, { width: w }, false);
+  };
+  const up = () => {
+    grip.removeEventListener("pointermove", move);
+    grip.removeEventListener("pointerup", up);
+    grip.removeEventListener("pointercancel", up);
+    setColPref(PREFS_TABLE, col, { width: w });
+  };
+  grip.addEventListener("pointermove", move);
+  grip.addEventListener("pointerup", up);
+  grip.addEventListener("pointercancel", up);
+}
 
 type GridFilter = { in?: string[]; has?: string; from?: string; to?: string };
 type Filters = Record<string, GridFilter>;
@@ -44,6 +74,11 @@ export function DataGridView({ columns, defaults }: { columns: readonly GridCol[
   const pathname = usePathname();
   const sp = useSearchParams();
   const byKey = useMemo(() => new Map(columns.map((c) => [c.key, c])), [columns]);
+  const prefs = useTablePrefs(PREFS_TABLE);
+  const widthOf = (k: string) => {
+    const w = prefs[k]?.width;
+    return w ? { width: w, minWidth: w, maxWidth: w } : undefined;
+  };
 
   const fRaw = sp.get("f");
   const filters = useMemo(() => readFilters(fRaw), [fRaw]);
@@ -224,9 +259,15 @@ export function DataGridView({ columns, defaults }: { columns: readonly GridCol[
                 const col = byKey.get(k)!;
                 const on = Boolean(filters[k]);
                 return (
-                  <th key={k} scope="col" aria-sort={sort?.key === k ? (sort.dir === "asc" ? "ascending" : "descending") : undefined}>
+                  <th
+                    key={k}
+                    scope="col"
+                    style={widthOf(k)}
+                    data-sized={prefs[k]?.width ? "" : undefined}
+                    aria-sort={sort?.key === k ? (sort.dir === "asc" ? "ascending" : "descending") : undefined}
+                  >
                     <div className="dg-th">
-                      <button type="button" className="dg-sort" title="Sort" onClick={() => toggleSort(k)}>
+                      <button type="button" className="dg-sort" title="Click to sort · drag the right edge to resize" onClick={() => toggleSort(k)}>
                         {col.label}
                         {sort?.key === k ? (sort.dir === "asc" ? " ▲" : " ▼") : ""}
                       </button>
@@ -240,9 +281,25 @@ export function DataGridView({ columns, defaults }: { columns: readonly GridCol[
                         {on ? "▼" : "▾"}
                       </button>
                     </div>
+                    <span
+                      className="th-resize"
+                      aria-hidden="true"
+                      title="Drag to resize · double-click for auto width"
+                      onPointerDown={(e) => startResize(e, k)}
+                      onClick={(e) => e.stopPropagation()}
+                      onDoubleClick={(e) => {
+                        e.stopPropagation();
+                        setColPref(PREFS_TABLE, k, { width: null });
+                      }}
+                    />
                     {openFilter === k ? (
                       <FilterPanel
                         col={col}
+                        sort={sort?.key === k ? sort.dir : null}
+                        onSort={(dir) => {
+                          setOpenFilter(null);
+                          setParams({ s: dir ? `${k}:${dir}` : null });
+                        }}
                         value={filters[k] ?? {}}
                         filters={filters}
                         onApply={(f) => {
@@ -263,7 +320,7 @@ export function DataGridView({ columns, defaults }: { columns: readonly GridCol[
                 {r.map((v, j) => {
                   const t = byKey.get(cols[j]!)?.type;
                   return (
-                    <td key={j} className={t === "num" ? "num" : undefined} title={v && v.length > 30 ? v : undefined}>
+                    <td key={j} className={t === "num" ? "num" : undefined} style={widthOf(cols[j]!)} title={v && v.length > 30 ? v : undefined}>
                       {v ?? ""}
                     </td>
                   );
@@ -283,12 +340,16 @@ export function DataGridView({ columns, defaults }: { columns: readonly GridCol[
 /** One column's filter: contains / range, the column's values (searched on the server), a pasted list. */
 function FilterPanel({
   col,
+  sort,
+  onSort,
   value,
   filters,
   onApply,
   onClose,
 }: {
   col: GridCol;
+  sort: "asc" | "desc" | null;
+  onSort: (dir: "asc" | "desc" | null) => void;
   value: GridFilter;
   filters: Filters;
   onApply: (f: GridFilter | null) => void;
@@ -363,6 +424,19 @@ function FilterPanel({
   return (
     <div className="ms-panel dg-panel" ref={ref} role="dialog" aria-label={`Filter ${col.label}`}>
       <div className="dg-panel-body">
+        <div className="dg-sortrow" role="group" aria-label="Sort">
+          {(["asc", "desc"] as const).map((d) => (
+            <button
+              key={d}
+              type="button"
+              className={`ms-btn${sort === d ? " ms-btn--primary" : ""}`}
+              aria-pressed={sort === d}
+              onClick={() => onSort(sort === d ? null : d)}
+            >
+              {col.type === "num" ? (d === "asc" ? "Sort 0 → 9" : "Sort 9 → 0") : col.type === "date" ? (d === "asc" ? "Oldest first" : "Newest first") : d === "asc" ? "Sort A → Z" : "Sort Z → A"}
+            </button>
+          ))}
+        </div>
         {range ? (
           <div className="dg-range">
             <label>
