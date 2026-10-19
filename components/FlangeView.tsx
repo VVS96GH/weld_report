@@ -1,5 +1,6 @@
 "use client";
 
+import { TrendCumBar } from "@/components/TrendCumBar";
 import { useEffect, useState } from "react";
 
 import type { ChartWidget, KpiWidget, PageModel, TableWidget, TextWidget } from "@/lib/page-model";
@@ -65,7 +66,18 @@ function Table({ widget, collapsible }: { widget: TableWidget; collapsible?: boo
   );
 }
 
-export function FlangeView({ model, subtitle, management }: { model: PageModel; subtitle: string; management?: PageModel }) {
+export function FlangeView({
+  model,
+  subtitle,
+  management,
+  cum,
+}: {
+  model: PageModel;
+  subtitle: string;
+  management?: PageModel;
+  /** the Leaked Flange Break workbook's last week and this week (Insert into CUM file) */
+  cum?: { lastWeek: string | null; cutoff: string };
+}) {
   usePageSubtitle(subtitle);
   // The --pbi-* tokens live on .pbi-page, which does not exist yet during the
   // first render: read them after mount (and again on a theme / mood switch),
@@ -166,6 +178,16 @@ export function FlangeView({ model, subtitle, management }: { model: PageModel; 
           </div>
 
           <div className="pbi-banner"><span>Leaked Flange Break</span></div>
+          {cum ? (
+            <TrendCumBar
+              lastWeek={cum.lastWeek}
+              cutoff={cum.cutoff}
+              base="/api/flange-breakdown"
+              name="Flange Progress Break Down Rate %, Leaked % per sub-contractor"
+              rowsPerWeek={4}
+              pendingTail="the chart gets it once it is inserted."
+            />
+          ) : null}
           <div className="pbi-row pbi-row--leak">
             {leakLine ? <Visual widget={leakLine} palette={palette} title="Leaked Flange Break %" className="pbi-leak" /> : null}
             <div className="pbi-card-stack">

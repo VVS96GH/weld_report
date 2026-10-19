@@ -104,6 +104,8 @@ const STEPS: Step[] = [
   { id: "flange", script: "db:load:flange",
     files: ["sources/Flange Progress.xlsx", "sources/ovAssets_1619.xlsx"],
     afterMatviews: true, about: "flange register" },
+  { id: "flange-breakdown", script: "db:load:flange-breakdown",
+    files: ["sources/CUM Trend Flange Progress Break Down Rate %.xlsx"], about: "flange break-down weekly rate" },
   { id: "talisman", script: "db:load:talisman", files: ["sources/Joint.csv"],
     afterMatviews: true, about: "Talisman joints" },
 ];

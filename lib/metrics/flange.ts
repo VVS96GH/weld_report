@@ -18,7 +18,7 @@
  */
 
 import { z } from "zod";
-import { query } from "@/lib/db";
+import { query, queryFresh } from "@/lib/db";
 import { Params, and, divide, zCount, zText } from "./scope";
 
 /**
@@ -755,4 +755,23 @@ export async function flangeManagementMatrix(
   }
   out.push({ group: "Total", child: false, cells: grand });
   return out;
+}
+
+/**
+ * The as-reported weekly leak rate: the pbix `Flange BreakDown` table (loaded
+ * from "CUM Trend Flange Progress Break Down Rate %.xlsx"), its line plotting
+ * the average of `Project Fl.BreakDown % Rej Rate` per Date. Weeks up to the
+ * cut-off; rate in percent like flangeLeakWeekly. Empty when the file is not loaded.
+ */
+export async function flangeLeakReported(cutoff: string): Promise<LeakWeek[]> {
+  const rows = z
+    .array(z.object({ week_end: z.string(), rate: z.coerce.number().nullable() }))
+    .parse(
+      await queryFresh(
+        `SELECT week_date::text AS week_end, avg(project_rate) * 100 AS rate
+           FROM flange_breakdown WHERE week_date <= $1::date GROUP BY 1 ORDER BY 1`,
+        [cutoff],
+      ),
+    );
+  return rows.map((r) => ({ week_end: r.week_end, rate: r.rate }));
 }

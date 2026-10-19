@@ -14,19 +14,34 @@ const dmy = (iso: string) => {
  * Welder Performance summary: the week's rows into the "CUM Trend file RT and
  * PWHT Backlog" workbook with one click (app/api/backlog-trend).
  */
-export function TrendCumBar({ lastWeek, cutoff }: { lastWeek: string | null; cutoff: string }) {
+export function TrendCumBar({
+  lastWeek,
+  cutoff,
+  base = "/api/backlog-trend",
+  name = "RT and PWHT B.Log",
+  rowsPerWeek = 7,
+  pendingTail = "the charts show it from the live data.",
+}: {
+  lastWeek: string | null;
+  cutoff: string;
+  /** the API of the workbook (Flange: /api/flange-breakdown) */
+  base?: string;
+  name?: string;
+  rowsPerWeek?: number;
+  /** what the page does meanwhile with a week the workbook lacks */
+  pendingTail?: string;
+}) {
   const router = useRouter();
   const [busy, setBusy] = useState<null | "insert" | "reload">(null);
   const [msg, setMsg] = useState<string | null>(null);
-  const base = "/api/backlog-trend";
   const pending = !lastWeek || lastWeek < cutoff;
   async function post(action: "insert" | "reload") {
     if (
       action === "insert" &&
       !window.confirm(
         pending
-          ? `Insert the week ${dmy(cutoff)} (7 rows) into the CUM Trend file? A backup copy is saved first.`
-          : `The week ${dmy(cutoff)} is already in the CUM Trend file. Overwrite its 7 rows with the values on the pages now? A backup copy is saved first.`,
+          ? `Insert the week ${dmy(cutoff)} (${rowsPerWeek} rows) into the CUM Trend file? A backup copy is saved first.`
+          : `The week ${dmy(cutoff)} is already in the CUM Trend file. Overwrite its ${rowsPerWeek} rows with the values on the pages now? A backup copy is saved first.`,
       )
     )
       return;
@@ -51,8 +66,8 @@ export function TrendCumBar({ lastWeek, cutoff }: { lastWeek: string | null; cut
   return (
     <div className="card rs-cum rs-cum--inline">
       <div className="rs-cum-text">
-        <strong>CUM Trend file</strong> (RT and PWHT B.Log): last week {lastWeek ? dmy(lastWeek) : "—"}.{" "}
-        {pending ? `The week ${dmy(cutoff)} is not in it yet; the charts show it from the live data.` : `Up to date with the cut-off ${dmy(cutoff)}.`}
+        <strong>CUM Trend file</strong> ({name}): last week {lastWeek ? dmy(lastWeek) : "—"}.{" "}
+        {pending ? `The week ${dmy(cutoff)} is not in it yet; ${pendingTail}` : `Up to date with the cut-off ${dmy(cutoff)}.`}
       </div>
       <div className="rs-cum-actions">
         <a className="ms-btn" href={`${base}?action=csv`} download>

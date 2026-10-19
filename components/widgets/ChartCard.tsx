@@ -811,6 +811,24 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
     const mid = ((before + vals[best]! / 2) / total) * 360;
     return 90 - mid;
   }, [circular, notes, widget.datasets]);
+  // A ring turned by hand keeps its angle across reloads (owner, 2026-10-19),
+  // per chart, in this browser; a double click forgets it.
+  const rotKey = `ring-rotation:${widget.canvas_id}|${widget.title}`;
+  const [savedRotation, setSavedRotation] = useState<number | null>(null);
+  useEffect(() => {
+    if (!circular) return;
+    const t = setTimeout(() => {
+      try {
+        const v = window.localStorage.getItem(rotKey);
+        const n = v === null ? NaN : Number(v);
+        setSavedRotation(Number.isFinite(n) ? n : null);
+      } catch {
+        /* storage blocked: the default angle */
+      }
+    });
+    return () => clearTimeout(t);
+  }, [circular, rotKey]);
+  const rotation = savedRotation ?? startRotation;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const chartRef = useRef<any>(null);
   const spin = useRef<{ angle: number; rotation: number } | null>(null);
@@ -837,12 +855,27 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
           chartRef.current.update("none");
         },
         onPointerUp: () => {
+          if (spin.current && chartRef.current) {
+            const r = Number(chartRef.current.options.rotation ?? 0) % 360;
+            try {
+              window.localStorage.setItem(rotKey, String(r));
+            } catch {
+              /* not kept */
+            }
+            setSavedRotation(r);
+          }
           spin.current = null;
         },
         onDoubleClick: () => {
           if (!chartRef.current) return;
           chartRef.current.options.rotation = startRotation;
           chartRef.current.update();
+          try {
+            window.localStorage.removeItem(rotKey);
+          } catch {
+            /* nothing kept */
+          }
+          setSavedRotation(null);
         },
       }
     : null;
@@ -851,7 +884,7 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
   const options: any = useMemo(
     () => ({
       responsive: true,
-      ...(circular ? { rotation: startRotation } : {}),
+      ...(circular ? { rotation } : {}),
       maintainAspectRatio: false,
       // drawn at no less than 2x the CSS size: canvas text stays crisp at any
       // browser zoom or display scaling (owner, 2026-10-15: "числа слегка размыты")
@@ -952,7 +985,7 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
             return horizontal ? { x: value, y: category } : { x: category, y: value };
           })(),
     }),
-    [palette, stackedX, stackedY, percentAxis, horizontal, circular, widget.chart_type, widget.datasets.length, widget.canvas_id, start, end, thresholds, notes, yearAxis, yearTitle, yCenter, visibleMax, startRotation],
+    [palette, stackedX, stackedY, percentAxis, horizontal, circular, widget.chart_type, widget.datasets.length, widget.canvas_id, start, end, thresholds, notes, yearAxis, yearTitle, yCenter, visibleMax, rotation],
   );
 
   // Trend charts fed by the not-yet-seeded weld_weekly_snapshot table (e.g. page 1's

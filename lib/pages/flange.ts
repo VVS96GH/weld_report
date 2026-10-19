@@ -48,6 +48,7 @@ import {
   flangeAsOf,
   flangeBreakdown,
   flangeLeakWeekly,
+  flangeLeakReported,
   flangeValues,
   flangeLoaded,
   flangeMonthly,
@@ -271,7 +272,13 @@ export async function getFlangePage(
   ]);
   // Weekly leak line (2026-10-14): closes on the last Friday on or before the
   // register's as-of date, like every weekly chart in the report.
-  const leakWeeks = await flangeLeakWeekly(applied, chartCutoff(stamp.as_of ?? new Date().toISOString().slice(0, 10)));
+  // The as-reported weekly file when it is loaded (owner, 2026-10-19), as the pbix
+  // line; otherwise the rate recomputed from the register (RF-04).
+  const leakCutoff = chartCutoff(stamp.as_of ?? new Date().toISOString().slice(0, 10));
+  const reported = await flangeLeakReported("9999-12-31"); // every week the file carries, as the pbix line
+  const leakFromFile = reported.length > 0;
+  const leakWeeks = leakFromFile ? reported : await flangeLeakWeekly(applied, leakCutoff);
+  if (leakFromFile) notes.delete(LEAK_NOTE);
   const { overall, bySubco, byHa, byMethod, byHaMethod } = breakdown;
   const panelBySubco = panel.bySubco;
   /**
@@ -409,12 +416,13 @@ export async function getFlangePage(
     labels: leakWeeks.map((x) => x.week_end),
     datasets: [
       {
-        label: "Leaked Flg Break % (recomputed from records)",
+        label: leakFromFile ? "Leaked Flg Break %" : "Leaked Flg Break % (recomputed from records)",
         data: leakWeeks.map((s) => (s.rate === null ? null : Number(s.rate.toFixed(4)))),
       },
     ],
-    options_notes:
-      "percent-axis; recomputed from records — the as-reported weekly file is missing",
+    options_notes: leakFromFile
+      ? "percent-axis; CUM Trend Flange Progress Break Down Rate % (Project Fl.BreakDown % Rej Rate)"
+      : "percent-axis; recomputed from records — the as-reported weekly file is missing",
   });
 
   // ── section 5: the repair trio (RF-02) ───────────────────────────────────

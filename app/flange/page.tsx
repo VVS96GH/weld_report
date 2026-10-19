@@ -4,6 +4,7 @@ import type { FilterWidget } from "@/lib/page-model";
 import { getFlangeManagementPage, getFlangePage, type FlangeFilters } from "@/lib/page-source";
 import { EdgeFilters } from "@/components/EdgeFilters";
 import { FlangeView } from "@/components/FlangeView";
+import { lastFlangeWeek } from "@/lib/flange-breakdown-cum";
 
 // Filters travel as URL search params (ruling RF-08) and the data is loaded
 // per request, so the route is dynamic; nothing to prerender.
@@ -26,7 +27,17 @@ function readFilters(params: Record<string, string | string[] | undefined>): Fla
 export default async function FlangePage(props: PageProps<"/flange">) {
   const params = await props.searchParams;
   const filters = readFilters(params);
-  const [model, management] = await Promise.all([getFlangePage(filters), getFlangeManagementPage(filters)]);
+  const [model, management, lastWeek] = await Promise.all([
+    getFlangePage(filters),
+    getFlangeManagementPage(filters),
+    lastFlangeWeek(),
+  ]);
+  // the week the Insert into CUM file button writes: the Friday on or after the register's as-of
+  const cutoff = (() => {
+    const d = new Date(`${(model.meta?.as_of ?? new Date().toISOString()).slice(0, 10)}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + ((5 - d.getUTCDay() + 7) % 7));
+    return d.toISOString().slice(0, 10);
+  })();
   const filterWidgets = model.widgets.filter((w): w is FilterWidget => w.kind === "filter");
   const subtitle =
     model.meta?.source === "database"
@@ -36,7 +47,12 @@ export default async function FlangePage(props: PageProps<"/flange">) {
   return (
     <>
       <EdgeFilters widgets={filterWidgets} />
-      <FlangeView model={model} subtitle={subtitle} management={management} />
+      <FlangeView
+        model={model}
+        subtitle={subtitle}
+        management={management}
+        cum={model.meta?.source === "database" ? { lastWeek, cutoff } : undefined}
+      />
     </>
   );
 }
