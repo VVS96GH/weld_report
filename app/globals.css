@@ -4781,3 +4781,20 @@ th:hover > .th-resize::after, .th-resize:active::after { opacity: 0.5; }
   position: relative;
   top: 3px;
 }
+/* the export buttons: RT a light yellow, PWHT a light grey, both outlined in red (owner, 2026-10-19) */
+.section-actions .blog-btn,
+[data-mood] .section-actions .blog-btn {
+  border: 1px solid #e5312b;
+  color: #1a1a1a;
+}
+.section-actions .blog-btn--rt,
+[data-mood] .section-actions .blog-btn--rt {
+  background: #f3e48a;
+}
+.section-actions .blog-btn--pwht,
+[data-mood] .section-actions .blog-btn--pwht {
+  background: #c9ced6;
+}
+.section-actions .blog-btn:hover {
+  filter: brightness(1.06);
+}

@@ -344,10 +344,10 @@ function renderGroup(g: Group, i: number) {
                   <div className="section-title section-title--actions">
                     <span>{g.item.title}</span>
                     <span className="section-actions">
-                      <a className="ms-btn" href="/api/backlog-export?kind=rt" download title="Every joint of RT B.Log Total, with all weld rows, columns and welders (CSV)">
+                      <a className="ms-btn blog-btn blog-btn--rt" href="/api/backlog-export?kind=rt" download title="Every joint of RT B.Log Total, with all weld rows, columns and welders (CSV)">
                         RT B.Log ⤓
                       </a>
-                      <a className="ms-btn" href="/api/backlog-export?kind=pwht" download title="Every joint of PWHT B.Log All, with all weld rows, columns and welders (CSV)">
+                      <a className="ms-btn blog-btn blog-btn--pwht" href="/api/backlog-export?kind=pwht" download title="Every joint of PWHT B.Log All, with all weld rows, columns and welders (CSV)">
                         PWHT B.Log ⤓
                       </a>
                     </span>
