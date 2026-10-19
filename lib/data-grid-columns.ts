@@ -1463,10 +1463,81 @@ export const FX_GROUP_COLUMNS: readonly GridCol[] = [
   g("fx_days_last_ut", "Days Since Last UT", "num", "{cur} - w.manual_ut_date_all", []),
 ];
 
+
+// ── lookups, testpacks, Inco, periods (migration 0055) ──
+
+Object.assign(GRID_JOINS, {
+  sd: `LEFT JOIN spool sd ON sd.source = 'SPOOL_DUMP' AND sd.spool_id = w.spool_id`,
+  ts: `LEFT JOIN spool ts ON ts.source = 'TALISMAN_SPOOL' AND ts.spool_id = w.spool_id`,
+  tal: `LEFT JOIN ref_talisman_joint tal ON tal.joint_id = w.joint_id`,
+  mj: `LEFT JOIN mv_joint mj ON mj.source = w.source AND mj.joint_id = w.joint_id`,
+  gi: `LEFT JOIN mv_grid_inco gi ON gi.k = (${WELDER_ID})`,
+  gjtp: `LEFT JOIN mv_grid_joint_tp gjtp ON gjtp.k = w.joint_id`,
+  gtp: `LEFT JOIN mv_grid_tp gtp ON gtp.k = coalesce(CASE WHEN upper(coalesce(w.sub_contractor, '')) = 'CCC' THEN gjtp.tp_ccc ELSE gjtp.tp_other END, '')`,
+});
+
+const IS_CCC = `upper(coalesce(w.sub_contractor, '')) = 'CCC'`;
+const TP_ROW = `CASE WHEN ${IS_CCC} THEN gjtp.tp_ccc ELSE gjtp.tp_other END`;
+/** Weld Dump's spool statuses ("Status … from WD"): the WD rows of the joint, by their spool in the Spool Dump. */
+const WD = `w.source = 'WELD_DUMP'`;
+const WD_FAB = `CASE WHEN ${WD} THEN CASE WHEN sd.fabricated IS NOT NULL THEN 'Fabricated' END END`;
+const LAST_RT = `CASE WHEN w.manual_ut_date_all IS NULL THEN w.rt_date END`;
+const incoBands = (v: string) =>
+  `CASE WHEN ${v} >= 0 AND ${v} < 0.015 THEN '1. 0 to 1.5% - ok' WHEN ${v} >= 0.015 AND ${v} < 0.02 THEN '2.Monitor: 1.5% to 2%' WHEN ${v} >= 0.02 AND ${v} <= 1 THEN '3.Action: 2% to 100%' END`;
+const tf = (x: string, y: string) => `CASE WHEN ${x} IS NULL THEN NULL WHEN upper(${x}::text) = upper(coalesce(${y}::text, '')) THEN 'TRUE' ELSE 'FALSE' END`;
+
+/** "2 weeks Period for RT": 14-day periods from 28-Jul-23, the 37th open-ended (the pbix's nested IFs). */
+function periods(): string {
+  const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const lab = (d: Date) => `${d.getUTCDate()}-${MON[d.getUTCMonth()]}-${String(d.getUTCFullYear()).slice(2)}`;
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  const parts: string[] = [];
+  for (let i = 0; i < 37; i += 1) {
+    const a = new Date(Date.UTC(2023, 6, 28 + 14 * i));
+    const b = new Date(Date.UTC(2023, 6, 28 + 14 * (i + 1)));
+    const label = `${i + 1}. ${lab(a)} to ${lab(b)}`;
+    parts.push(i < 36 ? `WHEN w.rt_date >= DATE '${iso(a)}' AND w.rt_date < DATE '${iso(b)}' THEN '${label}'` : `WHEN w.rt_date >= DATE '${iso(a)}' THEN '${label}'`);
+  }
+  return `CASE ${parts.join(" ")} END`;
+}
+
+export const FX_MORE_COLUMNS: readonly GridCol[] = [
+  g("fx_testpack", 'TESTPACK No "PR All"', "text", TP_ROW, ["gjtp"]),
+  g("fx_tp_ratio", 'TP Ratio % Complete "PR all"', "num", "gtp.ratio", ["gjtp", "gtp"]),
+  g("fx_tp_ratio_st", "TP Ratio % STATUS", "text",
+    "CASE WHEN gtp.ratio >= 0 AND gtp.ratio < 0.5 THEN '1. 0 to 50%' WHEN gtp.ratio >= 0.5 AND gtp.ratio < 0.8 THEN '2. 50 to 80%' WHEN gtp.ratio >= 0.8 AND gtp.ratio < 0.99 THEN '3. 80 to 99%' WHEN gtp.ratio >= 0.99 AND gtp.ratio <= 1 THEN '4. 100%' END",
+    ["gjtp", "gtp"]),
+  g("fx_tp_complete", "TP Complete %", "num", "gtp.complete", ["gjtp", "gtp"]),
+  g("fx_spool_status", "Spool ID Status", "text",
+    `CASE WHEN ${IS_CCC} THEN CASE WHEN ts.qc_release IS NOT NULL THEN 'Fabricated' END ELSE ${WD_FAB} END`, ["ts", "sd"]),
+  g("fx_spool_pwht", "Spool ID CCC PWHT Status", "text", `CASE WHEN ${IS_CCC} AND ts.pwht_date IS NOT NULL THEN 'Spool PWHT' END`, ["ts"]),
+  g("fx_wd_fab", 'Status Fabricated from "WD"', "text", WD_FAB, ["sd"]),
+  g("fx_wd_nde", 'Status Spool NDE from "WD"', "text", `CASE WHEN ${WD} THEN sd.spool_nde_status END`, ["sd"]),
+  g("fx_wd_last", 'Last Spool Status from "WD"', "text",
+    `CASE WHEN ${WD} THEN CASE WHEN sd.erected IS NOT NULL THEN 'ERECTED' WHEN sd.painted IS NOT NULL THEN 'PAINTED'` +
+      ` WHEN upper(coalesce(sd.spool_nde_status, '')) = 'NOT RELEASED' THEN 'NOT Released' WHEN upper(coalesce(sd.spool_nde_status, '')) = 'RELEASED' THEN 'RELEASED'` +
+      ` WHEN sd.qc_release IS NOT NULL THEN 'QC Release' WHEN sd.fabricated IS NOT NULL THEN 'Fabricated' END END`,
+    ["sd"]),
+  g("fx_wps_tal", 'WPS From "Talisman"', "text", `CASE WHEN ${IS_CCC} THEN tal.wps_code END`, ["tal"]),
+  g("fx_wps_tal_tf", 'WPS from "Talisman" True/False Status', "text", tf(`(CASE WHEN ${IS_CCC} THEN tal.wps_code END)`, "w.wps_no"), ["tal"]),
+  g("fx_tal_check", "CROSS CHECK DATA & Talisman JOINT ID", "text", `CASE WHEN ${IS_CCC} THEN coalesce(tal.joint_id, 'NO') END`, ["tal"]),
+  g("fx_thk_tf", 'Thickness from "JR" True/False Status', "text",
+    "CASE WHEN w.thickness_from_jr IS NULL THEN NULL WHEN w.thickness_from_jr = w.thickness THEN 'TRUE' ELSE 'FALSE' END", []),
+  g("fx_pwht_new", 'PWHT Y/N CCC (NEW)', "text", `CASE WHEN ${IS_CCC} THEN CASE WHEN mj.pwht_y_n_ccc_new_y THEN 'Y' WHEN NOT mj.pwht_y_n_ccc_new_y THEN 'N' END END`, ["mj"]),
+  g("fx_pwht_new_tf", "PWHT Y/N CCC True/False Status", "text",
+    tf(`(CASE WHEN ${IS_CCC} THEN CASE WHEN mj.pwht_y_n_ccc_new_y THEN 'Y' WHEN NOT mj.pwht_y_n_ccc_new_y THEN 'N' END END)`, "w.pwht_y_n_ccc"), ["mj"]),
+  g("fx_inco_15", 'Inco Length Ratio % "PR all" For Welder LAST 2 WEEKS', "num", `CASE WHEN (${LAST_RT}) IS NOT NULL THEN gi.ratio_15 END`, ["gi"]),
+  g("fx_inco_15_st", "Inco Rej Rate % STATUS for Welder by Length Last 2 Weeks", "text", incoBands(`(CASE WHEN (${LAST_RT}) IS NOT NULL THEN gi.ratio_15 END)`), ["gi"]),
+  g("fx_inco_30", 'Inco Length Ratio % "PR all" For Welder LAST 1 Month', "num", `CASE WHEN (${LAST_RT}) IS NOT NULL THEN gi.ratio_30 END`, ["gi"]),
+  g("fx_inco_30_st", "Inco Rej Rate % STATUS for Welder by Length Last 1 Month", "text", incoBands(`(CASE WHEN (${LAST_RT}) IS NOT NULL THEN gi.ratio_30 END)`), ["gi"]),
+  g("fx_period_2w", "2 weeks Period for RT", "text", periods(), []),
+];
+
 /** Every column: the basic ones first (Joint ID leads, as in the pbix data view), the rest in table order, then the calculated ones. */
 export const GRID_COLUMNS: readonly GridCol[] = [
   ...GRID_DEFAULT_COLUMNS.map((k) => CATALOG.find((c) => c.key === k)!),
   ...CATALOG.filter((c) => !GRID_DEFAULT_COLUMNS.includes(c.key)),
   ...FX_COLUMNS,
   ...FX_GROUP_COLUMNS,
+  ...FX_MORE_COLUMNS,
 ];
