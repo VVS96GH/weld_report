@@ -533,7 +533,7 @@ function valueLabels(type: string, stacked: boolean, percent: boolean, circular:
       },
       formatter: (v: unknown, ctx: DatalabelCtx) => {
         const total = ctx.dataset.data.reduce<number>((a, b) => a + (typeof b === "number" ? b : 0), 0);
-        const share = typeof v === "number" && total > 0 ? `${((v / total) * 100).toFixed(2)}%` : "";
+        const share = typeof v === "number" && total > 0 ? `${((v / total) * 100).toFixed(1)}%` : "";
         if (!namePct) {
           // every doughnut shows the slice's share too (owner, 2026-10-19): value, then % under it
           return share ? [fmtValue(v, false), share] : fmtValue(v, false);
