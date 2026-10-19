@@ -38,8 +38,50 @@ import { availability, bundleBy, bundleTotal, GROUP_WELD_CAT, metricCell, type B
 export const PN_FILTER_IDS = [
   "subco", "sclass", "skey", "ha", "area", "welder", "wtype", "rt", "wcat", "ndt",
   "mat", "thick", "pwht", "wps", "dia", "sfilm", "scover", "wcover", "wfilm",
+  "acc", "wdate", "rtdate", "rtrep", "rtbatch", "joint", "iso", "utrep",
 ] as const;
-type PnParams = Partial<Record<(typeof PN_FILTER_IDS)[number], string>>;
+type PnId = (typeof PN_FILTER_IDS)[number];
+type PnParams = Partial<Record<PnId, string>>;
+
+/**
+ * The row-level slicers (owner, 2026-10-19): fields of the weld rows, read from
+ * mv_row_slicer (0052). Picks on several of them must hold on the SAME weld row,
+ * as a pbix slicer filters the fact rows; a joint is in scope when one of its
+ * rows matches. The first three ship their options with the page; the rest have
+ * too many values and are searched on the server (RemotePicker).
+ */
+const ROW_COL = {
+  acc: "rt_acc_rej", wdate: "weld_date", rtdate: "rt_date",
+  rtrep: "rt_report", rtbatch: "rt_batch", joint: "joint_id", iso: "iso", utrep: "ut_report",
+} as const satisfies Partial<Record<PnId, string>>;
+type RowId = keyof typeof ROW_COL;
+const ROW_IDS = Object.keys(ROW_COL) as RowId[];
+export const PN_REMOTE: { id: RowId; label: string; noun: string }[] = [
+  { id: "rtrep", label: "RT Report", noun: "reports" },
+  { id: "rtbatch", label: "RT Batch No", noun: "batches" },
+  { id: "joint", label: "Joint ID", noun: "joints" },
+  { id: "iso", label: "ISO Number", noun: "ISOs" },
+  { id: "utrep", label: 'UT Report "PR All"', noun: "reports" },
+];
+const isRemote = (id: string) => PN_REMOTE.some((r) => r.id === id);
+/** A pick list may be pasted; past this many values it is cut (the URL would not hold more anyway). */
+const MAX_PICKS = 2000;
+
+/** `s.<col> IN (…)` for every row slicer picked, except `skip`. */
+function rowConds(f: PnParams, opts: Record<string, string[]>, skip?: RowId): string[] {
+  const out: string[] = [];
+  for (const id of ROW_IDS) {
+    if (id === skip) continue;
+    let v = (filterValues(f[id]) ?? []).slice(0, MAX_PICKS);
+    if (!isRemote(id)) v = v.filter((x) => (opts[id] ?? []).includes(x));
+    // a few reports and joints hold a comma, which the URL also uses between
+    // picks: try the neighbouring pieces glued back too (extra literals only
+    // ever match a value that exists)
+    else v = [...v, ...v.flatMap((_, i) => [2, 3].map((n) => v.slice(i, i + n)).filter((g) => g.length > 1).map((g) => g.join(",")))];
+    if (v.length) out.push(`s.${ROW_COL[id]} IN (${v.map(sqlLit).join(", ")})`);
+  }
+  return out;
+}
 
 const RT_TYPES = ["BW", "GW", "CLET", "MW"];
 const CLASS: GroupSpec = { key: "cls", sql: "w.service_class_cat_ndt" };
@@ -181,6 +223,10 @@ async function scopeFor(f: PnParams, maps: Maps, opts: Record<string, string[]>)
     const keys = [...maps.coverClass].filter(([, r]) => scover.includes(bandCoverClass(r) ?? "")).map(([k]) => k);
     extra.push(keys.length ? `coalesce({a}.service_class_cat_ndt, '') IN (${keys.map(sqlLit).join(", ")})` : "false");
   }
+  const rows = rowConds(f, opts);
+  if (rows.length) {
+    extra.push(`({a}.source, {a}.joint_id) IN (SELECT s.source, s.joint_id FROM mv_row_slicer s WHERE ${rows.join(" AND ")})`);
+  }
   if (extra.length) s.extraSql = extra;
   return s;
 }
@@ -318,6 +364,8 @@ const SUMMARY_COLUMNS = [
 
 export type PnPageData = {
   filters: FilterWidget[];
+  /** The searched row slicers (RemotePicker) and their applied picks. */
+  remote: { id: string; label: string; noun: string; value: string[] }[];
   cards: KpiWidget[];
   summary: TableWidget;
   main: TableWidget;
@@ -397,6 +445,9 @@ export async function getProjectNdePage(params: Record<string, string | undefine
     widget("pwht", "PWHT Status"),
     widget("wps", "WPS No."),
     widget("dia", "Dia Inch >20<"),
+    widget("acc", "RT Acc/Rej"),
+    widget("wdate", "Weld Date"),
+    widget("rtdate", "RT Date"),
     widget("sfilm", "STATUS RT FILM Ratio % for Service Class"),
     widget("scover", "STATUS RT/UT Cover 5% S.Class"),
     widget("wcover", "STATUS Cover 5% for Welder"),
@@ -408,8 +459,10 @@ export async function getProjectNdePage(params: Record<string, string | undefine
     { kind: "kpi", label: 'UT Rej Rate Joint "EP"', value: pct(div(total.ut.ut_rejected, total.ut.ut_done)) || "—" },
     { kind: "kpi", label: "RT/UT Rej Rate by Joint", value: pct(div(total.rt.rejected, total.rt.tested)) || "—" },
   ];
+  const remote = PN_REMOTE.map((r) => ({ ...r, value: (filterValues(f[r.id]) ?? []).slice(0, MAX_PICKS) }));
   return {
     filters,
+    remote,
     cards,
     summary: { kind: "table", title: "Project RT 100% & PWHT Summary and Backlog", columns: SUMMARY_COLUMNS, rows: summaryRows, total_row: summaryRows.at(-1) },
     main: {
@@ -451,11 +504,20 @@ async function filterOptions(): Promise<Record<string, string[]>> {
       `SELECT array_agg(DISTINCT welder_id) AS welder, array_agg(DISTINCT material_type) AS mat FROM mv_joint_pairs WHERE weld_cat IS DISTINCT FROM 'J'`,
     ),
   ]);
-  const all = { ...a[0], ...b[0], ...c[0] };
+  // the listed row slicers: values on the rows of the page's joints
+  const d = await query<Record<string, string[] | null>>(
+    `SELECT array_agg(DISTINCT s.rt_acc_rej) AS acc, array_agg(DISTINCT s.weld_date) AS wdate, array_agg(DISTINCT s.rt_date) AS rtdate
+       FROM mv_row_slicer s
+      WHERE (s.source, s.joint_id) IN (SELECT w.source, w.joint_id FROM mv_joint w WHERE ${where})`,
+    p.list(),
+  );
+  const all = { ...a[0], ...b[0], ...c[0], ...d[0] };
   const clean = (v: string[] | null | undefined) => (v ?? []).filter((x) => x !== null && x !== "").sort((x, y) => x.localeCompare(y, undefined, { numeric: true }));
   const opts: Record<string, string[]> = {};
   for (const [key, v] of Object.entries(all)) opts[key] = clean(v);
   opts.rt = [...(opts.rt ?? [])].sort((x, y) => Number(y) - Number(x));
+  // dates newest first, (Blank) last
+  for (const id of ["wdate", "rtdate"]) opts[id] = [...(opts[id] ?? [])].sort((x, y) => (x === "(Blank)" ? 1 : y === "(Blank)" ? -1 : y.localeCompare(x)));
   opts.dia = ["0-20", "20-199", "Greater than 199"];
   opts.sfilm = FILM_CLASS_BANDS;
   opts.scover = COVER_CLASS_BANDS;
@@ -463,4 +525,67 @@ async function filterOptions(): Promise<Record<string, string[]>> {
   opts.wfilm = FILM_WELDER_BANDS;
   optMemo = { key: k, opts };
   return opts;
+}
+
+// ── the searched row slicers ──
+
+export const PN_OPTION_PAGE = 300;
+const ROW_OPT_CACHE = new Map<string, Promise<{ values: string[]; more: boolean }>>();
+
+/**
+ * One page of a searched row slicer's values (RT Report, RT Batch No, Joint ID,
+ * ISO Number, UT Report "PR All"), under every OTHER slicer: the page's joint
+ * slicers narrow the joints, the other row slicers must hold on the same row.
+ */
+export async function pnRowOptions(
+  field: string,
+  params: Record<string, string | undefined>,
+  q: string,
+): Promise<{ values: string[]; more: boolean } | null> {
+  if (!isRemote(field)) return null;
+  const id = field as RowId;
+  const f: PnParams = {};
+  for (const k of PN_FILTER_IDS) {
+    const v = params[k]?.trim();
+    if (v && v !== FILTER_ALL && k !== id) f[k] = v;
+  }
+  const [{ k }] = await query<{ k: string }>(`SELECT coalesce(max(id), 0)::text AS k FROM load`);
+  const key = JSON.stringify([k, id, f, q.trim()]);
+  let hit = ROW_OPT_CACHE.get(key);
+  if (!hit) {
+    hit = (async () => {
+      const maps = await statusMaps();
+      const opts = await filterOptions();
+      const joints: PnParams = { ...f };
+      for (const r of ROW_IDS) delete joints[r];
+      const scope = await scopeFor(joints, maps, opts);
+      const p = new Params();
+      const where = scopeWhere(scope, p, "w");
+      const c = ROW_COL[id];
+      const like = (a: string) => (q.trim() ? `${a}.${c} ILIKE ${p.add(`%${q.trim().replace(/[\\%_]/g, "\\$&")}%`)}` : "");
+      const others = rowConds(f, opts, id);
+      const order = (x: string) => (id === "rtbatch" ? `(${x} = '(Blank)') DESC, length(${x}), ${x}` : x);
+      const narrowed = others.length > 0 || Object.keys(joints).length > 0;
+      // Nothing else picked: the distinct values (an index scan), then one
+      // EXISTS each — ~60 ms. Under other picks most values have no row in
+      // scope and EXISTS would visit them all: hash the joints in scope once
+      // and group the matching rows instead (~1–2.5 s, then cached).
+      const conds = narrowed ? [...others, like("s")].filter(Boolean) : [];
+      const sql = narrowed
+        ? `WITH j AS MATERIALIZED (SELECT w.source, w.joint_id FROM mv_joint w WHERE ${where})
+           SELECT s.${c} AS v FROM mv_row_slicer s JOIN j ON j.source = s.source AND j.joint_id = s.joint_id
+            ${conds.length ? `WHERE ${conds.join(" AND ")}` : ""}
+            GROUP BY 1 ORDER BY ${order(`s.${c}`)} LIMIT ${PN_OPTION_PAGE + 1}`
+        : `SELECT v FROM (SELECT DISTINCT d.${c} AS v FROM mv_row_slicer d${q.trim() ? ` WHERE ${like("d")}` : ""}) d
+            WHERE EXISTS (SELECT 1 FROM mv_row_slicer s JOIN mv_joint w ON w.source = s.source AND w.joint_id = s.joint_id
+                           WHERE s.${c} = d.v AND ${where})
+            ORDER BY ${order("v")} LIMIT ${PN_OPTION_PAGE + 1}`;
+      const rows = await query<{ v: string }>(sql, p.list());
+      return { values: rows.slice(0, PN_OPTION_PAGE).map((r) => r.v), more: rows.length > PN_OPTION_PAGE };
+    })();
+    hit.catch(() => ROW_OPT_CACHE.delete(key));
+    if (ROW_OPT_CACHE.size >= 300) ROW_OPT_CACHE.delete(ROW_OPT_CACHE.keys().next().value as string);
+    ROW_OPT_CACHE.set(key, hit);
+  }
+  return hit;
 }

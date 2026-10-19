@@ -355,6 +355,8 @@ export const POST_LOAD_MATVIEWS: { name: string; concurrently: boolean }[] = [
   { name: "mv_joint_pairs", concurrently: true },
   // NDT Remarks / Thickness / PAUT per joint (0051), the Project NDE & PWHT page. Keyed: online.
   { name: "mv_joint_attr", concurrently: true },
+  // the Project NDE page's row-level slicers (0052): narrow distinct rows, no unique key.
+  { name: "mv_row_slicer", concurrently: false },
   // 2.5 M rows, ~33 s; no unique key (its grain has NULLs), so a plain refresh.
   { name: "mv_welder_perf", concurrently: false },
   // Read mv_welder_perf, so after it. Small, keyed: online.

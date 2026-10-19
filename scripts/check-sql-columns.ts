@@ -357,9 +357,9 @@ function main(): void {
       new RegExp(`CREATE UNIQUE INDEX[^;]*ON ${mv}\\b`).test(allSql));
   }
   // The loaders refresh exactly these, in this order.
-  check("POST_LOAD_MATVIEWS lists the six views in dependency order",
+  check("POST_LOAD_MATVIEWS lists the views in dependency order",
     POST_LOAD_MATVIEWS.map((m) => m.name).join(",")
-      === "mv_weekly_progress,mv_joint,mv_joint_wps,mv_welder_perf,mv_welder_status,mv_welder_sub_status",
+      === "mv_weekly_progress,mv_joint,mv_joint_wps,mv_joint_material,mv_joint_pairs,mv_joint_attr,mv_row_slicer,mv_welder_perf,mv_welder_status,mv_welder_sub_status",
     POST_LOAD_MATVIEWS.map((m) => m.name).join(","));
   check("every matview the loaders refresh exists in the migration log",
     POST_LOAD_MATVIEWS.every((m) => mvNames.has(m.name)),

@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { relabel } from "@/lib/labels";
+import { useState } from "react";
 
 import { EdgeFilters } from "@/components/EdgeFilters";
+import { RemotePicker } from "@/components/RemotePicker";
 import { ColHead, colThProps } from "@/components/ColHead";
 import { tableKeyOf, useTablePrefs } from "@/lib/col-prefs";
-import { useKeepInView } from "@/components/useKeepInView";
 import { usePageSubtitle } from "@/components/ReportShell";
 import type { Column, Level, Matrix, WpPageData, WpRow } from "@/lib/pages/welder-performance";
 import { nextSort, sortBy, type SortState } from "@/lib/table-sort";
@@ -240,7 +240,7 @@ function MatrixCard({ data, matrix }: { data: WpPageData; matrix: Matrix }) {
                     {...colThProps(prefs, c.key)}
                   >
                     <ColHead table={tkey} col={c.key} index={ci + 1} sort={sort} onSort={onSort}>
-                      <HeadLabel label={c.label} />
+                      <HeadLabel label={relabel(c.label)} />
                     </ColHead>
                   </th>
                 ))}
@@ -283,161 +283,6 @@ function MatrixCard({ data, matrix }: { data: WpPageData; matrix: Matrix }) {
   );
 }
 
-/**
- * The Joint ID slicer: a check-box drop-down like the others, but its options
- * (~800k joints unfiltered) come from the server, under the OTHER slicers — pick
- * a welder or a status and only the joints it touches are offered. A search box
- * narrows the list; one page of the matches is shown at a time.
- */
-function JointPicker({ value, pageSlug }: { value: string[]; pageSlug: string }) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const [open, setOpen] = useState(false);
-  const [q, setQ] = useState("");
-  const [draft, setDraft] = useState<string[]>(value);
-  const [list, setList] = useState<{ joints: string[]; more: boolean } | null>(null);
-  const [loading, setLoading] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
-  useKeepInView(panelRef, open);
-  const reqId = useRef(0);
-
-  function apply(next: string[]) {
-    const sp = new URLSearchParams(searchParams.toString());
-    if (next.length) sp.set("joint", next.join(","));
-    else sp.delete("joint");
-    const qs = sp.toString();
-    router.push(qs ? `${pathname}?${qs}` : pathname);
-  }
-
-  // fetch the options for the current query, debounced
-  useEffect(() => {
-    if (!open) return;
-    const id = ++reqId.current;
-    const t = setTimeout(async () => {
-      setLoading(true);
-      const sp = new URLSearchParams(searchParams.toString());
-      sp.delete("joint");
-      sp.set("page", pageSlug);
-      if (q.trim()) sp.set("q", q.trim());
-      try {
-        const r = await fetch(`/api/welder-performance/joints?${sp.toString()}`);
-        const body = (await r.json()) as { joints: string[]; more: boolean };
-        if (id === reqId.current) setList(body);
-      } catch {
-        if (id === reqId.current) setList({ joints: [], more: false });
-      } finally {
-        if (id === reqId.current) setLoading(false);
-      }
-    }, 250);
-    return () => clearTimeout(t);
-  }, [open, q, pageSlug, searchParams]);
-
-  // close on outside click (applies) / Escape (discards), like the other slicers
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-        if (draft.join(",") !== value.join(",")) apply(draft);
-      }
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setOpen(false);
-        setDraft(value);
-      }
-    };
-    document.addEventListener("mousedown", onDown);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("keydown", onKey);
-    };
-  });
-
-  const toggle = (j: string) => setDraft((d) => (d.includes(j) ? d.filter((x) => x !== j) : [...d, j]));
-  const shown = open ? draft : value;
-  const summary = shown.length === 0 ? "All" : shown.length <= 2 ? shown.join(", ") : `${shown.length} selected`;
-  // picked joints stay on top even when the search does not match them
-  const options = list ? [...draft.filter((j) => !list.joints.includes(j)), ...list.joints] : draft;
-
-  return (
-    <div className="filter-group ms wp-joint" ref={ref}>
-      <label id="wp-joint-l" htmlFor="wp-joint-b">
-        Joint ID
-      </label>
-      <button
-        id="wp-joint-b"
-        type="button"
-        className="filter-select ms-trigger"
-        aria-haspopup="true"
-        aria-expanded={open}
-        onClick={() => {
-          if (open) {
-            setOpen(false);
-            if (draft.join(",") !== value.join(",")) apply(draft);
-          } else {
-            setDraft(value);
-            setOpen(true);
-          }
-        }}
-      >
-        <span className="ms-summary">{summary}</span>
-        <span aria-hidden="true" className="ms-caret">
-          ▾
-        </span>
-      </button>
-      {open ? (
-        <div className="ms-panel wp-joint-panel" role="group" aria-labelledby="wp-joint-l" ref={panelRef}>
-          <input
-            type="search"
-            className="ms-search"
-            placeholder="Search joints"
-            aria-label="Search the joints"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            autoFocus
-          />
-          <div className="ms-options">
-            <label className="ms-option ms-option--all">
-              <input type="checkbox" checked={draft.length === 0} onChange={() => setDraft([])} />
-              <span>Select all</span>
-            </label>
-            {options.map((j) => (
-              <label className="ms-option" key={j}>
-                <input type="checkbox" checked={draft.includes(j)} onChange={() => toggle(j)} />
-                <span>{j}</span>
-              </label>
-            ))}
-            {loading ? <p className="wp-loading">Loading…</p> : null}
-            {!loading && list && list.joints.length === 0 ? <p className="wp-loading">No joints under these filters.</p> : null}
-            {!loading && list?.more ? (
-              <p className="wp-loading">First {list.joints.length} joints shown — type to narrow the list.</p>
-            ) : null}
-          </div>
-          <div className="ms-footer">
-            <button type="button" className="ms-btn" onClick={() => setDraft([])}>
-              Clear
-            </button>
-            <button
-              type="button"
-              className="ms-btn ms-btn--primary"
-              onClick={() => {
-                setOpen(false);
-                if (draft.join(",") !== value.join(",")) apply(draft);
-              }}
-            >
-              Apply
-            </button>
-          </div>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
 export function WelderPerfView({ data, note }: { data: WpPageData | null; note?: string }) {
   usePageSubtitle(data ? `Cut-off ${dmy(data.as_of)}` : "Welder Performance");
   return (
@@ -460,7 +305,17 @@ export function WelderPerfView({ data, note }: { data: WpPageData | null; note?:
           <EdgeFilters
             widgets={data.filters}
             extra={{
-              node: <JointPicker key={data.joint.join(",")} value={data.joint} pageSlug={data.page.slug} />,
+              node: (
+                <RemotePicker
+                  key={data.joint.join(",")}
+                  param="joint"
+                  label="Joint ID"
+                  value={data.joint}
+                  endpoint={`/api/welder-performance/joints?page=${data.page.slug}`}
+                  listKey="joints"
+                  noun="joints"
+                />
+              ),
               ids: ["joint"],
               chips: data.joint.length ? [{ label: "Joint ID", value: data.joint.join(","), ids: ["joint"] }] : [],
             }}

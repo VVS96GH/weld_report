@@ -60,7 +60,7 @@ fi
     curl -s -o /dev/null --max-time 3 "http://localhost:${PORT:-3000}/api/health" && break
     sleep 2
   done
-  for u in welding/1 welding/2 welding/3 report/overview report/status report/subco report/nde report/pwht report/wps report/demo report/demo2 flange errors welder-performance/2-weeks welder-performance/1-month welder-performance/2-weeks-summary welder-performance/1-month-summary; do
+  for u in welding/1 welding/2 welding/3 report/overview report/status report/subco report/nde report/pwht report/wps report/demo report/demo2 flange errors welder-performance/2-weeks welder-performance/1-month welder-performance/2-weeks-summary welder-performance/1-month-summary project-nde; do
     curl -s -o /dev/null --max-time 120 "http://localhost:${PORT:-3000}/$u" || true
   done
   printf '[serve %s] cache warmed\n' "$(date +%H:%M:%S)"

@@ -1,14 +1,22 @@
 "use client";
 
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useMemo, useRef } from "react";
 
 import { EdgeFilters } from "@/components/EdgeFilters";
+import { RemotePicker } from "@/components/RemotePicker";
 import { usePageSubtitle } from "@/components/ReportShell";
 import { DataTable } from "@/components/widgets/DataTable";
 import { KpiCard } from "@/components/widgets/KpiCard";
+import { relabelWidget } from "@/lib/labels";
 import type { FilterWidget, KpiWidget, TableWidget } from "@/lib/page-model";
 
-export type ProjectNdeData = { filters: FilterWidget[]; cards: KpiWidget[]; summary: TableWidget; main: TableWidget };
+export type ProjectNdeData = {
+  filters: FilterWidget[];
+  remote: { id: string; label: string; noun: string; value: string[] }[];
+  cards: KpiWidget[];
+  summary: TableWidget;
+  main: TableWidget;
+};
 
 /**
  * Project NDE & PWHT Status by Service Class (owner, 2026-10-18; pbix
@@ -16,7 +24,20 @@ export type ProjectNdeData = { filters: FilterWidget[]; cards: KpiWidget[]; summ
  * the four STATUS filters in the FILTERS tab; the summary, three cards, and the
  * Service Class matrix (a class opens to its sub-contractors under +).
  */
-export function ProjectNdeView({ data, note }: { data: ProjectNdeData | null; note?: string }) {
+export function ProjectNdeView({ data: raw, note }: { data: ProjectNdeData | null; note?: string }) {
+  // "Backlog" reads "B.Log" on every page (owner, 2026-10-18), display only
+  const data = useMemo(
+    () =>
+      raw
+        ? {
+            ...raw,
+            cards: raw.cards.map((c) => relabelWidget(c) as KpiWidget),
+            summary: relabelWidget(raw.summary) as TableWidget,
+            main: relabelWidget(raw.main) as TableWidget,
+          }
+        : null,
+    [raw],
+  );
   usePageSubtitle("Project NDE & PWHT Status by Service Class");
   // One screen (owner, 2026-10-18): the matrix takes the window's remaining
   // height and scrolls inside, so the page itself never does.
@@ -47,12 +68,32 @@ export function ProjectNdeView({ data, note }: { data: ProjectNdeData | null; no
   return (
     <section className="page-section active pv-page pn-page" aria-labelledby="page-heading">
       <div className="page-header">
-        <h2 id="page-heading">Project NDE and PWHT Status / Service Class + Service Cat + NDT Remarks</h2>
+        <h2 id="page-heading">Project NDE and PWHT Status by Service Class</h2>
       </div>
       {note ? <p className="error-empty">{note}</p> : null}
       {data ? (
         <>
-          <EdgeFilters widgets={data.filters} />
+          <EdgeFilters
+            widgets={data.filters}
+            extra={{
+              node: (
+                <>
+                  {data.remote.map((r) => (
+                    <RemotePicker
+                      key={`${r.id}:${r.value.join(",")}`}
+                      param={r.id}
+                      label={r.label}
+                      value={r.value}
+                      endpoint={`/api/project-nde/options?field=${r.id}`}
+                      noun={r.noun}
+                    />
+                  ))}
+                </>
+              ),
+              ids: data.remote.map((r) => r.id),
+              chips: data.remote.filter((r) => r.value.length).map((r) => ({ label: r.label, value: r.value.join(","), ids: [r.id] })),
+            }}
+          />
           <div className="pn-top">
             <div>
               <div className="section-title">{data.summary.title}</div>
