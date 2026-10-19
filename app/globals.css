@@ -4319,3 +4319,13 @@ th:hover > .th-resize::after, .th-resize:active::after { opacity: 0.5; }
 .dg-field-f {
   color: #ffd166;
 }
+/* the closed Fields pane: a tab on the right edge, half out of view until hovered */
+.fdrawer-tab.dg-fields-tab {
+  transform: translateX(45%);
+  opacity: 0.85;
+}
+.fdrawer-tab.dg-fields-tab:hover,
+.fdrawer-tab.dg-fields-tab:focus-visible {
+  transform: translateX(0);
+  opacity: 1;
+}

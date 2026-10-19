@@ -211,7 +211,26 @@ export function DataGridView({
       void load(rows.length);
   };
 
-  const [fieldsOpen, setFieldsOpen] = useState(true);
+  const [fieldsOpen, setFieldsOpenState] = useState(true);
+  // the pane remembers whether it was open (this browser only)
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("dg-fields") === "closed") {
+        const t = setTimeout(() => setFieldsOpenState(false), 0);
+        return () => clearTimeout(t);
+      }
+    } catch {
+      /* storage blocked: the pane starts open */
+    }
+  }, []);
+  const setFieldsOpen = (open: boolean) => {
+    setFieldsOpenState(open);
+    try {
+      localStorage.setItem("dg-fields", open ? "open" : "closed");
+    } catch {
+      /* storage blocked */
+    }
+  };
   // the table takes the window's remaining height and scrolls inside
   useEffect(() => {
     const el = scrollRef.current;
@@ -222,7 +241,9 @@ export function DataGridView({
       const h = Math.max(300, window.innerHeight - top - 52);
       el.style.height = `${h}px`;
       // the fields pane matches the table
-      el.closest(".dg-body")?.querySelector<HTMLElement>(".dg-fields")?.style.setProperty("max-height", `${h + 28}px`);
+      el.closest(".dg-body")
+        ?.querySelector<HTMLElement>(".dg-fields")
+        ?.style.setProperty("max-height", `${h + 28}px`);
     };
     fit();
     window.addEventListener("resize", fit);
@@ -282,7 +303,7 @@ export function DataGridView({
             type="button"
             className={`ms-btn${fieldsOpen ? " ms-btn--primary" : ""}`}
             aria-expanded={fieldsOpen}
-            onClick={() => setFieldsOpen((o) => !o)}
+            onClick={() => setFieldsOpen(!fieldsOpen)}
           >
             Fields ({cols.length} / {columns.length})
           </button>
@@ -452,7 +473,21 @@ export function DataGridView({
             onSet={setVisible}
             onClose={() => setFieldsOpen(false)}
           />
-        ) : null}
+        ) : (
+          // closed: a tab on the right edge, as the FILTERS tab on the other pages
+          <button
+            type="button"
+            className="fdrawer-tab dg-fields-tab"
+            aria-expanded={false}
+            aria-label="Open the fields pane"
+            onClick={() => setFieldsOpen(true)}
+          >
+            <span aria-hidden="true" className="fdrawer-tab-icon">
+              ☰
+            </span>
+            <span className="fdrawer-tab-text">FIELDS ({cols.length})</span>
+          </button>
+        )}
       </div>
     </section>
   );
