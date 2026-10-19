@@ -243,7 +243,7 @@ const stackTotalsPlugin = {
     const count = chart.data.labels?.length ?? 0;
     ctx.save();
     ctx.fillStyle = opts.color;
-    ctx.font = `600 10px ${opts.font}`;
+    ctx.font = `600 12px ${opts.font}`;
     ctx.textAlign = "center";
     ctx.textBaseline = "bottom";
     for (let i = 0; i < count; i++) {
@@ -478,14 +478,15 @@ function areaLabels(palette: Palette): any {
     offset: 4,
     clamp: true,
     color: palette.fg,
-    font: { size: 10, family: palette.font, weight: 600 },
+    font: { size: 11, family: palette.font, weight: 600 },
   };
 }
 
 /** Per-type chartjs-plugin-datalabels config; `display: false` is the registered default. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function valueLabels(type: string, stacked: boolean, percent: boolean, circular: boolean, palette: Palette, seriesCount: number, categoryCount: number, horizontal = false, namePct = false): any {
-  const font = { size: 10, family: palette.font, weight: 600 };
+  // value labels a size up (owner, 2026-10-19: 10 px hard to read)
+  const font = { size: 12, family: palette.font, weight: 600 };
   if (circular) {
     // Slice values outside the ring; slivers under 2 % of the total stay unlabelled
     // (the legend and tooltip still carry them) so labels never pile up. With
@@ -521,7 +522,7 @@ function valueLabels(type: string, stacked: boolean, percent: boolean, circular:
       },
       clamp: true,
       // doughnut values a size up (owner, 2026-10-19: hard to read at 10)
-      font: { ...font, size: 12 },
+      font: { ...font, size: 13 },
     };
   }
   if (type === "line") {
