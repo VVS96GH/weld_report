@@ -206,6 +206,15 @@ export function DataGridView({
     setTopRow(
       Math.min(rows.length - 1, Math.max(0, Math.floor(el.scrollTop / h))),
     );
+    // the first column scrolled into view past the pinned # and Joint ID
+    const ths = Array.from(el.querySelectorAll<HTMLElement>("thead th"));
+    const pinned = (ths[0]?.offsetWidth ?? 0) + (ths[1]?.offsetWidth ?? 0);
+    let first = 0;
+    if (el.scrollLeft > 0) {
+      const k = ths.findIndex((th, i) => i >= 2 && th.offsetLeft + th.offsetWidth > el.scrollLeft + pinned);
+      first = k > 0 ? k - 1 : 0;
+    }
+    setLeftCol(first);
     if (loading || !more) return;
     if (el.scrollTop + el.clientHeight > el.scrollHeight - 600)
       void load(rows.length);
@@ -253,6 +262,8 @@ export function DataGridView({
   const [openFilter, setOpenFilter] = useState<string | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [topRow, setTopRow] = useState(0);
+  const [selCol, setSelCol] = useState<number | null>(null);
+  const [leftCol, setLeftCol] = useState(0);
   const [flash, setFlash] = useState<string | null>(null);
   const setVisible = (keys: string[]) => {
     const all =
@@ -438,6 +449,7 @@ export function DataGridView({
                         <td
                           key={j}
                           className={t === "num" ? "num" : undefined}
+                          onClick={() => setSelCol(j)}
                           style={widthOf(cols[j]!)}
                           title={v && v.length > 30 ? v : undefined}
                         >
@@ -459,7 +471,8 @@ export function DataGridView({
           </div>
           <div className="dg-status num" role="status">
             {rows.length
-              ? `Row ${NF.format((selected ?? topRow) + 1)} of ${count === null ? "…" : NF.format(count)}`
+              ? `Row ${NF.format((selected ?? topRow) + 1)} of ${count === null ? "…" : NF.format(count)}` +
+                ` · Column ${NF.format(Math.min((selected !== null && selCol !== null ? selCol : leftCol) + 1, cols.length))} of ${NF.format(cols.length)}`
               : ""}
           </div>
         </div>
