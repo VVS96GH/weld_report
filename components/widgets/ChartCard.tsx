@@ -516,7 +516,7 @@ function areaLabels(palette: Palette): any {
 
 /** Per-type chartjs-plugin-datalabels config; `display: false` is the registered default. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function valueLabels(type: string, stacked: boolean, percent: boolean, circular: boolean, palette: Palette, seriesCount: number, categoryCount: number, horizontal = false, namePct = false): any {
+function valueLabels(type: string, stacked: boolean, percent: boolean, circular: boolean, palette: Palette, seriesCount: number, categoryCount: number, horizontal = false, namePct = false, pctDigits = 2): any {
   // value labels a size up (owner, 2026-10-19: 10 px hard to read)
   const font = { size: Math.round(12 * palette.scale), family: palette.font, weight: 600 };
   if (circular) {
@@ -533,7 +533,7 @@ function valueLabels(type: string, stacked: boolean, percent: boolean, circular:
       },
       formatter: (v: unknown, ctx: DatalabelCtx) => {
         const total = ctx.dataset.data.reduce<number>((a, b) => a + (typeof b === "number" ? b : 0), 0);
-        const share = typeof v === "number" && total > 0 ? `${((v / total) * 100).toFixed(widget.canvas_id === "chart1_weldtype" ? 1 : 2)}%` : "";
+        const share = typeof v === "number" && total > 0 ? `${((v / total) * 100).toFixed(pctDigits)}%` : "";
         if (!namePct) {
           // every doughnut shows the slice's share too (owner, 2026-10-19): value, then % under it
           return share ? [fmtValue(v, false), share] : fmtValue(v, false);
@@ -890,7 +890,7 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
           // legend to the 7 largest so the chart keeps its size; the rest show on hover
           ...(circular ? { filter: (item: { index?: number }) => (item.index ?? 0) < 7 } : {}) } },
         tooltip: { enabled: true },
-        datalabels: notes.includes("area") ? areaLabels(palette) : valueLabels(widget.chart_type, stackedX || stackedY, percentAxis, circular, palette, widget.datasets.length, end - start, horizontal, notes.includes("label-name-pct")),
+        datalabels: notes.includes("area") ? areaLabels(palette) : valueLabels(widget.chart_type, stackedX || stackedY, percentAxis, circular, palette, widget.datasets.length, end - start, horizontal, notes.includes("label-name-pct"), widget.canvas_id === "chart1_weldtype" ? 1 : 2),
         centerTotal: circular && notes.includes("center-total") ? { color: palette.fg, font: palette.font ?? "sans-serif" } : undefined,
         barLegendGap: {
           px: widget.chart_type === "bar" && !(stackedX || stackedY) && !horizontal && widget.datasets.length > 2 ? Math.round(26 * palette.scale) : 0,
