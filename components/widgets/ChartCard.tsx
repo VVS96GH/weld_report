@@ -402,6 +402,21 @@ const FIXED_SERIES: Record<string, string> = {
   "PWHT+RT": "#9A6614",
 };
 
+/** The Weld Type doughnuts in the pbix's own colours, one per weld type (owner, 2026-10-19). */
+const WELD_TYPE_COLORS: Record<string, string> = {
+  SW: "#D2D2D2",
+  BW: "#2B4EA2",
+  SP: "#151515",
+  LET: "#E5312B",
+  FW: "#9C9C9C",
+  SOF: "#3B8B9B",
+  RPD: "#3AA3DF",
+  WPAD: "#6B6B6B",
+  SOB: "#4A9FB7",
+  BON: "#22469A",
+  "FW.": "#D9B5BD",
+};
+
 function seriesColor(label: string, index: number, palette: Palette): string {
   const fixed = FIXED_SERIES[label.trim()];
   if (fixed) return fixed;
@@ -673,7 +688,9 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
           {
             label: ds?.label || widget.title,
             data: (ds?.data ?? []).map(toNum),
-            backgroundColor: widget.labels.map((_, i) => palette.colors[i % palette.colors.length]),
+            backgroundColor: widget.labels.map((l, i) =>
+              (/weld type/i.test(widget.title) ? WELD_TYPE_COLORS[String(l).trim()] : undefined) ?? palette.colors[i % palette.colors.length],
+            ),
             borderColor: "transparent",
           },
         ],
