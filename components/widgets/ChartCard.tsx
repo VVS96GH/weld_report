@@ -1092,14 +1092,28 @@ function scalePad(k: number, p: Partial<Record<"top" | "bottom" | "left" | "righ
 
 /** Doughnuts drawn with a thin ring and labels a size down (owner, 2026-10-19). */
 const SMALL_RINGS = new Set(["forecast_donut_done", "forecast_donut_backlog"]);
+/** Charts whose value labels show whole numbers, no decimals (owner, 2026-10-19). */
+const WHOLE_NUMBERS = new Set(["forecast_donut_done", "forecast_donut_backlog", "forecast_bar"]);
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function smallRing(id: string, scale: number, labels: any): any {
-  if (!SMALL_RINGS.has(id) || !labels?.font) return labels;
-  const fmt = labels.formatter;
-  return {
-    ...labels,
-    font: { ...labels.font, size: Math.round(10 * scale) },
-    // whole numbers, no decimals (owner, 2026-10-19); the share is still of the exact values
-    formatter: typeof fmt === "function" ? (v: unknown, ctx: unknown) => fmt(typeof v === "number" ? Math.round(v) : v, ctx) : fmt,
-  };
+  if (!labels) return labels;
+  let out = labels;
+  if (SMALL_RINGS.has(id) && out.font && typeof out.font === "object") out = { ...out, font: { ...out.font, size: Math.round(10 * scale) } };
+  const fmt = out.formatter;
+  if (WHOLE_NUMBERS.has(id) && typeof fmt === "function") {
+    // a doughnut's share is still taken of the exact values
+    out = { ...out, formatter: (v: unknown, ctx: unknown) => fmt(typeof v === "number" ? Math.round(v) : v, ctx) };
+    // a value that rounds to 0 has no label
+    const disp = out.display;
+    out = {
+      ...out,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      display: (ctx: any) => {
+        const v = ctx.dataset.data[ctx.dataIndex];
+        if (typeof v === "number" && Math.round(v) === 0) return false;
+        return typeof disp === "function" ? disp(ctx) : (disp ?? true);
+      },
+    };
+  }
+  return out;
 }
