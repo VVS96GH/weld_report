@@ -466,7 +466,27 @@ const WELD_TYPE_COLORS_PARTY: Record<string, string> = {
 const weldTypeColors = (title: string) =>
   /weld type\s*[-–]/i.test(title) || /weld type\s+(ccc|gac|tekfen|medgulf)/i.test(title) ? WELD_TYPE_COLORS_PARTY : WELD_TYPE_COLORS_PROJECT;
 
-function seriesColor(label: string, index: number, palette: Palette): string {
+/**
+ * The RT B.Log Forecast page in the pbix's own colours (owner, 2026-10-19), from
+ * the visuals' dataPoint fills: lilac total, red RT 100 %, yellow 5 %, amber 10 %,
+ * green 20 %, black 30 %; the Done doughnut green over lilac.
+ */
+const FORECAST_COLORS: Record<string, Record<string, string>> = {
+  forecast_bar: {
+    "RT Total Forecast B.log": "#C2A6F1", "RT 100%": "#EC2326", "RT 5%": "#E5F600",
+    "RT 10%": "#F7B500", "RT 20%": "#00EA0C", "RT 30%": "#000000",
+  },
+  forecast_donut_backlog: {
+    "RT Total Forecast B.log": "#DCBFF6", "RT 100%": "#EC2326", "RT 5%": "#E5F600",
+    "RT 10%": "#F7B500", "RT 20%": "#00EA0C", "RT 30%": "#000000",
+  },
+  forecast_donut_done: { Done: "#04BD32", "RT Total Forecast Backlog": "#C2A6F1", "RT Total Forecast B.Log": "#C2A6F1" },
+};
+const forecastColor = (id: string, label: unknown) => FORECAST_COLORS[id]?.[String(label ?? "").trim()];
+
+function seriesColor(label: string, index: number, palette: Palette, canvasId = ""): string {
+  const fc = forecastColor(canvasId, label);
+  if (fc) return fc;
   const fixed = FIXED_SERIES[label.trim()];
   if (fixed) return fixed;
   if (palette.seriesMtPt && MT_PT_SERIES.test(label)) return palette.seriesMtPt;
@@ -754,7 +774,9 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
             label: ds?.label || widget.title,
             data: (ds?.data ?? []).map(toNum),
             backgroundColor: widget.labels.map((l, i) =>
-              (/weld type/i.test(widget.title) ? weldTypeColors(widget.title)[String(l).trim()] : undefined) ?? palette.colors[i % palette.colors.length],
+              forecastColor(widget.canvas_id, l) ??
+              (/weld type/i.test(widget.title) ? weldTypeColors(widget.title)[String(l).trim()] : undefined) ??
+              palette.colors[i % palette.colors.length],
             ),
             borderColor: "transparent",
           },
@@ -766,7 +788,7 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
     const datasets = widget.datasets.map((ds, i) => {
       // With threshold lines the rate itself is the neutral series (pbix: blue) and
       // the red is reserved for the "Unacceptable" limit.
-      const color = thresholds ? palette.colors[0] ?? palette.primary : seriesColor(ds.label, i, palette);
+      const color = thresholds ? palette.colors[0] ?? palette.primary : seriesColor(ds.label, i, palette, widget.canvas_id);
       const base = { label: ds.label, data: slice(ds.data).map(toNum), stack: ds.stack };
       if (widget.chart_type === "line") {
         // "area" (Welder Performance trends, the pbix stacked-area visual): each series
