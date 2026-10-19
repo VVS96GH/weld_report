@@ -150,6 +150,10 @@ export const INCO_WELD_COLUMNS = [
   "manual_ut_report_no_all",
   "repair_reweld", "service_class_cat_wd", "service_class_cat_ndt",
   "temporary_lines", "tmcp_pipe", "exclude_ut_films", "exclude_debris_films",
+  // 0056: the Inco-only columns of the pbix union, and Welding Report No. as DWIR No.
+  "dwir_no", "category_1", "category_2", "drg_no", "process", "fitup_report_no", "first_prod_joint",
+  "aditional_joint_no_rt", "rt_p1_rep", "p1_date", "rt_p2_rep", "p2_date",
+  "vbt_report", "vbt_date", "opt_report", "opt_date", "count_delimiter", "count_rows_count",
 ] as const;
 
 /**

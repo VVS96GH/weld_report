@@ -39,7 +39,8 @@ export type PageOption = { page: number } | { group: string; pages: number[] };
 
 /** The project-wide pages make the first group (owner, 2026-10-15). */
 const PROJECT_GROUP = "Project";
-const PROJECT_PAGES = [1, 2, 3, 9, ...[PROJECT_NDE_TITLE, WPS_MATERIAL_TITLE].map((t) => WELDING_PAGE_TITLES.indexOf(t) + 1)].filter((n) => n > 0);
+// Project Welding & NDE Status (9) second, after page 1 (owner, 2026-10-19)
+const PROJECT_PAGES = [1, 9, 2, 3, ...[PROJECT_NDE_TITLE, WPS_MATERIAL_TITLE].map((t) => WELDING_PAGE_TITLES.indexOf(t) + 1)].filter((n) => n > 0);
 
 /**
  * The jump list, top to bottom: Project, Welder Performance, the four

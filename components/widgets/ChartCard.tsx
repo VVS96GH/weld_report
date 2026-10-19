@@ -390,7 +390,21 @@ function withAlpha(color: string, alpha: number): string {
   return norm.replace(/rgba?\(([^)]+?)(,\s*[\d.]+)?\)/, (_m, rgb: string) => `rgba(${rgb.split(",").slice(0, 3).join(",")}, ${alpha})`);
 }
 
+/**
+ * The B.Log bars in the pbix's own colours (owner, 2026-10-19): RT/UT+PWHT dark
+ * blue under RT/UT Only light blue; PWHT Only sand yellow, PWHT+RT/UT brown.
+ */
+const FIXED_SERIES: Record<string, string> = {
+  "RT/UT+PWHT": "#2E62B8",
+  "RT/UT Only": "#6E9FDB",
+  "PWHT Only": "#E2D375",
+  "PWHT+RT/UT": "#9A6614",
+  "PWHT+RT": "#9A6614",
+};
+
 function seriesColor(label: string, index: number, palette: Palette): string {
+  const fixed = FIXED_SERIES[label.trim()];
+  if (fixed) return fixed;
   if (palette.seriesMtPt && MT_PT_SERIES.test(label)) return palette.seriesMtPt;
   if (palette.attention && ATTENTION_SERIES.test(label)) return palette.attention;
   if (palette.seriesF && F_SERIES.test(label)) return palette.seriesF;

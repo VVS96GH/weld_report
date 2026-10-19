@@ -194,6 +194,14 @@ async function* rows(
       "f",
       "f",                                  // exclude_ut_films: the DAX excludes Inco
       "f",
+      // 0056: the Inco-only columns, as the pbix carries them in the union
+      txt(g("Welding Report No.")),         // the pbix renames it DWIR No.
+      txt(g("Category 1")), txt(g("Category 2")), txt(g("Drg No")), txt(g("process")),
+      txt(g("Fitup Report No.")), txt(g("First Prod. Joint")),
+      txt(g("Aditional \nJoint No.\nRT")),
+      txt(g("RT P1 Rep.")), txt(g("P1 Date")), txt(g("RT P2 Rep.")), txt(g("P2 Date")),
+      txt(g("VBT Report")), txt(g("VBT Date")), txt(g("OPT Report")), txt(g("OPT Date")),
+      txt(g("CountDelimiter")), txt(g("Count Rows.Count")),
     ];
   }
   stats.distinctJointIds = seq.size;

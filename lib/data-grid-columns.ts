@@ -1533,10 +1533,56 @@ export const FX_MORE_COLUMNS: readonly GridCol[] = [
   g("fx_period_2w", "2 weeks Period for RT", "text", periods(), []),
 ];
 
+
+// ── the rest of the pbix union's source columns ──
+
+/** Inco Weld Log columns only Inco fills (migration 0056, loaded by load-inco.ts). */
+export const INCO_COLUMNS: readonly GridCol[] = [
+  { key: "category_1", label: "Category 1", type: "text" },
+  { key: "category_2", label: "Category 2", type: "text" },
+  { key: "drg_no", label: "Drg No", type: "text" },
+  { key: "process", label: "process", type: "text" },
+  { key: "fitup_report_no", label: "Fitup Report No.", type: "text" },
+  { key: "first_prod_joint", label: "First Prod. Joint", type: "text" },
+  { key: "aditional_joint_no_rt", label: "Aditional Joint No.RT", type: "text" },
+  { key: "rt_p1_rep", label: "RT P1 Rep.", type: "text" },
+  { key: "p1_date", label: "P1 Date", type: "date" },
+  { key: "rt_p2_rep", label: "RT P2 Rep.", type: "text" },
+  { key: "p2_date", label: "P2 Date", type: "date" },
+  { key: "vbt_report", label: "VBT Report", type: "text" },
+  { key: "vbt_date", label: "VBT Date", type: "date" },
+  { key: "opt_report", label: "OPT Report", type: "text" },
+  { key: "opt_date", label: "OPT Date", type: "date" },
+  { key: "count_delimiter", label: "CountDelimiter", type: "text" },
+  { key: "count_rows_count", label: "Count Rows.Count", type: "text" },
+  { key: "index", label: "Index", type: "num", sql: "w.id" },
+];
+
+/**
+ * Columns the pbix union carries that are blank on every row there too (one value,
+ * BLANK, in its column statistics): shown so the column list is the pbix's.
+ */
+const EMPTY_LABELS = [
+  "HT Batch No", "HT Batch Status", "UT Batch No", "UT Batch Status", "UT Exam Req date", "UT Exam Req No", "UT Exam Req By",
+  "FN Batch No", "FN Batch Status", "FN Weld Status", "FN Selected Date", "FN Selected By", "FN Exam Req date", "FN Exam Req No",
+  "FN Exam Req By", "FN Date", "FN Report", "FN Acc/Rej", "FN Client Exam Req Y/N", "FN Remarks", "PADLT Remarks",
+  "Custom3", "Custom4", "Custom5", "Custom6", "Custom7", "Custom8", "Custom9", "Custom10", "Custom11", "Custom12", "Custom13", "Custom14",
+  "PED", "Weld Point First", "Commissioning Package", "FT Report", "GWBS", "BHS", "PIP-124-A", "WHS",
+  "Last Reshoot Date.1", "Last Reshoot Report No.1", "Last Reshoot Result.1",
+];
+export const EMPTY_COLUMNS: readonly GridCol[] = EMPTY_LABELS.map((label, i) => ({
+  key: `empty_${i + 1}`,
+  label,
+  type: "text" as const,
+  sql: "NULL::text",
+}));
+
 /** Every column: the basic ones first (Joint ID leads, as in the pbix data view), the rest in table order, then the calculated ones. */
 export const GRID_COLUMNS: readonly GridCol[] = [
   ...GRID_DEFAULT_COLUMNS.map((k) => CATALOG.find((c) => c.key === k)!),
   ...CATALOG.filter((c) => !GRID_DEFAULT_COLUMNS.includes(c.key)),
+  ...INCO_COLUMNS,
+  ...EMPTY_COLUMNS,
   ...FX_COLUMNS,
   ...FX_GROUP_COLUMNS,
   ...FX_MORE_COLUMNS,
