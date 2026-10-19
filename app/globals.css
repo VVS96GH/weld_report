@@ -4563,3 +4563,108 @@ th:hover > .th-resize::after, .th-resize:active::after { opacity: 0.5; }
     display: none;
   }
 }
+/* Graph pages, second pass (owner, 2026-10-19: charts a little taller, a larger doughnut) */
+.pv-compact .chart-container,
+.pv-donut-kpis {
+  height: 240px;
+}
+.pv-split .chart-container {
+  height: 205px;
+}
+.pv-donut-kpis {
+  grid-template-columns: minmax(0, 1fr) minmax(170px, 25%);
+}
+.pv-side-kpis .stat-box {
+  overflow: hidden;
+}
+/* Graph pages laid out as the pbix page (owner, 2026-10-19) */
+.pv-graph {
+  display: grid;
+  grid-template-columns: minmax(0, 48fr) minmax(0, 52fr);
+  gap: 12px;
+  align-items: start;
+}
+.pv-graph-left,
+.pv-graph-right {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.pv-graph .card {
+  padding-top: 8px;
+  padding-bottom: 6px;
+}
+.pv-graph .card-header {
+  margin-bottom: 2px;
+  padding-bottom: 4px;
+}
+.pv-graph-status .chart-container {
+  height: 210px;
+}
+.pv-graph-rate .chart-container {
+  height: 130px;
+}
+.pv-graph-blogs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.pv-graph-blog .chart-container {
+  height: 230px;
+}
+.pv-graph-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 170px;
+  gap: 10px;
+}
+.pv-graph-donut .chart-container {
+  height: 300px;
+}
+.pv-graph-kpis {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.pv-graph-kpis .stat-box {
+  padding: 10px 12px;
+  min-height: 0;
+}
+.pv-graph-right .section-title {
+  margin-top: 0;
+}
+@media (max-width: 1300px) {
+  .pv-graph {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+/* the zoom bar thinner (owner, 2026-10-19) */
+.zoom-bar {
+  padding: 0 8px;
+  gap: 4px;
+  font-size: 0.7rem;
+  bottom: 6px;
+  height: 22px;
+}
+.zoom-btn {
+  padding: 0 4px;
+  line-height: 1;
+}
+.zoom-range {
+  width: 90px;
+  height: 4px;
+}
+/* the key figures share the doughnut card's height (the mood's tile basis is 150 px) */
+.pv-graph-kpis .stat-box,
+[data-mood] .pv-graph-kpis .stat-box {
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-block: 6px !important;
+}
+.pv-side-kpis .stat-box,
+[data-mood] .pv-side-kpis .stat-box {
+  flex: 1 1 0 !important;
+}

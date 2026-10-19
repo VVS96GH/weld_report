@@ -15,7 +15,13 @@ type Group =
   | { kind: "text"; items: TextWidget[] }
   | { kind: "table"; item: TableWidget }
   /** The Graph pages: the rate and B.Log charts 2 × 2 on the left, the tables beside them (owner, 2026-10-19). */
-  | { kind: "split"; tables: TableWidget[]; charts: ChartWidget[] };
+  | { kind: "split"; tables: TableWidget[]; charts: ChartWidget[] }
+  /**
+   * The whole Graph page as the pbix lays it out (owner, 2026-10-19): left the
+   * welding status, the rate lines and the two B.Log charts; right the Weld Type
+   * doughnut with the key figures beside it, the tables under it.
+   */
+  | { kind: "graph"; status: ChartWidget; donut: ChartWidget; kpis: KpiWidget[]; rates: ChartWidget[]; blogs: ChartWidget[]; tables: TableWidget[] };
 
 /**
  * Batches the model's flat widget list into the mockup's layout rhythm: a run of
@@ -85,6 +91,19 @@ function groupWidgets(widgets: Widget[]): Group[] {
     if (rate.length < 1 || blog.length !== 2 || rate.length + blog.length !== c.items.length) continue;
     const tables = groups.slice(i, j).map((g) => (g as { kind: "table"; item: TableWidget }).item);
     groups.splice(i, j - i + 1, { kind: "split", tables, charts: [...rate, ...blog] });
+  }
+  // The doughnut row (with its key figures) right before the split block: the
+  // pbix's two-column page.
+  for (let i = 0; i + 1 < groups.length; i++) {
+    const a = groups[i];
+    const b = groups[i + 1];
+    if (a.kind !== "chart" || !a.sideKpis || a.items.length !== 2 || b.kind !== "split") continue;
+    const donut = a.items.find((x) => /doughnut|pie/.test(x.chart_type));
+    const status = a.items.find((x) => x !== donut);
+    if (!donut || !status) continue;
+    const rates = b.charts.filter((x) => /rej/i.test(x.title));
+    const blogs = b.charts.filter((x) => !/rej/i.test(x.title));
+    groups.splice(i, 2, { kind: "graph", status, donut, kpis: a.sideKpis, rates, blogs, tables: b.tables });
   }
   return groups;
 }
@@ -234,6 +253,49 @@ function renderGroup(g: Group, i: number) {
                 ))}
               </div>
             );
+          case "graph": {
+            const card = (c: ChartWidget, cls: string) => (
+              <div className={`card ${cls}`}>
+                <div className="card-header">{c.title}</div>
+                <div className="chart-container">
+                  <ChartCard widget={c} />
+                </div>
+              </div>
+            );
+            return (
+              <div className="pv-graph" key={i}>
+                <div className="pv-graph-left">
+                  {card(g.status, "pv-graph-status")}
+                  {g.rates.map((c, j) => (
+                    <div key={j}>{card(c, "pv-graph-rate")}</div>
+                  ))}
+                  <div className="pv-graph-blogs">
+                    {g.blogs.map((c, j) => (
+                      <div key={j}>{card(c, "pv-graph-blog")}</div>
+                    ))}
+                  </div>
+                </div>
+                <div className="pv-graph-right">
+                  <div className="pv-graph-top">
+                    {card(g.donut, "pv-graph-donut")}
+                    <div className="pv-graph-kpis" role="group" aria-label="Key figures">
+                      {g.kpis.map((k, n) => (
+                        <KpiCard key={n} widget={k} />
+                      ))}
+                    </div>
+                  </div>
+                  {g.tables.map((t, j) => (
+                    <div key={j}>
+                      <div className="section-title">{t.title}</div>
+                      <div className="table-scroll">
+                        <DataTable widget={dropEmptyTypeColumns(t)} collapsible={t.rows.some((r) => /^\s{2}/.test(r[0] ?? ""))} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          }
           case "split":
             return (
               <div className="pv-split" key={i}>
