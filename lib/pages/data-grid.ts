@@ -267,6 +267,32 @@ export async function* gridCsv(filters: GridFilters, cols: string[]): AsyncGener
 }
 
 /** The most cells one "Copy" hands to the clipboard (Excel pastes it in a few seconds). */
+/** The same rows as gridCsv, as values for a workbook (small exports: at most `max` rows). */
+export async function gridMatrix(
+  filters: GridFilters,
+  cols: string[],
+  max = 200_000,
+): Promise<{ cols: GridCol[]; rows: (string | null)[][] }> {
+  await prepare();
+  const out: (string | null)[][] = [];
+  let last = 0;
+  while (out.length < max) {
+    const p = new P();
+    const where = whereOf(filters, p);
+    const n = Math.min(20_000, max - out.length);
+    const rows = await queryFresh<Record<string, string | null>>(
+      `SELECT w.id::text AS "__id", ${selectOf(cols)} FROM weld w ${joinsOf([...cols, ...Object.keys(filters)])} WHERE ${where} AND w.id > ${p.add(last)}
+        ORDER BY w.id LIMIT ${n}`,
+      p.list,
+    );
+    if (!rows.length) break;
+    for (const r of rows) out.push(cols.map((k) => r[k] ?? null));
+    last = Number(rows[rows.length - 1]!.__id);
+    if (rows.length < n) break;
+  }
+  return { cols: cols.map((k) => BY_KEY.get(k)!), rows: out };
+}
+
 export const COPY_MAX_CELLS = 1_000_000;
 export const COPY_MAX_ROWS = 200_000;
 

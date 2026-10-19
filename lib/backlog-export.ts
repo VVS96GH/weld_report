@@ -13,7 +13,9 @@
  */
 import { query } from "@/lib/db";
 import { Params, projectScope, scopeWhere } from "@/lib/metrics/scope";
-import { gridCsv, parseColumns } from "@/lib/pages/data-grid";
+import ExcelJS from "exceljs";
+
+import { gridCsv, gridMatrix, parseColumns } from "@/lib/pages/data-grid";
 
 export type BacklogKind = "rt" | "pwht";
 
@@ -40,4 +42,42 @@ export async function* backlogCsv(kind: BacklogKind): AsyncGenerator<string> {
     return;
   }
   yield* gridCsv({ joint_id: { in: joints } }, parseColumns(null));
+}
+
+/** The same as an Excel workbook: one sheet, header frozen with filters, numbers and dates typed. */
+export async function backlogXlsx(kind: BacklogKind): Promise<{ joints: number; rows: number; body: Buffer }> {
+  const joints = await backlogJoints(kind);
+  const { cols, rows } = joints.length
+    ? await gridMatrix({ joint_id: { in: joints } }, parseColumns(null))
+    : { cols: [], rows: [] };
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet(kind === "rt" ? "RT B.Log" : "PWHT B.Log", { views: [{ state: "frozen", ySplit: 1 }] });
+  ws.columns = cols.map((c) => ({
+    header: c.label,
+    key: c.key,
+    width: Math.min(40, Math.max(10, c.label.length + 2)),
+    style: c.type === "date" ? { numFmt: "dd-mmm-yy" } : undefined,
+  }));
+  for (const r of rows) {
+    ws.addRow(
+      r.map((v, i) => {
+        if (v === null || v === "") return null;
+        const t = cols[i]!.type;
+        if (t === "num") {
+          const n = Number(v);
+          return Number.isFinite(n) ? n : v;
+        }
+        if (t === "date" && /^\d{4}-\d{2}-\d{2}/.test(v)) return new Date(`${v.slice(0, 10)}T00:00:00Z`);
+        return v;
+      }),
+    );
+  }
+  const head = ws.getRow(1);
+  head.font = { bold: true, color: { argb: "FFFFFFFF" } };
+  head.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1F4E79" } };
+  head.alignment = { vertical: "middle", wrapText: true };
+  head.height = 30;
+  if (cols.length) ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: cols.length } };
+  const body = Buffer.from(await wb.xlsx.writeBuffer());
+  return { joints: joints.length, rows: rows.length, body };
 }
