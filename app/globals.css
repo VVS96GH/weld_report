@@ -4668,3 +4668,21 @@ th:hover > .th-resize::after, .th-resize:active::after { opacity: 0.5; }
 [data-mood] .pv-side-kpis .stat-box {
   flex: 1 1 0 !important;
 }
+/* the right column as tall as the left: the tables sit at the bottom, the doughnut takes the rest */
+.pv-graph {
+  align-items: stretch;
+}
+.pv-graph-top {
+  flex: 1 1 auto;
+  min-height: 340px;
+}
+.pv-graph-donut {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.pv-graph-donut .chart-container {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 300px;
+}
