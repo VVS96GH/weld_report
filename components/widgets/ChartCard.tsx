@@ -1129,6 +1129,8 @@ function smallRing(id: string, scale: number, labels: any): any {
   if (!labels) return labels;
   let out = labels;
   if (SMALL_RINGS.has(id) && out.font && typeof out.font === "object") out = { ...out, font: { ...out.font, size: Math.round(10 * scale) } };
+  // the forecast bars: a number per bar, a size down so they fit the bar's height
+  if (id === "forecast_bar" && out.font && typeof out.font === "object") out = { ...out, font: { ...out.font, size: Math.round(10 * scale) } };
   const fmt = out.formatter;
   if (WHOLE_NUMBERS.has(id) && typeof fmt === "function") {
     // a doughnut's share is still taken of the exact values
@@ -1141,7 +1143,9 @@ function smallRing(id: string, scale: number, labels: any): any {
       display: (ctx: any) => {
         const v = ctx.dataset.data[ctx.dataIndex];
         if (typeof v === "number" && Math.round(v) === 0) return false;
-        return typeof disp === "function" ? disp(ctx) : (disp ?? true);
+        const d = typeof disp === "function" ? disp(ctx) : (disp ?? true);
+        // the forecast bars stand apart now: every number is drawn, none dropped as a collision
+        return id === "forecast_bar" && d === "auto" ? true : d;
       },
     };
   }
