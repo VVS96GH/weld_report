@@ -16,7 +16,7 @@
  */
 
 import { z } from "zod";
-import { query } from "@/lib/db";
+import { query, queryFresh } from "@/lib/db";
 import { haAreaCondition, JOINT_FROM, Params, scopeWhere, zCount, zSum, zText, type HaAreaPick, type Scope } from "./scope";
 
 /**
@@ -170,7 +170,9 @@ export async function weeklySnapshot(opts: {
     `)\n` +
     select;
   try {
-    const rows = await query(sql, p.list());
+    // never from the read cache: "Insert into CUM file" writes this table
+    // between data refreshes (lib/backlog-trend-cum.ts), and it is small
+    const rows = await queryFresh(sql, p.list());
     return z.array(SnapshotRow).parse(rows);
   } catch {
     // Table not created yet (DB-LANE owns the migration) — honest-empty.

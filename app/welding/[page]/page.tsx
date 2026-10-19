@@ -8,6 +8,12 @@ import { ForecastView } from "@/components/ForecastView";
 import { EdgeFilters } from "@/components/EdgeFilters";
 import { reportEntry, WELDING_PAGE_TITLES, WELDING_REPORT_SUBTITLE, WELDING_TOTAL_PAGES } from "@/lib/welding-pages";
 import { PageView } from "@/components/PageView";
+import { TrendCumBar } from "@/components/TrendCumBar";
+import { lastWeek } from "@/lib/backlog-trend-cum";
+import { chartCutoff } from "@/lib/metrics/trend";
+
+/** Data pages whose B.Log charts read the CUM Trend workbook: Project and the Graph pages. */
+const TREND_CUM_PAGES = new Set([1, 7, 8, 9, 10, 11]);
 
 // Data is loaded per-request (fixture file today, a live DB once METRICS-LANE lands),
 // and there's no fixed set of params to prerender for it — so this route is dynamic
@@ -88,10 +94,15 @@ export default async function WeldingReportPage(props: PageProps<"/welding/[page
       ? `Data as of ${model.meta.as_of ?? "unknown"}`
       : WELDING_REPORT_SUBTITLE;
 
+  const cum =
+    model.meta?.source === "database" && TREND_CUM_PAGES.has(entry.data) && model.meta.as_of ? (
+      <TrendCumBar lastWeek={await lastWeek()} cutoff={chartCutoff(model.meta.as_of)} />
+    ) : null;
+
   return (
     <>
       <EdgeFilters widgets={filterWidgets} />
-      <PageView model={{ ...model, title: entry.title }} subtitle={subtitle} />
+      <PageView model={{ ...model, title: entry.title }} subtitle={subtitle} top={cum} />
     </>
   );
 }

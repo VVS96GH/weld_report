@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import type { ChartWidget, KpiWidget, PageModel, TableWidget, TextWidget, Widget } from "@/lib/page-model";
 import { usePageSubtitle } from "@/components/ReportShell";
 import { relabelModel } from "@/lib/labels";
@@ -98,7 +99,7 @@ function referenceTable(text: string): TableWidget | null {
 /** KPI runs at least this long go into the chart grid as one card. */
 const KPI_PANEL_FROM = 6;
 
-export function PageView({ model: source, subtitle }: { model: PageModel; subtitle: string }) {
+export function PageView({ model: source, subtitle, top }: { model: PageModel; subtitle: string; top?: ReactNode }) {
   const model = relabelModel(source);
   usePageSubtitle(subtitle);
   // "Defect Code Reference: BT: Burn Through C: Crack …" → a two-column table
@@ -120,6 +121,7 @@ export function PageView({ model: source, subtitle }: { model: PageModel; subtit
         <h2 id="page-heading">{model.title}</h2>
       </div>
       {model.subtitle ? <p className="page-subtitle">{model.subtitle}</p> : null}
+      {top}
 
       {before.map((g, i) => renderGroup(g, i))}
       {refs.length ? (

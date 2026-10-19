@@ -1815,7 +1815,7 @@ async function buildProjectKpiPage(spec: SpecPage, ctx: Ctx): Promise<Widget[]> 
           note(ctx, FILTER_NO_HISTORY_NOTE);
           continue;
         }
-        out.push(withCurrentWeek(snapshotChart(w, points), rtCur, pwhtCur));
+        out.push(withCurrentWeek(snapshotChart(w, points), rtCur, pwhtCur, chartCutoff(ctx.asOf)));
         if (points.length === 0) note(ctx, TREND_NOTE);
         else note(ctx, BACKLOG_PROVENANCE_NOTE);
         continue;
@@ -1961,8 +1961,19 @@ function withCurrentWeek(
   chart: ChartWidget,
   rt: RtBacklogCurrent | null,
   pwht: PwhtBacklogCurrent | null,
+  /** The cut-off Friday: when the workbook does not hold it yet, it is added as the last week. */
+  cutoff?: string,
 ): ChartWidget {
   if (chart.labels.length === 0) return chart;
+  if (cutoff && chart.labels[chart.labels.length - 1]! < cutoff) {
+    // the week is not in the trend workbook yet ("Insert into CUM file" adds
+    // it): show it after the last recorded week, the window keeping its length
+    chart = {
+      ...chart,
+      labels: [...chart.labels.slice(1), cutoff],
+      datasets: chart.datasets.map((d) => ({ ...d, data: [...d.data.slice(1), null] })),
+    };
+  }
   const last = chart.labels.length - 1;
   const value = (label: string): number | null => {
     if (/^RT\/UT Only/i.test(label)) return rt?.rt_only ?? null;
@@ -2345,7 +2356,7 @@ async function buildSubconPage(
           isRt ? rtBacklogCurrent(src) : Promise.resolve(null),
           isRt ? Promise.resolve(null) : pwhtBacklogCurrent(src),
         ]);
-        out.push(withCurrentWeek(snapshotChart(w, points), rtCur, pwhtCur));
+        out.push(withCurrentWeek(snapshotChart(w, points), rtCur, pwhtCur, chartCutoff(ctx.asOf)));
         if (points.length === 0) note(ctx, TREND_NOTE);
         else note(ctx, BACKLOG_PROVENANCE_NOTE);
       } else if (blk.conf.subs) {
