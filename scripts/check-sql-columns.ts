@@ -118,8 +118,8 @@ function main(): void {
 
   check("stg_weld_dump has 223 data columns + load_id + line_no", stg.size === 225, `got ${stg.size}`);
   check(
-    "weld effective column count = 265 (219 after 0008; +23 in 0010, +4 in 0012, +1 in 0014, +1 in 0020, +17 Inco in 0056)",
-    weld.size === 265,
+    "weld effective column count = 267 (219 after 0008; +23 in 0010, +4 in 0012, +1 in 0014, +1 in 0020, +17 Inco in 0056, +2 in 0057)",
+    weld.size === 267,
     `got ${weld.size}`,
   );
 

@@ -1556,6 +1556,11 @@ export const INCO_COLUMNS: readonly GridCol[] = [
   { key: "count_delimiter", label: "CountDelimiter", type: "text" },
   { key: "count_rows_count", label: "Count Rows.Count", type: "text" },
   { key: "index", label: "Index", type: "num", sql: "w.id" },
+  // CCC Joint Record PMI(%) / HT(%) (migration 0057), as MT% / PT% CCC
+  { key: "pmi_pct_ccc", label: "PMI% CCC", type: "num" },
+  { key: "ht_pct_ccc", label: "HT% CCC", type: "num" },
+  { key: "fx_pmi_pct", label: 'PMI % "PR All"', type: "num", fx: true, sql: pct("pmi_pct", "pmi_pct_ccc") },
+  { key: "fx_ht_pct", label: 'HT % "PR All"', type: "num", fx: true, sql: pct("ht_pct", "ht_pct_ccc") },
 ];
 
 /**

@@ -104,6 +104,7 @@ async function* rows(loadId: number, stats: Stats, jointIds: Set<string> | null)
       num(g("Wall Thickness")), txt(g("Rework Code")),
       txt(g("Sub-Con Code")), weldDate, txt(suffix),
       parseDate(g("RT/UT Date")), txt(g("RT/UT Report No")),
+      num(g("PMI(%)")), num(g("HT(%)")),   // 0057
     ];
 
     // #"Filtered Rows1": the NOT-WELDED slice is [Weld Date] = null.
@@ -230,7 +231,8 @@ async function live(): Promise<void> {
       pt_root_pct integer, pt_cap_pct integer, pmi_report_no text, pmi_date date,
       weld_report_no text, test_package_no text, sub_system_no text,
       wall_thickness numeric(8,2), rework_code text, sub_contractor text,
-      weld_date date, repair_suffix text, rt_ut_date date, rt_ut_report_no text) ON COMMIT DROP`);
+      weld_date date, repair_suffix text, rt_ut_date date, rt_ut_report_no text,
+      pmi_pct integer, ht_pct integer) ON COMMIT DROP`);
     await client.query("DELETE FROM weld WHERE source = $1", [SOURCE]);
     await client.query("DELETE FROM ccc_joint_pwht");
 
@@ -274,7 +276,7 @@ async function live(): Promise<void> {
         pt_root_report_no, pt_root_date, pt_root_pct, pt_cap_pct,
         pmi_report_no, pmi_date, weld_report_no, test_package_no, sub_system_no,
         wall_thickness, rework_code, sub_contractor, weld_date, repair_suffix,
-        rt_ut_date, rt_ut_report_no,
+        rt_ut_date, rt_ut_report_no, pmi_pct, ht_pct,
         is_welded, source_rows, is_ambiguous)
       SELECT joint_id_jr, $1,
              max(pwht_y_n), max(pwht_report_no), max(pwht_date), max(ht_report_no), max(ht_date),
@@ -283,7 +285,7 @@ async function live(): Promise<void> {
              max(pmi_report_no), max(pmi_date), max(weld_report_no), max(test_package_no),
              max(sub_system_no), max(wall_thickness), max(rework_code), max(sub_contractor),
              max(weld_date), max(repair_suffix),
-             max(rt_ut_date), max(rt_ut_report_no),
+             max(rt_ut_date), max(rt_ut_report_no), max(pmi_pct), max(ht_pct),
              bool_or(weld_date IS NOT NULL),
              count(*),
              count(DISTINCT pwht_y_n) > 1 OR count(DISTINCT pwht_report_no) > 1

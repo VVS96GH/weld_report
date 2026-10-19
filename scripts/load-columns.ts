@@ -67,6 +67,7 @@ export const CCC_JOINT_PWHT_COLUMNS = [
   "pmi_report_no", "pmi_date", "weld_report_no", "test_package_no", "sub_system_no",
   "wall_thickness", "rework_code", "sub_contractor", "weld_date", "repair_suffix",
   "rt_ut_date", "rt_ut_report_no",
+  "pmi_pct", "ht_pct", // 0057
 ] as const;
 
 /** `weld` columns the NOT-WELDED joint-record slice writes (source CCC_JOINT_RECORD). */
@@ -114,6 +115,7 @@ export const CCC_OVERLAY_COLUMNS = [
   "pt_report_ccc", "pt_date_ccc", "pt_pct_ccc",
   "pmi_report_ccc", "pmi_date_ccc", "ht_report_ccc", "ht_date_ccc",
   "dwir_ccc_from_jr", "thickness_from_jr", "rework_code_all",
+  "pmi_pct_ccc", "ht_pct_ccc", // 0057
 ] as const;
 
 /** `weld` columns the ACCIONA loader writes (source ACCIONA). */

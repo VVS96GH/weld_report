@@ -361,6 +361,8 @@ async function live(): Promise<void> {
         ht_report_ccc      = jr.ht_report_no,
         ht_date_ccc        = jr.ht_date,
         dwir_ccc_from_jr   = jr.weld_report_no,
+        pmi_pct_ccc        = jr.pmi_pct,     -- 0057
+        ht_pct_ccc         = jr.ht_pct,
         thickness_from_jr  = jr.wall_thickness,
         rework_code_all    = coalesce(w.rework_code, jr.rework_code)
       FROM ccc_joint_pwht jr
