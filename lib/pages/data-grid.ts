@@ -12,8 +12,9 @@
  * Column names come only from GRID_COLUMNS and values only as bound
  * parameters, so nothing from the URL reaches the SQL text.
  */
-import { agingClock, query, queryFresh } from "@/lib/db";
-import { GRID_COLUMNS, type GridCol } from "@/lib/data-grid-columns";
+import { agingClock, query, queryFresh, withAsOf } from "@/lib/db";
+import { chartCutoff } from "@/lib/metrics/trend";
+import { GRID_COLUMNS, GRID_JOINS, type GridCol } from "@/lib/data-grid-columns";
 
 export type GridFilter = {
   /** Exact picks; "(Blank)" picks the empty cells. */
@@ -74,13 +75,30 @@ export function parseSort(raw: string | null | undefined): GridSort {
 
 /** TODAY() of the calculated columns: the day the data was loaded (as every aging column). */
 let today = "DATE '1900-01-01'";
+/** Cur_Date "PR all" of the "Days Since …" columns: the cut-off Friday (as the welder pages). */
+let cur = "DATE '1900-01-01'";
 async function prepare(): Promise<void> {
   const d = await agingClock();
   if (/^\d{4}-\d{2}-\d{2}$/.test(d)) today = `DATE '${d}'`;
+  const c = chartCutoff((await withAsOf(null)).as_of);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(c)) cur = `DATE '${c}'`;
+}
+
+/** The joins the given columns' formulas read from (group columns), each once. */
+function joinsOf(keys: Iterable<string>): string {
+  const names = new Set<string>();
+  for (const k of keys) for (const j of BY_KEY.get(k)?.joins ?? []) names.add(j);
+  return [...names].map((n) => GRID_JOINS[n]).filter(Boolean).join("\n");
 }
 
 /** A column as SQL: the stored column, or a calculated column's formula. */
-const exprOf = (col: GridCol) => (col.sql ? `(${col.sql.replaceAll("{today}", today)})` : `w.${col.key}`);
+const exprOf = (col: GridCol) => {
+  if (!col.sql) return `w.${col.key}`;
+  const e = `(${col.sql.replaceAll("{today}", today).replaceAll("{cur}", cur)})`;
+  // ratios to 10 places (6 would merge distinct welder ratios), trailing zeros off:
+  // shown, listed and filtered as one value
+  return col.type === "num" ? `trim_scale(round(${e}::numeric, 10))` : e;
+};
 
 class P {
   list: unknown[] = [];
@@ -171,7 +189,7 @@ export async function gridRows(
   const p = new P();
   const where = whereOf(filters, p);
   const sql =
-    `SELECT ${selectOf(cols)} FROM weld w WHERE ${where}\n` +
+    `SELECT ${selectOf(cols)} FROM weld w ${joinsOf([...cols, ...Object.keys(filters), ...(sort ? [sort.key] : [])])} WHERE ${where}\n` +
     ` ORDER BY ${orderOf(sort)} LIMIT ${GRID_PAGE + 1} OFFSET ${Math.max(0, Math.floor(offset))}`;
   const res = await query<Record<string, string | null>>(sql, p.list);
   const rows = res.slice(0, GRID_PAGE).map((r) => cols.map((k) => r[k] ?? null));
@@ -182,7 +200,7 @@ export async function gridRows(
 export async function gridCount(filters: GridFilters): Promise<number> {
   await prepare();
   const p = new P();
-  const r = await query<{ n: string }>(`SELECT count(*)::text AS n FROM weld w WHERE ${whereOf(filters, p)}`, p.list);
+  const r = await query<{ n: string }>(`SELECT count(*)::text AS n FROM weld w ${joinsOf(Object.keys(filters))} WHERE ${whereOf(filters, p)}`, p.list);
   return Number(r[0]?.n ?? 0);
 }
 
@@ -204,9 +222,10 @@ export async function gridValues(
   const text = textOf(col);
   const like = q.trim() ? ` AND ${text} ILIKE ${p.add(`%${q.trim().replace(/[\\%_]/g, "\\$&")}%`)}` : "";
   const limit = 500;
+  const joins = joinsOf([key, ...Object.keys(filters)]);
   const [vals, blank] = await Promise.all([
     query<{ v: string }>(
-      `SELECT v FROM (SELECT DISTINCT ${c} AS o, ${text} AS v FROM weld w WHERE ${where} AND ${c} IS NOT NULL${like}) d
+      `SELECT v FROM (SELECT DISTINCT ${c} AS o, ${text} AS v FROM weld w ${joins} WHERE ${where} AND ${c} IS NOT NULL${like}) d
         ORDER BY o LIMIT ${limit + 1}`,
       p.list,
     ),
@@ -215,7 +234,7 @@ export async function gridValues(
       : (() => {
           const p2 = new P();
           const w2 = whereOf(filters, p2, key);
-          return query<{ b: boolean }>(`SELECT true AS b FROM weld w WHERE ${w2} AND ${c} IS NULL LIMIT 1`, p2.list);
+          return query<{ b: boolean }>(`SELECT true AS b FROM weld w ${joins} WHERE ${w2} AND ${c} IS NULL LIMIT 1`, p2.list);
         })(),
   ]);
   const values = vals.slice(0, limit).map((r) => r.v);
@@ -235,7 +254,7 @@ export async function* gridCsv(filters: GridFilters, cols: string[]): AsyncGener
     const n = Math.min(20_000, EXPORT_MAX - sent);
     // past the read cache: an export is read once and is large
     const rows = await queryFresh<Record<string, string | null>>(
-      `SELECT w.id::text AS "__id", ${selectOf(cols)} FROM weld w WHERE ${where} AND w.id > ${p.add(last)}
+      `SELECT w.id::text AS "__id", ${selectOf(cols)} FROM weld w ${joinsOf([...cols, ...Object.keys(filters)])} WHERE ${where} AND w.id > ${p.add(last)}
         ORDER BY w.id LIMIT ${n}`,
       p.list,
     );
@@ -266,7 +285,7 @@ export async function gridTsv(
   const p = new P();
   const where = whereOf(filters, p);
   const rows = await queryFresh<Record<string, string | null>>(
-    `SELECT ${selectOf(cols)} FROM weld w WHERE ${where} ORDER BY ${orderOf(sort)} LIMIT ${max + 1}`,
+    `SELECT ${selectOf(cols)} FROM weld w ${joinsOf([...cols, ...Object.keys(filters), ...(sort ? [sort.key] : [])])} WHERE ${where} ORDER BY ${orderOf(sort)} LIMIT ${max + 1}`,
     p.list,
   );
   const esc = (v: string | null) => (v === null ? "" : /[\t\r\n"]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);

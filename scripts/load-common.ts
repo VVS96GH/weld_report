@@ -362,6 +362,9 @@ export const POST_LOAD_MATVIEWS: { name: string; concurrently: boolean }[] = [
   // Read mv_welder_perf, so after it. Small, keyed: online.
   { name: "mv_welder_status", concurrently: true },
   { name: "mv_welder_sub_status", concurrently: true },
+  // the Data page's group calculated columns (0054): small, keyed, ~1 min in all
+  ...["mv_grid_welder", "mv_grid_sc_sub", "mv_grid_sc", "mv_grid_wps", "mv_grid_material", "mv_grid_welder_sc",
+    "mv_grid_joint", "mv_grid_rt_report", "mv_grid_batch", "mv_grid_total"].map((name) => ({ name, concurrently: true })),
 ];
 
 export interface RefreshResult {

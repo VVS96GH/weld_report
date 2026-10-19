@@ -13,6 +13,8 @@ export type GridCol = {
   /** A pbix calculated column: its SQL over the row `w` ({today} = the load day). */
   sql?: string;
   fx?: boolean;
+  /** GRID_JOINS the formula reads from (group columns). */
+  joins?: string[];
 };
 
 const CATALOG: readonly GridCol[] = [
@@ -1362,9 +1364,109 @@ export const FX_COLUMNS: readonly GridCol[] = [
     sql: `CASE WHEN w.by_ut AND ${up("sub_contractor")} <> 'INCO' AND w.rt_report ILIKE '%UT%' AND (w.total_no_of_films_rej > 0 OR w.rt_film_total > 0) THEN 'Exclude UT Films' END` },
 ];
 
+
+// ── group calculated columns: a value per group, joined to the row ──
+
+/**
+ * The joins a group column needs (migration 0054, and the welder-performance
+ * views of 0045, already checked against the pbix there). Keys are the pbix's
+ * own: Welder ID = Welder & "-" & Sub-Contractor, the class key with RT%.
+ */
+export const GRID_JOINS: Record<string, string> = {
+  gw: `LEFT JOIN mv_grid_welder gw ON gw.k = (${WELDER_ID})`,
+  gss: `LEFT JOIN mv_grid_sc_sub gss ON gss.sc = (${SC_KEY}) AND gss.sub = coalesce(w.sub_contractor, '')`,
+  gsc: `LEFT JOIN mv_grid_sc gsc ON gsc.sc = (${SC_KEY})`,
+  gwps: `LEFT JOIN mv_grid_wps gwps ON gwps.k = coalesce(w.wps_no, '')`,
+  gmat: `LEFT JOIN mv_grid_material gmat ON gmat.k = coalesce(w.material_type, '')`,
+  gwsc: `LEFT JOIN mv_grid_welder_sc gwsc ON gwsc.k = (${WELDER_ID}) AND gwsc.sc = (${SC_KEY})`,
+  gj: `LEFT JOIN mv_grid_joint gj ON gj.k = w.joint_id`,
+  grr: `LEFT JOIN mv_grid_rt_report grr ON grr.k = coalesce(w.rt_report, '')`,
+  gb: `LEFT JOIN mv_grid_batch gb ON gb.k = coalesce(w.rt_batch_no::text, '')`,
+  gt: `LEFT JOIN mv_grid_total gt ON true`,
+  ws: `LEFT JOIN mv_welder_status ws ON ws.welder_id = (${WELDER_ID})`,
+  ss: `LEFT JOIN mv_welder_sub_status ss ON ss.sub_contractor = w.sub_contractor`,
+};
+
+const filmBands = (v: string) =>
+  `CASE WHEN ${v} >= 0 AND ${v} < 0.05 THEN '1. 0 to 5% - ok' WHEN ${v} >= 0.05 AND ${v} < 0.075 THEN '2. 5 to 7.5% - monitor'` +
+  ` WHEN ${v} >= 0.075 AND ${v} < 0.10 THEN '3. 7.5 to 10% - Critical' WHEN ${v} >= 0.10 AND ${v} <= 1 THEN '4. 10 to 100% - Disq.F' END`;
+/** RT Ratio % STATUS for WPS / Material Type: SWITCH(TRUE(), r = 0 …) — a BLANK ratio equals 0 in DAX, so it reads "0%". */
+const wpsBands = (v: string) =>
+  `CASE WHEN coalesce(${v}, 0) = 0 THEN '0%' WHEN ${v} <= 0.01 THEN '1. <1% ' WHEN ${v} <= 0.02 THEN '2. 1% - 2% '` +
+  ` WHEN ${v} <= 0.05 THEN '3. 2% - 5% ' WHEN ${v} <= 0.10 THEN '4. 5% - 10% ' ELSE '5. > 10% ' END`;
+/** UT Rej Length Rate % "PR all" For Welder exists only on rows with a Manual UT Date. */
+const UT_LEN_W = "(CASE WHEN w.manual_ut_date_all IS NOT NULL THEN ws.ut_len_w END)";
+const RT_ROW = `upper(coalesce(w.weld_type, '')) IN ${RT_TYPES} AND w.weld_date IS NOT NULL`;
+const g = (key: string, label: string, type: GridColType, sql: string, joins: string[]): GridCol => ({ key, label, type, sql, fx: true, joins });
+
+/** The pbix group calculated columns (ALLEXCEPT per welder, sub-contractor, class, WPS, material, joint, report, batch). */
+export const FX_GROUP_COLUMNS: readonly GridCol[] = [
+  // per welder
+  g("fx_rt_film_w", 'RT Film Ratio % "PR all" For Welder', "num", "gw.rt_film", ["gw"]),
+  g("fx_rt_film_w_st", 'RT FILM Ratio % STATUS "PR all"', "text", filmBands("gw.rt_film"), ["gw"]),
+  g("fx_cover_w", 'RT Ratio % For Welder (<5% ; >5%) "PR all"', "num", "ws.cover_w", ["ws"]),
+  g("fx_cover_w_st", 'RT Ratio % STATUS for Welder Cover 5% "PR all"', "text",
+    `CASE WHEN ws.cover_w >= 0.05 THEN '1. > 5% - ok' WHEN ws.cover_w < 0.05 AND ws.cover_w > 0 THEN '2. < 5% - Action' WHEN ws.cover_w IS NULL AND ${RT_ROW} THEN '3. No RT' END`, ["ws"]),
+  g("fx_rt_film_w15", 'RT Film Ratio % "PR all" For Welder LAST 2 WEEKS', "num", "ws.rt_w_15", ["ws"]),
+  g("fx_rt_film_w15_st", "RT FILM Ratio % STATUS LAST 2 WEEKS", "text", filmBands("ws.rt_w_15"), ["ws"]),
+  g("fx_rt_film_w30", 'RT Film Ratio % "PR all" For Welder LAST 1 MONTH', "num", "ws.rt_w_30", ["ws"]),
+  g("fx_rt_film_w30_st", "RT FILM Ratio % STATUS LAST 1 Month", "text", filmBands("ws.rt_w_30"), ["ws"]),
+  g("fx_ut_ratio_w", 'UT Ratio % For Welder (<5% ; >5%) "PR all"', "num", "gw.ut_ratio", ["gw"]),
+  g("fx_ut_len_w", 'UT Rej Length Rate % "PR all" For Welder', "num", UT_LEN_W, ["ws"]),
+  g("fx_ut_len_w_st", "UT Rej Rate % STATUS for Welder by Length", "text",
+    `CASE WHEN ${UT_LEN_W} >= 0 AND ${UT_LEN_W} < 0.015 THEN '1. Ok: 0 to 1.5%' WHEN ${UT_LEN_W} >= 0.015 AND ${UT_LEN_W} < 0.02 THEN '2. Monitor: 1.5% to 2%' WHEN ${UT_LEN_W} >= 0.02 AND ${UT_LEN_W} <= 1 THEN '3. Action: 2% to 100%' END`, ["ws"]),
+  g("fx_ut_joint_w", 'UT Rej Rate % "PR all" For Welder by Joint', "num", "ws.ut_joint_w", ["ws"]),
+  g("fx_ut_joint_w_st", "UT Rej Rate % STATUS for Welder by Joint", "text",
+    "CASE WHEN ws.ut_joint_w >= 0 AND ws.ut_joint_w < 0.1 THEN '1. 0 to 10%' WHEN ws.ut_joint_w >= 0.1 AND ws.ut_joint_w <= 1 THEN '2. 10 to 100%' END", ["ws"]),
+  g("fx_ut_len_w15", 'UT Rej Length Ratio % "PR all" For Welder LAST 2 WEEKS', "num", "ws.ut_len_w_15", ["ws"]),
+  g("fx_ut_len_w15_st", "UT Rej Rate % STATUS for Welder by Length Last 2 Weeks", "text",
+    "CASE WHEN ws.ut_len_w_15 >= 0 AND ws.ut_len_w_15 < 0.015 THEN '1.Ok: 0 to 1.5%' WHEN ws.ut_len_w_15 >= 0.015 AND ws.ut_len_w_15 < 0.02 THEN '2.Monitor: 1.5% to 2%' WHEN ws.ut_len_w_15 >= 0.02 AND ws.ut_len_w_15 <= 1 THEN '3.Action: 2% to 100%' END", ["ws"]),
+  // per sub-contractor
+  g("fx_ut_joint_s", 'UT Rej Rate % by joint "PR all" For Sub-Con', "num", "ss.ut_joint_s", ["ss"]),
+  g("fx_ut_joint_s_st", "UT Rej Rate % STATUS for Sub-Con by Joint", "text",
+    "CASE WHEN ss.ut_joint_s >= 0 AND ss.ut_joint_s < 0.03 THEN '1. ok-0 to 3%' WHEN ss.ut_joint_s >= 0.03 AND ss.ut_joint_s < 0.05 THEN '2. Monitor-3% to 5%' WHEN ss.ut_joint_s >= 0.05 AND ss.ut_joint_s <= 1 THEN '3. Not Accept-5% to 100%' END", ["ss"]),
+  g("fx_ut_len_s", 'UT Rej Rate % by Length "PR all" For Sub-Con', "num", "ss.ut_len_s", ["ss"]),
+  g("fx_ut_len_s_st", "UT Rej Rate % STATUS for Sub-Con by Length", "text",
+    "CASE WHEN ss.ut_len_s >= 0 AND ss.ut_len_s < 0.01 THEN '1.ok: 0 to 1%' WHEN ss.ut_len_s >= 0.01 AND ss.ut_len_s < 0.015 THEN '2.Monitor: 1% to 1.5%' WHEN ss.ut_len_s >= 0.015 AND ss.ut_len_s <= 1 THEN '3.Not Accept: 1.5% to 100%' END", ["ss"]),
+  // per class
+  g("fx_rt_film_scs", 'RT Film Ratio % "PR" For SERVICE Class BY SUBCON "PR all"', "num", "gss.rt_film", ["gss"]),
+  g("fx_rt_film_scs_st", 'RT FILM Ratio % STATUS for Service Class By SUBCON "PR all"', "text",
+    "CASE WHEN gss.rt_film >= 0 AND gss.rt_film < 0.02 THEN '1. 0 to 2% - ok' WHEN gss.rt_film >= 0.02 AND gss.rt_film < 0.04 THEN '2. 2 to 4% - monitor' WHEN gss.rt_film >= 0.04 AND gss.rt_film < 0.05 THEN '3. 4 to 5% - Critical' WHEN gss.rt_film >= 0.05 AND gss.rt_film <= 1 THEN '4. 5 to 100% - Action' END", ["gss"]),
+  g("fx_welders_nort", "QTY Welder ID & No RT by Service Class + Service Cat+NDT Remarks", "num", "gss.welders_no_rt", ["gss"]),
+  g("fx_cover_sc", 'RT/UT Ratio % For Service Class + Service Cat+NDT Remarks Cover "PR all"', "num", "coalesce(gsc.cover, 0)", ["gsc"]),
+  g("fx_cover_sc_st", 'RT/UT Ratio % For Service Class + Service Cat+NDT Remarks Cover "PR all" STATUS', "text",
+    "CASE WHEN coalesce(gsc.cover, 0) < 0.05 THEN '1. < 5% - CHECK' WHEN gsc.cover < 0.1 THEN '2. 5% > 10%' END", ["gsc"]),
+  g("fx_has_rt", "Has_RT_Report", "num", "gwsc.has_rt", ["gwsc"]),
+  // per WPS / material
+  g("fx_rt_wps", 'RT Ratio % For WPS "PR all"', "num", "gwps.rt_ratio", ["gwps"]),
+  g("fx_rt_wps_st", "RT Ratio % STATUS for WPS", "text", wpsBands("gwps.rt_ratio"), ["gwps"]),
+  g("fx_rt_mat", 'RT Ratio % For Material Type "PR all"', "num", "gmat.rt_ratio", ["gmat"]),
+  g("fx_rt_mat_st", "RT Ratio % STATUS for Material Type", "text", wpsBands("gmat.rt_ratio"), ["gmat"]),
+  // per joint, report, batch, the whole table
+  g("fx_dup_weld_date", "Duplicate Weld Date", "num", "gj.dup_weld_date", ["gj"]),
+  g("fx_dup_rt_date", "Duplicate RT Date", "num", "gj.dup_rt_date", ["gj"]),
+  g("fx_dup_rt_report", "Duplicate RT Report", "num", "gj.dup_rt_report", ["gj"]),
+  g("fx_dup_rt_report_joint", "Duplicate RT Report by Joint", "num", "grr.joints", ["grr"]),
+  g("fx_batch_qty", "BATCH QTY Joints", "num", "gb.joints", ["gb"]),
+  g("fx_pct_reject", "% of Total Reject", "num", "gt.pct_reject", ["gt"]),
+  // CALCULATE in a column filters to the row itself (every row is unique by Index)
+  g("fx_joint_uniq", 'Joint Uniq "PR all" Column', "num", "1", []),
+  g("fx_total_dia", 'Total Welded Dia "PR all" Table', "num", "CASE WHEN w.weld_date IS NOT NULL THEN w.dia_inch END", []),
+  // the row's own dates, and days to the report's Cur_Date (the cut-off Friday, {cur})
+  g("fx_last_weld", 'Last_Weld Date "PR all"', "date", "w.weld_date", []),
+  g("fx_days_last_weld", "Days Since Last Weld", "num", "{cur} - w.weld_date", []),
+  g("fx_first_weld", 'First_Weld Date "PR all"', "date", "w.weld_date", []),
+  g("fx_days_first_weld", "Days Since First Weld", "num", "{cur} - w.weld_date", []),
+  g("fx_last_rt", 'Last_RT Date "PR all"', "date", "CASE WHEN w.manual_ut_date_all IS NULL THEN w.rt_date END", []),
+  g("fx_days_last_rt", "Days Since Last RT", "num", "{cur} - CASE WHEN w.manual_ut_date_all IS NULL THEN w.rt_date END", []),
+  g("fx_last_ut", 'Last_UT Date "PR all"', "date", "w.manual_ut_date_all", []),
+  g("fx_days_last_ut", "Days Since Last UT", "num", "{cur} - w.manual_ut_date_all", []),
+];
+
 /** Every column: the basic ones first (Joint ID leads, as in the pbix data view), the rest in table order, then the calculated ones. */
 export const GRID_COLUMNS: readonly GridCol[] = [
   ...GRID_DEFAULT_COLUMNS.map((k) => CATALOG.find((c) => c.key === k)!),
   ...CATALOG.filter((c) => !GRID_DEFAULT_COLUMNS.includes(c.key)),
   ...FX_COLUMNS,
+  ...FX_GROUP_COLUMNS,
 ];
