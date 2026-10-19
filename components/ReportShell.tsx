@@ -1,5 +1,6 @@
 "use client";
 
+import { ZoomControl } from "@/components/ZoomControl";
 import { createContext, Suspense, useCallback, useContext, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -179,6 +180,7 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
       </nav>
 
       <main className="main-content">{children}</main>
+      <ZoomControl />
       </div>
     </SubtitleContext.Provider>
   );

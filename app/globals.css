@@ -4515,3 +4515,51 @@ th:hover > .th-resize::after, .th-resize:active::after { opacity: 0.5; }
 .pv-side-kpis .stat-box .stat-label {
   margin-top: 0;
 }
+/* page zoom (components/ZoomControl.tsx), bottom right as in the pbix */
+.zoom-bar {
+  position: fixed;
+  right: 14px;
+  bottom: 10px;
+  z-index: 480;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-card, 0 4px 14px rgba(0, 0, 0, 0.3));
+  color: var(--text-primary);
+  font-size: 0.75rem;
+  opacity: 0.85;
+}
+.zoom-bar:hover {
+  opacity: 1;
+}
+.zoom-btn {
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+.zoom-btn:hover,
+.zoom-btn.is-on {
+  background: color-mix(in srgb, var(--color-1, #4a8fe7) 30%, transparent);
+}
+.zoom-range {
+  width: 110px;
+  accent-color: var(--color-1, #4a8fe7);
+}
+.zoom-pct {
+  min-width: 3.2em;
+  text-align: right;
+}
+@media print {
+  .zoom-bar {
+    display: none;
+  }
+}
