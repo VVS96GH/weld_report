@@ -4811,18 +4811,18 @@ th:hover > .th-resize::after, .th-resize:active::after { opacity: 0.5; }
 .card-header--actions .section-actions .ms-btn {
   top: 0;
 }
-/* the Filters panel a couple of tones lighter than the page and nearly opaque,
+/* the Filters panel a couple of tones lighter than the page, 50 % see-through,
    so it stands apart from the screen behind it (owner, 2026-10-19) */
 .fdrawer,
 [data-mood] .fdrawer {
-  background: color-mix(in srgb, color-mix(in srgb, var(--bg-card) 80%, #ffffff) 94%, transparent);
-  backdrop-filter: blur(8px);
+  background: color-mix(in srgb, color-mix(in srgb, var(--bg-card) 70%, #ffffff) 50%, transparent);
+  backdrop-filter: blur(2px);
   border-inline-start: 1px solid color-mix(in srgb, var(--border-color) 60%, #ffffff);
   border-block-end: 1px solid color-mix(in srgb, var(--border-color) 60%, #ffffff);
   box-shadow: -8px 0 28px rgb(0 0 0 / 0.45);
 }
 :root[data-theme="light"] .fdrawer,
 :root[data-theme="light"] [data-mood] .fdrawer {
-  background: color-mix(in srgb, color-mix(in srgb, var(--bg-card) 92%, #000000) 96%, transparent);
+  background: color-mix(in srgb, color-mix(in srgb, var(--bg-card) 88%, #000000) 50%, transparent);
   box-shadow: -8px 0 24px rgb(0 0 0 / 0.18);
 }
