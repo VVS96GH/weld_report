@@ -13,7 +13,7 @@
  * parameters, so nothing from the URL reaches the SQL text.
  */
 import { query, queryFresh } from "@/lib/db";
-import { GRID_COLUMNS, GRID_DEFAULT_COLUMNS, type GridCol } from "@/lib/data-grid-columns";
+import { GRID_COLUMNS, type GridCol } from "@/lib/data-grid-columns";
 
 export type GridFilter = {
   /** Exact picks; "(Blank)" picks the empty cells. */
@@ -60,7 +60,8 @@ export function parseFilters(raw: string | null | undefined): GridFilters {
 
 export function parseColumns(raw: string | null | undefined): string[] {
   const keys = (raw ?? "").split(",").map((s) => s.trim()).filter((k) => BY_KEY.has(k));
-  return keys.length ? [...new Set(keys)] : [...GRID_DEFAULT_COLUMNS];
+  // every column unless some are named (the page shows them all by default)
+  return keys.length ? [...new Set(keys)] : GRID_COLUMNS.map((c) => c.key);
 }
 
 export function parseSort(raw: string | null | undefined): GridSort {

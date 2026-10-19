@@ -54,7 +54,8 @@ function readFilters(raw: string | null): Filters {
 
 function describe(col: GridCol, f: GridFilter): string {
   const parts: string[] = [];
-  if (f.in?.length) parts.push(f.in.length <= 2 ? f.in.join(", ") : `${f.in.length} values`);
+  if (f.in?.length)
+    parts.push(f.in.length <= 2 ? f.in.join(", ") : `${f.in.length} values`);
   if (f.has) parts.push(`contains “${f.has}”`);
   if (f.from && f.to) parts.push(`${f.from} … ${f.to}`);
   else if (f.from) parts.push(`≥ ${f.from}`);
@@ -68,12 +69,21 @@ function describe(col: GridCol, f: GridFilter): string {
  * on the header, a column picker and a CSV export. Rows come from the server
  * 200 at a time as the table scrolls; all state is in the URL (lib/pages/data-grid.ts).
  */
-export function DataGridView({ columns, defaults }: { columns: readonly GridCol[]; defaults: readonly string[] }) {
+export function DataGridView({
+  columns,
+  defaults,
+}: {
+  columns: readonly GridCol[];
+  defaults: readonly string[];
+}) {
   usePageSubtitle("Data — detailed weld table");
   const router = useRouter();
   const pathname = usePathname();
   const sp = useSearchParams();
-  const byKey = useMemo(() => new Map(columns.map((c) => [c.key, c])), [columns]);
+  const byKey = useMemo(
+    () => new Map(columns.map((c) => [c.key, c])),
+    [columns],
+  );
   const prefs = useTablePrefs(PREFS_TABLE);
   const widthOf = (k: string) => {
     const w = prefs[k]?.width;
@@ -85,12 +95,15 @@ export function DataGridView({ columns, defaults }: { columns: readonly GridCol[
   const cRaw = sp.get("c");
   const cols = useMemo(() => {
     const keys = (cRaw ?? "").split(",").filter((k) => byKey.has(k));
-    return keys.length ? keys : [...defaults];
-  }, [cRaw, byKey, defaults]);
+    // every column unless the URL names some (owner, 2026-10-19: "all columns shown")
+    return keys.length ? keys : columns.map((c) => c.key);
+  }, [cRaw, byKey, columns]);
   const sRaw = sp.get("s");
   const sort: Sort = useMemo(() => {
     const [key, dir] = (sRaw ?? "").split(":");
-    return key && byKey.has(key) ? { key, dir: dir === "desc" ? "desc" : "asc" } : null;
+    return key && byKey.has(key)
+      ? { key, dir: dir === "desc" ? "desc" : "asc" }
+      : null;
   }, [sRaw, byKey]);
 
   const setParams = useCallback(
@@ -105,7 +118,8 @@ export function DataGridView({ columns, defaults }: { columns: readonly GridCol[
     },
     [sp, router, pathname],
   );
-  const setFilters = (f: Filters) => setParams({ f: Object.keys(f).length ? JSON.stringify(f) : null });
+  const setFilters = (f: Filters) =>
+    setParams({ f: Object.keys(f).length ? JSON.stringify(f) : null });
   const setFilter = (key: string, f: GridFilter | null) => {
     const next = { ...filters };
     if (f && (f.in?.length || f.has || f.from || f.to)) next[key] = f;
@@ -119,7 +133,9 @@ export function DataGridView({ columns, defaults }: { columns: readonly GridCol[
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // the count of the filters it was read for, so a stale one never shows
-  const [counted, setCounted] = useState<{ key: string; n: number } | null>(null);
+  const [counted, setCounted] = useState<{ key: string; n: number } | null>(
+    null,
+  );
   const reqId = useRef(0);
   const query = useMemo(() => {
     const q = new URLSearchParams();
@@ -135,14 +151,23 @@ export function DataGridView({ columns, defaults }: { columns: readonly GridCol[
       setLoading(true);
       setError(null);
       try {
-        const r = await fetch(`/api/data?action=rows&offset=${offset}&${query}`);
-        const body = (await r.json()) as { rows?: (string | null)[][]; more?: boolean; error?: string };
+        const r = await fetch(
+          `/api/data?action=rows&offset=${offset}&${query}`,
+        );
+        const body = (await r.json()) as {
+          rows?: (string | null)[][];
+          more?: boolean;
+          error?: string;
+        };
         if (!r.ok) throw new Error(body.error ?? `HTTP ${r.status}`);
         if (id !== reqId.current) return;
-        setRows((prev) => (offset === 0 ? body.rows ?? [] : [...prev, ...(body.rows ?? [])]));
+        setRows((prev) =>
+          offset === 0 ? (body.rows ?? []) : [...prev, ...(body.rows ?? [])],
+        );
         setMore(Boolean(body.more));
       } catch (e) {
-        if (id === reqId.current) setError(e instanceof Error ? e.message : String(e));
+        if (id === reqId.current)
+          setError(e instanceof Error ? e.message : String(e));
       } finally {
         if (id === reqId.current) setLoading(false);
       }
@@ -162,7 +187,8 @@ export function DataGridView({ columns, defaults }: { columns: readonly GridCol[
     fetch(`/api/data?action=count${fq}`)
       .then((r) => r.json())
       .then((b: { count?: number }) => {
-        if (live && typeof b.count === "number") setCounted({ key: fKey, n: b.count });
+        if (live && typeof b.count === "number")
+          setCounted({ key: fKey, n: b.count });
       })
       .catch(() => undefined);
     return () => {
@@ -174,25 +200,61 @@ export function DataGridView({ columns, defaults }: { columns: readonly GridCol[
   const scrollRef = useRef<HTMLDivElement>(null);
   const onScroll = () => {
     const el = scrollRef.current;
-    if (!el || loading || !more) return;
-    if (el.scrollTop + el.clientHeight > el.scrollHeight - 600) void load(rows.length);
+    if (!el) return;
+    const h =
+      el.querySelector("tbody tr")?.getBoundingClientRect().height ?? 26;
+    setTopRow(
+      Math.min(rows.length - 1, Math.max(0, Math.floor(el.scrollTop / h))),
+    );
+    if (loading || !more) return;
+    if (el.scrollTop + el.clientHeight > el.scrollHeight - 600)
+      void load(rows.length);
   };
 
+  const [fieldsOpen, setFieldsOpen] = useState(true);
   // the table takes the window's remaining height and scrolls inside
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     const fit = () => {
       const top = el.getBoundingClientRect().top + window.scrollY;
-      el.style.height = `${Math.max(300, window.innerHeight - top - 24)}px`;
+      // room under it for the "Row N of M" line
+      const h = Math.max(300, window.innerHeight - top - 52);
+      el.style.height = `${h}px`;
+      // the fields pane matches the table
+      el.closest(".dg-body")?.querySelector<HTMLElement>(".dg-fields")?.style.setProperty("max-height", `${h + 28}px`);
     };
     fit();
     window.addEventListener("resize", fit);
     return () => window.removeEventListener("resize", fit);
-  }, [filters]);
+  }, [filters, fieldsOpen]);
 
   const [openFilter, setOpenFilter] = useState<string | null>(null);
-  const [picker, setPicker] = useState(false);
+  const [selected, setSelected] = useState<number | null>(null);
+  const [topRow, setTopRow] = useState(0);
+  const [flash, setFlash] = useState<string | null>(null);
+  const setVisible = (keys: string[]) => {
+    const all =
+      keys.length === columns.length &&
+      keys.every((k, i) => k === columns[i]!.key);
+    setParams({ c: all ? null : keys.join(",") });
+  };
+  /** Bring a column into view (showing it first if hidden) and flash its header. */
+  const jumpTo = (key: string) => {
+    if (!cols.includes(key)) setVisible([...cols, key]);
+    setFlash(key);
+    setTimeout(() => {
+      const th = scrollRef.current?.querySelector<HTMLElement>(
+        `th[data-key="${key}"]`,
+      );
+      th?.scrollIntoView({
+        inline: "center",
+        block: "nearest",
+        behavior: "smooth",
+      });
+    }, 60);
+    setTimeout(() => setFlash((f) => (f === key ? null : f)), 1800);
+  };
   const active = Object.entries(filters).filter(([k]) => byKey.has(k));
 
   const toggleSort = (key: string) => {
@@ -202,7 +264,10 @@ export function DataGridView({ columns, defaults }: { columns: readonly GridCol[
   };
 
   return (
-    <section className="page-section active pv-page dg-page" aria-labelledby="page-heading">
+    <section
+      className="page-section active pv-page dg-page"
+      aria-labelledby="page-heading"
+    >
       <div className="page-header">
         <h2 id="page-heading">Data — Project WD+WR+INCO+Acciona</h2>
       </div>
@@ -213,23 +278,14 @@ export function DataGridView({ columns, defaults }: { columns: readonly GridCol[
           {rows.length ? ` · ${NF.format(rows.length)} loaded` : ""}
         </span>
         <div className="dg-tools">
-          <div className="dg-picker-wrap">
-            <button type="button" className="ms-btn" aria-expanded={picker} onClick={() => setPicker((p) => !p)}>
-              Columns ({cols.length} / {columns.length})
-            </button>
-            {picker ? (
-              <ColumnPicker
-                columns={columns}
-                chosen={cols}
-                defaults={defaults}
-                onApply={(keys) => {
-                  setPicker(false);
-                  setParams({ c: keys.join(",") === defaults.join(",") ? null : keys.join(",") });
-                }}
-                onClose={() => setPicker(false)}
-              />
-            ) : null}
-          </div>
+          <button
+            type="button"
+            className={`ms-btn${fieldsOpen ? " ms-btn--primary" : ""}`}
+            aria-expanded={fieldsOpen}
+            onClick={() => setFieldsOpen((o) => !o)}
+          >
+            Fields ({cols.length} / {columns.length})
+          </button>
           <a className="ms-btn" href={`/api/data?action=csv&${query}`} download>
             Export CSV
           </a>
@@ -240,98 +296,163 @@ export function DataGridView({ columns, defaults }: { columns: readonly GridCol[
           {active.map(([k, f]) => (
             <span key={k} className="fchip-static">
               {describe(byKey.get(k)!, f)}
-              <button type="button" className="fchip-clear" aria-label={`Clear ${byKey.get(k)!.label}`} onClick={() => setFilter(k, null)}>
+              <button
+                type="button"
+                className="fchip-clear"
+                aria-label={`Clear ${byKey.get(k)!.label}`}
+                onClick={() => setFilter(k, null)}
+              >
                 ×
               </button>
             </span>
           ))}
-          <button type="button" className="filter-reset fbar-clear" onClick={() => setFilters({})}>
+          <button
+            type="button"
+            className="filter-reset fbar-clear"
+            onClick={() => setFilters({})}
+          >
             Clear all
           </button>
         </div>
       ) : null}
       {error ? <p className="error-empty">Failed: {error}</p> : null}
-      <div className="dg-scroll" ref={scrollRef} onScroll={onScroll}>
-        <table className="dg-table">
-          <thead>
-            <tr>
-              {cols.map((k) => {
-                const col = byKey.get(k)!;
-                const on = Boolean(filters[k]);
-                return (
-                  <th
-                    key={k}
-                    scope="col"
-                    style={widthOf(k)}
-                    data-sized={prefs[k]?.width ? "" : undefined}
-                    aria-sort={sort?.key === k ? (sort.dir === "asc" ? "ascending" : "descending") : undefined}
-                  >
-                    <div className="dg-th">
-                      <button type="button" className="dg-sort" title="Click to sort · drag the right edge to resize" onClick={() => toggleSort(k)}>
-                        {col.label}
-                        {sort?.key === k ? (sort.dir === "asc" ? " ▲" : " ▼") : ""}
-                      </button>
-                      <button
-                        type="button"
-                        className={`dg-fbtn${on ? " is-on" : ""}`}
-                        aria-label={`Filter ${col.label}`}
-                        aria-expanded={openFilter === k}
-                        onClick={() => setOpenFilter(openFilter === k ? null : k)}
-                      >
-                        {on ? "▼" : "▾"}
-                      </button>
-                    </div>
-                    <span
-                      className="th-resize"
-                      aria-hidden="true"
-                      title="Drag to resize · double-click for auto width"
-                      onPointerDown={(e) => startResize(e, k)}
-                      onClick={(e) => e.stopPropagation()}
-                      onDoubleClick={(e) => {
-                        e.stopPropagation();
-                        setColPref(PREFS_TABLE, k, { width: null });
-                      }}
-                    />
-                    {openFilter === k ? (
-                      <FilterPanel
-                        col={col}
-                        sort={sort?.key === k ? sort.dir : null}
-                        onSort={(dir) => {
-                          setOpenFilter(null);
-                          setParams({ s: dir ? `${k}:${dir}` : null });
-                        }}
-                        value={filters[k] ?? {}}
-                        filters={filters}
-                        onApply={(f) => {
-                          setOpenFilter(null);
-                          setFilter(k, f);
-                        }}
-                        onClose={() => setOpenFilter(null)}
-                      />
-                    ) : null}
+      <div className="dg-body">
+        <div className="dg-main">
+          <div className="dg-scroll" ref={scrollRef} onScroll={onScroll}>
+            <table className="dg-table">
+              <thead>
+                <tr>
+                  <th scope="col" className="dg-rownum" aria-label="Row number">
+                    #
                   </th>
-                );
-              })}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r, i) => (
-              <tr key={i}>
-                {r.map((v, j) => {
-                  const t = byKey.get(cols[j]!)?.type;
-                  return (
-                    <td key={j} className={t === "num" ? "num" : undefined} style={widthOf(cols[j]!)} title={v && v.length > 30 ? v : undefined}>
-                      {v ?? ""}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {loading ? <p className="dg-note">Loading…</p> : null}
-        {!loading && rows.length === 0 && !error ? <p className="dg-note">No rows under these filters.</p> : null}
-        {!loading && more ? <p className="dg-note">Scroll down for more rows.</p> : null}
+                  {cols.map((k) => {
+                    const col = byKey.get(k)!;
+                    const on = Boolean(filters[k]);
+                    return (
+                      <th
+                        key={k}
+                        scope="col"
+                        style={widthOf(k)}
+                        data-key={k}
+                        className={flash === k ? "dg-flash" : undefined}
+                        data-sized={prefs[k]?.width ? "" : undefined}
+                        aria-sort={
+                          sort?.key === k
+                            ? sort.dir === "asc"
+                              ? "ascending"
+                              : "descending"
+                            : undefined
+                        }
+                      >
+                        <div className="dg-th">
+                          <button
+                            type="button"
+                            className="dg-sort"
+                            title="Click to sort · drag the right edge to resize"
+                            onClick={() => toggleSort(k)}
+                          >
+                            {col.label}
+                            {sort?.key === k
+                              ? sort.dir === "asc"
+                                ? " ▲"
+                                : " ▼"
+                              : ""}
+                          </button>
+                          <button
+                            type="button"
+                            className={`dg-fbtn${on ? " is-on" : ""}`}
+                            aria-label={`Filter ${col.label}`}
+                            aria-expanded={openFilter === k}
+                            onClick={() =>
+                              setOpenFilter(openFilter === k ? null : k)
+                            }
+                          >
+                            {on ? "▼" : "▾"}
+                          </button>
+                        </div>
+                        <span
+                          className="th-resize"
+                          aria-hidden="true"
+                          title="Drag to resize · double-click for auto width"
+                          onPointerDown={(e) => startResize(e, k)}
+                          onClick={(e) => e.stopPropagation()}
+                          onDoubleClick={(e) => {
+                            e.stopPropagation();
+                            setColPref(PREFS_TABLE, k, { width: null });
+                          }}
+                        />
+                        {openFilter === k ? (
+                          <FilterPanel
+                            col={col}
+                            sort={sort?.key === k ? sort.dir : null}
+                            onSort={(dir) => {
+                              setOpenFilter(null);
+                              setParams({ s: dir ? `${k}:${dir}` : null });
+                            }}
+                            value={filters[k] ?? {}}
+                            filters={filters}
+                            onApply={(f) => {
+                              setOpenFilter(null);
+                              setFilter(k, f);
+                            }}
+                            onClose={() => setOpenFilter(null)}
+                          />
+                        ) : null}
+                      </th>
+                    );
+                  })}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r, i) => (
+                  <tr
+                    key={i}
+                    className={selected === i ? "is-selected" : undefined}
+                    onClick={() => setSelected(selected === i ? null : i)}
+                  >
+                    <td className="dg-rownum num">{NF.format(i + 1)}</td>
+                    {r.map((v, j) => {
+                      const t = byKey.get(cols[j]!)?.type;
+                      return (
+                        <td
+                          key={j}
+                          className={t === "num" ? "num" : undefined}
+                          style={widthOf(cols[j]!)}
+                          title={v && v.length > 30 ? v : undefined}
+                        >
+                          {v ?? ""}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {loading ? <p className="dg-note">Loading…</p> : null}
+            {!loading && rows.length === 0 && !error ? (
+              <p className="dg-note">No rows under these filters.</p>
+            ) : null}
+            {!loading && more ? (
+              <p className="dg-note">Scroll down for more rows.</p>
+            ) : null}
+          </div>
+          <div className="dg-status num" role="status">
+            {rows.length
+              ? `Row ${NF.format((selected ?? topRow) + 1)} of ${count === null ? "…" : NF.format(count)}`
+              : ""}
+          </div>
+        </div>
+        {fieldsOpen ? (
+          <FieldsPanel
+            columns={columns}
+            visible={cols}
+            basic={defaults}
+            filtered={Object.keys(filters)}
+            onJump={jumpTo}
+            onSet={setVisible}
+            onClose={() => setFieldsOpen(false)}
+          />
+        ) : null}
       </div>
     </section>
   );
@@ -362,7 +483,9 @@ function FilterPanel({
   const [q, setQ] = useState("");
   const [paste, setPaste] = useState(false);
   const [pasted, setPasted] = useState("");
-  const [list, setList] = useState<{ values: string[]; more: boolean } | null>(null);
+  const [list, setList] = useState<{ values: string[]; more: boolean } | null>(
+    null,
+  );
   const [busy, setBusy] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const id = useRef(0);
@@ -373,11 +496,16 @@ function FilterPanel({
       setBusy(true);
       const others = { ...filters };
       delete others[col.key];
-      const fq = Object.keys(others).length ? `&f=${encodeURIComponent(JSON.stringify(others))}` : "";
+      const fq = Object.keys(others).length
+        ? `&f=${encodeURIComponent(JSON.stringify(others))}`
+        : "";
       try {
-        const r = await fetch(`/api/data?action=values&col=${col.key}&q=${encodeURIComponent(q)}${fq}`);
+        const r = await fetch(
+          `/api/data?action=values&col=${col.key}&q=${encodeURIComponent(q)}${fq}`,
+        );
         const b = (await r.json()) as { values?: string[]; more?: boolean };
-        if (n === id.current) setList({ values: b.values ?? [], more: Boolean(b.more) });
+        if (n === id.current)
+          setList({ values: b.values ?? [], more: Boolean(b.more) });
       } catch {
         if (n === id.current) setList({ values: [], more: false });
       } finally {
@@ -402,8 +530,11 @@ function FilterPanel({
     };
   }, [onClose]);
 
-  const toggle = (v: string) => setPicks((p) => (p.includes(v) ? p.filter((x) => x !== v) : [...p, v]));
-  const shown = list ? [...picks.filter((p) => !list.values.includes(p)), ...list.values] : picks;
+  const toggle = (v: string) =>
+    setPicks((p) => (p.includes(v) ? p.filter((x) => x !== v) : [...p, v]));
+  const shown = list
+    ? [...picks.filter((p) => !list.values.includes(p)), ...list.values]
+    : picks;
   const range = col.type === "num" || col.type === "date";
   const apply = () => {
     const extra = paste
@@ -422,7 +553,12 @@ function FilterPanel({
   };
 
   return (
-    <div className="ms-panel dg-panel" ref={ref} role="dialog" aria-label={`Filter ${col.label}`}>
+    <div
+      className="ms-panel dg-panel"
+      ref={ref}
+      role="dialog"
+      aria-label={`Filter ${col.label}`}
+    >
       <div className="dg-panel-body">
         <div className="dg-sortrow" role="group" aria-label="Sort">
           {(["asc", "desc"] as const).map((d) => (
@@ -433,7 +569,17 @@ function FilterPanel({
               aria-pressed={sort === d}
               onClick={() => onSort(sort === d ? null : d)}
             >
-              {col.type === "num" ? (d === "asc" ? "Sort 0 → 9" : "Sort 9 → 0") : col.type === "date" ? (d === "asc" ? "Oldest first" : "Newest first") : d === "asc" ? "Sort A → Z" : "Sort Z → A"}
+              {col.type === "num"
+                ? d === "asc"
+                  ? "Sort 0 → 9"
+                  : "Sort 9 → 0"
+                : col.type === "date"
+                  ? d === "asc"
+                    ? "Oldest first"
+                    : "Newest first"
+                  : d === "asc"
+                    ? "Sort A → Z"
+                    : "Sort Z → A"}
             </button>
           ))}
         </div>
@@ -441,11 +587,21 @@ function FilterPanel({
           <div className="dg-range">
             <label>
               From
-              <input type={col.type === "date" ? "date" : "text"} className="ms-search" value={from} onChange={(e) => setFrom(e.target.value)} />
+              <input
+                type={col.type === "date" ? "date" : "text"}
+                className="ms-search"
+                value={from}
+                onChange={(e) => setFrom(e.target.value)}
+              />
             </label>
             <label>
               To
-              <input type={col.type === "date" ? "date" : "text"} className="ms-search" value={to} onChange={(e) => setTo(e.target.value)} />
+              <input
+                type={col.type === "date" ? "date" : "text"}
+                className="ms-search"
+                value={to}
+                onChange={(e) => setTo(e.target.value)}
+              />
             </label>
           </div>
         ) : col.type === "text" ? (
@@ -464,31 +620,62 @@ function FilterPanel({
           </label>
         ) : null}
         <div className="dg-values">
-          <input type="search" className="ms-search" placeholder="Search values" aria-label="Search the values" value={q} onChange={(e) => setQ(e.target.value)} />
+          <input
+            type="search"
+            className="ms-search"
+            placeholder="Search values"
+            aria-label="Search the values"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
           <div className="ms-options">
             {shown.map((v) => (
               <label className="ms-option" key={v}>
-                <input type="checkbox" checked={picks.includes(v)} onChange={() => toggle(v)} />
+                <input
+                  type="checkbox"
+                  checked={picks.includes(v)}
+                  onChange={() => toggle(v)}
+                />
                 <span>{v}</span>
               </label>
             ))}
             {busy ? <p className="wp-loading">Loading…</p> : null}
-            {!busy && list && list.values.length === 0 ? <p className="wp-loading">No values under the other filters.</p> : null}
-            {!busy && list?.more ? <p className="wp-loading">First {list.values.length} shown — type to narrow.</p> : null}
+            {!busy && list && list.values.length === 0 ? (
+              <p className="wp-loading">No values under the other filters.</p>
+            ) : null}
+            {!busy && list?.more ? (
+              <p className="wp-loading">
+                First {list.values.length} shown — type to narrow.
+              </p>
+            ) : null}
           </div>
         </div>
-        <button type="button" className="dg-link" onClick={() => setPaste((p) => !p)}>
+        <button
+          type="button"
+          className="dg-link"
+          onClick={() => setPaste((p) => !p)}
+        >
           {paste ? "Hide the pasted list" : "Paste a list (from Excel)…"}
         </button>
         {paste ? (
-          <textarea className="dg-paste" rows={5} placeholder="One value per line" value={pasted} onChange={(e) => setPasted(e.target.value)} />
+          <textarea
+            className="dg-paste"
+            rows={5}
+            placeholder="One value per line"
+            value={pasted}
+            onChange={(e) => setPasted(e.target.value)}
+          />
         ) : null}
       </div>
       <div className="ms-footer">
         <button type="button" className="ms-btn" onClick={() => onApply(null)}>
           Clear
         </button>
-        <button type="button" className="ms-btn ms-btn--primary" onClick={apply}>
+        <button
+          type="button"
+          className="ms-btn ms-btn--primary"
+          onClick={apply}
+        >
           Apply
         </button>
       </div>
@@ -496,54 +683,105 @@ function FilterPanel({
   );
 }
 
-/** Which columns show, in which order: tick to add (at the end), untick to drop. */
-function ColumnPicker({
+/**
+ * The fields pane (as the pbix Data pane): every column, searchable. A click on a
+ * name brings the column into view; the box shows or hides it.
+ */
+function FieldsPanel({
   columns,
-  chosen,
-  defaults,
-  onApply,
+  visible,
+  basic,
+  filtered,
+  onJump,
+  onSet,
   onClose,
 }: {
   columns: readonly GridCol[];
-  chosen: string[];
-  defaults: readonly string[];
-  onApply: (keys: string[]) => void;
+  visible: string[];
+  basic: readonly string[];
+  filtered: string[];
+  onJump: (key: string) => void;
+  onSet: (keys: string[]) => void;
   onClose: () => void;
 }) {
-  const [keys, setKeys] = useState<string[]>(chosen);
   const [q, setQ] = useState("");
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const onDown = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
-    };
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, [onClose]);
-  const shown = columns.filter((c) => !q.trim() || c.label.toLowerCase().includes(q.trim().toLowerCase()));
-  const toggle = (k: string) => setKeys((p) => (p.includes(k) ? p.filter((x) => x !== k) : [...p, k]));
+  const shown = columns.filter(
+    (c) => !q.trim() || c.label.toLowerCase().includes(q.trim().toLowerCase()),
+  );
+  const toggle = (k: string) =>
+    onSet(
+      visible.includes(k) ? visible.filter((x) => x !== k) : [...visible, k],
+    );
   return (
-    <div className="ms-panel dg-cols" ref={ref} role="dialog" aria-label="Columns">
-      <input type="search" className="ms-search" placeholder="Search columns" value={q} onChange={(e) => setQ(e.target.value)} autoFocus />
-      <div className="ms-options">
+    <aside className="dg-fields" aria-label="Fields">
+      <div className="dg-fields-head">
+        <strong>Fields</strong>
+        <span className="dg-fields-n num">{columns.length}</span>
+        <button
+          type="button"
+          className="fchip-clear"
+          aria-label="Close the fields pane"
+          onClick={onClose}
+        >
+          »
+        </button>
+      </div>
+      <input
+        type="search"
+        className="ms-search"
+        placeholder="Search"
+        aria-label="Search the fields"
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+      />
+      <div className="dg-fields-btns">
+        <button
+          type="button"
+          className="dg-link"
+          onClick={() => onSet(columns.map((c) => c.key))}
+        >
+          Show all
+        </button>
+        <button
+          type="button"
+          className="dg-link"
+          onClick={() => onSet([...basic])}
+        >
+          Basic ({basic.length})
+        </button>
+      </div>
+      <ul className="dg-fields-list">
         {shown.map((c) => (
-          <label className="ms-option" key={c.key}>
-            <input type="checkbox" checked={keys.includes(c.key)} onChange={() => toggle(c.key)} />
-            <span>{c.label}</span>
-          </label>
+          <li
+            key={c.key}
+            className={visible.includes(c.key) ? undefined : "is-hidden"}
+          >
+            <input
+              type="checkbox"
+              aria-label={`Show ${c.label}`}
+              checked={visible.includes(c.key)}
+              onChange={() => toggle(c.key)}
+            />
+            <button
+              type="button"
+              className="dg-field"
+              title="Go to this column"
+              onClick={() => onJump(c.key)}
+            >
+              {c.label}
+              {filtered.includes(c.key) ? (
+                <span className="dg-field-f" aria-label="filtered">
+                  {" "}
+                  ▼
+                </span>
+              ) : null}
+            </button>
+          </li>
         ))}
-      </div>
-      <div className="ms-footer">
-        <button type="button" className="ms-btn" onClick={() => setKeys([...defaults])}>
-          Default
-        </button>
-        <button type="button" className="ms-btn" onClick={() => setKeys(columns.map((c) => c.key))}>
-          All
-        </button>
-        <button type="button" className="ms-btn ms-btn--primary" disabled={!keys.length} onClick={() => onApply(keys)}>
-          Apply
-        </button>
-      </div>
-    </div>
+        {shown.length === 0 ? (
+          <li className="dg-note">No field matches.</li>
+        ) : null}
+      </ul>
+    </aside>
   );
 }

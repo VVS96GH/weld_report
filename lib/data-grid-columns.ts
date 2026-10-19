@@ -8,7 +8,7 @@
 export type GridColType = "text" | "num" | "date" | "bool";
 export type GridCol = { key: string; label: string; type: GridColType };
 
-export const GRID_COLUMNS: readonly GridCol[] = [
+const CATALOG: readonly GridCol[] = [
   {
     key: "source",
     label: "Source",
@@ -1265,4 +1265,10 @@ export const GRID_DEFAULT_COLUMNS: readonly string[] = [
   "ut_report",
   "pwht_report",
   "source",
+];
+
+/** Every column, the basic ones first (Joint ID leads, as in the pbix data view), then the rest in table order. */
+export const GRID_COLUMNS: readonly GridCol[] = [
+  ...GRID_DEFAULT_COLUMNS.map((k) => CATALOG.find((c) => c.key === k)!),
+  ...CATALOG.filter((c) => !GRID_DEFAULT_COLUMNS.includes(c.key)),
 ];

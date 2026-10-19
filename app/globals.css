@@ -4203,3 +4203,119 @@ th:hover > .th-resize::after, .th-resize:active::after { opacity: 0.5; }
 .dg-sortrow .ms-btn {
   flex: 1;
 }
+/* Data page: fields pane, row numbers, status line */
+.dg-body {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+}
+.dg-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.dg-status {
+  padding: 6px 4px 0;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+.dg-table .dg-rownum {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  width: 56px;
+  min-width: 56px;
+  max-width: 56px;
+  text-align: right;
+  color: var(--text-secondary);
+  background: var(--bg-card);
+}
+.dg-table thead .dg-rownum {
+  z-index: 4;
+  background: var(--header-bg);
+  color: white;
+  padding: 7px 8px;
+}
+/* the first data column (Joint ID by default) stays in view too */
+.dg-table tbody td:nth-child(2) {
+  position: sticky;
+  left: 56px;
+  z-index: 1;
+  background: var(--bg-card);
+}
+.dg-table thead th:nth-child(2) {
+  left: 56px;
+  z-index: 4;
+}
+.dg-table tbody tr {
+  cursor: default;
+}
+.dg-table tbody tr.is-selected td {
+  background: color-mix(in srgb, var(--color-1, #4a8fe7) 22%, var(--bg-card));
+}
+.dg-table thead th.dg-flash {
+  outline: 2px solid #ffd166;
+  outline-offset: -2px;
+}
+.dg-fields {
+  width: 280px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--bg-card);
+  max-height: var(--dg-h, 70vh);
+}
+.dg-fields-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-primary);
+}
+.dg-fields-head .fchip-clear {
+  margin-inline-start: auto;
+}
+.dg-fields-n {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+.dg-fields-btns {
+  display: flex;
+  gap: 14px;
+}
+.dg-fields-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  flex: 1;
+}
+.dg-fields-list li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+}
+.dg-fields-list li.is-hidden .dg-field {
+  opacity: 0.55;
+}
+.dg-field {
+  background: none;
+  border: 0;
+  padding: 2px 0;
+  text-align: left;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.dg-field:hover {
+  text-decoration: underline;
+}
+.dg-field-f {
+  color: #ffd166;
+}
