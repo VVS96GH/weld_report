@@ -205,16 +205,30 @@ function renderGroup(g: Group, i: number) {
                 ))}
               </div>
             );
-          case "chart":
+          case "chart": {
+            // Page 1 only (owner, 2026-10-19): trend, RT/UT B.Log, a wider Weld Type
+            // doughnut on top; the two rate lines, PWHT B.Log and the key figures under them.
+            const P1 = ["chart1_progress", "chart1_rtbacklog", "chart1_weldtype", "chart1_rtrej", "chart1_utrej", "chart1_pwhtbacklog"];
+            const page1 = g.kpis && P1.every((id) => g.items.some((c) => c.canvas_id === id));
+            const items = page1 ? P1.map((id) => g.items.find((c) => c.canvas_id === id)!) : g.items;
             return (
-              <div className={g.sideKpis ? "dashboard-grid pv-compact" : "dashboard-grid"} key={i}>
-                {g.items.map((c, j) => (
+              <div className={g.sideKpis ? "dashboard-grid pv-compact" : page1 ? "dashboard-grid pv-page1" : "dashboard-grid"} key={i}>
+                {items.map((c, j) => (
                   // A trend with many categories (the 14-week welding progress) needs
                   // two grid tracks so its value labels don't collide (owner request
                   // 2026-09-07: totals on every chart).
                   // Doughnuts never widen: page 1's lists every weld type (2026-10-18)
                   // and must keep its size and place.
-                  <div className={c.labels.length >= 10 && !/doughnut|pie/.test(c.chart_type) ? "card card--wide" : "card"} key={j}>
+                  <div
+                    className={
+                      page1
+                        ? `card pv-p1-${c.canvas_id.replace("chart1_", "")}`
+                        : c.labels.length >= 10 && !/doughnut|pie/.test(c.chart_type)
+                          ? "card card--wide"
+                          : "card"
+                    }
+                    key={j}
+                  >
                     <div className="card-header">{c.title}</div>
                     {g.sideKpis && /doughnut|pie/.test(c.chart_type) ? (
                       <div className="pv-donut-kpis">
@@ -235,7 +249,7 @@ function renderGroup(g: Group, i: number) {
                   </div>
                 ))}
                 {g.kpis ? (
-                  <div className="card kpi-panel" role="group" aria-label="Key figures">
+                  <div className={page1 ? "card kpi-panel pv-p1-kpi" : "card kpi-panel"} role="group" aria-label="Key figures">
                     <div className="kpi-panel-grid">
                       {g.kpis.map((k, j) => (
                         <KpiCard key={j} widget={k} />
@@ -245,6 +259,7 @@ function renderGroup(g: Group, i: number) {
                 ) : null}
               </div>
             );
+          }
           case "text":
             return (
               <div className="dashboard-grid" key={i}>

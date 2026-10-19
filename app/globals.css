@@ -4695,3 +4695,23 @@ th:hover > .th-resize::after, .th-resize:active::after { opacity: 0.5; }
 .pv-graph-status .chart-container {
   height: 250px;
 }
+/* Page 1 only (owner, 2026-10-19): trend · RT/UT B.Log · wide Weld Type on top,
+   %RT · %UT · PWHT B.Log · key figures below. */
+@media (min-width: 1151px) {
+  .dashboard-grid.pv-page1 {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-areas:
+      "prog prog rtb wt wt"
+      "rtr utr pwht kpi kpi";
+  }
+  .pv-page1 > .pv-p1-progress { grid-area: prog; }
+  .pv-page1 > .pv-p1-rtbacklog { grid-area: rtb; }
+  .pv-page1 > .pv-p1-weldtype { grid-area: wt; }
+  .pv-page1 > .pv-p1-rtrej { grid-area: rtr; }
+  .pv-page1 > .pv-p1-utrej { grid-area: utr; }
+  .pv-page1 > .pv-p1-pwhtbacklog { grid-area: pwht; }
+  .pv-page1 > .pv-p1-kpi { grid-area: kpi; }
+}
+.pv-page1 > .pv-p1-weldtype .chart-container {
+  height: 270px;
+}

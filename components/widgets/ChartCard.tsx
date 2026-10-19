@@ -884,7 +884,7 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
       plugins: {
         // pbix-style named slice labels already name every slice, so the legend goes
                 // "legend-none": the page draws its own legend (Rej. summary doughnuts)
-        legend: { display: !(circular && notes.includes("label-name-pct")) && !notes.includes("legend-none"), position: notes.includes("legend-bottom") ? "bottom" : "top",
+        legend: { display: !(circular && notes.includes("label-name-pct")) && !notes.includes("legend-none"), position: notes.includes("legend-bottom") ? "bottom" : widget.canvas_id === "chart1_weldtype" ? "right" : "top",
           labels: { padding: notes.includes("legend-bottom") ? 18 : 10, color: palette.text, boxWidth: 12, font: { size: Math.round(10 * palette.scale), family: palette.font },
           // a doughnut with many slices (page 1 lists every weld type) keeps its
           // legend to the 7 largest so the chart keeps its size; the rest show on hover
