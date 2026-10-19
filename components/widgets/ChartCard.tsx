@@ -1095,5 +1095,11 @@ const SMALL_RINGS = new Set(["forecast_donut_done", "forecast_donut_backlog"]);
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function smallRing(id: string, scale: number, labels: any): any {
   if (!SMALL_RINGS.has(id) || !labels?.font) return labels;
-  return { ...labels, font: { ...labels.font, size: Math.round(10 * scale) } };
+  const fmt = labels.formatter;
+  return {
+    ...labels,
+    font: { ...labels.font, size: Math.round(10 * scale) },
+    // whole numbers, no decimals (owner, 2026-10-19); the share is still of the exact values
+    formatter: typeof fmt === "function" ? (v: unknown, ctx: unknown) => fmt(typeof v === "number" ? Math.round(v) : v, ctx) : fmt,
+  };
 }
