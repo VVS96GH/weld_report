@@ -4692,3 +4692,6 @@ th:hover > .th-resize::after, .th-resize:active::after { opacity: 0.5; }
 .pv-graph-rate .chart-container {
   height: 165px;
 }
+.pv-graph-status .chart-container {
+  height: 250px;
+}

@@ -206,6 +206,25 @@ const legendGapPlugin = {
   },
 };
 
+/**
+ * The same room under the legend for bar charts, sized by `plugins.barLegendGap.px`:
+ * the upright value labels over tall grouped bars (Welding Status) reach above the
+ * plot, so the legend moves up out of their way (owner, 2026-10-19).
+ */
+const barLegendGapPlugin = {
+  id: "barLegendGap",
+  beforeInit(chart: ChartJS) {
+    const legend = chart.legend as unknown as { fit: () => void; height: number } | undefined;
+    if (!legend) return;
+    const fit = legend.fit;
+    legend.fit = function (this: { height: number }) {
+      fit.call(this);
+      const px = ((chart.options.plugins as Record<string, unknown> | undefined)?.barLegendGap as { px?: number } | undefined)?.px ?? 0;
+      this.height += px;
+    };
+  },
+};
+
 const centerTotalPlugin = {
   id: "centerTotal",
   afterDraw(chart: ChartJS) {
@@ -236,14 +255,14 @@ const stackTotalsPlugin = {
     const meta0 = chart.getDatasetMeta(0);
     if (!meta0 || (chart.config as { type?: string }).type !== "bar") return;
     const opts = (chart.options.plugins as Record<string, unknown> | undefined)?.stackTotals as
-      | { color: string; font: string; percent: boolean }
+      | { color: string; font: string; percent: boolean; size?: number }
       | undefined;
     if (!opts) return;
     const { ctx } = chart;
     const count = chart.data.labels?.length ?? 0;
     ctx.save();
     ctx.fillStyle = opts.color;
-    ctx.font = `600 12px ${opts.font}`;
+    ctx.font = `600 ${opts.size ?? 12}px ${opts.font}`;
     ctx.textAlign = "center";
     ctx.textBaseline = "bottom";
     for (let i = 0; i < count; i++) {
@@ -290,6 +309,12 @@ export type Palette = {
   seriesS: string | null;
   /** MT+PT series: red, as in the pbix Welding Status charts (`--color-danger`). */
   seriesMtPt: string | null;
+  /**
+   * Text size factor: the page zoom (components/ZoomControl.tsx) shrinks the
+   * charts with the page, so their labels grow back by up to a third to stay
+   * readable at 75 % (owner, 2026-10-19). 1 at 100 %.
+   */
+  scale: number;
 };
 
 const FALLBACK_PALETTE: Palette = {
@@ -303,6 +328,7 @@ const FALLBACK_PALETTE: Palette = {
   fg: "#cccccc", // token-lint: allow-hex — legacy mood fallback
   seriesF: null,
   seriesS: null,
+  scale: 1,
 };
 
 /**
@@ -373,6 +399,7 @@ function readPalette(): Palette {
       seriesF: read("--series-f"),
       seriesS: read("--series-s"),
       seriesMtPt: read("--color-danger"),
+      scale: 1,
     };
   } finally {
     probe.remove();
@@ -478,7 +505,7 @@ function areaLabels(palette: Palette): any {
     offset: 4,
     clamp: true,
     color: palette.fg,
-    font: { size: 11, family: palette.font, weight: 600 },
+    font: { size: Math.round(11 * palette.scale), family: palette.font, weight: 600 },
   };
 }
 
@@ -486,7 +513,7 @@ function areaLabels(palette: Palette): any {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function valueLabels(type: string, stacked: boolean, percent: boolean, circular: boolean, palette: Palette, seriesCount: number, categoryCount: number, horizontal = false, namePct = false): any {
   // value labels a size up (owner, 2026-10-19: 10 px hard to read)
-  const font = { size: 12, family: palette.font, weight: 600 };
+  const font = { size: Math.round(12 * palette.scale), family: palette.font, weight: 600 };
   if (circular) {
     // Slice values outside the ring; slivers under 2 % of the total stay unlabelled
     // (the legend and tooltip still carry them) so labels never pile up. With
@@ -522,7 +549,7 @@ function valueLabels(type: string, stacked: boolean, percent: boolean, circular:
       },
       clamp: true,
       // doughnut values a size up (owner, 2026-10-19: hard to read at 10)
-      font: { ...font, size: 13 },
+      font: { ...font, size: Math.round(13 * palette.scale) },
     };
   }
   if (type === "line") {
@@ -554,7 +581,8 @@ function valueLabels(type: string, stacked: boolean, percent: boolean, circular:
       anchor: "end",
       offset: 3,
       clamp: true,
-      font,
+      // a limit's name keeps its size: the rate lines are short, a larger name would cross the other line
+      font: (ctx: DatalabelCtx) => ((ctx.dataset as { threshold?: boolean }).threshold ? { ...font, size: 11 } : font),
     };
   }
   if (stacked) {
@@ -674,8 +702,12 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
     return () => observer.disconnect();
   }, []);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- `version` is the re-read trigger, not an input
-  const palette = useMemo(() => ({ ...readPalette(), ...usableOverride(paletteOverride) }), [version, paletteOverride]);
+  const zoom = usePageZoom();
+  const palette = useMemo(
+    () => ({ ...readPalette(), ...usableOverride(paletteOverride), scale: Math.min(1.35, Math.max(1, 1 / zoom)) }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `version` is the re-read trigger, not an input
+    [version, paletteOverride, zoom],
+  );
 
   const notes = widget.options_notes ?? "";
   const stackedX = notes.includes("stacked (x)");
@@ -827,7 +859,8 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
       indexAxis: horizontal ? "y" : "x",
       // Room for the totals above the tallest stack / the labels outside the ring.
       layout: {
-        padding: circular
+        // the room for labels grows with them (palette.scale, the page zoom)
+        padding: scalePad(palette.scale, circular
           ? notes.includes("legend-bottom")
             ? { top: 32, bottom: 4, left: 30, right: 30 } // value + % on two lines
             : notes.includes("label-name-pct")
@@ -841,22 +874,25 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
               ? { top: 16, right: 18 } // the last point's total is not clipped by the edge
               : yCenter
                 ? { top: 12, left: 8, right: 22 }
-              : { top: widget.chart_type === "bar" && !(stackedX || stackedY) && widget.datasets.length > 2 ? 34 : 16 },
+              : { top: widget.chart_type === "bar" && !(stackedX || stackedY) && widget.datasets.length > 2 ? 34 : 16 }),
       },
       plugins: {
         // pbix-style named slice labels already name every slice, so the legend goes
                 // "legend-none": the page draws its own legend (Rej. summary doughnuts)
         legend: { display: !(circular && notes.includes("label-name-pct")) && !notes.includes("legend-none"), position: notes.includes("legend-bottom") ? "bottom" : "top",
-          labels: { padding: notes.includes("legend-bottom") ? 18 : 10, color: palette.text, boxWidth: 12, font: { size: 10, family: palette.font },
+          labels: { padding: notes.includes("legend-bottom") ? 18 : 10, color: palette.text, boxWidth: 12, font: { size: Math.round(10 * palette.scale), family: palette.font },
           // a doughnut with many slices (page 1 lists every weld type) keeps its
           // legend to the 7 largest so the chart keeps its size; the rest show on hover
           ...(circular ? { filter: (item: { index?: number }) => (item.index ?? 0) < 7 } : {}) } },
         tooltip: { enabled: true },
         datalabels: notes.includes("area") ? areaLabels(palette) : valueLabels(widget.chart_type, stackedX || stackedY, percentAxis, circular, palette, widget.datasets.length, end - start, horizontal, notes.includes("label-name-pct")),
         centerTotal: circular && notes.includes("center-total") ? { color: palette.fg, font: palette.font ?? "sans-serif" } : undefined,
+        barLegendGap: {
+          px: widget.chart_type === "bar" && !(stackedX || stackedY) && !horizontal && widget.datasets.length > 2 ? Math.round(26 * palette.scale) : 0,
+        },
         stackTotals:
           widget.chart_type === "bar" && (stackedX || stackedY)
-            ? { color: palette.fg, font: palette.font ?? "sans-serif", percent: percentAxis }
+            ? { color: palette.fg, font: palette.font ?? "sans-serif", percent: percentAxis, size: Math.round(12 * palette.scale) }
             : undefined,
       },
       scales: circular
@@ -873,7 +909,7 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
               ...(yCenter || thresholds ? { offset: true } : {}),
               ticks: {
                 color: palette.text,
-                font: { size: 10, family: palette.font },
+                font: { size: Math.round(10 * palette.scale), family: palette.font },
                 callback(this: { getLabelForValue(v: number): string }, value: number | string) {
                   const label = typeof value === "number" ? this.getLabelForValue(value) : value;
                   return yearAxis ? label.replace(YEAR_SUFFIX, "") : axisLabel(label);
@@ -889,14 +925,19 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
               beginAtZero: true,
               // headroom so stack totals / line-point labels never sit on the legend;
               // a thresholded rate is framed by its upper limit instead
-              grace: thresholds || yCenter ? 0 : "12%",
+              grace: thresholds || yCenter
+                ? 0
+                : // upright labels over grouped bars need more headroom once they grow with the page zoom
+                  palette.scale > 1 && widget.chart_type === "bar" && !(stackedX || stackedY) && widget.datasets.length > 2
+                  ? "28%"
+                  : "12%",
               // the axis tops out at the upper limit rounded up (RT 3 %, UT 2 %; owner,
               // 2026-10-19), higher only when a point is above it
               suggestedMax: thresholds ? Math.ceil(thresholds.unacceptable) : undefined,
               max: yCenter && visibleMax > 0 ? niceCeil(visibleMax * 2) : undefined,
               ticks: {
                 color: palette.text,
-                font: { size: 10, family: palette.font },
+                font: { size: Math.round(10 * palette.scale), family: palette.font },
                 callback: percentAxis
                   ? (v: number | string) => `${v}%`
                   : (v: number | string) => (typeof v === "number" ? v.toLocaleString("en-US") : v),
@@ -946,7 +987,7 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
       break;
     case "bar":
     default:
-      chart = <Chart key={version} type="bar" data={data} options={options} plugins={[stackTotalsPlugin]} />;
+      chart = <Chart key={version} type="bar" data={data} options={options} plugins={[stackTotalsPlugin, barLegendGapPlugin]} />;
   }
   if (!windowed) return chart;
 
@@ -972,4 +1013,30 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
       </div>
     </div>
   );
+}
+
+/** The page zoom (0.3–2) the ZoomControl applies, kept in <html data-zoom>. */
+function usePageZoom(): number {
+  const [z, setZ] = useState(1);
+  useEffect(() => {
+    const read = () => {
+      const v = Number(document.documentElement.dataset.zoom ?? "1");
+      setZ(Number.isFinite(v) && v > 0 ? v : 1);
+    };
+    const t = setTimeout(read, 0);
+    window.addEventListener("page-zoom", read);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener("page-zoom", read);
+    };
+  }, []);
+  return z;
+}
+
+/** Chart padding scaled with the label size factor (1 at 100 % page zoom). */
+function scalePad(k: number, p: Partial<Record<"top" | "bottom" | "left" | "right", number>>) {
+  if (k === 1) return p;
+  const out: Partial<Record<"top" | "bottom" | "left" | "right", number>> = {};
+  for (const [side, v] of Object.entries(p) as ["top" | "bottom" | "left" | "right", number][]) out[side] = Math.round(v * k);
+  return out;
 }

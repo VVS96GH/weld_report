@@ -25,6 +25,9 @@ export function ZoomControl() {
   const apply = useCallback((p: number) => {
     const el = target();
     if (el) el.style.zoom = p === 100 ? "" : String(p / 100);
+    // charts read it to keep their labels readable when the page is shrunk
+    document.documentElement.dataset.zoom = String(p / 100);
+    window.dispatchEvent(new Event("page-zoom"));
     setPct(p);
   }, []);
 
