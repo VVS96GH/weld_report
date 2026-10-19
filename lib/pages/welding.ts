@@ -2321,6 +2321,17 @@ async function buildSubconPage(
       // `Weld Type IN {BW, CLET, GW, MW}` filter, which belongs to the NDE
       // visual and would cut TEKFEN from 369,931 to 115,558.
       out.push(subconKpi(w, w.label === "Joints Welded" ? blk.totalNoJ : blk.prTotal));
+      // Every Graph page carries the four cards CCC has (owner, 2026-10-19): the
+      // ones whose spec stops at three get `% RT Film Rej` after the last card.
+      const i = spec.widgets.indexOf(w);
+      const next = spec.widgets[i + 1];
+      if (
+        next?.kind !== "kpi" &&
+        !spec.widgets.some((x) => x.kind === "kpi" && /^%\s*RT Film Rej$/i.test(x.label)) &&
+        spec.widgets.some((x) => x.kind === "chart" && /weldtype|weld_type/i.test(x.canvas_id))
+      ) {
+        out.push(subconKpi({ ...w, label: "% RT Film Rej" }, blk.prTotal));
+      }
     } else if (w.kind === "chart") {
       if (/weldtype|weld_type/i.test(w.canvas_id)) {
         out.push(donutChart(w, blk.dist));
