@@ -4713,5 +4713,8 @@ th:hover > .th-resize::after, .th-resize:active::after { opacity: 0.5; }
   .pv-page1 > .pv-p1-kpi { grid-area: kpi; }
 }
 .pv-page1 > .pv-p1-weldtype .chart-container {
-  height: 270px;
+  height: 300px;
+}
+.pv-page1 > .pv-p1-weldtype .card-header {
+  margin-bottom: 4px;
 }
