@@ -146,6 +146,7 @@ function SubRow({ kind, sub, colors, periodWord }: { kind: SummaryPage["kind"]; 
     chart_type: "doughnut",
     labels: sub.donut.map((d) => d.status),
     datasets: [{ label: "Welders", data: sub.donut.map((d) => d.qty) }],
+    options_notes: "legend-end",
   };
   const trend: ChartWidget = {
     kind: "chart",

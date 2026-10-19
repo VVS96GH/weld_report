@@ -773,7 +773,9 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
             ? { top: 32, bottom: 4, left: 30, right: 30 } // value + % on two lines
             : notes.includes("label-name-pct")
               ? { top: 18, bottom: 18, left: 24, right: 24 } // "Torquing 60,030 (28.81%)" is not cut at the edge
-              : { top: 32, bottom: 32, left: 26, right: 26 } // value + % on two lines
+              : notes.includes("legend-end")
+                ? { top: 0, bottom: 30, left: 26, right: 26 } // the legend hugs the card head
+                : { top: 32, bottom: 32, left: 26, right: 26 } // value + % on two lines
           : horizontal
             ? { right: 48, top: 8 }
             : notes.includes("area")
@@ -784,7 +786,10 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
       },
       plugins: {
         // pbix-style named slice labels already name every slice, so the legend goes
-        legend: { display: !(circular && notes.includes("label-name-pct")), position: notes.includes("legend-bottom") ? "bottom" : "top", labels: { padding: notes.includes("legend-bottom") ? 18 : 10, color: palette.text, boxWidth: 12, font: { size: 10, family: palette.font },
+        legend: { display: !(circular && notes.includes("label-name-pct")), position: notes.includes("legend-bottom") ? "bottom" : "top",
+          // "legend-end": the legend sits right-aligned (Rej. summary doughnuts, owner 2026-10-19)
+          ...(notes.includes("legend-end") ? { align: "end" as const } : {}),
+          labels: { padding: notes.includes("legend-bottom") ? 18 : 10, color: palette.text, boxWidth: 12, font: { size: 10, family: palette.font },
           // a doughnut with many slices (page 1 lists every weld type) keeps its
           // legend to the 7 largest so the chart keeps its size; the rest show on hover
           ...(circular ? { filter: (item: { index?: number }) => (item.index ?? 0) < 7 } : {}) } },
