@@ -100,8 +100,9 @@ export const REPORT_ORDER: readonly ReportEntry[] = (() => {
   // TEKFEN graph page (lib/page-order.ts MENU_AFTER). Owner, 2026-10-18.
   entries.push({ kind: "data", data: 10, tmcp: true, title: TEKFEN_TMCP_TITLE });
   // the WPS / Material page (owner, 2026-10-18), its own route like Errors
-  entries.push({ kind: "link", title: WPS_MATERIAL_TITLE, href: "/wps-material" });
+  // Project NDE before WPS / Material (owner, 2026-10-19)
   entries.push({ kind: "link", title: PROJECT_NDE_TITLE, href: "/project-nde" });
+  entries.push({ kind: "link", title: WPS_MATERIAL_TITLE, href: "/wps-material" });
   return entries;
 })();
 
