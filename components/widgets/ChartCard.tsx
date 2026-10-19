@@ -597,7 +597,7 @@ function valueLabels(type: string, stacked: boolean, percent: boolean, circular:
       align: "end",
       offset: 2,
       clamp: true,
-      font: { ...font, size: 9 },
+      font,
     };
   }
   const rotated = seriesCount > 2;
@@ -610,7 +610,7 @@ function valueLabels(type: string, stacked: boolean, percent: boolean, circular:
     rotation: rotated ? -90 : 0,
     offset: rotated ? 4 : 1,
     clamp: true,
-    font: { ...font, size: 9 },
+    font,
   };
 }
 
