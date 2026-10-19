@@ -263,6 +263,57 @@ export function DataGridView({
   const [selected, setSelected] = useState<number | null>(null);
   const [topRow, setTopRow] = useState(0);
   const [selCol, setSelCol] = useState<number | null>(null);
+  // the right-click menu (as the pbix data view's), and a copy waiting for a click
+  const [menu, setMenu] = useState<{ x: number; y: number; col: string; row: number | null } | null>(null);
+  const [copyMsg, setCopyMsg] = useState<string | null>(null);
+  const [copyReady, setCopyReady] = useState<{ text: string; label: string } | null>(null);
+  const openMenu = (e: React.MouseEvent, col: string, row: number | null) => {
+    e.preventDefault();
+    setMenu({ x: e.clientX, y: e.clientY, col, row });
+  };
+  const tsvOf = (keys: string[], data: (string | null)[][]) => {
+    const esc = (v: string | null) => (v === null ? "" : /[\t\r\n"]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
+    const idx = keys.map((k) => cols.indexOf(k));
+    return [keys.map((k) => esc(byKey.get(k)!.label)).join("\t"), ...data.map((r) => idx.map((i) => esc(r[i] ?? null)).join("\t"))].join("\r\n");
+  };
+  const say = (m: string) => {
+    setCopyMsg(m);
+    setTimeout(() => setCopyMsg((x) => (x === m ? null : x)), 4000);
+  };
+  const copyCol = async (what: "column" | "table", col: string) => {
+    const keys = what === "column" ? [col] : cols;
+    const name = what === "column" ? byKey.get(col)!.label : "table";
+    if (count !== null && count <= rows.length) {
+      const ok = copyText(tsvOf(keys, rows));
+      say(ok ? `Copied ${name}: ${NF.format(rows.length)} rows.` : "The browser did not allow copying.");
+      return;
+    }
+    say(`Loading the ${name} for copying…`);
+    try {
+      const q = new URLSearchParams();
+      if (Object.keys(filters).length) q.set("f", JSON.stringify(filters));
+      q.set("c", keys.join(","));
+      if (sort) q.set("s", `${sort.key}:${sort.dir}`);
+      const r = await fetch(`/api/data?action=tsv&${q.toString()}`);
+      const b = (await r.json()) as { text?: string; rows?: number; capped?: boolean; error?: string };
+      if (!r.ok || typeof b.text !== "string") throw new Error(b.error ?? `HTTP ${r.status}`);
+      const label = `${name}: ${NF.format(b.rows ?? 0)} rows${b.capped ? " (the first ones; use Export CSV for all)" : ""}`;
+      if (window.isSecureContext && navigator.clipboard) {
+        try {
+          await navigator.clipboard.writeText(b.text);
+          say(`Copied ${label}.`);
+          return;
+        } catch {
+          /* falls back to the click below */
+        }
+      }
+      // over plain http the browser copies only inside a click: hand it one
+      setCopyMsg(null);
+      setCopyReady({ text: b.text, label });
+    } catch (e) {
+      say(`Copy failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  };
   const [leftCol, setLeftCol] = useState(0);
   const [flash, setFlash] = useState<string | null>(null);
   const setVisible = (keys: string[]) => {
@@ -364,6 +415,7 @@ export function DataGridView({
                       <th
                         key={k}
                         scope="col"
+                        onContextMenu={(e) => openMenu(e, k, null)}
                         style={widthOf(k)}
                         data-key={k}
                         className={flash === k ? "dg-flash" : undefined}
@@ -450,6 +502,11 @@ export function DataGridView({
                           key={j}
                           className={t === "num" ? "num" : undefined}
                           onClick={() => setSelCol(j)}
+                          onContextMenu={(e) => {
+                            setSelected(i);
+                            setSelCol(j);
+                            openMenu(e, cols[j]!, i);
+                          }}
                           style={widthOf(cols[j]!)}
                           title={v && v.length > 30 ? v : undefined}
                         >
@@ -502,6 +559,54 @@ export function DataGridView({
           </button>
         )}
       </div>
+      {menu ? (
+        <GridMenu
+          x={menu.x}
+          y={menu.y}
+          onClose={() => setMenu(null)}
+          items={[
+            { label: "Sort ascending", on: () => setParams({ s: `${menu.col}:asc` }) },
+            { label: "Sort descending", on: () => setParams({ s: `${menu.col}:desc` }) },
+            { label: "Clear sort", on: () => setParams({ s: null }), off: !sort },
+            { sep: true },
+            { label: "Clear filter", on: () => setFilter(menu.col, null), off: !filters[menu.col] },
+            { label: "Clear all filters", on: () => setFilters({}), off: active.length === 0 },
+            { sep: true },
+            ...(menu.row !== null
+              ? [{ label: "Copy value", on: () => say(copyText(rows[menu.row!]?.[cols.indexOf(menu.col)] ?? "") ? "Copied the value." : "The browser did not allow copying.") }]
+              : []),
+            { label: "Copy column", on: () => void copyCol("column", menu.col) },
+            { label: "Copy table", on: () => void copyCol("table", menu.col) },
+            { sep: true },
+            { label: "Hide column", on: () => setVisible(cols.filter((c) => c !== menu.col)), off: cols.length <= 1 },
+          ]}
+        />
+      ) : null}
+      {copyMsg || copyReady ? (
+        <div className="dg-toast" role="status">
+          {copyReady ? (
+            <>
+              <span>Ready to copy {copyReady.label}.</span>
+              <button
+                type="button"
+                className="ms-btn ms-btn--primary"
+                onClick={() => {
+                  const ok = copyText(copyReady.text);
+                  setCopyReady(null);
+                  say(ok ? "Copied — paste it into Excel." : "The browser did not allow copying.");
+                }}
+              >
+                Copy
+              </button>
+              <button type="button" className="ms-btn" onClick={() => setCopyReady(null)}>
+                Cancel
+              </button>
+            </>
+          ) : (
+            <span>{copyMsg}</span>
+          )}
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -836,5 +941,80 @@ function FieldsPanel({
         ) : null}
       </ul>
     </aside>
+  );
+}
+
+/** Text to the clipboard inside a click (works over plain http, where the async clipboard API is off). */
+function copyText(text: string): boolean {
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  ta.setAttribute("readonly", "");
+  ta.style.position = "fixed";
+  ta.style.top = "0";
+  ta.style.opacity = "0";
+  document.body.appendChild(ta);
+  ta.select();
+  let ok = false;
+  try {
+    ok = document.execCommand("copy");
+  } catch {
+    ok = false;
+  }
+  ta.remove();
+  return ok;
+}
+
+type MenuItem = { label: string; on: () => void; off?: boolean } | { sep: true };
+
+/** The right-click menu: at the pointer, kept on screen, closed by a click elsewhere or Escape. */
+function GridMenu({ x, y, items, onClose }: { x: number; y: number; items: MenuItem[]; onClose: () => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState({ left: x, top: y });
+  useEffect(() => {
+    const el = ref.current;
+    if (el) {
+      const r = el.getBoundingClientRect();
+      const t = setTimeout(
+        () => setPos({ left: Math.min(x, window.innerWidth - r.width - 8), top: Math.min(y, window.innerHeight - r.height - 8) }),
+        0,
+      );
+      const onDown = (e: MouseEvent) => {
+        if (!el.contains(e.target as Node)) onClose();
+      };
+      const onKey = (e: KeyboardEvent) => {
+        if (e.key === "Escape") onClose();
+      };
+      document.addEventListener("mousedown", onDown);
+      document.addEventListener("keydown", onKey);
+      window.addEventListener("blur", onClose);
+      return () => {
+        clearTimeout(t);
+        document.removeEventListener("mousedown", onDown);
+        document.removeEventListener("keydown", onKey);
+        window.removeEventListener("blur", onClose);
+      };
+    }
+  }, [x, y, onClose]);
+  return (
+    <div className="dg-menu" ref={ref} role="menu" style={{ left: pos.left, top: pos.top }} onContextMenu={(e) => e.preventDefault()}>
+      {items.map((it, i) =>
+        "sep" in it ? (
+          <hr key={i} />
+        ) : (
+          <button
+            key={i}
+            type="button"
+            role="menuitem"
+            disabled={it.off}
+            onClick={() => {
+              onClose();
+              it.on();
+            }}
+          >
+            {it.label}
+          </button>
+        ),
+      )}
+    </div>
   );
 }

@@ -4,11 +4,12 @@
  *   GET ?action=count&f=                 how many rows match
  *   GET ?action=values&col=&q=&f=        a column's values under the other filters
  *   GET ?action=csv&f=&c=                the filtered rows as CSV (load order, up to 1,000,000)
+ *   GET ?action=tsv&f=&c=&s=             the rows as tab-separated text for Copy ▸ Column / Table
  */
 import type { NextRequest } from "next/server";
 
 import { resolvePageSource } from "@/lib/page-source";
-import { gridCount, gridCsv, gridRows, gridValues, parseColumns, parseFilters, parseSort } from "@/lib/pages/data-grid";
+import { gridCount, gridCsv, gridRows, gridTsv, gridValues, parseColumns, parseFilters, parseSort } from "@/lib/pages/data-grid";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +30,10 @@ export async function GET(request: NextRequest): Promise<Response> {
     if (action === "values") {
       const out = await gridValues(sp.get("col") ?? "", filters, sp.get("q") ?? "");
       if (!out) return Response.json({ error: "unknown column" }, { status: 400 });
+      return Response.json(out, { headers: { "Cache-Control": "no-store" } });
+    }
+    if (action === "tsv") {
+      const out = await gridTsv(filters, parseColumns(sp.get("c")), parseSort(sp.get("s")));
       return Response.json(out, { headers: { "Cache-Control": "no-store" } });
     }
     if (action === "csv") {

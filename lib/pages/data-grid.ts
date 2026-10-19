@@ -246,3 +246,31 @@ export async function* gridCsv(filters: GridFilters, cols: string[]): AsyncGener
     if (rows.length < n) break;
   }
 }
+
+/** The most cells one "Copy" hands to the clipboard (Excel pastes it in a few seconds). */
+export const COPY_MAX_CELLS = 1_000_000;
+export const COPY_MAX_ROWS = 200_000;
+
+/**
+ * The rows on screen as tab-separated text for the clipboard (Copy ▸ Column /
+ * Table): header line, then the rows in the page's sort, at most COPY_MAX_ROWS
+ * and COPY_MAX_CELLS. Excel pastes it as a table.
+ */
+export async function gridTsv(
+  filters: GridFilters,
+  cols: string[],
+  sort: GridSort,
+): Promise<{ text: string; rows: number; capped: boolean }> {
+  await prepare();
+  const max = Math.max(1, Math.min(COPY_MAX_ROWS, Math.floor(COPY_MAX_CELLS / Math.max(1, cols.length))));
+  const p = new P();
+  const where = whereOf(filters, p);
+  const rows = await queryFresh<Record<string, string | null>>(
+    `SELECT ${selectOf(cols)} FROM weld w WHERE ${where} ORDER BY ${orderOf(sort)} LIMIT ${max + 1}`,
+    p.list,
+  );
+  const esc = (v: string | null) => (v === null ? "" : /[\t\r\n"]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
+  const body = rows.slice(0, max).map((r) => cols.map((k) => esc(r[k] ?? null)).join("\t"));
+  const head = cols.map((k) => esc(BY_KEY.get(k)!.label)).join("\t");
+  return { text: [head, ...body].join("\r\n"), rows: Math.min(rows.length, max), capped: rows.length > max };
+}
