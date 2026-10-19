@@ -11,7 +11,7 @@ import { TextNote } from "@/components/widgets/TextNote";
 
 type Group =
   | { kind: "kpi"; items: KpiWidget[] }
-  | { kind: "chart"; items: ChartWidget[]; kpis?: KpiWidget[] }
+  | { kind: "chart"; items: ChartWidget[]; kpis?: KpiWidget[]; sideKpis?: KpiWidget[] }
   | { kind: "text"; items: TextWidget[] }
   | { kind: "table"; item: TableWidget }
   /** The Graph pages: the rate and B.Log charts 2 × 2 on the left, the tables beside them (owner, 2026-10-19). */
@@ -60,6 +60,17 @@ function groupWidgets(widgets: Widget[]): Group[] {
       groups.splice(i, 1);
     }
   }
+  // A short KPI run right before a chart row with a Weld Type doughnut (the Graph
+  // pages) goes beside that doughnut, as a column (owner, 2026-10-19).
+  for (let i = 0; i + 1 < groups.length; i++) {
+    const k = groups[i];
+    const c = groups[i + 1];
+    if (k.kind === "kpi" && k.items.length < KPI_PANEL_FROM && c.kind === "chart" && !c.kpis
+        && c.items.some((x) => /doughnut|pie/.test(x.chart_type) && /weld type/i.test(x.title))) {
+      c.sideKpis = k.items;
+      groups.splice(i, 1);
+    }
+  }
   // A run of tables followed by the four rate / B.Log charts (the Graph pages)
   // becomes one block: the two rejection-rate charts over the two B.Log charts on
   // the left, the tables stacked on the right.
@@ -67,10 +78,11 @@ function groupWidgets(widgets: Widget[]): Group[] {
     let j = i;
     while (groups[j]?.kind === "table") j++;
     const c = groups[j];
-    if (j - i < 2 || c?.kind !== "chart" || c.kpis || c.items.length !== 4) continue;
+    if (j - i < 2 || c?.kind !== "chart" || c.kpis || c.items.length < 3 || c.items.length > 4) continue;
     const rate = c.items.filter((x) => /rej/i.test(x.title));
     const blog = c.items.filter((x) => /b\.log|backlog/i.test(x.title) && !/rej/i.test(x.title));
-    if (rate.length !== 2 || blog.length !== 2) continue;
+    // MEDGULF has the RT rate chart only: three charts
+    if (rate.length < 1 || blog.length !== 2 || rate.length + blog.length !== c.items.length) continue;
     const tables = groups.slice(i, j).map((g) => (g as { kind: "table"; item: TableWidget }).item);
     groups.splice(i, j - i + 1, { kind: "split", tables, charts: [...rate, ...blog] });
   }
@@ -133,11 +145,12 @@ export function PageView({ model: source, subtitle, top }: { model: PageModel; s
 
   return (
     <section className="page-section active pv-page" aria-labelledby="page-heading">
-      <div className="page-header">
+      {/* the CUM bar shares the title's row, one line for both (owner, 2026-10-19) */}
+      <div className={top ? "page-header pv-header-with-top" : "page-header"}>
         <h2 id="page-heading">{model.title}</h2>
+        {top}
       </div>
       {model.subtitle ? <p className="page-subtitle">{model.subtitle}</p> : null}
-      {top}
 
       {before.map((g, i) => renderGroup(g, i))}
       {refs.length ? (
@@ -175,7 +188,7 @@ function renderGroup(g: Group, i: number) {
             );
           case "chart":
             return (
-              <div className="dashboard-grid" key={i}>
+              <div className={g.sideKpis ? "dashboard-grid pv-compact" : "dashboard-grid"} key={i}>
                 {g.items.map((c, j) => (
                   // A trend with many categories (the 14-week welding progress) needs
                   // two grid tracks so its value labels don't collide (owner request
@@ -184,9 +197,22 @@ function renderGroup(g: Group, i: number) {
                   // and must keep its size and place.
                   <div className={c.labels.length >= 10 && !/doughnut|pie/.test(c.chart_type) ? "card card--wide" : "card"} key={j}>
                     <div className="card-header">{c.title}</div>
-                    <div className="chart-container">
-                      <ChartCard widget={c} />
-                    </div>
+                    {g.sideKpis && /doughnut|pie/.test(c.chart_type) ? (
+                      <div className="pv-donut-kpis">
+                        <div className="chart-container">
+                          <ChartCard widget={c} />
+                        </div>
+                        <div className="pv-side-kpis" role="group" aria-label="Key figures">
+                          {g.sideKpis.map((k, n) => (
+                            <KpiCard key={n} widget={k} />
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="chart-container">
+                        <ChartCard widget={c} />
+                      </div>
+                    )}
                   </div>
                 ))}
                 {g.kpis ? (

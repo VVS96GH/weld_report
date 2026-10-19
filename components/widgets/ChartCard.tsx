@@ -189,6 +189,23 @@ function axisLabel(label: unknown): string {
  * widget's options_notes carry "center-total" (the pbix flange doughnuts show
  * 197980 / 148091 in the hole).
  */
+/**
+ * Room between a doughnut's legend and its ring, so the value labels above the
+ * ring never run into the legend (owner, 2026-10-19).
+ */
+const legendGapPlugin = {
+  id: "legendGap",
+  beforeInit(chart: ChartJS) {
+    const legend = chart.legend as unknown as { fit: () => void; height: number } | undefined;
+    if (!legend) return;
+    const fit = legend.fit;
+    legend.fit = function (this: { height: number }) {
+      fit.call(this);
+      this.height += 22;
+    };
+  },
+};
+
 const centerTotalPlugin = {
   id: "centerTotal",
   afterDraw(chart: ChartJS) {
@@ -902,14 +919,14 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
     case "doughnut":
       chart = (
         <div className="chart-spin" title="Drag to turn the ring · double-click to reset" {...spinHandlers}>
-          <Chart ref={chartRef} key={version} type="doughnut" data={data} options={options} plugins={[centerTotalPlugin]} />
+          <Chart ref={chartRef} key={version} type="doughnut" data={data} options={options} plugins={[centerTotalPlugin, legendGapPlugin]} />
         </div>
       );
       break;
     case "pie":
       chart = (
         <div className="chart-spin" title="Drag to turn the pie · double-click to reset" {...spinHandlers}>
-          <Chart ref={chartRef} key={version} type="pie" data={data} options={options} plugins={[centerTotalPlugin]} />
+          <Chart ref={chartRef} key={version} type="pie" data={data} options={options} plugins={[centerTotalPlugin, legendGapPlugin]} />
         </div>
       );
       break;

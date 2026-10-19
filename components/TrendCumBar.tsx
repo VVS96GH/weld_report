@@ -49,7 +49,7 @@ export function TrendCumBar({ lastWeek, cutoff }: { lastWeek: string | null; cut
     }
   }
   return (
-    <div className="card rs-cum">
+    <div className="card rs-cum rs-cum--inline">
       <div className="rs-cum-text">
         <strong>CUM Trend file</strong> (RT and PWHT B.Log): last week {lastWeek ? dmy(lastWeek) : "—"}.{" "}
         {pending ? `The week ${dmy(cutoff)} is not in it yet; the charts show it from the live data.` : `Up to date with the cut-off ${dmy(cutoff)}.`}

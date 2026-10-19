@@ -4415,3 +4415,103 @@ th:hover > .th-resize::after, .th-resize:active::after { opacity: 0.5; }
     grid-template-columns: minmax(0, 1fr);
   }
 }
+/* Graph pages: the doughnut narrower, the four key figures in a column beside it */
+.pv-donut-kpis {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(200px, 34%);
+  gap: 12px;
+  align-items: stretch;
+}
+.pv-side-kpis {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  justify-content: center;
+}
+/* Graph pages fit one screen as far as they can (owner, 2026-10-19): lower charts */
+.pv-compact .chart-container,
+.pv-donut-kpis {
+  height: 215px;
+}
+.pv-donut-kpis .chart-container {
+  height: 100%;
+}
+.pv-split .chart-container {
+  height: 190px;
+}
+.pv-split .card,
+.pv-compact .card {
+  padding-top: 10px;
+  padding-bottom: 8px;
+}
+.pv-split .card-header,
+.pv-compact .card-header {
+  margin-bottom: 4px;
+  padding-bottom: 6px;
+}
+.pv-split-tables .section-title {
+  margin-top: 0;
+}
+.pv-side-kpis {
+  height: 100%;
+  display: grid !important;
+  grid-auto-rows: minmax(0, 1fr);
+}
+.pv-side-kpis .stat-box {
+  min-height: 0 !important;
+  height: auto;
+  padding: 6px 14px !important;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.pv-side-kpis .stat-box .stat-label {
+  margin-top: 2px;
+}
+/* the CUM bar in the page title's row, compact */
+.pv-header-with-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.rs-cum.rs-cum--inline {
+  margin: 0;
+  padding: 4px 10px;
+  gap: 10px;
+  flex: 0 1 auto;
+}
+.rs-cum--inline .rs-cum-text {
+  font-size: 0.72rem;
+}
+.rs-cum--inline .ms-btn {
+  padding: 4px 10px;
+  font-size: 0.72rem;
+  min-height: 0;
+}
+/* tighter rhythm on the Graph pages */
+.pv-compact,
+.pv-split {
+  margin-bottom: 10px;
+}
+.pv-compact .chart-container,
+.pv-donut-kpis {
+  height: 200px;
+}
+.pv-split .chart-container {
+  height: 170px;
+}
+.pv-split-charts {
+  gap: 10px;
+}
+/* four key figures inside the 200 px doughnut row */
+.pv-side-kpis {
+  gap: 4px !important;
+}
+.pv-side-kpis .stat-box {
+  padding: 3px 12px !important;
+}
+.pv-side-kpis .stat-box .stat-label {
+  margin-top: 0;
+}
