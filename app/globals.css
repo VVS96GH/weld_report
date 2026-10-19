@@ -4701,7 +4701,8 @@ th:hover > .th-resize::after, .th-resize:active::after { opacity: 0.5; }
    %RT · %UT · PWHT B.Log · key figures below. */
 @media (min-width: 1151px) {
   .dashboard-grid.pv-page1 {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    /* the charts on the left get the doughnut's and key figures' spare width (owner, 2026-10-19) */
+    grid-template-columns: repeat(3, minmax(0, 1.18fr)) repeat(2, minmax(0, 0.78fr));
     grid-template-areas:
       "prog prog rtb wt wt"
       "rtr utr pwht kpi kpi";
