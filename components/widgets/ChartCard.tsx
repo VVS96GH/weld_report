@@ -789,7 +789,14 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
       // With threshold lines the rate itself is the neutral series (pbix: blue) and
       // the red is reserved for the "Unacceptable" limit.
       const color = thresholds ? palette.colors[0] ?? palette.primary : seriesColor(ds.label, i, palette, widget.canvas_id);
-      const base = { label: ds.label, data: slice(ds.data).map(toNum), stack: ds.stack };
+      // forecast bars: a value under 0.5 draws no bar and takes no slot (skipNull), so
+      // the remaining bars of a party spread out and their numbers stay clear
+      const gap = widget.canvas_id === "forecast_bar";
+      const base = {
+        label: ds.label,
+        data: slice(ds.data).map(toNum).map((v) => (gap && typeof v === "number" && Math.abs(v) < 0.5 ? null : v)),
+        stack: ds.stack,
+      };
       if (widget.chart_type === "line") {
         // "area" (Welder Performance trends, the pbix stacked-area visual): each series
         // fills down to the one below it, translucent so the stack stays readable
@@ -914,6 +921,7 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
     () => ({
       responsive: true,
       ...(circular ? { rotation } : {}),
+      ...(widget.canvas_id === "forecast_bar" ? { skipNull: true } : {}),
       // a doughnut with its total in the hole gets a wider hole, so the number fits (owner, 2026-10-19)
       ...(circular && notes.includes("center-total") ? { cutout: "64%" } : {}),
       // the forecast page's two doughnuts: a thin ring and smaller labels (owner, 2026-10-19)

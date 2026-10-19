@@ -3280,7 +3280,8 @@ html {
 /* the chart heights follow the window height, so the page fits whatever the
    browser leaves for it (owner, 2026-10-15); a floor keeps them readable */
 .forecast-bar .chart-container {
-  height: clamp(200px, calc((100dvh - 420px) * 0.56), 340px);
+  /* taller, so each party's bars and their numbers have room (owner, 2026-10-19) */
+  height: clamp(260px, calc((100dvh - 420px) * 0.56 + 60px), 400px);
 }
 .forecast-done-row {
   display: grid;
@@ -4718,4 +4719,43 @@ th:hover > .th-resize::after, .th-resize:active::after { opacity: 0.5; }
 }
 .pv-page1 > .pv-p1-weldtype .card-header {
   margin-bottom: 4px;
+}
+/* the zoom slider: a thin track and a vertical tick for a thumb, as in PBI (owner, 2026-10-19) */
+.zoom-range {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  height: 14px;
+  cursor: pointer;
+}
+.zoom-range::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--text-secondary, #9fb3c8) 45%, transparent);
+}
+.zoom-range::-moz-range-track {
+  height: 3px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--text-secondary, #9fb3c8) 45%, transparent);
+}
+.zoom-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 3px;
+  height: 13px;
+  margin-top: -5px;
+  border: 0;
+  border-radius: 1px;
+  background: var(--fg, #e6edf5);
+}
+.zoom-range::-moz-range-thumb {
+  width: 3px;
+  height: 13px;
+  border: 0;
+  border-radius: 1px;
+  background: var(--fg, #e6edf5);
+}
+.zoom-range:focus-visible {
+  outline: 1px solid var(--color-1, #4a8fe7);
+  outline-offset: 2px;
 }
