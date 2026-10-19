@@ -4329,3 +4329,14 @@ th:hover > .th-resize::after, .th-resize:active::after { opacity: 0.5; }
   transform: translateX(0);
   opacity: 1;
 }
+.dg-fx {
+  display: inline-block;
+  margin-inline-end: 5px;
+  padding: 0 4px;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-style: italic;
+  font-weight: 700;
+  color: #ffd166;
+  border: 1px solid currentColor;
+}

@@ -12,7 +12,7 @@
  * Column names come only from GRID_COLUMNS and values only as bound
  * parameters, so nothing from the URL reaches the SQL text.
  */
-import { query, queryFresh } from "@/lib/db";
+import { agingClock, query, queryFresh } from "@/lib/db";
 import { GRID_COLUMNS, type GridCol } from "@/lib/data-grid-columns";
 
 export type GridFilter = {
@@ -72,6 +72,16 @@ export function parseSort(raw: string | null | undefined): GridSort {
 
 // ── SQL ──
 
+/** TODAY() of the calculated columns: the day the data was loaded (as every aging column). */
+let today = "DATE '1900-01-01'";
+async function prepare(): Promise<void> {
+  const d = await agingClock();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(d)) today = `DATE '${d}'`;
+}
+
+/** A column as SQL: the stored column, or a calculated column's formula. */
+const exprOf = (col: GridCol) => (col.sql ? `(${col.sql.replaceAll("{today}", today)})` : `w.${col.key}`);
+
 class P {
   list: unknown[] = [];
   add(v: unknown): string {
@@ -84,7 +94,7 @@ const isNum = (s: string) => s.trim() !== "" && Number.isFinite(Number(s.replace
 const isDate = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s.trim());
 
 function cond(col: GridCol, f: GridFilter, p: P): string[] {
-  const c = `w.${col.key}`;
+  const c = exprOf(col);
   const out: string[] = [];
   if (f.in?.length) {
     const blank = f.in.includes(BLANK);
@@ -131,7 +141,7 @@ function whereOf(filters: GridFilters, p: P, skip?: string): string {
 
 /** A column as text: dates YYYY-MM-DD, yes/no columns Y / N (as the pbix shows them). */
 function textOf(col: GridCol): string {
-  const c = `w.${col.key}`;
+  const c = exprOf(col);
   if (col.type === "date") return `to_char(${c}, 'YYYY-MM-DD')`;
   if (col.type === "bool") return `CASE WHEN ${c} THEN 'Y' WHEN NOT ${c} THEN 'N' END`;
   return `${c}::text`;
@@ -147,7 +157,8 @@ function selectOf(cols: string[]): string {
     .join(", ");
 }
 
-const orderOf = (sort: GridSort) => (sort ? `w.${sort.key} ${sort.dir === "desc" ? "DESC" : "ASC"} NULLS LAST, w.id` : "w.id");
+const orderOf = (sort: GridSort) =>
+  sort ? `${exprOf(BY_KEY.get(sort.key)!)} ${sort.dir === "desc" ? "DESC" : "ASC"} NULLS LAST, w.id` : "w.id";
 
 /** One page of rows. */
 export async function gridRows(
@@ -156,6 +167,7 @@ export async function gridRows(
   sort: GridSort,
   offset: number,
 ): Promise<{ rows: (string | null)[][]; more: boolean }> {
+  await prepare();
   const p = new P();
   const where = whereOf(filters, p);
   const sql =
@@ -168,6 +180,7 @@ export async function gridRows(
 
 /** How many rows match (exact). */
 export async function gridCount(filters: GridFilters): Promise<number> {
+  await prepare();
   const p = new P();
   const r = await query<{ n: string }>(`SELECT count(*)::text AS n FROM weld w WHERE ${whereOf(filters, p)}`, p.list);
   return Number(r[0]?.n ?? 0);
@@ -182,11 +195,12 @@ export async function gridValues(
   filters: GridFilters,
   q: string,
 ): Promise<{ values: string[]; more: boolean } | null> {
+  await prepare();
   const col = BY_KEY.get(key);
   if (!col) return null;
   const p = new P();
   const where = whereOf(filters, p, key);
-  const c = `w.${key}`;
+  const c = exprOf(col);
   const text = textOf(col);
   const like = q.trim() ? ` AND ${text} ILIKE ${p.add(`%${q.trim().replace(/[\\%_]/g, "\\$&")}%`)}` : "";
   const limit = 500;
@@ -210,6 +224,7 @@ export async function gridValues(
 
 /** CSV export: header + rows, in load order, up to EXPORT_MAX rows, 20,000 at a time. */
 export async function* gridCsv(filters: GridFilters, cols: string[]): AsyncGenerator<string> {
+  await prepare();
   const esc = (v: string | null) => (v === null ? "" : /[",\r\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
   yield "﻿" + cols.map((k) => esc(BY_KEY.get(k)!.label)).join(",") + "\r\n";
   let last = 0;

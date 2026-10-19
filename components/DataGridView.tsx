@@ -803,6 +803,11 @@ function FieldsPanel({
               title="Go to this column"
               onClick={() => onJump(c.key)}
             >
+              {c.fx ? (
+                <span className="dg-fx" title="Calculated column (a pbix DAX formula)">
+                  fx
+                </span>
+              ) : null}
               {c.label}
               {filtered.includes(c.key) ? (
                 <span className="dg-field-f" aria-label="filtered">

@@ -6,7 +6,14 @@
  * a column added to `weld` later shows up only once it is listed here.
  */
 export type GridColType = "text" | "num" | "date" | "bool";
-export type GridCol = { key: string; label: string; type: GridColType };
+export type GridCol = {
+  key: string;
+  label: string;
+  type: GridColType;
+  /** A pbix calculated column: its SQL over the row `w` ({today} = the load day). */
+  sql?: string;
+  fx?: boolean;
+};
 
 const CATALOG: readonly GridCol[] = [
   {
@@ -1098,6 +1105,10 @@ const CATALOG: readonly GridCol[] = [
     key: "welder_id",
     label: "Welder ID",
     type: "text",
+    // the pbix calculated column, Welder & "-" & Sub-Contractor, for every row;
+    // the loaded welder_id equals it where present (CCC, Acciona, Inco)
+    sql: "coalesce(w.welder, '') || '-' || coalesce(w.sub_contractor, '')",
+    fx: true,
   },
   {
     key: "testpack_no_all",
@@ -1268,7 +1279,92 @@ export const GRID_DEFAULT_COLUMNS: readonly string[] = [
 ];
 
 /** Every column, the basic ones first (Joint ID leads, as in the pbix data view), then the rest in table order. */
+
+
+// ── the pbix calculated columns (DAX), computed per row ──
+
+/** A text column's value as the DAX `<> ""` test sees it (blank and "" alike). */
+const nz = (c: string) => `coalesce(w.${c}, '') <> ''`;
+const up = (c: string) => `upper(coalesce(w.${c}, ''))`;
+const RT_TYPES = `('BW', 'GW', 'CLET', 'MW')`;
+const HOLD = `('H','HS','HS CCC','SS','T','T1','T1S','T1-1','T1-1S','T1-2S','T2','T3','T2-1','T2-1S','T2-2S','T2S')`;
+const bands = (x: string) =>
+  `CASE WHEN ${x} >= 1 AND ${x} <= 7 THEN '1. 7 Days' WHEN ${x} > 7 AND ${x} <= 30 THEN '2. 7 to 30 Days'` +
+  ` WHEN ${x} > 30 AND ${x} <= 90 THEN '3. 30 to 90 Days' WHEN ${x} > 90 AND ${x} <= 180 THEN '4. 90 to 180 Days'` +
+  ` WHEN ${x} > 180 THEN '5. Above 180 Days' END`;
+const DAYS_FITUP = `CASE WHEN w.weld_date IS NULL THEN {today} - w.fitup_date END`;
+const DAYS_WELD =
+  `CASE WHEN w.rt_date IS NULL AND ${up("weld_type")} IN ${RT_TYPES} AND ${up("rt_weld_status")} IN ${HOLD} THEN {today} - w.weld_date` +
+  ` WHEN ${up("weld_type")} IN ${RT_TYPES} AND w.weld_date IS NOT NULL AND w.rt_pct = 100 AND coalesce(w.rt_report, '') = ''` +
+  ` AND coalesce(w.rt_weld_status, '') IN ('?', '') THEN {today} - w.weld_date END`;
+const WELDER_ID = `coalesce(w.welder, '') || '-' || coalesce(w.sub_contractor, '')`;
+const SC_KEY = `coalesce(w.service_class, '') || ' ' || coalesce(w.service_cat, '') || ' ' || coalesce(w.ndt_remarks, '') || ' ' || coalesce(w.rt_pct::text, '')`;
+const pct = (own: string, ccc: string) =>
+  `CASE WHEN ${up("sub_contractor")} <> 'CCC' THEN CASE WHEN w.${own} >= 0 THEN w.${own} END ELSE CASE WHEN w.${ccc} >= 0 THEN w.${ccc} END END`;
+const either = (a: string, b: string) => `coalesce(nullif(w.${a}, ''), nullif(w.${b}, ''))`;
+
+/**
+ * The pbix calculated columns of "Project WD+WR+INCO+Acciona" that read only
+ * the row itself, ported from their DAX (analysis/pbix/raw-2026-10-18/model/
+ * calculated-columns.json), owner 2026-10-19. DAX compares text case-blind and
+ * treats blank and "" alike; TODAY() is the day the data was loaded ({today}).
+ * Computed when read, so they cost nothing at refresh.
+ */
+export const FX_COLUMNS: readonly GridCol[] = [
+  { key: "fx_repair_reweld", label: 'Repair & Reweld "PR all"', type: "text", fx: true,
+    sql: `CASE WHEN ${up("sub_contractor")} <> 'INCO' THEN CASE WHEN upper(right(w.joint_id, 2)) IN ('R1', 'R2') THEN 'Repair' WHEN upper(right(w.joint_id, 2)) = 'RW' THEN 'Reweld' WHEN ${up("repair_suffix")} = 'RW1' THEN 'Reweld' WHEN ${up("repair_suffix")} = 'RS1' THEN 'RS1' END END` },
+  { key: "fx_days", label: 'No of Days "PR all"', type: "num", fx: true, sql: `{today} - w.weld_date` },
+  { key: "fx_days_fitup", label: 'No of Days Fit-UP - TODAY "PR all"', type: "num", fx: true, sql: DAYS_FITUP },
+  { key: "fx_days_fitup_status", label: 'No Of Days Fit-UP - Today STATUS "PR all"', type: "text", fx: true, sql: bands(`(${DAYS_FITUP})`) },
+  { key: "fx_days_weld", label: 'No of Days Weld Date - TODAY "PR all"', type: "num", fx: true, sql: DAYS_WELD },
+  { key: "fx_days_weld_status", label: 'No Of Days Weld Date - Today RT STATUS "PR all"', type: "text", fx: true, sql: bands(`(${DAYS_WELD})`) },
+  { key: "fx_report_type", label: "Report TYPE", type: "text", fx: true,
+    sql: `CASE WHEN ${nz("rt_report")} AND ${up("rt_ut")} <> 'UT' THEN 'RT' WHEN ${nz("ut_report")} THEN 'UT' WHEN ${up("rt_ut")} = 'UT' THEN 'UT' WHEN ${nz("pt_report")} THEN 'PT' WHEN ${nz("pmi_report")} THEN 'PMI' WHEN ${nz("pwht_report")} THEN 'PWHT' WHEN ${nz("pwht_report_no_ccc")} THEN 'PWHT' WHEN ${nz("mt_report")} THEN 'MT' WHEN ${nz("mt_report_ccc")} THEN 'MT' END` },
+  { key: "fx_pwht_status", label: "PWHT Status PR ALL", type: "text", fx: true,
+    sql: `CASE WHEN ${up("pwht_y_n")} = 'Y' THEN 'Y' WHEN ${up("pwht_y_n")} = 'N' THEN 'N' WHEN w.pwht_y_n = '25.01' THEN '25.01' WHEN ${up("pwht_y_n_ccc")} = 'Y' THEN 'Y' WHEN ${up("pwht_y_n_ccc")} = 'N' THEN 'N' END` },
+  { key: "fx_pwht_report", label: 'PWHT Report "PR All"', type: "text", fx: true, sql: either("pwht_report", "pwht_report_no_ccc") },
+  { key: "fx_pwht_date", label: 'PWHT Date "PR All"', type: "date", fx: true, sql: `coalesce(w.pwht_date, w.pwht_date_no_ccc)` },
+  { key: "fx_ut_report", label: 'UT Report "PR All"', type: "text", fx: true,
+    sql: `CASE WHEN ${nz("ut_report")} THEN w.ut_report WHEN ${up("sub_contractor")} = 'CCC' THEN nullif(w.manual_ut_report_no_all, '') WHEN ${up("rt_ut")} = 'UT' THEN w.rt_report END` },
+  { key: "fx_ut_date", label: 'UT Date "PR All"', type: "date", fx: true,
+    sql: `CASE WHEN w.ut_date IS NOT NULL THEN w.ut_date WHEN ${up("sub_contractor")} = 'CCC' THEN w.manual_ut_date_all WHEN ${up("rt_ut")} = 'UT' THEN w.rt_date END` },
+  { key: "fx_mt_report", label: 'MT Report "PR All"', type: "text", fx: true, sql: either("mt_report", "mt_report_ccc") },
+  { key: "fx_mt_date", label: 'MT Date "PR All"', type: "date", fx: true, sql: `coalesce(w.mt_date, w.mt_date_ccc)` },
+  { key: "fx_mt_pct", label: 'MT % "PR All"', type: "num", fx: true, sql: pct("mt_pct", "mt_pct_ccc") },
+  { key: "fx_pt_report", label: 'PT Report "PR All"', type: "text", fx: true, sql: either("pt_report", "pt_report_ccc") },
+  { key: "fx_pt_date", label: 'PT Date "PR All"', type: "date", fx: true, sql: `coalesce(w.pt_date, w.pt_date_ccc)` },
+  { key: "fx_pt_pct", label: 'PT % "PR All"', type: "num", fx: true, sql: pct("pt_pct", "pt_pct_ccc") },
+  { key: "fx_pmi_report", label: 'PMI Report "PR All"', type: "text", fx: true, sql: either("pmi_report", "pmi_report_ccc") },
+  { key: "fx_pmi_date", label: 'PMI Date "PR All"', type: "date", fx: true, sql: `coalesce(w.pmi_date, w.pmi_date_ccc)` },
+  { key: "fx_ht_report", label: 'HT Report "PR All"', type: "text", fx: true, sql: either("ht_report", "ht_report_ccc") },
+  { key: "fx_ht_date", label: 'HT Date "PR All"', type: "date", fx: true, sql: `coalesce(w.ht_date, w.ht_date_ccc)` },
+  { key: "fx_dwir_report", label: 'DWIR Report "PR All"', type: "text", fx: true, sql: either("dwir_no", "dwir_ccc_from_jr") },
+  { key: "fx_ut_status_trfl", label: "UT Status TR/FL", type: "text", fx: true,
+    sql: `CASE WHEN ${up("ut_acc_rej")} = ${up("manual_ut_status")} THEN 'TRUE' ELSE 'FALSE' END` },
+  { key: "fx_line", label: "LINE", type: "text", fx: true, sql: `nullif(substr(w.iso_number, 9), '')` },
+  { key: "fx_dia_band", label: "Dia Inch >20<", type: "text", fx: true,
+    sql: `CASE WHEN coalesce(w.dia_inch, 0) <= 20 THEN '0-20' WHEN w.dia_inch <= 200 THEN '20-199' ELSE 'Greater than 199' END` },
+  { key: "fx_sc_welder", label: "Service Class + Service Cat+NDT Remarks+Welder ID", type: "text", fx: true, sql: `${SC_KEY} || ' ' || ${WELDER_ID}` },
+  { key: "fx_sc_sub", label: "Service Class + Service Cat+NDT Remarks+Sub-Contractor", type: "text", fx: true, sql: `${SC_KEY} || ' ' || coalesce(w.sub_contractor, '')` },
+  { key: "fx_weld_cat_new", label: "Weld CAT (NEW)", type: "text", fx: true,
+    sql: `CASE WHEN ${up("weld_type")} = 'SW' AND ${up("weld_cat")} = 'F' THEN 'S' ELSE w.weld_cat END` },
+  { key: "fx_by_ut_all", label: "By UT All", type: "text", fx: true,
+    sql: `CASE WHEN w.by_ut THEN 'BY UT' WHEN ${up("rt_ut")} = 'UT' THEN 'BY UT' WHEN ${up("ht_remarks")} = 'PAUT' THEN 'BY UT' WHEN ${nz("manual_ut_report_no_all")} THEN 'BY UT' END` },
+  { key: "fx_days_rt_sel", label: "Days Between RT Selected and RT Date", type: "num", fx: true, sql: `w.rt_date - w.rt_selected_date` },
+  { key: "fx_month_rt", label: "MonthRT", type: "date", fx: true, sql: `w.rt_date` },
+  { key: "fx_year_rt", label: "YearRT", type: "text", fx: true, sql: `to_char(w.rt_date, 'YYYY')` },
+  { key: "fx_full_cut", label: "Exlude Full Cut & Debris", type: "text", fx: true,
+    sql: `CASE WHEN ${up("rt_re_shoot_status")} = 'FULL CUT' AND w.rt_re_shoot_reason ILIKE '%debris%' AND ${up("defect_code")} = 'XX' THEN 'Exclude Films:Debris' END` },
+  { key: "fx_train_sg", label: "Train SG", type: "text", fx: true,
+    sql: `CASE WHEN ${up("service_cat")} IN ('SG', 'SGCS') THEN substr(w.joint_id, 4, 3) END` },
+  { key: "fx_stainless", label: "Stainless steel", type: "text", fx: true, sql: `CASE WHEN w.material_type ILIKE '%SS%' THEN 'Stainless Steel' END` },
+  { key: "fx_excl_ut_films", label: "Exlude RT Films from UT", type: "text", fx: true,
+    sql: `CASE WHEN w.by_ut AND ${up("sub_contractor")} <> 'INCO' AND w.rt_report ILIKE '%UT%' AND (w.total_no_of_films_rej > 0 OR w.rt_film_total > 0) THEN 'Exclude UT Films' END` },
+];
+
+/** Every column: the basic ones first (Joint ID leads, as in the pbix data view), the rest in table order, then the calculated ones. */
 export const GRID_COLUMNS: readonly GridCol[] = [
   ...GRID_DEFAULT_COLUMNS.map((k) => CATALOG.find((c) => c.key === k)!),
   ...CATALOG.filter((c) => !GRID_DEFAULT_COLUMNS.includes(c.key)),
+  ...FX_COLUMNS,
 ];
