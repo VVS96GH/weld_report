@@ -4686,3 +4686,9 @@ th:hover > .th-resize::after, .th-resize:active::after { opacity: 0.5; }
   height: auto;
   min-height: 300px;
 }
+.pv-graph-rate .chart-container {
+  height: 150px;
+}
+.pv-graph-rate .chart-container {
+  height: 165px;
+}

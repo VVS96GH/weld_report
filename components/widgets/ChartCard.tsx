@@ -530,7 +530,10 @@ function valueLabels(type: string, stacked: boolean, percent: boolean, circular:
         const ds = ctx.dataset as { threshold?: boolean; data: unknown[] };
         // the limit's name sits above the dashed line near its right end (second-to-last
         // point, so the text is never clipped by the chart edge)
-        return ds.threshold ? ctx.dataIndex === Math.max(0, ds.data.length - 2) : true;
+        if (!ds.threshold) return true;
+        // "Attention" near the left end, "Unacceptable" near the right: apart (owner, 2026-10-19)
+        const attention = /attention/i.test((ds as { label?: string }).label ?? "");
+        return ctx.dataIndex === (attention ? Math.min(1, ds.data.length - 1) : Math.max(0, ds.data.length - 2));
       },
       formatter: (v: unknown, ctx: DatalabelCtx) => {
         const ds = ctx.dataset as { threshold?: boolean; label?: string };
@@ -540,7 +543,13 @@ function valueLabels(type: string, stacked: boolean, percent: boolean, circular:
         const ds = ctx.dataset as { threshold?: boolean; borderColor?: string };
         return ds.threshold ? ds.borderColor ?? palette.fg : palette.fg;
       },
-      align: "top",
+      // a limit's name sits UNDER its dashed line, so the two names and the
+      // point values above the line near 0 % never touch (owner, 2026-10-19)
+      align: (ctx: DatalabelCtx) => {
+        const ds = ctx.dataset as { threshold?: boolean; label?: string };
+        if (!ds.threshold) return "top";
+        return /attention/i.test(ds.label ?? "") ? "top" : "bottom";
+      },
       anchor: "end",
       offset: 3,
       clamp: true,
@@ -859,7 +868,8 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
               stacked: stackedX,
               // only the y-center line sets it: an explicit undefined reads as
               // `offset: false` and cut the first and last bars in half
-              ...(yCenter ? { offset: true } : {}),
+              // the points stand off the plot edges, so the first value label clears the y ticks
+              ...(yCenter || thresholds ? { offset: true } : {}),
               ticks: {
                 color: palette.text,
                 font: { size: 10, family: palette.font },
@@ -879,7 +889,9 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
               // headroom so stack totals / line-point labels never sit on the legend;
               // a thresholded rate is framed by its upper limit instead
               grace: thresholds || yCenter ? 0 : "12%",
-              suggestedMax: thresholds ? thresholds.unacceptable * 1.2 : undefined,
+              // the axis tops out at the upper limit rounded up (RT 3 %, UT 2 %; owner,
+              // 2026-10-19), higher only when a point is above it
+              suggestedMax: thresholds ? Math.ceil(thresholds.unacceptable) : undefined,
               max: yCenter && visibleMax > 0 ? niceCeil(visibleMax * 2) : undefined,
               ticks: {
                 color: palette.text,
