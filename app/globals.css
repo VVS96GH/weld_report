@@ -2413,6 +2413,29 @@ html {
 .rs-chart-box--donut {
   height: 200px;
 }
+/* Rej. summary doughnut legend: a block on the right, rows left-aligned */
+.rs-legend {
+  list-style: none;
+  margin: 0 0 0 auto;
+  padding: 0;
+  width: max-content;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-family: var(--font-mono, inherit);
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+.rs-legend li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.rs-legend-box {
+  width: 12px;
+  height: 12px;
+  flex: none;
+}
 [data-mood="ten"] .rs-head,
 [data-mood="ten"] .rs-notes-text {
   color: var(--fg);

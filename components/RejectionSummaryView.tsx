@@ -146,7 +146,7 @@ function SubRow({ kind, sub, colors, periodWord }: { kind: SummaryPage["kind"]; 
     chart_type: "doughnut",
     labels: sub.donut.map((d) => d.status),
     datasets: [{ label: "Welders", data: sub.donut.map((d) => d.qty) }],
-    options_notes: "legend-end",
+    options_notes: "legend-none",
   };
   const trend: ChartWidget = {
     kind: "chart",
@@ -165,9 +165,20 @@ function SubRow({ kind, sub, colors, periodWord }: { kind: SummaryPage["kind"]; 
       <div className="rs-chart">
         <h4 className="rs-head">{donut.title}</h4>
         {sub.donut.length ? (
-          <div className="rs-chart-box rs-chart-box--donut">
-            <ChartCard widget={donut} paletteOverride={{ colors: sub.donut.map((d) => statusColor(d.status)) }} />
-          </div>
+          <>
+            {/* the legend as a block on the right, its rows left-aligned (owner, 2026-10-19) */}
+            <ul className="rs-legend" aria-label="Statuses">
+              {sub.donut.map((d) => (
+                <li key={d.status}>
+                  <span className="rs-legend-box" style={{ background: statusColor(d.status) }} aria-hidden="true" />
+                  {d.status}
+                </li>
+              ))}
+            </ul>
+            <div className="rs-chart-box rs-chart-box--donut">
+              <ChartCard widget={donut} paletteOverride={{ colors: sub.donut.map((d) => statusColor(d.status)) }} />
+            </div>
+          </>
         ) : (
           <p className="error-empty">No RT in this period.</p>
         )}
