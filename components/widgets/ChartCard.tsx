@@ -894,6 +894,8 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
       ...(circular ? { rotation } : {}),
       // a doughnut with its total in the hole gets a wider hole, so the number fits (owner, 2026-10-19)
       ...(circular && notes.includes("center-total") ? { cutout: "64%" } : {}),
+      // the forecast page's two doughnuts: a thin ring and smaller labels (owner, 2026-10-19)
+      ...(SMALL_RINGS.has(widget.canvas_id) ? { cutout: "68%" } : {}),
       maintainAspectRatio: false,
       // drawn at no less than 2x the CSS size: canvas text stays crisp at any
       // browser zoom or display scaling (owner, 2026-10-15: "числа слегка размыты")
@@ -909,7 +911,7 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
         // the room for labels grows with them (palette.scale, the page zoom)
         padding: scalePad(palette.scale, circular
           ? notes.includes("legend-bottom")
-            ? { top: 32, bottom: 4, left: 30, right: 30 } // value + % on two lines
+            ? { top: 32, bottom: SMALL_RINGS.has(widget.canvas_id) ? 24 : 4, left: 30, right: 30 } // value + % on two lines
             : notes.includes("label-name-pct")
               ? { top: 18, bottom: 18, left: 24, right: 24 } // "Torquing 60,030 (28.81%)" is not cut at the edge
               : notes.includes("legend-none")
@@ -932,7 +934,7 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
           // legend to the 7 largest so the chart keeps its size; the rest show on hover
           ...(circular ? { filter: (item: { index?: number }) => (item.index ?? 0) < 7 } : {}) } },
         tooltip: { enabled: true },
-        datalabels: notes.includes("area") ? areaLabels(palette) : valueLabels(widget.chart_type, stackedX || stackedY, percentAxis, circular, palette, widget.datasets.length, end - start, horizontal, notes.includes("label-name-pct")),
+        datalabels: smallRing(widget.canvas_id, palette.scale, notes.includes("area") ? areaLabels(palette) : valueLabels(widget.chart_type, stackedX || stackedY, percentAxis, circular, palette, widget.datasets.length, end - start, horizontal, notes.includes("label-name-pct"))),
         centerTotal: circular && notes.includes("center-total") ? { color: palette.fg, font: palette.font ?? "sans-serif" } : undefined,
         barLegendGap: {
           px: widget.chart_type === "bar" && !(stackedX || stackedY) && !horizontal && widget.datasets.length > 2 ? Math.round(26 * palette.scale) : 0,
@@ -1086,4 +1088,12 @@ function scalePad(k: number, p: Partial<Record<"top" | "bottom" | "left" | "righ
   const out: Partial<Record<"top" | "bottom" | "left" | "right", number>> = {};
   for (const [side, v] of Object.entries(p) as ["top" | "bottom" | "left" | "right", number][]) out[side] = Math.round(v * k);
   return out;
+}
+
+/** Doughnuts drawn with a thin ring and labels a size down (owner, 2026-10-19). */
+const SMALL_RINGS = new Set(["forecast_donut_done", "forecast_donut_backlog"]);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function smallRing(id: string, scale: number, labels: any): any {
+  if (!SMALL_RINGS.has(id) || !labels?.font) return labels;
+  return { ...labels, font: { ...labels.font, size: Math.round(10 * scale) } };
 }
