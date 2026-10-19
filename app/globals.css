@@ -4798,3 +4798,15 @@ th:hover > .th-resize::after, .th-resize:active::after { opacity: 0.5; }
 .section-actions .blog-btn:hover {
   filter: brightness(1.06);
 }
+.card-header--actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.card-header--actions .section-actions {
+  margin-left: auto;
+}
+.card-header--actions .section-actions .ms-btn {
+  top: 0;
+}

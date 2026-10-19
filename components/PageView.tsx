@@ -229,7 +229,17 @@ function renderGroup(g: Group, i: number) {
                     }
                     key={j}
                   >
-                    <div className="card-header">{c.title}</div>
+                    {page1 && (c.canvas_id === "chart1_rtbacklog" || c.canvas_id === "chart1_pwhtbacklog") ? (
+                      // the same joint export as the page-2 table's buttons (owner, 2026-10-19)
+                      <div className="card-header card-header--actions">
+                        <span>{c.title}</span>
+                        <span className="section-actions">
+                          <BacklogExport kind={c.canvas_id === "chart1_rtbacklog" ? "rt" : "pwht"} />
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="card-header">{c.title}</div>
+                    )}
                     {g.sideKpis && /doughnut|pie/.test(c.chart_type) ? (
                       <div className="pv-donut-kpis">
                         <div className="chart-container">
@@ -344,12 +354,8 @@ function renderGroup(g: Group, i: number) {
                   <div className="section-title section-title--actions">
                     <span>{g.item.title}</span>
                     <span className="section-actions">
-                      <a className="ms-btn blog-btn blog-btn--rt" href="/api/backlog-export?kind=rt" download title="Every joint of RT B.Log Total, with all weld rows, columns and welders (Excel)">
-                        RT B.Log ⤓
-                      </a>
-                      <a className="ms-btn blog-btn blog-btn--pwht" href="/api/backlog-export?kind=pwht" download title="Every joint of PWHT B.Log All, with all weld rows, columns and welders (Excel)">
-                        PWHT B.Log ⤓
-                      </a>
+                      <BacklogExport kind="rt" />
+                      <BacklogExport kind="pwht" />
                     </span>
                   </div>
                 ) : (
@@ -364,4 +370,17 @@ function renderGroup(g: Group, i: number) {
           default:
             return null;
         }
+}
+
+/** The RT / PWHT B.Log joint export (app/api/backlog-export): every joint, weld row, column and welder. */
+function BacklogExport({ kind }: { kind: "rt" | "pwht" }) {
+  return kind === "rt" ? (
+    <a className="ms-btn blog-btn blog-btn--rt" href="/api/backlog-export?kind=rt" download title="Every joint of RT B.Log Total, with all weld rows, columns and welders (Excel)">
+      RT B.Log ⤓
+    </a>
+  ) : (
+    <a className="ms-btn blog-btn blog-btn--pwht" href="/api/backlog-export?kind=pwht" download title="Every joint of PWHT B.Log All, with all weld rows, columns and welders (Excel)">
+      PWHT B.Log ⤓
+    </a>
+  );
 }
