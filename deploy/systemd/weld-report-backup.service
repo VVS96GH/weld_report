@@ -1,0 +1,9 @@
+[Unit]
+Description=weld_report daily database backup (scripts/backup-db.sh)
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/vik/projects/weld_report
+ExecStart=/home/vik/projects/weld_report/scripts/backup-db.sh
+Nice=10
+IOSchedulingClass=idle
