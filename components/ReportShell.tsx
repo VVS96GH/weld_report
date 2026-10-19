@@ -46,6 +46,7 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
   const isFlange = pathname?.startsWith("/flange") ?? false;
   // The Errors page (2026-10-14): data errors for the sub-contractors to correct.
   const isErrors = pathname?.startsWith("/errors") ?? false;
+  const isData = pathname?.startsWith("/data") ?? false;
   // The WELDER PERFORMANCE tab (2026-10-14): its own pages, 2 weeks / 1 month, …
   const wpSlug = pathname?.match(/^\/welder-performance(?:\/([a-z0-9-]+))?/)?.[1] ?? (pathname?.startsWith("/welder-performance") ? WP_FIRST : null);
   const isWelders = wpSlug !== null;
@@ -123,7 +124,7 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
       <nav className="page-nav" aria-label="Report navigation">
         {/* Report switcher: two pill links; the current report carries aria-current. */}
         <div className="report-switcher" role="group" aria-label="Report">
-          <Link href="/welding/1" className="report-pill" aria-current={isFlange || isScreens || isErrors || isWelders ? undefined : "page"}>
+          <Link href="/welding/1" className="report-pill" aria-current={isFlange || isScreens || isErrors || isWelders || isData ? undefined : "page"}>
             Welding
           </Link>
           <Link href="/flange" className="report-pill" aria-current={isFlange ? "page" : undefined}>
@@ -137,6 +138,9 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
           </Link>
           <Link href="/errors" className="report-pill" aria-current={isErrors ? "page" : undefined}>
             Errors
+          </Link>
+          <Link href="/data" className="report-pill" aria-current={isData ? "page" : undefined}>
+            Data
           </Link>
         </div>
         {isScreens ? (
@@ -158,10 +162,13 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
                 Page {menuPosition(current)} / {WELDING_TOTAL_PAGES}
               </span>
             ) : null}
-            {isWelders ? null : <span className="page-title-display">{relabel(title)}</span>}
-            <Suspense fallback={null}>
-              <FilterSummary />
-            </Suspense>
+            {isWelders || isData ? null : <span className="page-title-display">{relabel(title)}</span>}
+            {/* the Data page lists its own filters as chips */}
+            {isData ? null : (
+              <Suspense fallback={null}>
+                <FilterSummary />
+              </Suspense>
+            )}
             {inSequence ? (
               <Suspense fallback={<div className="nav-controls" />}>
                 <PageNavControls current={current} />

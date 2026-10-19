@@ -4019,3 +4019,173 @@ th:hover > .th-resize::after, .th-resize:active::after { opacity: 0.5; }
 .pv-refs > div { flex: 1 1 240px; min-width: 0; }
 .pv-refs .data-table td:nth-child(2),
 .pv-refs .data-table th:nth-child(2) { text-align: start; white-space: normal; }
+
+/* ── Data page: the detailed weld table (components/DataGridView.tsx) ── */
+.dg-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.dg-count {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+.dg-tools {
+  margin-inline-start: auto;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.dg-tools a.ms-btn {
+  text-decoration: none;
+}
+.dg-picker-wrap {
+  position: relative;
+}
+.dg-cols {
+  inset-inline-start: auto;
+  inset-inline-end: 0;
+  width: 340px;
+}
+.dg-cols .ms-options {
+  max-height: 420px;
+}
+.dg-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.dg-scroll {
+  overflow: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--bg-card);
+}
+.dg-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+.dg-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--header-bg);
+  color: white;
+  font-weight: 600;
+  text-align: left;
+  padding: 0;
+  border-right: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+}
+.dg-th {
+  display: flex;
+  align-items: center;
+}
+.dg-sort {
+  flex: 1;
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  padding: 7px 4px 7px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.dg-fbtn {
+  background: none;
+  border: 0;
+  color: inherit;
+  opacity: 0.75;
+  cursor: pointer;
+  padding: 7px 8px 7px 4px;
+  font-size: 0.75rem;
+}
+.dg-fbtn.is-on {
+  opacity: 1;
+  color: #ffd166;
+}
+.dg-table td {
+  padding: 4px 8px;
+  border-right: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-primary);
+}
+.dg-table td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.dg-table tbody tr:hover td {
+  background: var(--bg-card-hover, rgba(127, 127, 127, 0.08));
+}
+.dg-panel {
+  width: 320px;
+  color: var(--text-primary);
+  font-weight: 400;
+  text-align: left;
+  white-space: normal;
+}
+.dg-panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+}
+.dg-panel label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+.dg-range {
+  display: flex;
+  gap: 8px;
+}
+.dg-range label {
+  flex: 1;
+}
+.dg-values .ms-options {
+  max-height: 240px;
+}
+.dg-values label.ms-option {
+  flex-direction: row;
+  color: var(--text-primary);
+}
+.dg-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--color-1, #4a8fe7);
+  cursor: pointer;
+  font-size: 0.75rem;
+  text-align: left;
+}
+.dg-paste {
+  width: 100%;
+  font: inherit;
+  font-size: 0.75rem;
+  background: var(--bg-primary, transparent);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 6px;
+}
+.dg-note {
+  padding: 10px 12px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+.dg-tools a.ms-btn {
+  display: inline-flex;
+  align-items: center;
+}
