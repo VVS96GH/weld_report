@@ -1,5 +1,6 @@
 "use client";
 
+import { relabel } from "@/lib/labels";
 import { useState } from "react";
 
 import { ColHead, colThProps } from "@/components/ColHead";
@@ -150,7 +151,7 @@ function TreeCard({ data, tree, title }: { data: WmPageData; tree: WmTree; title
                 {data.columns.map((c, ci) => (
                   <th key={c.key} scope="col" aria-sort={ariaSort(ci + 1)} {...colThProps(prefs, c.key)}>
                     <ColHead table={tkey} col={c.key} index={ci + 1} sort={sort} onSort={onSort}>
-                      {c.label}
+                      {relabel(c.label)}
                     </ColHead>
                   </th>
                 ))}

@@ -1,11 +1,11 @@
 /**
- * Display wording the owner set over the pbix names (2026-10-18: "Backlog" reads
- * "B.Log" on every page). Display only — the models, tests and filter values keep
- * the original words.
+ * Display wording the owner set over the pbix names: "Backlog" reads "B.Log"
+ * (2026-10-18) and "Rejection" reads "Rej." (2026-10-19) on every page. Display
+ * only — the models, tests and filter values keep the original words.
  */
 import type { PageModel, Widget } from "@/lib/page-model";
 
-export const relabel = (text: string): string => text.replace(/\bback\s?log\b/gi, "B.Log");
+export const relabel = (text: string): string => text.replace(/\bback\s?log\b/gi, "B.Log").replace(/\brejection\b/gi, "Rej.");
 
 export function relabelWidget(widget: Widget): Widget {
   switch (widget.kind) {

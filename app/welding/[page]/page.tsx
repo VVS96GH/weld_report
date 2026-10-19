@@ -1,3 +1,4 @@
+import { relabel } from "@/lib/labels";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 
@@ -50,7 +51,7 @@ export async function generateMetadata(props: PageProps<"/welding/[page]">): Pro
   if (n === null) return { title: "Welding Statistics Dashboard" };
   // Titles come from the static list, not from getPage(): the page body already
   // loads the model, and a second getPage() here would double every DB query.
-  return { title: `${WELDING_PAGE_TITLES[n - 1]} — Welding Statistics Dashboard` };
+  return { title: `${relabel(WELDING_PAGE_TITLES[n - 1] ?? "")} — Welding Statistics Dashboard` };
 }
 
 export default async function WeldingReportPage(props: PageProps<"/welding/[page]">) {

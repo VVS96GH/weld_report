@@ -1,3 +1,4 @@
+import { relabel } from "@/lib/labels";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
@@ -33,7 +34,7 @@ function first(params: Params, key: string): string | undefined {
 export async function generateMetadata(props: PageProps<"/report/[screen]">): Promise<Metadata> {
   const { screen } = await props.params;
   const def = screenById(screen);
-  return { title: `${def?.title ?? "Report"} — Welding Statistics Dashboard` };
+  return { title: `${relabel(def?.title ?? "Report")} — Welding Statistics Dashboard` };
 }
 
 /** Two widgets are the same table/note if they render identically — pages 3 and 7 share tables. */

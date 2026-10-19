@@ -66,8 +66,9 @@ function fmtValue(v: unknown, percent: boolean): string {
  * rate reads against its limits instead of against itself.
  */
 const RATE_THRESHOLDS: { match: RegExp; attention: number; unacceptable: number }[] = [
-  { match: /RT Rejection Rate by Film/i, attention: 1, unacceptable: 3 },
-  { match: /UT(\/PAUT)? Rejection Rate by Length/i, attention: 1, unacceptable: 1.5 },
+  // titles reach here relabelled ("Rejection" reads "Rej.", lib/labels.ts)
+  { match: /RT Rej(ection|\.) Rate by Film/i, attention: 1, unacceptable: 3 },
+  { match: /UT(\/PAUT)? Rej(ection|\.) Rate by Length/i, attention: 1, unacceptable: 1.5 },
 ];
 
 function thresholdsFor(title: string) {
@@ -452,12 +453,16 @@ function valueLabels(type: string, stacked: boolean, percent: boolean, circular:
         return typeof v === "number" && total > 0 && v / total >= 0.02 ? "auto" : false;
       },
       formatter: (v: unknown, ctx: DatalabelCtx) => {
-        if (!namePct) return fmtValue(v, false);
         const total = ctx.dataset.data.reduce<number>((a, b) => a + (typeof b === "number" ? b : 0), 0);
+        const share = typeof v === "number" && total > 0 ? `${((v / total) * 100).toFixed(2)}%` : "";
+        if (!namePct) {
+          // every doughnut shows the slice's share too (owner, 2026-10-19): value, then % under it
+          return share ? [fmtValue(v, false), share] : fmtValue(v, false);
+        }
         const name = (ctx.chart.data.labels?.[ctx.dataIndex] as string | undefined) ?? "";
-        const pct = typeof v === "number" && total > 0 ? ` (${((v / total) * 100).toFixed(2)}%)` : "";
-        return `${name} ${fmtValue(v, false)}${pct}`;
+        return `${name} ${fmtValue(v, false)}${share ? ` (${share})` : ""}`;
       },
+      textAlign: "center",
       color: palette.fg,
       anchor: "end",
       align: "end",
@@ -765,10 +770,10 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
       layout: {
         padding: circular
           ? notes.includes("legend-bottom")
-            ? { top: 20, bottom: 4, left: 30, right: 30 }
+            ? { top: 32, bottom: 4, left: 30, right: 30 } // value + % on two lines
             : notes.includes("label-name-pct")
               ? { top: 18, bottom: 18, left: 24, right: 24 } // "Torquing 60,030 (28.81%)" is not cut at the edge
-              : { top: 18, bottom: 18, left: 24, right: 24 }
+              : { top: 32, bottom: 32, left: 26, right: 26 } // value + % on two lines
           : horizontal
             ? { right: 48, top: 8 }
             : notes.includes("area")

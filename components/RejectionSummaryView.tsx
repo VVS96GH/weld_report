@@ -142,7 +142,7 @@ function SubRow({ kind, sub, colors, periodWord }: { kind: SummaryPage["kind"]; 
   const donut: ChartWidget = {
     kind: "chart",
     canvas_id: `rs-donut-${sub.sub}`,
-    title: `Rejection Rate.by Status. Report ${periodWord}`,
+    title: `Rej. Rate.by Status. Report ${periodWord}`,
     chart_type: "doughnut",
     labels: sub.donut.map((d) => d.status),
     datasets: [{ label: "Welders", data: sub.donut.map((d) => d.qty) }],
@@ -150,7 +150,7 @@ function SubRow({ kind, sub, colors, periodWord }: { kind: SummaryPage["kind"]; 
   const trend: ChartWidget = {
     kind: "chart",
     canvas_id: `rs-trend-${sub.sub}`,
-    title: `Welders Performance. Rejection Rate. Status Report. ${periodWord}`,
+    title: `Welders Performance. Rej. Rate. Status Report. ${periodWord}`,
     chart_type: "line",
     labels: sub.trend.periods.map((p) => p.replace(/\s+to\s+.*/, "").replace(/\.\s+/, ". ")),
     datasets: sub.trend.series.map((s) => ({ label: s.status, data: s.data })),
@@ -159,7 +159,7 @@ function SubRow({ kind, sub, colors, periodWord }: { kind: SummaryPage["kind"]; 
   const subTitle = sub.sub === "TEKFEN" ? "TEKFEN" : sub.sub;
   return (
     <section className="card rs-row" aria-label={`${sub.sub} rejection summary`}>
-      <StatusTable sub={sub} title={`${subTitle} - Welders Performance. Rejection Rate. Summary Status ${periodWord} Since RT Date`} />
+      <StatusTable sub={sub} title={`${subTitle} - Welders Performance. Rej. Rate. Summary Status ${periodWord} Since RT Date`} />
       <Notes kind={kind} sub={sub} />
       <div className="rs-chart">
         <h4 className="rs-head">{donut.title}</h4>
@@ -252,7 +252,7 @@ export function RejectionSummaryView({ data, note }: { data: SummaryPage | null;
     <section className="page-section active wp-page rs-page" aria-labelledby="page-heading">
       <div className="page-header wp-banner">
         <h2 id="page-heading">
-          Project Welders Performance. Cumulative Rejection Rate. Summary Report {data?.kind === "1m" ? "Last 1 Month" : "Last 2 weeks"}
+          Project Welders Performance. Cumulative Rej. Rate. Summary Report {data?.kind === "1m" ? "Last 1 Month" : "Last 2 weeks"}
           {data ? <span className="wp-since"> Since {dmy(data.since)}</span> : null}
         </h2>
       </div>
