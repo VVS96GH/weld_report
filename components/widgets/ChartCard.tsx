@@ -446,20 +446,25 @@ const FIXED_SERIES: Record<string, string> = {
   "PWHT+RT": "#9A6614",
 };
 
-/** The Weld Type doughnuts in the pbix's own colours, one per weld type (owner, 2026-10-19). */
-const WELD_TYPE_COLORS: Record<string, string> = {
-  SW: "#D2D2D2",
-  BW: "#2B4EA2",
-  SP: "#151515",
-  LET: "#E5312B",
-  FW: "#9C9C9C",
-  SOF: "#3B8B9B",
-  RPD: "#3AA3DF",
-  WPAD: "#6B6B6B",
-  SOB: "#4A9FB7",
-  BON: "#22469A",
-  "FW.": "#D9B5BD",
+/**
+ * The Weld Type doughnuts in the pbix's own colours, read off the pbix visuals'
+ * dataPoint fills (owner, 2026-10-19). The project doughnut and the party ones
+ * ("Weld Type-CCC", "-GAC", …) carry two different sets: FW is grey on the
+ * first, red on the others.
+ */
+const WELD_TYPE_COLORS_PROJECT: Record<string, string> = {
+  BW: "#0E4E9C", WPAD: "#6D6E71", LET: "#EC2326", SOF: "#2F899B", FW: "#939598", SOB: "#3599B8", "FW.": "#DFBFBF",
+  TRN: "#4AC5BB", RPD: "#169FDA", L4: "#5F6B6D", SW: "#D1D3D4", MW: "#FB8281", LUG: "#7F898A", CLET: "#FDAB89",
+  RPDF: "#A4DDEE", SP: "#000000", DMY: "#B687AC", RPD0: "#118DFF", SOB0: "#12239E", SOBUA: "#E66C37",
 };
+const WELD_TYPE_COLORS_PARTY: Record<string, string> = {
+  BW: "#0E4E9C", WPAD: "#EC2326", LET: "#6D6E71", SOF: "#2F899B", FW: "#EC2326", SOB: "#D1D3D4", "FW.": "#000000",
+  TRN: "#169FDA", RPD: "#939598", L4: "#DFBFBF", SW: "#3599B8", MW: "#5F6B6D", LUG: "#FB8281", CLET: "#2F899B",
+  RPDF: "#7F898A", SP: "#169FDA", SOBUA: "#F4FF57",
+};
+/** The colour set of a Weld Type doughnut by its title: "Weld Type-<party>" or the project one. */
+const weldTypeColors = (title: string) =>
+  /weld type\s*[-–]/i.test(title) || /weld type\s+(ccc|gac|tekfen|medgulf)/i.test(title) ? WELD_TYPE_COLORS_PARTY : WELD_TYPE_COLORS_PROJECT;
 
 function seriesColor(label: string, index: number, palette: Palette): string {
   const fixed = FIXED_SERIES[label.trim()];
@@ -749,7 +754,7 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
             label: ds?.label || widget.title,
             data: (ds?.data ?? []).map(toNum),
             backgroundColor: widget.labels.map((l, i) =>
-              (/weld type/i.test(widget.title) ? WELD_TYPE_COLORS[String(l).trim()] : undefined) ?? palette.colors[i % palette.colors.length],
+              (/weld type/i.test(widget.title) ? weldTypeColors(widget.title)[String(l).trim()] : undefined) ?? palette.colors[i % palette.colors.length],
             ),
             borderColor: "transparent",
           },
