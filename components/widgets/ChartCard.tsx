@@ -797,10 +797,17 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
   // puts it back (owner, 2026-10-15: "возможность ротации … изначально максимально
   // удобно для восприятия").
   const startRotation = useMemo(() => {
-    if (!circular || notes.includes("label-name-pct")) return 0;
+    if (!circular) return 0;
     const vals = (widget.datasets[0]?.data ?? []).map((v) => Math.max(0, toNum(v) ?? 0));
     const total = vals.reduce((a, b) => a + b, 0);
     if (total <= 0) return 0;
+    if (notes.includes("label-name-pct")) {
+      // long "Name value (share)" labels: the largest slice points down, so the
+      // labels sit above and below the ring, where they are not cut at the sides
+      const big = vals.indexOf(Math.max(...vals));
+      const before = vals.slice(0, big).reduce((a, b) => a + b, 0);
+      return 180 - ((before + vals[big]! / 2) / total) * 360;
+    }
     let best = -1;
     vals.forEach((v, i) => {
       const share = v / total;
@@ -885,6 +892,8 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
     () => ({
       responsive: true,
       ...(circular ? { rotation } : {}),
+      // a doughnut with its total in the hole gets a wider hole, so the number fits (owner, 2026-10-19)
+      ...(circular && notes.includes("center-total") ? { cutout: "64%" } : {}),
       maintainAspectRatio: false,
       // drawn at no less than 2x the CSS size: canvas text stays crisp at any
       // browser zoom or display scaling (owner, 2026-10-15: "числа слегка размыты")
