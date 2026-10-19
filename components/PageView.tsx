@@ -13,7 +13,9 @@ type Group =
   | { kind: "kpi"; items: KpiWidget[] }
   | { kind: "chart"; items: ChartWidget[]; kpis?: KpiWidget[] }
   | { kind: "text"; items: TextWidget[] }
-  | { kind: "table"; item: TableWidget };
+  | { kind: "table"; item: TableWidget }
+  /** The Graph pages: the rate and B.Log charts 2 × 2 on the left, the tables beside them (owner, 2026-10-19). */
+  | { kind: "split"; tables: TableWidget[]; charts: ChartWidget[] };
 
 /**
  * Batches the model's flat widget list into the mockup's layout rhythm: a run of
@@ -57,6 +59,20 @@ function groupWidgets(widgets: Widget[]): Group[] {
       c.kpis = k.items;
       groups.splice(i, 1);
     }
+  }
+  // A run of tables followed by the four rate / B.Log charts (the Graph pages)
+  // becomes one block: the two rejection-rate charts over the two B.Log charts on
+  // the left, the tables stacked on the right.
+  for (let i = 0; i < groups.length; i++) {
+    let j = i;
+    while (groups[j]?.kind === "table") j++;
+    const c = groups[j];
+    if (j - i < 2 || c?.kind !== "chart" || c.kpis || c.items.length !== 4) continue;
+    const rate = c.items.filter((x) => /rej/i.test(x.title));
+    const blog = c.items.filter((x) => /b\.log|backlog/i.test(x.title) && !/rej/i.test(x.title));
+    if (rate.length !== 2 || blog.length !== 2) continue;
+    const tables = groups.slice(i, j).map((g) => (g as { kind: "table"; item: TableWidget }).item);
+    groups.splice(i, j - i + 1, { kind: "split", tables, charts: [...rate, ...blog] });
   }
   return groups;
 }
@@ -190,6 +206,31 @@ function renderGroup(g: Group, i: number) {
                 {g.items.map((t, j) => (
                   <TextNote key={j} widget={t} />
                 ))}
+              </div>
+            );
+          case "split":
+            return (
+              <div className="pv-split" key={i}>
+                <div className="pv-split-charts">
+                  {g.charts.map((c, j) => (
+                    <div className="card" key={j}>
+                      <div className="card-header">{c.title}</div>
+                      <div className="chart-container">
+                        <ChartCard widget={c} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="pv-split-tables">
+                  {g.tables.map((t, j) => (
+                    <div key={j}>
+                      <div className="section-title">{t.title}</div>
+                      <div className="table-scroll">
+                        <DataTable widget={dropEmptyTypeColumns(t)} collapsible={t.rows.some((r) => /^\s{2}/.test(r[0] ?? ""))} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             );
           case "table":

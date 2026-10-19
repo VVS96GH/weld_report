@@ -4392,3 +4392,26 @@ th:hover > .th-resize::after, .th-resize:active::after { opacity: 0.5; }
   box-shadow: var(--shadow-card, 0 8px 24px rgba(0, 0, 0, 0.35));
   font-size: 0.85rem;
 }
+/* Graph pages: rate + B.Log charts 2 × 2 on the left, the tables on the right */
+.pv-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, max-content);
+  gap: 16px;
+  align-items: start;
+  margin-bottom: 16px;
+}
+.pv-split-charts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.pv-split-tables {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+@media (max-width: 1300px) {
+  .pv-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
