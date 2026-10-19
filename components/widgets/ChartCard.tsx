@@ -201,7 +201,7 @@ const legendGapPlugin = {
     const fit = legend.fit;
     legend.fit = function (this: { height: number }) {
       fit.call(this);
-      this.height += 22;
+      this.height += 14;
     };
   },
 };
@@ -520,7 +520,8 @@ function valueLabels(type: string, stacked: boolean, percent: boolean, circular:
         return small && ctx.dataIndex % 2 === 1 ? 20 : 2;
       },
       clamp: true,
-      font,
+      // doughnut values a size up (owner, 2026-10-19: hard to read at 10)
+      font: { ...font, size: 12 },
     };
   }
   if (type === "line") {
