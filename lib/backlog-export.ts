@@ -50,6 +50,10 @@ export async function backlogRules(kind: BacklogKind): Promise<Map<string, strin
   return new Map(rows.map((r) => [r.joint_id, r.rule]));
 }
 
+/** WeldPoint No.1 WP1 (weldpoint_seq: the row's number within its Joint ID) leads, then every other column. */
+const exportColumns = () => ["weldpoint_seq", ...parseColumns(null).filter((k) => k !== "weldpoint_seq")];
+const WP1_LABEL = "WeldPoint No.1 WP1";
+
 export async function backlogJoints(kind: BacklogKind): Promise<string[]> {
   return [...(await backlogRules(kind)).keys()];
 }
@@ -61,7 +65,7 @@ export async function* backlogCsv(kind: BacklogKind): AsyncGenerator<string> {
     yield "﻿No joints\r\n";
     return;
   }
-  yield* gridCsv({ joint_id: { in: joints } }, parseColumns(null));
+  yield* gridCsv({ joint_id: { in: joints } }, exportColumns());
 }
 
 /** The same as an Excel workbook: one sheet, header frozen with filters, numbers and dates typed. */
@@ -69,21 +73,24 @@ export async function backlogXlsx(kind: BacklogKind): Promise<{ joints: number; 
   const rules = await backlogRules(kind);
   const joints = [...rules.keys()];
   const { cols, rows } = joints.length
-    ? await gridMatrix({ joint_id: { in: joints } }, parseColumns(null))
+    ? await gridMatrix({ joint_id: { in: joints } }, exportColumns())
     : { cols: [], rows: [] };
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet(kind === "rt" ? "RT B.Log" : "PWHT B.Log", { views: [{ state: "frozen", ySplit: 1 }] });
   const jointAt = cols.findIndex((c) => c.key === "joint_id");
-  ws.columns = [{ header: "B.Log rule", key: "__rule", width: 46 }, ...cols.map((c) => ({
+  // WeldPoint No.1 WP1 first, then the rule that listed the joint (owner, 2026-10-19)
+  ws.columns = [
+    { header: WP1_LABEL, key: "weldpoint_seq", width: 12 },
+    { header: "B.Log rule", key: "__rule", width: 46 },
+    ...cols.slice(1).map((c) => ({
     header: c.label,
     key: c.key,
     width: Math.min(40, Math.max(10, c.label.length + 2)),
     style: c.type === "date" ? { numFmt: "dd-mmm-yy" } : undefined,
-  }))];
+    })),
+  ];
   for (const r of rows) {
-    ws.addRow([
-      rules.get(String(r[jointAt] ?? "")) ?? null,
-      ...r.map((v, i) => {
+    const typed = r.map((v, i) => {
         if (v === null || v === "") return null;
         const t = cols[i]!.type;
         if (t === "num") {
@@ -92,8 +99,8 @@ export async function backlogXlsx(kind: BacklogKind): Promise<{ joints: number; 
         }
         if (t === "date" && /^\d{4}-\d{2}-\d{2}/.test(v)) return new Date(`${v.slice(0, 10)}T00:00:00Z`);
         return v;
-      }),
-    ]);
+      });
+    ws.addRow([typed[0], rules.get(String(r[jointAt] ?? "")) ?? null, ...typed.slice(1)]);
   }
   const head = ws.getRow(1);
   head.font = { bold: true, color: { argb: "FFFFFFFF" } };

@@ -1100,7 +1100,7 @@ const CATALOG: readonly GridCol[] = [
   },
   {
     key: "weldpoint_seq",
-    label: "Weldpoint Seq",
+    label: "WeldPoint No.1 WP1", // the pbix name: the row's number within its Joint ID
     type: "num",
   },
   {
