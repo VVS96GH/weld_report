@@ -1,5 +1,6 @@
 "use client";
 
+import { PdfButton } from "@/components/PdfButton";
 import { ZoomControl } from "@/components/ZoomControl";
 import { createContext, Suspense, useCallback, useContext, useEffect, useState } from "react";
 import Link from "next/link";
@@ -117,6 +118,7 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
         <div className="header-right">
+          <PdfButton />
           <ThemeMoodControls />
           <RefreshDataButton />
         </div>
