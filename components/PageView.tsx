@@ -339,7 +339,22 @@ function renderGroup(g: Group, i: number) {
           case "table":
             return (
               <div key={i}>
-                <div className="section-title">{g.item.title}</div>
+                {/^Project RT & PWHT Status by Sub-Contractor$/i.test(g.item.title) ? (
+                  // the joints behind the RT B.Log / PWHT B.Log totals, every weld row and welder (owner, 2026-10-19)
+                  <div className="section-title section-title--actions">
+                    <span>{g.item.title}</span>
+                    <span className="section-actions">
+                      <a className="ms-btn" href="/api/backlog-export?kind=rt" download title="Every joint of RT B.Log Total, with all weld rows, columns and welders (CSV)">
+                        RT B.Log ⤓
+                      </a>
+                      <a className="ms-btn" href="/api/backlog-export?kind=pwht" download title="Every joint of PWHT B.Log All, with all weld rows, columns and welders (CSV)">
+                        PWHT B.Log ⤓
+                      </a>
+                    </span>
+                  </div>
+                ) : (
+                  <div className="section-title">{g.item.title}</div>
+                )}
                 <div className="table-scroll">
                   {/* a table with indented detail rows opens them under + (owner, 2026-10-15) */}
                   <DataTable widget={dropEmptyTypeColumns(g.item)} collapsible={g.item.rows.some((r) => /^\s{2}/.test(r[0] ?? ""))} />

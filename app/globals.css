@@ -4759,3 +4759,17 @@ th:hover > .th-resize::after, .th-resize:active::after { opacity: 0.5; }
   outline: 1px solid var(--color-1, #4a8fe7);
   outline-offset: 2px;
 }
+.section-title--actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.section-actions {
+  display: inline-flex;
+  gap: 8px;
+  margin-left: 12px;
+  letter-spacing: normal;
+  text-transform: none;
+}
