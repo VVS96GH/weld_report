@@ -1575,6 +1575,40 @@ const EMPTY_LABELS = [
   "PED", "Weld Point First", "Commissioning Package", "FT Report", "GWBS", "BHS", "PIP-124-A", "WHS",
   "Last Reshoot Date.1", "Last Reshoot Report No.1", "Last Reshoot Result.1",
 ];
+/**
+ * The three union columns the pbix fills from UT TRACKER (GAC) / (TEK) by Joint ID
+ * (table ut_tracker_ctjv, migration 0059): the GAC value when it has one, else
+ * TEK's. The date is the DAX's MAXX(GAC) + MAXX(TEK) — a blank side adds nothing,
+ * and two dates add as day numbers, as in the pbix.
+ */
+const ctjv = (col: string, tracker: string) =>
+  `(SELECT max(u.${col}) FROM ut_tracker_ctjv u WHERE u.tracker = '${tracker}' AND u.joint_id = w.joint_id AND u.${col} IS NOT NULL)`;
+export const UT_TRACKER_COLUMNS: readonly GridCol[] = [
+  {
+    key: "fx_ctjv_cross",
+    label: "Cross Verification-by CTJV (TPI).",
+    type: "text",
+    fx: true,
+    sql: `coalesce(${ctjv("cross_verification", "GAC")}, ${ctjv("cross_verification", "TEK")})`,
+  },
+  {
+    key: "fx_ctjv_date",
+    label: "CTJV VERIFICATION Date.",
+    type: "date",
+    fx: true,
+    sql: `CASE WHEN ${ctjv("verification_date", "GAC")} IS NULL THEN ${ctjv("verification_date", "TEK")}
+               WHEN ${ctjv("verification_date", "TEK")} IS NULL THEN ${ctjv("verification_date", "GAC")}
+               ELSE ${ctjv("verification_date", "GAC")} + (${ctjv("verification_date", "TEK")} - DATE '1899-12-30') END`,
+  },
+  {
+    key: "fx_ctjv_by",
+    label: "CTJV VERIFICATION BY.",
+    type: "text",
+    fx: true,
+    sql: `coalesce(${ctjv("verification_by", "GAC")}, ${ctjv("verification_by", "TEK")})`,
+  },
+];
+
 export const EMPTY_COLUMNS: readonly GridCol[] = EMPTY_LABELS.map((label, i) => ({
   key: `empty_${i + 1}`,
   label,
@@ -1587,6 +1621,7 @@ export const GRID_COLUMNS: readonly GridCol[] = [
   ...GRID_DEFAULT_COLUMNS.map((k) => CATALOG.find((c) => c.key === k)!),
   ...CATALOG.filter((c) => !GRID_DEFAULT_COLUMNS.includes(c.key)),
   ...INCO_COLUMNS,
+  ...UT_TRACKER_COLUMNS,
   ...EMPTY_COLUMNS,
   ...FX_COLUMNS,
   ...FX_GROUP_COLUMNS,

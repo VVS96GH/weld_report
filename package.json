@@ -19,6 +19,7 @@
     "db:seed:snapshot": "node --env-file-if-exists=.env --import tsx scripts/seed-weekly-snapshot.ts",
     "db:load:ut-ccc": "node --env-file-if-exists=.env --import tsx scripts/load-ut-tracker-ccc.ts",
     "db:load:flange-breakdown": "node --env-file-if-exists=.env --import tsx scripts/load-flange-breakdown.ts",
+    "db:load:ut-trackers": "node --env-file-if-exists=.env --import tsx scripts/load-ut-trackers.ts",
     "db:load:exclusions": "node --env-file-if-exists=.env --import tsx scripts/load-exclusion-list.ts",
     "db:load:spool": "node --env-file-if-exists=.env --import tsx scripts/load-spool-dump.ts",
     "db:load:ha": "node --env-file-if-exists=.env --import tsx scripts/load-ha-guide.ts",
