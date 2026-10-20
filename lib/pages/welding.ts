@@ -2257,11 +2257,18 @@ async function buildSubconPage(
     tmcpPipe: undefined,
   });
   const split = confs.some((c) => c.tmcpPipe === true) && confs.some((c) => c.tmcpPipe === false);
+  const graph = spec.widgets.some((w) => w.kind === "chart");
   const blocks = await Promise.all(
     confs.map(async (conf) => {
       // the pbix TMCP status page counts 9C3AQN at 30/34/46"; the TEKFEN page
       // keeps the 46-only rule (mv_joint carries both inputs; mv_joint_wps does not)
-      const scope: Scope = { ...baseScope(conf), tmcpPrAll: conf.tmcpPipe === true ? true : undefined };
+      // Graph pages drop Weld Cat J everywhere (owner, 2026-10-20), as their
+      // Joints Welded card and progress chart already did.
+      const scope: Scope = {
+        ...baseScope(conf),
+        tmcpPrAll: conf.tmcpPipe === true ? true : undefined,
+        ...(graph ? { excludeWeldCats: ["J"] } : {}),
+      };
       const statusScope = { ...scope, weldCats: WELD_STATUS_CATS };
       // The "Cumulative RT/UT Joints Tested and Accepted" table reads the
       // "PR all" family with `Weld Type IN {BW, CLET, GW, MW}` — see
