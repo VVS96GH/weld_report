@@ -244,6 +244,17 @@ function cellInt(v: number | null | undefined): string {
   return NF.format(v);
 }
 
+/**
+ * Film counts: CCC films are fractional weld-point shares (0.75, 0.88, …). The
+ * pbix sums them in binary floating point, where an exact .5 total lands a hair
+ * under, so it shows 106,504.5 as 106,504 and 189,047.5 as 189,047 (owner
+ * screenshots, 2026-10-20). An exact half rounds down here too.
+ */
+function cellFilms(v: number | null | undefined): string {
+  if (v === null || v === undefined || v === 0) return "";
+  return NF.format(Math.round(v - 1e-6));
+}
+
 /** Table cell: `1.58%`, blank when the denominator was 0 (DAX `DIVIDE`). */
 function cellPct(v: number | null | undefined): string {
   if (v === null || v === undefined) return "";
@@ -686,11 +697,11 @@ export function metricCell(header: string, b: Bundle): string | null {
       return cellPct(b.rt.film_rejection_rate);
     // ── films by joint (M20/M22/M25) ──
     case "Films Taken":
-      return cellInt(b.rt.films);
+      return cellFilms(b.rt.films);
     case "Films Acc":
-      return cellInt(b.rt.films_accepted);
+      return cellFilms(b.rt.films_accepted);
     case "Films Rej":
-      return cellInt(b.rt.films_rejected);
+      return cellFilms(b.rt.films_rejected);
     case "RT% Film Rej":
     case "% of Total Rej":
     case "% Total Rej":
@@ -1599,7 +1610,7 @@ async function buildProjectKpiPage(spec: SpecPage, ctx: Ctx): Promise<Widget[]> 
   // count cards add Weld Type IN {BW,CLET,GW,MW}.
   const cardScope: Scope = withFilters(projectScope({ excludeWeldCats: PAGE1_EXCLUDED_WELD_CATS }), f);
   const jointsScope: Scope = withFilters(projectScope({ weldCats: ["F", "S"] }), f);
-  const rtScope: Scope = withFilters(projectScope({ weldTypes: PAGE1_RT_CARD_WELD_TYPES }), f);
+  const rtScope: Scope = withFilters(projectScope({ weldTypes: PAGE1_RT_CARD_WELD_TYPES, rowWeldTypes: true }), f);
   const scope: Scope = withFilters(projectScope(), f);
   const av = await availability("PR_ALL", SOURCES_PR_ALL_LOADED, cardScope);
   const [b, bNoInco, bJoints, bRt, welders, wpsApproved, weekly, dist] = await Promise.all([
@@ -2138,7 +2149,8 @@ async function buildProjectStatusPage(
   // R3-01: project scope = the loaded union minus INCO; ACCIONA is included and
   // supplies the mockup's Acciona row in the sub-contractor table.
   // the page's slicer is AND-ed onto every scope (identity with no filter set)
-  const scope: Scope = withFilters(projectScope({ temporaryLines: false }), ctx.filters);
+  // weld types tested on every row of a joint, as the pbix (0061)
+  const scope: Scope = withFilters(projectScope({ temporaryLines: false, rowWeldTypes: true }), ctx.filters);
   const av = await availability("PR_ALL", SOURCES_PR_ALL_LOADED, scope);
   const sources = await loadedSources();
   const scopeNote = projectScopeNote(sources);
