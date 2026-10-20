@@ -225,6 +225,95 @@ const barLegendGapPlugin = {
   },
 };
 
+/**
+ * The limit names (">1% - Attention", ">3% - Unacceptable") on the rate lines,
+ * placed where they touch nothing (owner, 2026-10-20: a name crossed "0.99%").
+ * Candidates: between two points, then on a point, above the dashed line, then
+ * under it. A candidate is taken only when it stays inside the plot and clear of
+ * every point's value label, of the rate line itself and of the other name.
+ */
+type Rect = { l: number; t: number; r: number; b: number };
+const hit = (a: Rect, b: Rect) => a.l < b.r && b.l < a.r && a.t < b.b && b.t < a.b;
+function segHitsRect(x1: number, y1: number, x2: number, y2: number, r: Rect): boolean {
+  for (let k = 0; k <= 24; k++) {
+    const x = x1 + ((x2 - x1) * k) / 24;
+    const y = y1 + ((y2 - y1) * k) / 24;
+    if (x >= r.l && x <= r.r && y >= r.t && y <= r.b) return true;
+  }
+  return false;
+}
+const thresholdLabelPlugin = {
+  id: "thresholdLabels",
+  afterDatasetsDraw(chart: ChartJS) {
+    const opts = (chart.options.plugins as Record<string, unknown> | undefined)?.thresholdLabels as
+      // no functions here: Chart.js would call them as scriptable options
+      | { family: string; size: number; dataSize: number; percent: boolean }
+      | undefined;
+    if (!opts) return;
+    const { ctx, chartArea: area } = chart;
+    const sets = chart.data.datasets as unknown as { threshold?: boolean; label?: string; borderColor?: string; data: unknown[] }[];
+    const blocked: Rect[] = [];
+    const lines: { x: number; y: number }[][] = [];
+    ctx.save();
+    // the value labels of the rate lines (datalabels: anchor end, align top, offset 3, padding 4)
+    ctx.font = `600 ${opts.dataSize}px ${opts.family}`;
+    sets.forEach((ds, i) => {
+      if (ds.threshold || !chart.isDatasetVisible(i)) return;
+      const pts = chart.getDatasetMeta(i).data as unknown as { x: number; y: number }[];
+      lines.push(pts.filter((p) => Number.isFinite(p.y)).map((p) => ({ x: p.x, y: p.y })));
+      pts.forEach((p, j) => {
+        const v = ds.data[j];
+        if (typeof v !== "number" || !Number.isFinite(p.y)) return;
+        const w = ctx.measureText(fmtValue(v, opts.percent)).width;
+        const h = opts.dataSize * 1.2;
+        // the label box (padding 4) plus 8 px of clear space on each side
+        blocked.push({ l: p.x - w / 2 - 12, r: p.x + w / 2 + 12, t: p.y - 3 - 8 - h - 2, b: p.y + 4 });
+      });
+    });
+    ctx.font = `600 ${opts.size}px ${opts.family}`;
+    ctx.textBaseline = "top";
+    sets.forEach((ds, i) => {
+      if (!ds.threshold || !chart.isDatasetVisible(i)) return;
+      const pts = chart.getDatasetMeta(i).data as unknown as { x: number; y: number }[];
+      if (pts.length === 0) return;
+      const text = ds.label ?? "";
+      const w = ctx.measureText(text).width;
+      const h = opts.size * 1.2;
+      const y0 = pts[0]!.y;
+      const xs: number[] = [];
+      for (let j = 0; j + 1 < pts.length; j++) xs.push((pts[j]!.x + pts[j + 1]!.x) / 2);
+      for (const p of pts) xs.push(p.x);
+      // the Attention name from the left, the Unacceptable name from the right
+      if (!/attention/i.test(text)) xs.reverse();
+      const fits = (r: Rect) =>
+        r.l >= area.left + 2 &&
+        r.r <= area.right - 2 &&
+        r.t >= area.top &&
+        r.b <= area.bottom &&
+        !blocked.some((b) => hit(r, b)) &&
+        !lines.some((ln) => ln.some((p, k) => k > 0 && segHitsRect(ln[k - 1]!.x, ln[k - 1]!.y, p.x, p.y, r)));
+      let best: Rect | null = null;
+      for (const side of ["above", "below"] as const) {
+        for (const x of xs) {
+          const t = side === "above" ? y0 - 3 - h : y0 + 3;
+          const r = { l: x - w / 2 - 2, r: x + w / 2 + 2, t: t - 1, b: t + h + 1 };
+          if (fits(r)) {
+            best = r;
+            break;
+          }
+        }
+        if (best) break;
+      }
+      if (!best) return; // nowhere clear: the legend already names the line
+      ctx.fillStyle = ds.borderColor ?? "#888";
+      ctx.textAlign = "center";
+      ctx.fillText(text, (best.l + best.r) / 2, best.t + 1);
+      blocked.push(best);
+    });
+    ctx.restore();
+  },
+};
+
 const centerTotalPlugin = {
   id: "centerTotal",
   afterDraw(chart: ChartJS) {
@@ -583,10 +672,8 @@ function valueLabels(type: string, stacked: boolean, percent: boolean, circular:
         const ds = ctx.dataset as { threshold?: boolean; data: unknown[] };
         // the limit's name sits above the dashed line near its right end (second-to-last
         // point, so the text is never clipped by the chart edge)
-        if (!ds.threshold) return true;
-        // "Attention" near the left end, "Unacceptable" near the right: apart (owner, 2026-10-19)
-        const attention = /attention/i.test((ds as { label?: string }).label ?? "");
-        return ctx.dataIndex === (attention ? Math.min(1, ds.data.length - 1) : Math.max(0, ds.data.length - 2));
+        // a limit's name is placed by thresholdLabelPlugin, clear of every number
+        return !ds.threshold;
       },
       formatter: (v: unknown, ctx: DatalabelCtx) => {
         const ds = ctx.dataset as { threshold?: boolean; label?: string };
@@ -966,6 +1053,14 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
         tooltip: { enabled: true },
         datalabels: smallRing(widget.canvas_id, palette.scale, notes.includes("area") ? areaLabels(palette) : valueLabels(widget.chart_type, stackedX || stackedY, percentAxis, circular, palette, widget.datasets.length, end - start, horizontal, notes.includes("label-name-pct"))),
         centerTotal: circular && notes.includes("center-total") ? { color: palette.fg, font: palette.font ?? "sans-serif" } : undefined,
+        thresholdLabels: thresholds
+          ? {
+              family: palette.font ?? "sans-serif",
+              size: 11,
+              dataSize: Math.round(12 * palette.scale),
+              percent: percentAxis,
+            }
+          : undefined,
         barLegendGap: {
           px: widget.chart_type === "bar" && !(stackedX || stackedY) && !horizontal && widget.datasets.length > 2 ? Math.round(26 * palette.scale) : 0,
         },
@@ -1048,7 +1143,7 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
   let chart: React.ReactNode;
   switch (widget.chart_type) {
     case "line":
-      chart = <Chart key={version} type="line" data={data} options={options} />;
+      chart = <Chart key={version} type="line" data={data} options={options} plugins={[thresholdLabelPlugin]} />;
       break;
     case "doughnut":
       chart = (
