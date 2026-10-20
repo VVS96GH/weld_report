@@ -122,6 +122,11 @@ describe("getWeldingPage — structure equals analysis/mockups/welding-spec.json
         body = body.slice(barIds.length);
       }
 
+      // Every Graph page carries CCC's four cards (owner, 2026-10-19): a page
+      // whose mockup stops at three gets "% RT Film Rej" added — skip it here.
+      const hasRej = spec.widgets.some((w) => w.kind === "kpi" && w.label === "% RT Film Rej");
+      if (!hasRej) body = body.filter((w) => !(w.kind === "kpi" && w.label === "% RT Film Rej"));
+
       // Everything the mockup declares, position for position.
       const declared = body.slice(0, spec.widgets.length);
       expect(declared).toHaveLength(spec.widgets.length);
@@ -133,8 +138,16 @@ describe("getWeldingPage — structure equals analysis/mockups/welding-spec.json
         expect(got, `page ${n} widget ${i}`).toEqual(want);
       }
 
+      // Page 5 adds the pbix's second block, TMCP pipe only (owner, 2026-10-20):
+      // its heading and four tables.
+      let rest = body.slice(spec.widgets.length);
+      if (n === 5) {
+        expect(rest[0]?.kind === "text" && /TMCP/.test(rest[0].text)).toBe(true);
+        expect(rest.slice(1, 5).map((w) => w.kind)).toEqual(["table", "table", "table", "table"]);
+        rest = rest.slice(5);
+      }
       // Anything extra must be a provenance note.
-      for (const extra of body.slice(spec.widgets.length)) {
+      for (const extra of rest) {
         extraNotes++;
         expect(extra.kind).toBe("text");
       }

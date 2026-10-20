@@ -1185,6 +1185,29 @@ const NDE_PAGES = new Map<
 /** The TEKFEN graph page; with `opts.tmcp` it renders the TMCP-pipe twin. */
 const TEKFEN_GRAPH_PAGE = 10;
 const TEKFEN_TMCP_LABEL = "TEKFEN TMCP Pipe (9C3AQN 46 Inch)";
+const TEKFEN_STATUS_PAGE = 5;
+
+/**
+ * The mockup's TEKFEN status page has one block; the pbix has two (owner,
+ * 2026-10-20): the same four tables again for TMCP pipe only, under their own
+ * heading. Its welding-status and NDE tables repeat this page's own (empty
+ * weld-type columns drop out), its backlog table is the GAC "SLG Service Only"
+ * one (page 4), which has the pbix TMCP block's extra "PWHT B.log+RT NOT Done".
+ */
+function withTmcpBlock(spec: SpecPage): SpecPage {
+  const gac = specPage(4).widgets;
+  const backlog = gac.filter((w) => w.kind === "table" && /PWHT B/i.test(w.title ?? "")).at(-1);
+  const own = spec.widgets.filter((w) => w.kind === "table" && !/PWHT B/i.test(w.title ?? ""));
+  return {
+    ...spec,
+    widgets: [
+      ...spec.widgets,
+      { kind: "text", text: 'TEKFEN WELDING STATUS (TMCP Pipe "9C3AQN 46 inch")' },
+      ...own,
+      ...(backlog ? [backlog] : []),
+    ],
+  };
+}
 
 /** mockup page → subcontractor scope for the status pages 4–6 and 8–11. */
 const SUBCON_PAGES = new Map<number, SubconConf[]>([
@@ -1192,7 +1215,9 @@ const SUBCON_PAGES = new Map<number, SubconConf[]>([
   [7, [{ sub: "CCC" }]],
   // page 4 renders GAC twice: "Except SLG Service" then "SLG Service Only".
   [4, [{ sub: "GAC", serviceCat: "NONSG" }, { sub: "GAC", serviceCat: "SG" }]],
-  [5, [{ sub: "TEKFEN", tmcpPipe: false }]],
+  // page 5 renders TEKFEN twice, as the pbix does: without TMCP pipe, then
+  // TMCP pipe "9C3AQN 46 inch" only (owner, 2026-10-20) — see withTmcpBlock.
+  [5, [{ sub: "TEKFEN", tmcpPipe: false }, { sub: "TEKFEN", tmcpPipe: true }]],
   [6, [{ sub: "MEDGULF" }]],
   [8, [{ sub: "GAC", serviceCat: "NONSG" }]],
   [9, [{ sub: "GAC", serviceCat: "SG" }]],
@@ -1427,7 +1452,7 @@ export async function getWeldingPage(
   if (!Number.isInteger(n) || n < 1 || n > TOTAL_PAGES) {
     throw new RangeError(`welding page must be 1..${TOTAL_PAGES}, got ${n}`);
   }
-  const spec = specPage(n);
+  const base = specPage(n);
   const { as_of, origin } = await withAsOf(opts.as_of ?? null);
   const clock = await agingClock(opts.as_of ?? null);
   // Pages 1 and 2 own the slicer (page 2 since 2026-10-15, owner: the Project
@@ -1470,6 +1495,7 @@ export async function getWeldingPage(
   const subs = opts.subcoSet && opts.subcoSet.length > 1 ? [...opts.subcoSet] : undefined;
   const rts = opts.rtSet && opts.rtSet.length > 1 ? [...opts.rtSet] : undefined;
   const all = (Boolean(opts.allSubcos) || subs !== undefined) && (SUBCON_PAGES.has(n) || NDE_PAGES.has(n) || WPS_PAGES.has(n));
+  const spec = n === TEKFEN_STATUS_PAGE && !all ? withTmcpBlock(base) : base;
   if (all) note(ctx, subs ? SUBSET_SCOPE_NOTE(subs) : ALL_SCOPE_NOTE);
   const allRt = (Boolean(opts.allRtPct) || rts !== undefined) && NDE_PAGES.has(n);
   if (allRt) note(ctx, rts ? SUBSET_RT_NOTE(rts) : ALL_RT_NOTE);
@@ -2230,6 +2256,7 @@ async function buildSubconPage(
     weldTypes: RT_WELD_TYPES,
     tmcpPipe: undefined,
   });
+  const split = confs.some((c) => c.tmcpPipe === true) && confs.some((c) => c.tmcpPipe === false);
   const blocks = await Promise.all(
     confs.map(async (conf) => {
       // the pbix TMCP status page counts 9C3AQN at 30/34/46"; the TEKFEN page
@@ -2250,7 +2277,9 @@ async function buildSubconPage(
         // `tmcpPipe` at all, so this is a no-op on the other pages; applied
         // uniformly so the rule lives in one place. The TMCP-pipe twin page is
         // the exception: it reads TMCP pipe only (owner, 2026-10-18).
-        tmcpPipe: conf.tmcpPipe === true ? true : undefined,
+        // A page split into non-TMCP / TMCP blocks (TEKFEN status, owner
+        // 2026-10-20) keeps each block to its own pipe, as the pbix does.
+        tmcpPipe: conf.tmcpPipe === true ? true : split ? false : undefined,
       };
       const [pivot, thisWeek, byCat, total, totalNoJ, prByCat, prTotal, weekly, dist] =
         await Promise.all([
