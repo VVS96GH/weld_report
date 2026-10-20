@@ -1129,6 +1129,8 @@ function smallRing(id: string, scale: number, labels: any): any {
   if (!labels) return labels;
   let out = labels;
   if (SMALL_RINGS.has(id) && out.font && typeof out.font === "object") out = { ...out, font: { ...out.font, size: Math.round(10 * scale) } };
+  // the Graph pages' Weld Type doughnut: its numbers a little smaller (owner, 2026-10-20)
+  if (/^chart(7|8|9|10|11)_weldtype$/.test(id) && out.font && typeof out.font === "object") out = { ...out, font: { ...out.font, size: Math.round(10.5 * scale) } };
   // the forecast bars: a number per bar, a size down so they fit the bar's height
   if (id === "forecast_bar" && out.font && typeof out.font === "object") out = { ...out, font: { ...out.font, size: Math.round(10 * scale) } };
   const fmt = out.formatter;

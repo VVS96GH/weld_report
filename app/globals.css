@@ -5074,3 +5074,9 @@ body.g-dragging-y * {
   user-select: none;
   touch-action: none;
 }
+/* Graph pages: bigger key figures (owner, 2026-10-20) */
+.pv-graph-kpis .stat-value,
+[data-mood] .pv-graph-kpis .stat-value {
+  font-size: 22px;
+  line-height: 1.2;
+}
