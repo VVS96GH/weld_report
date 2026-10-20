@@ -347,6 +347,8 @@ export const POST_LOAD_MATVIEWS: { name: string; concurrently: boolean }[] = [
   // 2,370,428 rows, ~41 s. CONCURRENTLY so the app keeps reading during a load:
   // a plain REFRESH holds ACCESS EXCLUSIVE for its whole duration.
   { name: "mv_joint", concurrently: true },
+  // a joint's other weld types (0061), tiny; read with mv_joint. Keyed: online.
+  { name: "mv_joint_extra_type", concurrently: true },
   // 2,194,756 rows, ~7 s.
   { name: "mv_joint_wps", concurrently: true },
   // joint → material type (0049), for the Material Type slicer. Keyed: online.

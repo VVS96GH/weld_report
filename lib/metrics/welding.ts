@@ -212,7 +212,46 @@ export async function weldTypePivot(
       row.set(r.weld_type, r.joints_welded);
     }
   }
+  // a joint whose rows carry a second weld type counts in that column too (0061)
+  for (const x of await extraTypeCounts(scope, conds, p, true)) {
+    weldTypes.add(x.weld_type);
+    let row = cells.get(x.weld_cat);
+    if (!row) {
+      row = new Map();
+      cells.set(x.weld_cat, row);
+    }
+    row.set(x.weld_type, (row.get(x.weld_type) ?? 0) + x.n);
+  }
   return { cells, catTotals, total, weldTypes: [...weldTypes].sort() };
+}
+
+/**
+ * The extra (cat, type) counts of joints whose rows carry more than one weld
+ * type (mv_joint_extra_type, migration 0061), under the same conditions; the
+ * extra type itself must pass the scope's type filters. Only with
+ * `scope.rowWeldTypes`.
+ */
+async function extraTypeCounts(
+  scope: Scope,
+  conds: string[],
+  p: Params,
+  byCat: boolean,
+): Promise<Array<{ weld_cat: string | null; weld_type: string; n: number }>> {
+  if (!scope.rowWeldTypes) return [];
+  const q = new Params();
+  // re-number: the caller's params are reused as they are, the new ones follow
+  for (const v of p.list()) q.add(v);
+  const more: string[] = [];
+  if (scope.weldTypes?.length) more.push(`xt.weld_type = ANY(${q.any(scope.weldTypes)})`);
+  if (scope.excludeWeldTypes?.length) more.push(`NOT (xt.weld_type = ANY(${q.any(scope.excludeWeldTypes)}))`);
+  const sql =
+    `SELECT ${byCat ? "w.weld_cat" : "NULL::text AS weld_cat"}, xt.weld_type, count(*) AS n\n` +
+    `  FROM ${JOINT_FROM}\n` +
+    `  JOIN mv_joint_extra_type xt ON xt.source = w.source AND xt.joint_id = w.joint_id\n` +
+    ` WHERE ${and([...conds, ...more])}\n` +
+    ` GROUP BY 1, 2`;
+  const rows = await query(sql, q.list());
+  return z.array(z.object({ weld_cat: zText, weld_type: z.string(), n: zCount })).parse(rows);
 }
 
 /**
@@ -224,16 +263,24 @@ export async function weldTypeDistribution(
   scope: Scope,
 ): Promise<Array<{ weld_type: string | null; joints_welded: number }>> {
   const p = new Params();
+  const conds = [scopeWhere(scope, p), "w.is_welded_norepair"];
   const sql =
     `SELECT w.weld_type, count(*) AS joints_welded\n` +
     `  FROM ${JOINT_FROM}\n` +
-    ` WHERE ${and([scopeWhere(scope, p), "w.is_welded_norepair"])}\n` +
+    ` WHERE ${and(conds)}\n` +
     ` GROUP BY 1\n` +
     ` ORDER BY 2 DESC NULLS LAST`;
-  const rows = await query(sql, p.list());
-  return z
+  const rows = z
     .array(z.object({ weld_type: zText, joints_welded: zCount }))
-    .parse(rows);
+    .parse(await query(sql, p.list()));
+  const extra = await extraTypeCounts(scope, conds, p, false);
+  if (extra.length === 0) return rows;
+  for (const x of extra) {
+    const r = rows.find((y) => y.weld_type === x.weld_type);
+    if (r) r.joints_welded += x.n;
+    else rows.push({ weld_type: x.weld_type, joints_welded: x.n });
+  }
+  return rows.sort((a, b) => b.joints_welded - a.joints_welded);
 }
 
 /** Map one row of a combined `weldingAggs()` select into {@link WeldingStats}. */

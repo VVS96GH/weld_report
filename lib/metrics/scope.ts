@@ -243,6 +243,12 @@ export type Scope = {
   rtPcts?: readonly number[];
   /** `Weld Type IN (…)`. */
   weldTypes?: readonly string[];
+  /**
+   * Test `weldTypes` / `excludeWeldTypes` against EVERY row of the joint, as the
+   * pbix does (a joint with BW and LET rows passes `IN {BW, …}`). Only for
+   * queries over mv_joint; reads mv_joint_extra_type (migration 0061).
+   */
+  rowWeldTypes?: boolean;
   /** `Weld Type NOT IN (…)` — e.g. the per-WPS pages drop `DMY`/`THD`. */
   excludeWeldTypes?: readonly string[];
   /** `Weld Cat IN (…)`. */
@@ -420,7 +426,12 @@ export function scopeConditions(
     c.push(`btrim(${scope.serviceClass.sql}) = ${p.add(scope.serviceClass.value.trim())}`);
   }
   if (scope.weldTypes?.length) {
-    c.push(`${a}.weld_type = ANY(${p.any(scope.weldTypes)})`);
+    const any = p.any(scope.weldTypes);
+    c.push(
+      scope.rowWeldTypes
+        ? `(${a}.weld_type = ANY(${any}) OR EXISTS (SELECT 1 FROM mv_joint_extra_type xt WHERE xt.source = ${a}.source AND xt.joint_id = ${a}.joint_id AND xt.weld_type = ANY(${any})))`
+        : `${a}.weld_type = ANY(${any})`,
+    );
   }
   if (scope.excludeWeldTypes?.length) {
     c.push(

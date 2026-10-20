@@ -359,7 +359,7 @@ function main(): void {
   // The loaders refresh exactly these, in this order.
   check("POST_LOAD_MATVIEWS lists the views in dependency order",
     POST_LOAD_MATVIEWS.map((m) => m.name).join(",")
-      === "mv_weekly_progress,mv_joint,mv_joint_wps,mv_joint_material,mv_joint_pairs,mv_joint_attr,mv_row_slicer,mv_welder_perf,mv_welder_status,mv_welder_sub_status,mv_grid_welder,mv_grid_sc_sub,mv_grid_sc,mv_grid_wps,mv_grid_material,mv_grid_welder_sc,mv_grid_joint,mv_grid_rt_report,mv_grid_batch,mv_grid_total,mv_grid_inco,mv_grid_joint_tp,mv_grid_tp",
+      === "mv_weekly_progress,mv_joint,mv_joint_extra_type,mv_joint_wps,mv_joint_material,mv_joint_pairs,mv_joint_attr,mv_row_slicer,mv_welder_perf,mv_welder_status,mv_welder_sub_status,mv_grid_welder,mv_grid_sc_sub,mv_grid_sc,mv_grid_wps,mv_grid_material,mv_grid_welder_sc,mv_grid_joint,mv_grid_rt_report,mv_grid_batch,mv_grid_total,mv_grid_inco,mv_grid_joint_tp,mv_grid_tp",
     POST_LOAD_MATVIEWS.map((m) => m.name).join(","));
   check("every matview the loaders refresh exists in the migration log",
     POST_LOAD_MATVIEWS.every((m) => mvNames.has(m.name)),

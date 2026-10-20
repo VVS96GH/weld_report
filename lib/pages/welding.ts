@@ -2268,6 +2268,8 @@ async function buildSubconPage(
         ...baseScope(conf),
         tmcpPrAll: conf.tmcpPipe === true ? true : undefined,
         ...(graph ? { excludeWeldCats: ["J"] } : {}),
+        // weld-type filters and the type matrix see every row of a joint, as the pbix (0061)
+        rowWeldTypes: true,
       };
       const statusScope = { ...scope, weldCats: WELD_STATUS_CATS };
       // The "Cumulative RT/UT Joints Tested and Accepted" table reads the
