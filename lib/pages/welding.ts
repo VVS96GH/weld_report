@@ -3004,7 +3004,10 @@ async function buildWpsPage(
 function snapshotScopeFor(conf: SubconConf): string | undefined {
   if (conf.serviceCat === "SG") return SNAPSHOT_SCOPES.SG;
   if (conf.tmcpPipe === true) return SNAPSHOT_SCOPES.TMCP;
-  if (conf.serviceCat === "NONSG") return SNAPSHOT_SCOPES.ALL;
+  // TEKFEN without TMCP pipe: the workbook's "TEKFEN" row only. Without this the
+  // "TEKFEN TMCP" rows (in the CUM file since 2026-10-18) mixed into the
+  // TEKFEN rate lines, week by week (owner, 2026-10-20).
+  if (conf.serviceCat === "NONSG" || conf.tmcpPipe === false) return SNAPSHOT_SCOPES.ALL;
   return undefined;
 }
 
