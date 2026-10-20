@@ -55,3 +55,4 @@ next-env.d.ts
 /.data-refresh-state.json
 /.data-refresh.log
 /.data-refresh.pid
+data/graph-layout.json

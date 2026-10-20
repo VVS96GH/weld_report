@@ -8,6 +8,7 @@ import { KpiCard } from "@/components/widgets/KpiCard";
 import { DataTable } from "@/components/widgets/DataTable";
 import { ChartCard } from "@/components/widgets/ChartCard";
 import { TextNote } from "@/components/widgets/TextNote";
+import { GHandle, GraphResize } from "@/components/GraphResize";
 
 type Group =
   | { kind: "kpi"; items: KpiWidget[] }
@@ -279,31 +280,44 @@ function renderGroup(g: Group, i: number) {
               </div>
             );
           case "graph": {
-            const card = (c: ChartWidget, cls: string) => (
+            const card = (c: ChartWidget, cls: string, handle?: ReactNode) => (
               <div className={`card ${cls}`}>
                 <div className="card-header">{c.title}</div>
                 <div className="chart-container">
                   <ChartCard widget={c} />
                 </div>
+                {handle}
               </div>
             );
             return (
-              <div className="pv-graph" key={i}>
+              <GraphResize key={i}>
+              <div className="pv-graph">
                 <div className="pv-graph-left">
-                  {card(g.status, "pv-graph-status")}
+                  {card(g.status, "pv-graph-status", <GHandle k="status" />)}
                   {g.rates.map((c, j) => (
-                    <div key={j}>{card(c, "pv-graph-rate")}</div>
+                    <div key={j}>{card(c, `pv-graph-rate pv-graph-rate${j + 1}`, <GHandle k={j === 0 ? "rate1" : "rate2"} />)}</div>
                   ))}
                   <div className="pv-graph-blogs">
                     {g.blogs.map((c, j) => (
-                      <div key={j}>{card(c, "pv-graph-blog")}</div>
+                      <div key={j}>
+                        {card(
+                          c,
+                          "pv-graph-blog",
+                          <>
+                            <GHandle k="blog" />
+                            {j === 0 ? <GHandle k="blogLeft" axis="x" pctOf=".pv-graph-blogs" side="right" /> : null}
+                          </>,
+                        )}
+                      </div>
                     ))}
                   </div>
+                  <GHandle k="left" axis="x" pctOf=".pv-graph" side="right" />
                 </div>
                 <div className="pv-graph-right">
                   <div className="pv-graph-top">
-                    {card(g.donut, "pv-graph-donut")}
+                    {card(g.donut, "pv-graph-donut", <GHandle k="donut" />)}
                     <div className="pv-graph-kpis" role="group" aria-label="Key figures">
+                      <GHandle k="kpi" axis="x" invert side="left" />
                       {g.kpis.map((k, n) => (
                         <KpiCard key={n} widget={k} />
                       ))}
@@ -319,6 +333,7 @@ function renderGroup(g: Group, i: number) {
                   ))}
                 </div>
               </div>
+              </GraphResize>
             );
           }
           case "split":
