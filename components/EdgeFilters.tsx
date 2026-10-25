@@ -122,13 +122,8 @@ export function EdgeFilters({
 
   return (
     <div className="fdrawer-bar">
-      {actions ? (
-        <>
-          {actions}
-          {/* page buttons sit above Views (owner, 2026-10-25) */}
-          <span className="fbar-break" aria-hidden="true" />
-        </>
-      ) : null}
+      {/* page buttons sit above Views (owner, 2026-10-25) */}
+      {actions}
       <SavedViews />
       {chips.map((c) => (
         <span key={c.ids.join("+")} className="fchip-static">
