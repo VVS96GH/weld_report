@@ -139,8 +139,9 @@ export async function scdbWorkbook(): Promise<{ rows: number; ties: number; stre
     ]);
     r.font = FONT;
     r.getCell(3).numFmt = "d-mmm-yy";
-    // P as the owner builds it: a formula giving the text 'M/D/YYYY, with its value
-    if (x.joint_date) r.getCell(16).value = { formula: `"'" & TEXT(C${r.number}, "m/d/yyyy")`, result: textDate(x.joint_date) };
+    // P: the text 'M/D/YYYY made from C here, not a formula — the owner's workbook
+    // shows how it is derived (="'" & TEXT(C, "m/d/yyyy")), the file carries the value
+    if (x.joint_date) r.getCell(16).value = textDate(x.joint_date);
     if (remark) {
       ties += 1;
       for (let c = 1; c <= 17; c++) r.getCell(c).fill = HIGHLIGHT;
