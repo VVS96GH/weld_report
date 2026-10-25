@@ -473,27 +473,16 @@ export async function flangeMonthly(
   // Month). Weeks run Saturday → Friday, so the week 26-Sep … 02-Oct-2026 is
   // October. Checked against the owner's chart: June…October 2026 equal to the
   // joint (9,019 · 11,056 · 6,559 · 7,969 · 3,278).
-  // The chart's own visual filter (pbix, owner check 2026-10-25): 'Flange
-  // Progress'[Sub-Contractor From WD+WR] IN {GAC, MEDGULF, TEKFEN, CCC}. That
-  // column is the weld subcontractor of the flange's PDS Area Final (the weld
-  // PDS Area of the same ISO, else the flange's own), so a flange in an area
-  // with no welds drops out. With it June…October 2026 equal the owner's PBI
-  // chart: 8,779 · 10,834 · 6,418 · 8,208 · 9,487.
-  const wdSub = window
-    ? `WITH vpr AS (SELECT iso_number, max(pds_area) AS pds FROM weld GROUP BY 1),\n` +
-      `sw AS (SELECT pds_area, max(sub_contractor) AS sub FROM weld WHERE pds_area IS NOT NULL GROUP BY 1),\n`
-    : `WITH `;
-  const wdJoin = window
-    ? `    LEFT JOIN vpr ON vpr.iso_number = f.iso_number\n` +
-      `    LEFT JOIN sw ON sw.pds_area = coalesce(vpr.pds, f.pds_area)\n`
-    : ``;
-  const wdCond = window ? [`sw.sub IN ('GAC', 'MEDGULF', 'TEKFEN', 'CCC')`] : [];
+  // The chart's own visual filter: Flange Subcontractor IN {CCC, GAC, MEDGULF,
+  // TEKFEN} (owner changed it in the pbix 2026-10-25, from "Sub-Contractor From
+  // WD+WR"). It only leaves out the one TBD joint. June…October 2026 then equal
+  // the owner's chart: 8,954 · 11,004 · 6,522 · 8,325 · 9,633.
+  const wdCond = window ? [`f.${C.subcontractor} IN ('CCC', 'GAC', 'MEDGULF', 'TEKFEN')`] : [];
   const sql =
-    `${wdSub}j AS (\n` +
+    `WITH j AS (\n` +
     `  SELECT to_char(date_trunc('month', ${weekEndOf(`f.${C.jointDate}`)}), 'YYYY-MM') AS month,\n` +
     `         f.${C.jointId} AS joint_id, bool_or(${LEAKED}) AS leaked\n` +
     `    FROM ${T}\n` +
-    wdJoin +
     `   WHERE ${and([flangeWhere(filters, p), INSPECTED, ...weekCond, ...wdCond])}\n` +
     `   GROUP BY 1, 2\n` +
     `)\n` +
