@@ -18,11 +18,14 @@ import { spawn, spawnSync } from "node:child_process";
 import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
+import { estimateRefresh } from "@/lib/refresh-eta";
+
 export const dynamic = "force-dynamic";
 
 const ROOT = process.cwd();
 const LOG = path.join(ROOT, ".data-refresh.log");
 const PID = path.join(ROOT, ".data-refresh.pid");
+const STATE = path.join(ROOT, ".data-refresh-state.json");
 const UNIT = "weld-data-refresh";
 
 const SCRIPT =
@@ -53,11 +56,19 @@ function pidAlive(): boolean {
 function status() {
   const running = unitActive() || pidAlive();
   let log = "";
+  let full = "";
   let finishedAt: string | null = null;
   if (existsSync(LOG)) {
-    const lines = readFileSync(LOG, "utf8").split("\n").filter((l) => l.trim() !== "");
+    full = readFileSync(LOG, "utf8");
+    const lines = full.split("\n").filter((l) => l.trim() !== "");
     log = lines.slice(-25).join("\n");
     finishedAt = statSync(LOG).mtime.toISOString();
+  }
+  let durations: Record<string, number> = {};
+  try {
+    durations = (JSON.parse(readFileSync(STATE, "utf8")) as { durations?: Record<string, number> }).durations ?? {};
+  } catch {
+    // no state yet: typical durations
   }
   const m = /(?:^|\n)exit=(\d+)\s*$/.exec(log);
   return {
@@ -65,6 +76,7 @@ function status() {
     exitCode: running || !m ? null : Number(m[1]),
     finishedAt: running ? null : finishedAt,
     log,
+    eta: running ? estimateRefresh(full, durations, new Date()) : null,
   };
 }
 

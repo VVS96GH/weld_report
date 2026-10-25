@@ -12,12 +12,22 @@ import { useCallback, useEffect, useRef, useState } from "react";
  * run has finished cleanly, the page reloads to show the new data.
  */
 
+type Eta = { secondsLeft: number | null; stepIndex: number; steps: number; current: string | null };
+
 type Status = {
   running: boolean;
   exitCode: number | null;
   finishedAt: string | null;
   log: string;
+  eta?: Eta | null;
 };
+
+/** "≈ 12 мин" / "меньше минуты" */
+function fmtLeft(s: number): string {
+  if (s < 60) return "меньше минуты";
+  const m = Math.round(s / 60);
+  return m < 60 ? `≈ ${m} мин` : `≈ ${Math.floor(m / 60)} ч ${String(m % 60).padStart(2, "0")} мин`;
+}
 
 type Phase = "idle" | "confirm" | "starting" | "running" | "restarting" | "done" | "failed";
 
@@ -26,6 +36,7 @@ const POLL_MS = 4000;
 export function RefreshDataButton() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [log, setLog] = useState("");
+  const [eta, setEta] = useState<Eta | null>(null);
   const [error, setError] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const yesRef = useRef<HTMLButtonElement>(null);
@@ -48,6 +59,7 @@ export function RefreshDataButton() {
       setPhase("restarting");
     } else {
       setLog(s.log);
+      setEta(s.eta ?? null);
       if (s.running) setPhase("running");
       else if (s.exitCode === 0) {
         setPhase("done");
@@ -76,6 +88,7 @@ export function RefreshDataButton() {
       const s = (await r.json()) as Status;
       if (s.running) {
         setLog(s.log);
+        setEta(s.eta ?? null);
         setPhase("running");
         stopPolling();
         timer.current = setTimeout(poll, POLL_MS);
@@ -154,6 +167,12 @@ export function RefreshDataButton() {
             ) : null}
             {phase === "running" || phase === "restarting" ? (
               <p>Можно закрыть это окно, обновление продолжится. Не выключайте компьютер и не давайте ему уснуть.</p>
+            ) : null}
+            {phase === "running" && eta && eta.secondsLeft !== null ? (
+              <p className="refresh-eta" aria-live="polite">
+                <strong>Осталось {fmtLeft(eta.secondsLeft)}</strong>
+                {eta.steps ? ` · шаг ${eta.stepIndex} из ${eta.steps}${eta.current ? ` (${eta.current})` : ""}` : ""}
+              </p>
             ) : null}
             {phase === "done" ? <p>Страница сейчас перезагрузится.</p> : null}
             {error ? <p role="alert">{error}</p> : null}

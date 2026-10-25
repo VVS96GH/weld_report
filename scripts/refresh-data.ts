@@ -123,6 +123,8 @@ interface State {
   /** A matview-moving step ran and the views have not been refreshed since. */
   matviewsStale: boolean;
   lastRun?: string;
+  /** How long each step took last time (ms) — the refresh dialog's time-left estimate. */
+  durations?: Record<string, number>;
 }
 
 const STATE_FILE = ".data-refresh-state.json";
@@ -130,7 +132,13 @@ const STATE_FILE = ".data-refresh-state.json";
 function readState(): State {
   if (!existsSync(STATE_FILE)) return { files: {}, pending: [], matviewsStale: false };
   const s = JSON.parse(readFileSync(STATE_FILE, "utf8")) as Partial<State>;
-  return { files: s.files ?? {}, pending: s.pending ?? [], matviewsStale: s.matviewsStale ?? false, lastRun: s.lastRun };
+  return {
+    files: s.files ?? {},
+    pending: s.pending ?? [],
+    matviewsStale: s.matviewsStale ?? false,
+    lastRun: s.lastRun,
+    durations: s.durations ?? {},
+  };
 }
 
 function writeState(s: State): void {
@@ -327,6 +335,7 @@ async function main(): Promise<void> {
       if (c.print) state.files[f] = c.print;
     }
     state.pending = state.pending.filter((id) => id !== step.id);
+    state.durations = { ...state.durations, [step.id]: Date.now() - t };
     writeState(state);
     timings.push([step.id, Date.now() - t]);
     say(`✔ ${step.id} in ${fmtSecs(Date.now() - t)}`);
@@ -339,6 +348,7 @@ async function main(): Promise<void> {
     say("▶ matviews — one refresh for the whole run");
     const res = await withDb((c) => refreshMatviews(c));
     state.matviewsStale = false;
+    state.durations = { ...state.durations, matviews: Date.now() - t };
     writeState(state);
     timings.push(["matviews", Date.now() - t]);
     say(`✔ matviews: ${formatRefreshes(res)}`);
