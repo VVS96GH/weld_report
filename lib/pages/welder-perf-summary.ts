@@ -7,14 +7,18 @@
  *
  * The visuals' own filters, verbatim from the pbix:
  *   status tables  BW/CLET/GW/MW, welded, status not blank, Days Since Last RT
- *                  2 weeks: > 0 and < 15 (GAC: >= 0 and < 15, which in DAX also
- *                  admits a BLANK Days Since); 1 month: > 0 and < 30
- *   doughnuts      Days Since Last RT > 0 and < 15 (1 month: < 29), status not blank,
+ *                  2 weeks: 1..15 (GAC: 0..15, which in DAX also admits a BLANK
+ *                  Days Since); 1 month: > 0 and < 30
+ *   doughnuts      Days Since Last RT 1..15 (1 month: < 29), status not blank,
  *                  BW/CLET/GW/MW (a page-level filter: CCC 161 ok, not 162)
  * The 2-week ratio is the measure `Last 2 weeks RT FILM Ratio %`, whose own
  * `Days Since Last RT >= 0 && <= 15` REPLACES the visual's filter on that column
  * (owner's 09-Oct page: CCC 0.15 %, GAC ok 0.35 %); the 1-month one is
  * Avg(`RT Film Ratio % "PR all" For Welder LAST 1 MONTH`) over the visual's rows.
+ *
+ * Owner, 2026-10-25: the 2-week window is 1..15 days, not the pbix visuals' 1..14 —
+ * a welder whose last RT is exactly 15 days before the cut-off stays in (W-916-CCC,
+ * RT 08-Oct at the 23-Oct cut-off). The header's "since" moves with it.
  */
 import { z } from "zod";
 
@@ -67,7 +71,7 @@ function baseCte(kind: CumKind): string {
 /** The status table's row filter (the visual's). */
 function tableWindow(kind: CumKind): string {
   return kind === "2w"
-    ? `((sub_contractor = 'GAC' AND (d IS NULL OR d BETWEEN 0 AND 14)) OR (sub_contractor <> 'GAC' AND d BETWEEN 1 AND 14))`
+    ? `((sub_contractor = 'GAC' AND (d IS NULL OR d BETWEEN 0 AND 15)) OR (sub_contractor <> 'GAC' AND d BETWEEN 1 AND 15))`
     : `d BETWEEN 1 AND 29`;
 }
 
@@ -97,7 +101,7 @@ export async function getSummaryPage(kind: CumKind, pending: { lastDate: string 
   const donutSql =
     `WITH ${baseCte(kind)}\n` +
     `SELECT sub_contractor AS sub, st, count(DISTINCT welder_id) AS qty FROM v\n` +
-    ` WHERE st IS NOT NULL AND weld_type IN ('BW','CLET','GW','MW') AND d BETWEEN 1 AND ${kind === "2w" ? 14 : 28}\n GROUP BY 1, 2`;
+    ` WHERE st IS NOT NULL AND weld_type IN ('BW','CLET','GW','MW') AND d BETWEEN 1 AND ${kind === "2w" ? 15 : 28}\n GROUP BY 1, 2`;
   const trendSql =
     `SELECT sub_contractor AS sub, period, status AS st, count(DISTINCT welder_id) AS qty,
             min(last_rt_date)::text AS first_day
@@ -175,7 +179,7 @@ export async function getSummaryPage(kind: CumKind, pending: { lastDate: string 
   return {
     kind,
     cutoff,
-    since: back(cutoff, kind === "2w" ? 14 : 28),
+    since: back(cutoff, kind === "2w" ? 15 : 28),
     subs: out,
     cum: { lastDate: pending.lastDate, pending: pending.rows, file: kind },
   };
