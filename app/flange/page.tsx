@@ -61,18 +61,14 @@ export default async function FlangePage(props: PageProps<"/flange">) {
       <EdgeFilters
         widgets={filterWidgets}
         actions={
-          <>
-            {/* a line break in the bar: the button sits under Views (owner, 2026-10-25) */}
-            <span className="fbar-break" aria-hidden="true" />
-            <a
-              className="filter-select fchip-btn scdb-btn"
-              href="/api/flange-scdb-export"
-              download
-              title="SCDB import form (14_SCDB_Import_Form_Flange_Progress_Template): Flange Progress, GAC / MEDGULF / TEKFEN, one row per Joint ID (Joint ID Max Joint_Date); duplicates marked in Remarks"
-            >
-              ⬇ SCDB Flange Progress
-            </a>
-          </>
+          <a
+            className="filter-select fchip-btn scdb-btn"
+            href="/api/flange-scdb-export"
+            download
+            title="Download the SCDB import form (14_SCDB_Import_Form_Flange_Progress_Template): Flange Progress, GAC / MEDGULF / TEKFEN, one row per Joint ID (Joint ID Max Joint_Date); duplicates marked in Remarks"
+          >
+            SCDB
+          </a>
         }
       />
       <FlangeView
