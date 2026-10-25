@@ -25,9 +25,12 @@ export type EdgeChip = { label: string; value: string; ids: string[] };
 export function EdgeFilters({
   widgets,
   extra,
+  actions,
 }: {
   widgets: FilterWidget[];
   extra?: { node: ReactNode; ids: string[]; chips: EdgeChip[] };
+  /** page buttons shown next to Views (the flange page's SCDB download) */
+  actions?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const [hover, setHover] = useState(false);
@@ -120,6 +123,7 @@ export function EdgeFilters({
   return (
     <div className="fdrawer-bar">
       <SavedViews />
+      {actions}
       {chips.map((c) => (
         <span key={c.ids.join("+")} className="fchip-static">
           <span className="fchip-label">{c.label}:</span> {short(c.value)}

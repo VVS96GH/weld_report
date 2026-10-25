@@ -46,7 +46,19 @@ export default async function FlangePage(props: PageProps<"/flange">) {
 
   return (
     <>
-      <EdgeFilters widgets={filterWidgets} />
+      <EdgeFilters
+        widgets={filterWidgets}
+        actions={
+          <a
+            className="filter-select fchip-btn scdb-btn"
+            href="/api/flange-scdb-export"
+            download
+            title="SCDB import form (14_SCDB_Import_Form_Flange_Progress_Template): Flange Progress, GAC / MEDGULF / TEKFEN, one row per Joint ID (Joint ID Max Joint_Date); duplicates marked in Remarks"
+          >
+            ⬇ SCDB Flange Progress
+          </a>
+        }
+      />
       <FlangeView
         model={model}
         subtitle={subtitle}
