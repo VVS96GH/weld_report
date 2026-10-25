@@ -8,7 +8,8 @@
  * The visuals' own filters, verbatim from the pbix:
  *   status tables  BW/CLET/GW/MW, welded, status not blank, Days Since Last RT
  *                  2 weeks: 1..15 (GAC: 0..15, which in DAX also admits a BLANK
- *                  Days Since); 1 month: > 0 and < 30
+ *                  Days Since); 1 month: 1..28 (owner 2026-10-25, the doughnut's window;
+ *                  the pbix visual had > 0 and < 30)
  *   doughnuts      Days Since Last RT 1..15 (1 month: < 29), status not blank,
  *                  BW/CLET/GW/MW (a page-level filter: CCC 161 ok, not 162)
  * The 2-week ratio is the measure `Last 2 weeks RT FILM Ratio %`, whose own
@@ -72,7 +73,7 @@ function baseCte(kind: CumKind): string {
 function tableWindow(kind: CumKind): string {
   return kind === "2w"
     ? `((sub_contractor = 'GAC' AND (d IS NULL OR d BETWEEN 0 AND 15)) OR (sub_contractor <> 'GAC' AND d BETWEEN 1 AND 15))`
-    : `d BETWEEN 1 AND 29`;
+    : `d BETWEEN 1 AND 28`;
 }
 
 const TableRow = z.object({ sub: z.string(), st: z.string(), welder: z.string(), r: nn, f: nn, wsum: nn, wcnt: nn, wr: nn });
