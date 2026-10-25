@@ -5083,4 +5083,5 @@ body.g-dragging-y * {
 
 /* SCDB import-form download next to Views on the flange page (owner, 2026-10-25) */
 .scdb-btn { text-decoration: none; white-space: nowrap; padding-inline: 10px; }
+.fbar-break { flex-basis: 100%; height: 0; }
 @media print { .scdb-btn { display: none; } }

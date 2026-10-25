@@ -29,7 +29,7 @@ export function EdgeFilters({
 }: {
   widgets: FilterWidget[];
   extra?: { node: ReactNode; ids: string[]; chips: EdgeChip[] };
-  /** page buttons shown next to Views (the flange page's SCDB download) */
+  /** page buttons shown above Views (the flange page's SCDB download) */
   actions?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -122,8 +122,14 @@ export function EdgeFilters({
 
   return (
     <div className="fdrawer-bar">
+      {actions ? (
+        <>
+          {actions}
+          {/* page buttons sit above Views (owner, 2026-10-25) */}
+          <span className="fbar-break" aria-hidden="true" />
+        </>
+      ) : null}
       <SavedViews />
-      {actions}
       {chips.map((c) => (
         <span key={c.ids.join("+")} className="fchip-static">
           <span className="fchip-label">{c.label}:</span> {short(c.value)}
