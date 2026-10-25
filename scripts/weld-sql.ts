@@ -442,6 +442,11 @@ export function buildWeldInsert(cutoff?: string): string {
   ].join("\n");
 }
 
+/** A line break inside any field of the staged record (the record's text form). */
+const LINE_BREAK = "strpos(s::text, chr(10)) > 0";
+/** Revision Status filter: blank, or Cancelled but split by Power Query at a line break. */
+const KEEP_REVISION = `(btrim(s.revision_status) = '' OR (btrim(s.revision_status) = 'Cancelled' AND ${LINE_BREAK}))`;
+
 /**
  * The Power Query `Weld Dump` row filters, §0.4 steps 4-6 and 12.
  * Expressed over the staging alias `s` (raw text).
@@ -454,8 +459,10 @@ export function loadFilterSql(cutoff?: string): string {
       : []),
     `-- #"Exlude Area Class ""0""" (applied twice in the M; idempotent)`,
     `  AND btrim(s.area_classification) NOT IN ('', '0')`,
-    `-- #"Revision Status": keep [Revision Status] = ""  (ruling R-02, cancelled welds out)`,
-    `  AND btrim(s.revision_status) = ''`,
+    `-- #"Revision Status": keep [Revision Status] = ""  (ruling R-02, cancelled welds out) —`,
+    `-- except a Cancelled record with a line break inside a field: Power Query splits it there and`,
+    `-- its first part passes with a blank status, so PBI keeps it (owner 2026-10-25: count them too)`,
+    `  AND ${KEEP_REVISION}`,
     `-- #"Filtered Rows1 Subcon"`,
     `  AND btrim(s.sub_contractor) <> ''`,
     `-- #"Exlude after 28 Aug" — M compares a typed date, so NULL weld dates are kept`,
@@ -469,19 +476,20 @@ export function buildRejectCountsSql(cutoff?: string): string {
   return `SELECT
   count(*) FILTER (WHERE btrim(s.area_classification) IN ('', '0'))            AS area_class_0_or_blank,
   count(*) FILTER (WHERE btrim(s.area_classification) NOT IN ('', '0')
-                     AND btrim(s.revision_status) = 'Cancelled')               AS revision_status_cancelled,
+                     AND btrim(s.revision_status) = 'Cancelled'
+                     AND NOT ${LINE_BREAK})                                    AS revision_status_cancelled,
   count(*) FILTER (WHERE btrim(s.area_classification) NOT IN ('', '0')
                      AND btrim(s.revision_status) NOT IN ('', 'Cancelled'))    AS revision_status_other,
   count(*) FILTER (WHERE btrim(s.area_classification) NOT IN ('', '0')
-                     AND btrim(s.revision_status) = ''
+                     AND ${KEEP_REVISION}
                      AND btrim(s.sub_contractor) = '')                         AS sub_contractor_blank,
   count(*) FILTER (WHERE btrim(s.area_classification) NOT IN ('', '0')
-                     AND btrim(s.revision_status) = ''
+                     AND ${KEEP_REVISION}
                      AND btrim(s.sub_contractor) <> ''
                      AND weld_to_date(s.weld_date) IN (${DROPPED_WELD_DATES.map((d) => `DATE '${d}'`).join(", ")}))
                                                                                AS weld_date_excluded_by_m,
   count(*) FILTER (WHERE btrim(s.area_classification) NOT IN ('', '0')
-                     AND btrim(s.revision_status) = ''
+                     AND ${KEEP_REVISION}
                      AND btrim(s.sub_contractor) <> ''
                      AND ${cutoff ? `weld_to_date(s.weld_date) > DATE '${cutoff}'` : "false"})
                                                                                AS weld_date_after_cutoff,

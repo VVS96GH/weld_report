@@ -265,7 +265,9 @@ async function dryRun(opts: Options): Promise<DryRunStats> {
       bump(stats.dropped, "area_class_0_or_blank");
       continue;
     }
-    if (f[idx.revision_status].trim() !== "") {
+    // a Cancelled record split by a line break inside a field is kept, as Power Query does
+    const pqSplit = f[idx.revision_status].trim() === "Cancelled" && f.some((v) => v.includes("\n"));
+    if (f[idx.revision_status].trim() !== "" && !pqSplit) {
       bump(
         stats.dropped,
         f[idx.revision_status].trim() === "Cancelled"
