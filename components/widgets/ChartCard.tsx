@@ -318,12 +318,15 @@ const centerTotalPlugin = {
   id: "centerTotal",
   afterDraw(chart: ChartJS) {
     const opts = (chart.options.plugins as Record<string, unknown> | undefined)?.centerTotal as
-      | { color: string; font: string }
+      | { color: string; font: string; value?: number }
       | undefined;
     if (!opts) return;
     const ds = chart.data.datasets[0];
     if (!ds) return;
-    const total = (ds.data as unknown[]).reduce<number>((a, v) => a + (typeof v === "number" ? v : 0), 0);
+    // the widget's own centre figure ("centre = N" / "total = N" in options_notes)
+    // when it has one — the pbix shows a measure there, not the slice sum
+    const total =
+      opts.value ?? (ds.data as unknown[]).reduce<number>((a, v) => a + (typeof v === "number" ? v : 0), 0);
     const meta = chart.getDatasetMeta(0);
     const arc = meta.data[0] as unknown as { x: number; y: number } | undefined;
     if (!arc) return;
@@ -1052,7 +1055,17 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
           ...(circular ? { filter: (item: { index?: number }) => (item.index ?? 0) < 7 } : {}) } },
         tooltip: { enabled: true },
         datalabels: smallRing(widget.canvas_id, palette.scale, notes.includes("area") ? areaLabels(palette) : valueLabels(widget.chart_type, stackedX || stackedY, percentAxis, circular, palette, widget.datasets.length, end - start, horizontal, notes.includes("label-name-pct"))),
-        centerTotal: circular && notes.includes("center-total") ? { color: palette.fg, font: palette.font ?? "sans-serif" } : undefined,
+        centerTotal:
+          circular && notes.includes("center-total")
+            ? {
+                color: palette.fg,
+                font: palette.font ?? "sans-serif",
+                value: (() => {
+                  const m = /(?:centre|total) = ([\d,]+)/.exec(notes);
+                  return m ? Number(m[1].replace(/,/g, "")) : undefined;
+                })(),
+              }
+            : undefined,
         thresholdLabels: thresholds
           ? {
               family: palette.font ?? "sans-serif",
