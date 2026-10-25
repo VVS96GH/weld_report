@@ -17,6 +17,7 @@
  * No database import here: callers pass `run` (the app's query, or a loader's
  * client), so the loader script and the API share one implementation.
  */
+import { existsSync, readdirSync, statSync } from "node:fs";
 import { copyFile, mkdir, rename, stat } from "node:fs/promises";
 import path from "node:path";
 
@@ -26,9 +27,45 @@ export type CumKind = "2w" | "1m";
 export type Run = <T extends Record<string, unknown>>(sql: string, params?: unknown[]) => Promise<T[]>;
 
 const DIR = "sources/CUM FILE Welders Performance For Graphic";
+const CUM_NAMES: Record<CumKind, string> = {
+  "2w": "CUM FILE Welders Performance.  Rejection Rate. Summary Status  2 Weeks Since RT Date .xlsx",
+  "1m": "CUM FILE Welders Performance.  Rejection Rate. Summary Status  1 Month Since RT Date .xlsx",
+};
+
+/** A name compared without its spacing: "…Date .xlsx" = "…Date.xlsx" = "…Date  .xlsx". */
+const loose = (name: string) => name.toLowerCase().replace(/\s+/g, "").replace(/\.xlsx$/, "");
+
+/**
+ * The workbook of a kind, found in its folder whatever the spacing of its name
+ * (owner 2026-10-25: a re-save dropped the space before ".xlsx" and the refresh
+ * kept reading the old file). The exact name wins; otherwise the newest file whose
+ * name matches without spaces. A copy ("… Date 1.xlsx") never matches.
+ */
+export function cumFile(kind: CumKind): string {
+  const exact = `${DIR}/${CUM_NAMES[kind]}`;
+  if (existsSync(exact)) return exact;
+  const want = loose(CUM_NAMES[kind]);
+  let best: { file: string; mtime: number } | null = null;
+  try {
+    for (const f of readdirSync(DIR)) {
+      if (!f.toLowerCase().endsWith(".xlsx") || loose(f) !== want) continue;
+      const mtime = statSync(`${DIR}/${f}`).mtimeMs;
+      if (!best || mtime > best.mtime) best = { file: `${DIR}/${f}`, mtime };
+    }
+  } catch {
+    // no folder: the exact path, which the caller reports as missing
+  }
+  return best?.file ?? exact;
+}
+
+/** Resolved on every read, so a renamed workbook is picked up without a restart. */
 export const CUM_FILES: Record<CumKind, string> = {
-  "2w": `${DIR}/CUM FILE Welders Performance.  Rejection Rate. Summary Status  2 Weeks Since RT Date .xlsx`,
-  "1m": `${DIR}/CUM FILE Welders Performance.  Rejection Rate. Summary Status  1 Month Since RT Date .xlsx`,
+  get "2w"() {
+    return cumFile("2w");
+  },
+  get "1m"() {
+    return cumFile("1m");
+  },
 };
 const SHEET = "CUM FILE Welders Performance";
 /** Days of one period of each workbook (2 and 4 weeks, Friday to Friday). */

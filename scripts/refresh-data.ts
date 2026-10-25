@@ -36,6 +36,7 @@ import { TREND_RT_PWHT_FILE } from "./lib/source-path";
 import path from "node:path";
 import { Client } from "pg";
 import { formatRefreshes, refreshMatviews, requireEnvUrl } from "./load-common";
+import { cumFile } from "../lib/welder-perf-cum";
 
 interface Step {
   id: string;
@@ -100,10 +101,9 @@ const STEPS: Step[] = [
       "sources/WPQ RECORD REGISTER/CUM WPS Status.xlsx",
       "sources/WPQ RECORD REGISTER/WPS PWHT Status.xlsx",
     ], afterMatviews: true, about: "WPQ register" },
-  { id: "welder-cum", script: "db:load:welder-cum", files: [
-      "sources/CUM FILE Welders Performance For Graphic/CUM FILE Welders Performance.  Rejection Rate. Summary Status  2 Weeks Since RT Date .xlsx",
-      "sources/CUM FILE Welders Performance For Graphic/CUM FILE Welders Performance.  Rejection Rate. Summary Status  1 Month Since RT Date .xlsx",
-    ], about: "welder performance CUM workbooks (trend charts)" },
+  // the workbooks are found whatever the spacing of their names (lib/welder-perf-cum.ts cumFile)
+  { id: "welder-cum", script: "db:load:welder-cum", files: [cumFile("2w"), cumFile("1m")],
+    about: "welder performance CUM workbooks (trend charts)" },
   { id: "flange", script: "db:load:flange",
     files: ["sources/Flange Progress.xlsx", "sources/ovAssets_1619.xlsx"],
     afterMatviews: true, about: "flange register" },
