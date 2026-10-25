@@ -171,6 +171,14 @@ export function FlangeView({
           <div className="pbi-banner">
             <span>Flange Inspection</span>
             {asOf ? <span className="pbi-banner-date num">{asOf}</span> : null}
+            <a
+              className="ms-btn pbi-banner-btn"
+              href="/api/flange-scdb-export"
+              download
+              title="SCDB import form (14_SCDB_Import_Form_Flange_Progress_Template): Flange Progress, GAC / MEDGULF / TEKFEN, one row per Joint ID (Joint ID Max Joint_Date); duplicates marked in Remarks"
+            >
+              SCDB Flange Progress
+            </a>
           </div>
           <div className="pbi-row">
             {inspDonut ? <Visual widget={inspDonut} palette={palette} title="Project Flange Inspected" /> : null}
