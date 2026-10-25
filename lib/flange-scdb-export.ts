@@ -37,7 +37,9 @@ const SOURCES = [
   "Joint ID", "", "Joint Date", "Test Pack", "Report Nbr", "", "", "Cat.", "", "Flange Subcontractor", "",
   "Iso Number", "Jointer", "SubSystem", "PDS Area Final", "", "",
 ];
-const WIDTHS = [34, 12, 14, 24, 26, 12, 12, 12, 12, 18, 18, 26, 14, 14, 14, 14, 60];
+// the owner's 25-Oct workbook: its column widths, Aptos Narrow 11, labels row 9 pt
+const WIDTHS = [26, 17, 13, 20, 17, 13, 13, 20, 17, 19, 17, 13, 13, 12, 14, 15, 60];
+const FONT = { name: "Aptos Narrow", size: 11 };
 
 type Row = {
   joint_id: string;
@@ -94,11 +96,17 @@ export async function scdbWorkbook(): Promise<{ rows: number; ties: number; stre
   const rows = await scdbRows();
   const pass = new PassThrough();
   const wb = new ExcelJS.stream.xlsx.WorkbookWriter({ stream: pass, useStyles: true });
-  const ws = wb.addWorksheet("FLANGE PROGRESS", { views: [{ state: "frozen", ySplit: 3 }] });
+  const ws = wb.addWorksheet("FLANGE PROGRESS");
   ws.columns = WIDTHS.map((width) => ({ width }));
+  // the filter sits on the field-code row, as in the owner's workbook
+  ws.autoFilter = { from: { row: 2, column: 1 }, to: { row: rows.length + 3, column: 16 } };
   for (const [i, header] of [LABELS, FIELDS, SOURCES].entries()) {
     const r = ws.addRow(header);
-    r.font = { bold: i < 2, italic: i === 2 };
+    for (let c = 1; c <= 17; c++) {
+      const cell = r.getCell(c);
+      cell.font = i === 0 ? { ...FONT, size: 9 } : { ...FONT, bold: i === 1 };
+      if (i === 1) cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFFFCC" } };
+    }
     r.commit();
   }
   let ties = 0;
@@ -126,10 +134,13 @@ export async function scdbWorkbook(): Promise<{ rows: number; ties: number; stre
       x.jointer,
       x.subsystem,
       x.pds_final,
-      x.joint_date ? textDate(x.joint_date) : null,
+      null,
       remark,
     ]);
-    r.getCell(3).numFmt = "m/d/yyyy";
+    r.font = FONT;
+    r.getCell(3).numFmt = "d-mmm-yy";
+    // P as the owner builds it: a formula giving the text 'M/D/YYYY, with its value
+    if (x.joint_date) r.getCell(16).value = { formula: `"'" & TEXT(C${r.number}, "m/d/yyyy")`, result: textDate(x.joint_date) };
     if (remark) {
       ties += 1;
       for (let c = 1; c <= 17; c++) r.getCell(c).fill = HIGHLIGHT;
