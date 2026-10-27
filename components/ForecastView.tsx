@@ -23,7 +23,7 @@ import { TextNote } from "@/components/widgets/TextNote";
  * columns stack (app/globals.css .forecast-layout).
  */
 
-const RIGHT_RT_CARDS = ["RT B.Log", "Numb RT/UT_", "RT Avrg Prod-on (week-end filtered)", "Months to keep RT B.log", "PWHT B.Log PBI Rule"];
+const RIGHT_RT_CARDS = ["RT B.Log", "Numb RT/UT_", "RT Avrg Prod-on 2024-26 per Month", "Months to keep RT B.log", "PWHT B.Log PBI Rule"];
 const RIGHT_DIA_CARDS = ["RT Dia B.Log", "Total Welded RT Dia", "RT Dia Avrg Prod-on", "Months to keep Dia RT B.log"];
 const MIDDLE_CARDS = ["Total RT/UT Done", "RT B.Log Talisman", "RT Total Forecast B.log", "RT Dia Total Forecast B.log", "Numb RT/UT 2024", "RT Avrg Prod-on 2024-26 per Month", "QTY Years"];
 

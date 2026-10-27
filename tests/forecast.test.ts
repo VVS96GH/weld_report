@@ -142,9 +142,9 @@ describe.skipIf(Boolean(skipReason))("forecast page — slice 1", () => {
     const p = await getForecastPage();
     // Exact against the owner's screenshot.
     expect(kpi(p, "RT Dia Total Forecast B.log")).toBe("124,613");
-    // One measure, two cards, two visual filters -- both are rendered.
+    // One measure on two cards (owner, 2026-10-27: the week-end filtered card was dropped).
     expect(kpi(p, "RT Avrg Prod-on 2024-26 per Month")).toBe("5,324");
-    expect(kpi(p, "RT Avrg Prod-on (week-end filtered)")).toBe("5,202");
+    expect(kpi(p, "RT Avrg Prod-on (week-end filtered)")).toBeNull();
     expect(kpi(p, "QTY Years")).toBe("0.21");
     expect(kpi(p, "Months to keep RT B.log")).toBe("0.13");
     expect(kpi(p, "Months to keep Dia RT B.log")).toBe("0.13");

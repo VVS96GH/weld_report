@@ -326,12 +326,8 @@ export async function getForecastPage(
       "RT Avrg Prod-on 2024-26 per Month",
       totals.avg_prod_month === null ? HONEST_EMPTY : num(totals.avg_prod_month),
     ),
-    kpi(
-      "RT Avrg Prod-on (week-end filtered)",
-      totals.avg_prod_month_weld === null
-        ? HONEST_EMPTY
-        : num(totals.avg_prod_month_weld),
-    ),
+    // owner, 2026-10-27: the second (week-end filtered) card is gone — the right row shows
+    // "RT Avrg Prod-on 2024-26 per Month" again (ForecastView RIGHT_RT_CARDS)
     // [QTY Years for RT Backlog Forecast] = forecast / avg per month / 12.
     kpi("QTY Years", ratio(fc.total, (totals.avg_prod_month ?? 0) * 12)),
     kpi("RT B.Log", num(backlogTotal)),
