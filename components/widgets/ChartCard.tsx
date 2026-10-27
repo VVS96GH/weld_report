@@ -560,19 +560,20 @@ const weldTypeColors = (title: string) =>
 
 /**
  * The RT B.Log Forecast page in the pbix's own colours (owner, 2026-10-19), from
- * the visuals' dataPoint fills: lilac total, red RT 100 %, yellow 5 %, amber 10 %,
- * green 20 %, black 30 %; the Done doughnut green over lilac.
+ * the visuals' dataPoint fills, recoloured by the owner 2026-10-27: red total, yellow RT 100 %,
+ * orange 5 %, blue 10 %, green 20 %, black 30 %; the Done doughnut green over red.
  */
 const FORECAST_COLORS: Record<string, Record<string, string>> = {
+  // owner, 2026-10-27: lilac -> red, red -> yellow, yellow -> orange, orange -> blue
   forecast_bar: {
-    "RT Total Forecast B.log": "#C2A6F1", "RT 100%": "#EC2326", "RT 5%": "#E5F600",
-    "RT 10%": "#F7B500", "RT 20%": "#00EA0C", "RT 30%": "#000000",
+    "RT Total Forecast B.log": "#EC2326", "RT 100%": "#E5F600", "RT 5%": "#F7B500",
+    "RT 10%": "#2F6FD6", "RT 20%": "#00EA0C", "RT 30%": "#000000",
   },
   forecast_donut_backlog: {
-    "RT Total Forecast B.log": "#DCBFF6", "RT 100%": "#EC2326", "RT 5%": "#E5F600",
-    "RT 10%": "#F7B500", "RT 20%": "#00EA0C", "RT 30%": "#000000",
+    "RT Total Forecast B.log": "#EC2326", "RT 100%": "#E5F600", "RT 5%": "#F7B500",
+    "RT 10%": "#2F6FD6", "RT 20%": "#00EA0C", "RT 30%": "#000000",
   },
-  forecast_donut_done: { Done: "#04BD32", "RT Total Forecast Backlog": "#C2A6F1", "RT Total Forecast B.Log": "#C2A6F1" },
+  forecast_donut_done: { Done: "#04BD32", "RT Total Forecast Backlog": "#EC2326", "RT Total Forecast B.Log": "#EC2326" },
 };
 const forecastColor = (id: string, label: unknown) => FORECAST_COLORS[id]?.[String(label ?? "").trim()];
 
