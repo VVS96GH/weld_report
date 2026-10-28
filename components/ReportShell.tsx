@@ -1,5 +1,6 @@
 "use client";
 
+import { UserMenu } from "@/components/UserMenu";
 import { PdfButton } from "@/components/PdfButton";
 import { ZoomControl } from "@/components/ZoomControl";
 import { createContext, Suspense, useCallback, useContext, useEffect, useState } from "react";
@@ -46,6 +47,7 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
   const [subtitle, setSubtitle] = useState<string>(WELDING_REPORT_SUBTITLE);
 
   const isFlange = pathname?.startsWith("/flange") ?? false;
+  const isLogin = pathname === "/login";
   // The Errors page (2026-10-14): data errors for the sub-contractors to correct.
   const isErrors = pathname?.startsWith("/errors") ?? false;
   const isData = pathname?.startsWith("/data") ?? false;
@@ -117,13 +119,18 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
             <div className="subtitle">{subtitle}</div>
           </div>
         </div>
-        <div className="header-right">
-          <PdfButton />
-          <ThemeMoodControls />
-          <RefreshDataButton />
-        </div>
+        {/* the sign-in page shows the brand only */}
+        {isLogin ? null : (
+          <div className="header-right">
+            <PdfButton />
+            <ThemeMoodControls />
+            <RefreshDataButton />
+            <UserMenu />
+          </div>
+        )}
       </header>
 
+      {isLogin ? null : (
       <nav className="page-nav" aria-label="Report navigation">
         {/* Report switcher: two pill links; the current report carries aria-current. */}
         <div className="report-switcher" role="group" aria-label="Report">
@@ -180,6 +187,7 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
           </>
         )}
       </nav>
+      )}
 
       <main className="main-content">{children}</main>
       <ZoomControl />

@@ -9,6 +9,8 @@ import { randomUUID } from "node:crypto";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { chromium, type Browser } from "playwright";
 
+import { SESSION_COOKIE } from "@/lib/auth";
+
 import { DENSITY_KEY, MOOD_KEY, THEME_KEY } from "@/lib/theme/axes";
 
 let browser: Promise<Browser> | null = null;
@@ -22,7 +24,14 @@ function getBrowser(): Promise<Browser> {
   return browser;
 }
 
-export type PdfOpts = { path: string; theme?: string; mood?: string; density?: string };
+export type PdfOpts = {
+  path: string;
+  theme?: string;
+  mood?: string;
+  density?: string;
+  /** the asking user's session: the printing browser signs in as them (owner, 2026-10-28) */
+  session?: string;
+};
 
 const HIDE = `
   .zoom-bar, .fdrawer-tab, .fdrawer, .fdrawer-scrim, .header-right, .page-nav,
@@ -35,6 +44,9 @@ export async function pagePdf(o: PdfOpts): Promise<{ pdf: Buffer; title: string 
   const b = await getBrowser();
   const ctx = await b.newContext({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 });
   try {
+    if (o.session) {
+      await ctx.addCookies([{ name: SESSION_COOKIE, value: o.session, domain: "127.0.0.1", path: "/", httpOnly: true }]);
+    }
     await ctx.addInitScript(
       ([tk, mk, dk, t, m, d]) => {
         try {

@@ -35,7 +35,8 @@
     "db:load:wps": "node --env-file-if-exists=.env --import tsx scripts/load-wps-register.ts",
     "db:load:welder-cum": "node --env-file-if-exists=.env --import tsx scripts/load-welder-perf-cum.ts",
     "db:refresh": "node --env-file-if-exists=.env --import tsx scripts/refresh-data.ts",
-    "export:pdf": "node scripts/export-pdf.mjs"
+    "export:pdf": "node scripts/export-pdf.mjs",
+    "user:admin": "node --env-file-if-exists=.env --import tsx scripts/create-admin.ts"
   },
   "dependencies": {
     "chart.js": "4.5.1",

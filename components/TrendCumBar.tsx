@@ -1,5 +1,6 @@
 "use client";
 
+import { useIsAdmin } from "@/lib/me";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -31,6 +32,8 @@ export function TrendCumBar({
   /** what the page does meanwhile with a week the workbook lacks */
   pendingTail?: string;
 }) {
+  // writing the CUM file: administrators only (downloads stay for everyone)
+  const cumAdmin = useIsAdmin();
   const router = useRouter();
   const [busy, setBusy] = useState<null | "insert" | "reload">(null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -73,15 +76,19 @@ export function TrendCumBar({
         <a className="ms-btn" href={`${base}?action=csv`} download>
           Download table (CSV)
         </a>
+        {cumAdmin ? (
         <button type="button" className="ms-btn ms-btn--primary" disabled={busy !== null} onClick={() => post("insert")}>
           {busy === "insert" ? "Inserting…" : "Insert into CUM file"}
         </button>
+        ) : null}
         <a className="ms-btn" href={`${base}?action=file`} download>
           Download CUM file
         </a>
+        {cumAdmin ? (
         <button type="button" className="ms-btn" disabled={busy !== null} onClick={() => post("reload")}>
           {busy === "reload" ? "Reading…" : "Re-read CUM file"}
         </button>
+        ) : null}
       </div>
       {msg ? (
         <p className="rs-cum-msg" role="status">

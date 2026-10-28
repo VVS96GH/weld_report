@@ -1,5 +1,6 @@
 "use client";
 
+import { useIsAdmin } from "@/lib/me";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -112,11 +113,14 @@ function Notes({ kind, sub }: { kind: SummaryPage["kind"]; sub: SummarySub }) {
       setState("error");
     }
   }
+  // the notes are shared: administrators write, users read
+  const canWrite = useIsAdmin();
   return (
     <div className="rs-notes">
       <h4 className="rs-head rs-head--center">{sub.sub === "TEKFEN" ? "TKF" : sub.sub} - Notes</h4>
       <textarea
         className="rs-notes-text"
+        readOnly={!canWrite}
         aria-label={`${sub.sub} notes`}
         value={text}
         placeholder="No welder in 4. 10 to 100% - Disq.F. Type notes here."
@@ -202,6 +206,8 @@ function CumBar({ data }: { data: SummaryPage }) {
   const router = useRouter();
   const [busy, setBusy] = useState<null | "append" | "reload">(null);
   const [msg, setMsg] = useState<string | null>(null);
+  // writing the CUM file: administrators only (downloads stay for everyone)
+  const cumAdmin = useIsAdmin();
   const base = `/api/welder-performance/cum?kind=${data.kind}`;
   async function post(action: "append" | "reload") {
     if (action === "append" && !window.confirm(`Insert ${data.cum.pending} new rows into the CUM file? A backup copy is saved first.`)) return;
@@ -236,15 +242,19 @@ function CumBar({ data }: { data: SummaryPage }) {
         <a className="ms-btn" href={`${base}&action=csv`} download>
           Download table (CSV)
         </a>
+        {cumAdmin ? (
         <button type="button" className="ms-btn ms-btn--primary" disabled={busy !== null || data.cum.pending === 0} onClick={() => post("append")}>
           {busy === "append" ? "Inserting…" : "Insert into CUM file"}
         </button>
+        ) : null}
         <a className="ms-btn" href={`${base}&action=file`} download>
           Download CUM file
         </a>
+        {cumAdmin ? (
         <button type="button" className="ms-btn" disabled={busy !== null} onClick={() => post("reload")}>
           {busy === "reload" ? "Reading…" : "Re-read CUM file"}
         </button>
+        ) : null}
       </div>
       {msg ? (
         <p className="rs-cum-msg" role="status">

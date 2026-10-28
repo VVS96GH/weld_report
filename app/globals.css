@@ -5086,3 +5086,71 @@ body.g-dragging-y * {
 /* stacked above Views in a column, so the floated bar keeps the width Views alone gives it */
 .fdrawer-bar:has(> .scdb-btn) { flex-direction: column; align-items: flex-end; }
 @media print { .scdb-btn { display: none; } }
+
+/* ── Sign-in, administration and the user menu (owner, 2026-10-28) ── */
+.login-wrap { min-height: 70vh; display: grid; place-items: center; padding: 24px 16px; }
+.login-card {
+  width: min(420px, 100%);
+  padding: 28px 28px 22px;
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  background: var(--bg-card);
+  box-shadow: var(--shadow-card);
+}
+.login-title, .admin-title { font-family: var(--font-poppins), sans-serif; font-size: 24px; font-weight: 700; color: var(--text-primary); margin: 0; }
+.login-sub { margin: 6px 0 0; font-size: 13px; color: var(--text-muted); }
+.login-form { margin-top: 22px; display: flex; flex-direction: column; gap: 16px; }
+.login-field { display: flex; flex-direction: column; gap: 6px; }
+.login-field span, .admin-add-row label span { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); }
+.login-field input, .admin-add-row input, .admin-add-row select, .admin-users select {
+  min-height: 38px;
+  padding-inline: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+}
+.admin-users select { min-height: 30px; font-size: 13px; }
+.login-field input:focus, .admin-add-row input:focus, .admin-add-row select:focus { border-color: var(--accent-primary); }
+.login-btn {
+  min-height: 40px;
+  padding-inline: 18px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent-primary);
+  color: #fff; /* token-lint: allow-hex — white on the accent button */
+  font-weight: 700;
+  cursor: pointer;
+}
+.login-btn:disabled { opacity: 0.6; cursor: default; }
+.login-error { margin: 0; font-size: 13px; color: var(--danger, #ef4444); } /* token-lint: allow-hex — fallback */
+.login-hint { margin: 0; font-size: 11px; color: var(--text-muted); }
+.admin-page { padding-block: 20px; }
+.admin-page .card { margin-top: 18px; }
+.admin-page .mt-6 { margin-top: 18px; }
+.admin-add-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; }
+.admin-add-row label { display: flex; flex-direction: column; gap: 6px; min-width: 200px; flex: 1 1 200px; }
+.admin-secret {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 18px;
+  padding: 14px 16px; border-radius: 12px;
+  border: 1px solid var(--accent-primary); background: var(--bg-card);
+}
+.admin-secret code { font-size: 18px; font-weight: 700; letter-spacing: 0.06em; padding: 4px 10px; border-radius: 8px; background: var(--bg-input); }
+.admin-users td, .admin-users th { text-align: start !important; white-space: nowrap; }
+.user-menu { position: relative; }
+.user-menu-btn { font-weight: 700; }
+.user-menu-panel {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 1000; width: 260px; padding: 4px;
+  border: 1px solid var(--border-color); border-radius: 12px; background: var(--bg-card); box-shadow: var(--shadow-card);
+  display: flex; flex-direction: column;
+}
+.user-menu-who { padding: 8px 12px; font-size: 13px; color: var(--text-muted); display: flex; flex-direction: column; gap: 2px; }
+.user-menu-who span { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent-primary); }
+.user-menu-panel a, .user-menu-panel button {
+  display: block; width: 100%; padding: 8px 12px; border: 0; border-radius: 8px; background: none;
+  color: var(--text-primary); font: inherit; font-size: 14px; text-align: start; text-decoration: none; cursor: pointer;
+}
+.user-menu-panel a:hover, .user-menu-panel button:hover { background: var(--bg-card-hover); }

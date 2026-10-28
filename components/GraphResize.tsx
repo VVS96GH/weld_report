@@ -1,5 +1,6 @@
 "use client";
 
+import { useIsAdmin } from "@/lib/me";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactNode } from "react";
@@ -37,6 +38,8 @@ export function GraphResize({ children }: { children: ReactNode }) {
   const pageKey = usePathname() ?? "graph";
   const [layout, setLayout] = useState<GraphLayout>(GRAPH_LAYOUT_DEFAULT);
   const [edit, setEdit] = useState(false);
+  // the graph sizes are shared: administrators edit them
+  const admin = useIsAdmin();
   const [state, setState] = useState<"" | "dirty" | "saving" | "saved" | "error">("");
   const root = useRef<HTMLDivElement>(null);
   // the panel moves by its title bar, so it never sits on the chart being sized
@@ -128,9 +131,11 @@ export function GraphResize({ children }: { children: ReactNode }) {
   return (
     <LayoutCtx.Provider value={ctx}>
       <div ref={root} className={`pv-graph-wrap${edit ? " is-editing" : ""}`} style={vars(layout)}>
-        <button type="button" className={`g-edit-toggle${edit ? " is-on" : ""}`} onClick={() => setEdit((v) => !v)}>
-          {edit ? "Готово" : "⇲ Размеры"}
-        </button>
+        {admin ? (
+          <button type="button" className={`g-edit-toggle${edit ? " is-on" : ""}`} onClick={() => setEdit((v) => !v)}>
+            {edit ? "Готово" : "⇲ Размеры"}
+          </button>
+        ) : null}
         {children}
         {edit ? (
           <div

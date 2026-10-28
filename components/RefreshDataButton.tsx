@@ -1,5 +1,6 @@
 "use client";
 
+import { useIsAdmin } from "@/lib/me";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
@@ -34,6 +35,7 @@ type Phase = "idle" | "confirm" | "starting" | "running" | "restarting" | "done"
 const POLL_MS = 4000;
 
 export function RefreshDataButton() {
+  const admin = useIsAdmin();
   const [phase, setPhase] = useState<Phase>("idle");
   const [log, setLog] = useState("");
   const [eta, setEta] = useState<Eta | null>(null);
@@ -139,6 +141,8 @@ export function RefreshDataButton() {
 
   // Wrapped, not a bare sibling: `.header-right > button.header-btn` is the theme
   // toggle's selector (e2e/navigation.spec.ts), and it must stay unique.
+  // refreshing the data: administrators only
+  if (!admin) return null;
   return (
     <div className="refresh-data-wrapper">
       <button

@@ -4,6 +4,7 @@
  */
 import type { NextRequest } from "next/server";
 
+import { SESSION_COOKIE } from "@/lib/auth";
 import { pagePdf } from "@/lib/page-pdf";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +23,8 @@ export async function GET(request: NextRequest): Promise<Response> {
     return SAFE.test(v) ? v : "";
   };
   try {
-    const { pdf, title } = await pagePdf({ path, theme: pick("theme"), mood: pick("mood"), density: pick("density") });
+    const session = request.cookies.get(SESSION_COOKIE)?.value;
+    const { pdf, title } = await pagePdf({ path, theme: pick("theme"), mood: pick("mood"), density: pick("density"), session });
     const name = `${title || "Welding report"} - ${new Date().toISOString().slice(0, 10)}.pdf`.replace(/[\\/:*?"<>|]/g, "-");
     return new Response(new Uint8Array(pdf), {
       headers: {

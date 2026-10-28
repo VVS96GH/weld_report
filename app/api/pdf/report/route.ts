@@ -6,6 +6,7 @@
  */
 import type { NextRequest } from "next/server";
 
+import { SESSION_COOKIE } from "@/lib/auth";
 import { PDF_PATHS } from "@/lib/pdf-catalog";
 import { reportJob, startReport } from "@/lib/page-pdf";
 
@@ -22,7 +23,8 @@ export async function POST(request: NextRequest): Promise<Response> {
     const v = typeof body?.[k] === "string" ? (body[k] as string) : "";
     return SAFE.test(v) ? v : "";
   };
-  const id = startReport(paths, { theme: pick("theme"), mood: pick("mood"), density: pick("density") });
+  const session = request.cookies.get(SESSION_COOKIE)?.value;
+  const id = startReport(paths, { theme: pick("theme"), mood: pick("mood"), density: pick("density"), session });
   return Response.json({ id, total: paths.length });
 }
 

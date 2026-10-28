@@ -1,5 +1,6 @@
 "use client";
 
+import { useIsAdmin } from "@/lib/me";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
@@ -22,6 +23,8 @@ export function SavedViews() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [open, setOpen] = useState(false);
+  // saving / deleting shared views: administrators; everyone applies them
+  const admin = useIsAdmin();
   const [views, setViews] = useState<View[] | null>(null);
   const [name, setName] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
@@ -137,13 +140,13 @@ export function SavedViews() {
                 >
                   {v.name}
                 </button>
-                <button type="button" className="fviews-del" aria-label={`Delete view ${v.name}`} onClick={() => remove(v)}>
+                {admin ? <button type="button" className="fviews-del" aria-label={`Delete view ${v.name}`} onClick={() => remove(v)}>
                   ×
-                </button>
+                </button> : null}
               </div>
             ))}
           </div>
-          {current ? (
+          {!admin ? null : current ? (
             <form
               className="fviews-save"
               onSubmit={(e) => {
