@@ -467,7 +467,9 @@ export async function getFlangePage(
     title: FLANGE_TITLE,
     widgets,
     filters: applied,
-    meta: { source: "database", as_of: stamp.as_of ?? undefined },
+    // the report's cut-off: the Friday ending the register's last week (owner, 2026-10-28: 23-Oct,
+    // not the last Joint Date 22-Oct)
+    meta: { source: "database", as_of: stamp.as_of ? weekEndIso(stamp.as_of) : undefined },
   };
 }
 
