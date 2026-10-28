@@ -24,6 +24,7 @@ export type User = {
   name: string;
   role: Role;
   active: boolean;
+  must_change_password: boolean;
   created_at: string;
   last_login_at: string | null;
 };
@@ -60,7 +61,8 @@ export function newPassword(): string {
   return Array.from({ length: 14 }, () => a[randomInt(a.length)]).join("");
 }
 
-const USER_COLS = "u.id::int AS id, u.email, u.name, u.role, u.active, u.created_at::text, u.last_login_at::text";
+const USER_COLS =
+  "u.id::int AS id, u.email, u.name, u.role, u.active, u.must_change_password, u.created_at::text, u.last_login_at::text";
 
 /** The user of a session token (active, not expired), or null. */
 export async function userByToken(token: string | undefined | null): Promise<User | null> {
@@ -117,7 +119,11 @@ export async function changePassword(user: User, current: string, next: string):
   const [row] = await queryFresh<{ password_hash: string }>("SELECT password_hash FROM app_user WHERE id = $1", [user.id]);
   if (!row || !(await verifyPassword(current, row.password_hash))) return "The current password is wrong";
   if (next.length < 8) return "The new password needs at least 8 characters";
-  await queryFresh("UPDATE app_user SET password_hash = $1 WHERE id = $2", [await hashPassword(next), user.id]);
+  if (next === current) return "The new password must differ from the current one";
+  await queryFresh("UPDATE app_user SET password_hash = $1, must_change_password = false WHERE id = $2", [
+    await hashPassword(next),
+    user.id,
+  ]);
   return null;
 }
 
@@ -142,8 +148,8 @@ export async function addUser(b: {
   if (taken) return { error: "This e-mail already has an account", status: 409 };
   const temp = b.password ? null : newPassword();
   const [user] = await queryFresh<User>(
-    `INSERT INTO app_user (email, name, role, password_hash) VALUES ($1, $2, $3, $4)
-     RETURNING id::int, email, name, role, active, created_at::text, last_login_at::text`,
+    `INSERT INTO app_user (email, name, role, password_hash, must_change_password) VALUES ($1, $2, $3, $4, true)
+     RETURNING id::int, email, name, role, active, must_change_password, created_at::text, last_login_at::text`,
     [email, (b.name ?? "").trim(), role, await hashPassword(b.password || temp || "")],
   );
   return { user: user!, password: temp };
@@ -164,7 +170,7 @@ export async function updateUser(
   if (u.id === me.id && b.active === false) return { error: "You cannot switch off your own account", status: 403 };
   const [user] = await queryFresh<User>(
     `UPDATE app_user SET name = coalesce($2, name), role = coalesce($3, role), active = coalesce($4, active)
-      WHERE id = $1 RETURNING id::int, email, name, role, active, created_at::text, last_login_at::text`,
+      WHERE id = $1 RETURNING id::int, email, name, role, active, must_change_password, created_at::text, last_login_at::text`,
     [id, b.name?.trim() ?? null, b.role === "admin" || b.role === "user" ? b.role : null, typeof b.active === "boolean" ? b.active : null],
   );
   if (b.active === false) await queryFresh("DELETE FROM user_session WHERE user_id = $1", [id]);
@@ -173,7 +179,10 @@ export async function updateUser(
 
 export async function resetPassword(id: number): Promise<string | null> {
   const temp = newPassword();
-  const rows = await queryFresh("UPDATE app_user SET password_hash = $1 WHERE id = $2 RETURNING id", [await hashPassword(temp), id]);
+  const rows = await queryFresh(
+    "UPDATE app_user SET password_hash = $1, must_change_password = true WHERE id = $2 RETURNING id",
+    [await hashPassword(temp), id],
+  );
   if (!rows.length) return null;
   await queryFresh("DELETE FROM user_session WHERE user_id = $1", [id]);
   return temp;
@@ -183,8 +192,9 @@ export async function resetPassword(id: number): Promise<string | null> {
 export async function ensureAdmin(emailRaw: string, password: string, name = ""): Promise<void> {
   const email = emailRaw.trim().toLowerCase();
   await queryFresh(
-    `INSERT INTO app_user (email, name, role, password_hash) VALUES ($1, $2, 'admin', $3)
-     ON CONFLICT (email) DO UPDATE SET role = 'admin', active = true, password_hash = EXCLUDED.password_hash`,
+    `INSERT INTO app_user (email, name, role, password_hash, must_change_password) VALUES ($1, $2, 'admin', $3, true)
+     ON CONFLICT (email) DO UPDATE SET role = 'admin', active = true, password_hash = EXCLUDED.password_hash,
+       must_change_password = true`,
     [email, name, await hashPassword(password)],
   );
 }

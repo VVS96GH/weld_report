@@ -12,6 +12,7 @@ import { SESSION_COOKIE, userByToken } from "@/lib/auth";
 const OPEN = new Set(["/login", "/api/auth/login", "/api/auth/logout", "/api/health"]);
 // writes everyone signed in may do: their own password, and asking for a PDF report
 const USER_WRITES = new Set(["/api/auth/password", "/api/pdf/report"]);
+const MUST_CHANGE_OPEN = new Set(["/account", "/api/auth/me", "/api/auth/password", "/api/auth/logout"]);
 
 export async function proxy(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
@@ -23,6 +24,13 @@ export async function proxy(req: NextRequest) {
     const url = new URL("/login", req.url);
     if (pathname !== "/") url.searchParams.set("next", pathname + search);
     return NextResponse.redirect(url);
+  }
+  // a password set by an administrator: change it first (My password); only that, signing out
+  // and /api/auth/me answer until then
+  if (user.must_change_password && !MUST_CHANGE_OPEN.has(pathname)) {
+    return isApi
+      ? Response.json({ error: "Change the temporary password first (My password)" }, { status: 403 })
+      : NextResponse.redirect(new URL("/account?first=1", req.url));
   }
   const write = req.method !== "GET" && req.method !== "HEAD";
   const adminOnly = pathname.startsWith("/api/admin/") || pathname === "/admin" || (isApi && write && !USER_WRITES.has(pathname));

@@ -2,10 +2,13 @@
 
 import { useState } from "react";
 
-import { useMe } from "@/lib/me";
+import { useRouter } from "next/navigation";
+
+import { resetMe, useMe } from "@/lib/me";
 
 export function PasswordForm() {
   const me = useMe();
+  const router = useRouter();
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [again, setAgain] = useState("");
@@ -22,6 +25,12 @@ export function PasswordForm() {
     }).catch(() => null);
     if (r?.ok) {
       setMsg({ ok: true, text: "Password changed." });
+      // the first change after a temporary password opens the reports
+      if (me?.must_change_password) {
+        resetMe();
+        router.replace("/");
+        router.refresh();
+      }
       setCurrent("");
       setNext("");
       setAgain("");
@@ -34,6 +43,11 @@ export function PasswordForm() {
   return (
     <form className="card mt-6 flex max-w-md flex-col gap-4" onSubmit={submit}>
       <div className="card-header">{me ? me.email : "…"}</div>
+      {me?.must_change_password ? (
+        <p className="login-sub">
+          You signed in with a temporary password. Set your own to continue — it may be the same as your work account&apos;s.
+        </p>
+      ) : null}
       <label className="login-field">
         <span>Current password</span>
         <input

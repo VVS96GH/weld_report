@@ -33,8 +33,10 @@ export function LoginForm() {
       setError(body?.error ?? "Sign-in failed: the server does not answer");
       return;
     }
+    const user = (await r.json().catch(() => null)) as { must_change_password?: boolean } | null;
     resetMe();
-    router.replace(safeNext(sp.get("next")));
+    // a password an administrator set: change it first
+    router.replace(user?.must_change_password ? "/account?first=1" : safeNext(sp.get("next")));
     router.refresh();
   }
 

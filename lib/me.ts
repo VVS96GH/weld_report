@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-export type Me = { id: number; email: string; name: string; role: "admin" | "user" };
+export type Me = { id: number; email: string; name: string; role: "admin" | "user"; must_change_password?: boolean };
 
 // one request per page load, shared by every component; the shell stays mounted across pages,
 // so a sign-in / sign-out tells every listener to ask again
