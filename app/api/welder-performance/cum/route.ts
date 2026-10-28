@@ -16,6 +16,7 @@ import {
   appendToWorkbook, csvDate, CUM_FILES, type CumKind, planAppend, reloadTable, type Run, snapshotCsv, snapshotRows,
 } from "@/lib/welder-perf-cum";
 
+import { audited } from "@/lib/audit";
 export const dynamic = "force-dynamic";
 
 // the CUM table changes between refreshes ("Insert into CUM file"): read it fresh
@@ -61,7 +62,7 @@ export async function GET(request: NextRequest): Promise<Response> {
   return Response.json({ error: "action must be csv or file" }, { status: 400 });
 }
 
-export async function POST(request: NextRequest): Promise<Response> {
+async function POST_handler(request: NextRequest): Promise<Response> {
   if (resolvePageSource() !== "database") return Response.json({ error: "needs PAGE_SOURCE=database" }, { status: 503 });
   const kind = kindOf(request);
   if (!kind) return Response.json({ error: "kind must be 2w or 1m" }, { status: 400 });
@@ -82,3 +83,6 @@ export async function POST(request: NextRequest): Promise<Response> {
   }
   return Response.json({ error: "action must be append or reload" }, { status: 400 });
 }
+
+// the activity log (lib/audit.ts)
+export const POST = audited("CUM welder performance file", POST_handler);

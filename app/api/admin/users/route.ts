@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { addUser, listUsers } from "@/lib/auth";
 import { forbidden, requestUser, unauthorized } from "@/lib/auth-request";
 
+import { audited } from "@/lib/audit";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest): Promise<Response> {
@@ -13,7 +14,7 @@ export async function GET(req: NextRequest): Promise<Response> {
 }
 
 /** POST {email, name?, role?, password?}: without a password a temporary one is made and returned once. */
-export async function POST(req: NextRequest): Promise<Response> {
+async function POST_handler(req: NextRequest): Promise<Response> {
   const me = await requestUser(req);
   if (!me) return unauthorized();
   if (me.role !== "admin") return forbidden();
@@ -26,3 +27,6 @@ export async function POST(req: NextRequest): Promise<Response> {
   });
   return "error" in r ? Response.json({ error: r.error }, { status: r.status }) : Response.json(r);
 }
+
+// the activity log (lib/audit.ts)
+export const POST = audited("Added a user", POST_handler);

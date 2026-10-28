@@ -3,10 +3,11 @@ import type { NextRequest } from "next/server";
 import { updateUser } from "@/lib/auth";
 import { forbidden, requestUser, unauthorized } from "@/lib/auth-request";
 
+import { audited } from "@/lib/audit";
 export const dynamic = "force-dynamic";
 
 /** PATCH {name?, role?, active?}. */
-export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/admin/users/[id]">): Promise<Response> {
+async function PATCH_handler(req: NextRequest, ctx: RouteContext<"/api/admin/users/[id]">): Promise<Response> {
   const me = await requestUser(req);
   if (!me) return unauthorized();
   if (me.role !== "admin") return forbidden();
@@ -20,3 +21,6 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/admin/user
   });
   return "error" in r ? Response.json({ error: r.error }, { status: r.status }) : Response.json(r.user);
 }
+
+// the activity log (lib/audit.ts)
+export const PATCH = audited("Changed a user", PATCH_handler);

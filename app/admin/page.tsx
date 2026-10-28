@@ -1,3 +1,4 @@
+import { ActivityLog } from "./ActivityLog";
 import { AdminUsers } from "./AdminUsers";
 
 export const metadata = { title: "Administration — Welding Statistics Dashboard" };
@@ -13,6 +14,7 @@ export default function AdminPage() {
         and PDFs.
       </p>
       <AdminUsers />
+      <ActivityLog />
     </div>
   );
 }

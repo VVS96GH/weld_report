@@ -10,6 +10,7 @@ import { z } from "zod";
 import { queryFresh as query } from "@/lib/db";
 import { resolvePageSource } from "@/lib/page-source";
 
+import { audited } from "@/lib/audit";
 export const dynamic = "force-dynamic";
 
 const Page = z.string().regex(/^\/[a-z0-9/-]{0,80}$/);
@@ -26,7 +27,7 @@ export async function GET(request: NextRequest): Promise<Response> {
   return Response.json({ views: z.array(Row).parse(rows) }, { headers: { "Cache-Control": "no-store" } });
 }
 
-export async function POST(request: NextRequest): Promise<Response> {
+async function POST_handler(request: NextRequest): Promise<Response> {
   if (resolvePageSource() !== "database") return noDb();
   const body = Body.safeParse(await request.json().catch(() => null));
   if (!body.success) return Response.json({ error: "page, name (1-60 chars) and query are required" }, { status: 400 });
@@ -40,10 +41,16 @@ export async function POST(request: NextRequest): Promise<Response> {
   return Response.json({ view: Row.parse(rows[0]) });
 }
 
-export async function DELETE(request: NextRequest): Promise<Response> {
+async function DELETE_handler(request: NextRequest): Promise<Response> {
   if (resolvePageSource() !== "database") return noDb();
   const id = Number(request.nextUrl.searchParams.get("id"));
   if (!Number.isInteger(id) || id <= 0) return Response.json({ error: "bad id" }, { status: 400 });
   await query(`DELETE FROM saved_view WHERE id = $1`, [id]);
   return Response.json({ ok: true });
 }
+
+// the activity log (lib/audit.ts)
+export const POST = audited("Saved a View", POST_handler);
+
+// the activity log (lib/audit.ts)
+export const DELETE = audited("Deleted a View", DELETE_handler);

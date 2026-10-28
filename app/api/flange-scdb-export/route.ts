@@ -6,11 +6,12 @@
 import { scdbWorkbook } from "@/lib/flange-scdb-export";
 import { resolvePageSource } from "@/lib/page-source";
 
+import { audited } from "@/lib/audit";
 export const dynamic = "force-dynamic";
 
 const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
 
-export async function GET(): Promise<Response> {
+async function GET_handler(): Promise<Response> {
   if (resolvePageSource() !== "database") return Response.json({ error: "needs PAGE_SOURCE=database" }, { status: 503 });
   const { stream } = await scdbWorkbook();
   const t = new Date();
@@ -25,3 +26,6 @@ export async function GET(): Promise<Response> {
     },
   });
 }
+
+// the activity log (lib/audit.ts)
+export const GET = audited("Downloaded the SCDB form", GET_handler);

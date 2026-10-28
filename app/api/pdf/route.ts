@@ -7,12 +7,13 @@ import type { NextRequest } from "next/server";
 import { SESSION_COOKIE } from "@/lib/auth";
 import { pagePdf } from "@/lib/page-pdf";
 
+import { audited } from "@/lib/audit";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const SAFE = /^[\w-]{0,32}$/;
 
-export async function GET(request: NextRequest): Promise<Response> {
+async function GET_handler(request: NextRequest): Promise<Response> {
   const sp = request.nextUrl.searchParams;
   const path = sp.get("path") ?? "/";
   if (!path.startsWith("/") || path.startsWith("//") || path.startsWith("/api")) {
@@ -37,3 +38,6 @@ export async function GET(request: NextRequest): Promise<Response> {
     return Response.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 });
   }
 }
+
+// the activity log (lib/audit.ts)
+export const GET = audited("Downloaded a PDF", GET_handler);

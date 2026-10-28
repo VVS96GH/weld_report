@@ -20,6 +20,7 @@ import path from "node:path";
 
 import { estimateRefresh } from "@/lib/refresh-eta";
 
+import { audited } from "@/lib/audit";
 export const dynamic = "force-dynamic";
 
 const ROOT = process.cwd();
@@ -84,7 +85,7 @@ export async function GET(): Promise<Response> {
   return Response.json(status());
 }
 
-export async function POST(request: Request): Promise<Response> {
+async function POST_handler(request: Request): Promise<Response> {
   const site = request.headers.get("sec-fetch-site");
   const origin = request.headers.get("origin");
   const host = request.headers.get("host");
@@ -110,3 +111,6 @@ export async function POST(request: Request): Promise<Response> {
   }
   return Response.json({ ...status(), running: true, started: true }, { status: 202 });
 }
+
+// the activity log (lib/audit.ts)
+export const POST = audited("Refresh data", POST_handler);

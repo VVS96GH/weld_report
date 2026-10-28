@@ -10,12 +10,13 @@ import { SESSION_COOKIE } from "@/lib/auth";
 import { PDF_PATHS } from "@/lib/pdf-catalog";
 import { reportJob, startReport } from "@/lib/page-pdf";
 
+import { audited } from "@/lib/audit";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const SAFE = /^[\w-]{0,32}$/;
 
-export async function POST(request: NextRequest): Promise<Response> {
+async function POST_handler(request: NextRequest): Promise<Response> {
   const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
   const paths = Array.isArray(body?.paths) ? body.paths.map(String).filter((p) => PDF_PATHS.has(p)) : [];
   if (!paths.length) return Response.json({ error: "no pages chosen" }, { status: 400 });
@@ -47,3 +48,6 @@ export async function GET(request: NextRequest): Promise<Response> {
     { headers: { "Cache-Control": "no-store" } },
   );
 }
+
+// the activity log (lib/audit.ts)
+export const POST = audited("PDF report", POST_handler);

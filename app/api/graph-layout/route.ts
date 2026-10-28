@@ -3,6 +3,7 @@ import path from "node:path";
 
 import { clampLayout } from "@/lib/graph-layout";
 
+import { audited } from "@/lib/audit";
 /** Graph-page sizes the owner set with the handles: { [pageKey]: GraphLayout }. */
 const FILE = path.join(process.cwd(), "data", "graph-layout.json");
 
@@ -18,7 +19,7 @@ export async function GET() {
   return Response.json(await readAll());
 }
 
-export async function POST(req: Request) {
+async function POST_handler(req: Request) {
   const body = (await req.json().catch(() => null)) as { page?: string; layout?: Record<string, unknown> | null } | null;
   if (!body?.page || typeof body.page !== "string") return Response.json({ error: "page required" }, { status: 400 });
   const all = await readAll();
@@ -28,3 +29,6 @@ export async function POST(req: Request) {
   await writeFile(FILE, JSON.stringify(all, null, 2) + "\n");
   return Response.json({ ok: true });
 }
+
+// the activity log (lib/audit.ts)
+export const POST = audited("Graph sizes", POST_handler);

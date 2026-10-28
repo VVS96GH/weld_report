@@ -12,6 +12,7 @@ import type { NextRequest } from "next/server";
 import { computeWeek, insertWeek, reloadFromFile, trendFile, weekCsv } from "@/lib/backlog-trend-cum";
 import { resolvePageSource } from "@/lib/page-source";
 
+import { audited } from "@/lib/audit";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest): Promise<Response> {
@@ -41,7 +42,7 @@ export async function GET(request: NextRequest): Promise<Response> {
   return Response.json({ error: "action must be csv or file" }, { status: 400 });
 }
 
-export async function POST(request: NextRequest): Promise<Response> {
+async function POST_handler(request: NextRequest): Promise<Response> {
   if (resolvePageSource() !== "database") return Response.json({ error: "needs PAGE_SOURCE=database" }, { status: 503 });
   const action = request.nextUrl.searchParams.get("action");
   try {
@@ -58,3 +59,6 @@ export async function POST(request: NextRequest): Promise<Response> {
   }
   return Response.json({ error: "action must be insert or reload" }, { status: 400 });
 }
+
+// the activity log (lib/audit.ts)
+export const POST = audited("CUM backlog trend file", POST_handler);

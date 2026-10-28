@@ -9,6 +9,7 @@ import { z } from "zod";
 import { queryFresh as query } from "@/lib/db";
 import { resolvePageSource } from "@/lib/page-source";
 
+import { audited } from "@/lib/audit";
 export const dynamic = "force-dynamic";
 
 const Body = z.object({
@@ -27,7 +28,7 @@ export async function GET(): Promise<Response> {
   return Response.json({ prefs: z.array(Row).parse(rows) }, { headers: { "Cache-Control": "no-store" } });
 }
 
-export async function PUT(request: NextRequest): Promise<Response> {
+async function PUT_handler(request: NextRequest): Promise<Response> {
   if (resolvePageSource() !== "database") return noDb();
   const body = Body.safeParse(await request.json().catch(() => null));
   if (!body.success) return Response.json({ error: "table and col are required; label ≤120 chars, width 24–1200" }, { status: 400 });
@@ -46,3 +47,6 @@ export async function PUT(request: NextRequest): Promise<Response> {
   await query(`DELETE FROM col_pref WHERE table_key = $1 AND col = $2 AND label IS NULL AND width IS NULL`, [table, col]);
   return Response.json({ ok: true });
 }
+
+// the activity log (lib/audit.ts)
+export const PUT = audited("Column settings", PUT_handler);

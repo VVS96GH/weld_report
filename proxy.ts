@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 
+import { AUTH_EMAIL_HEADER, logDenied } from "@/lib/audit";
 import { SESSION_COOKIE, userByToken } from "@/lib/auth";
 
 /**
@@ -16,7 +17,12 @@ const MUST_CHANGE_OPEN = new Set(["/account", "/api/auth/me", "/api/auth/passwor
 
 export async function proxy(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
-  if (OPEN.has(pathname)) return NextResponse.next();
+  if (OPEN.has(pathname)) {
+    // nobody can pass a user of their own to the activity log
+    const headers = new Headers(req.headers);
+    headers.delete(AUTH_EMAIL_HEADER);
+    return NextResponse.next({ request: { headers } });
+  }
   const isApi = pathname.startsWith("/api/");
   const user = await userByToken(req.cookies.get(SESSION_COOKIE)?.value).catch(() => null);
   if (!user) {
@@ -35,9 +41,13 @@ export async function proxy(req: NextRequest) {
   const write = req.method !== "GET" && req.method !== "HEAD";
   const adminOnly = pathname.startsWith("/api/admin/") || pathname === "/admin" || (isApi && write && !USER_WRITES.has(pathname));
   if (adminOnly && user.role !== "admin") {
+    if (isApi) logDenied(req, user.email, 403, "administrators only");
     return isApi ? Response.json({ error: "Administrators only" }, { status: 403 }) : NextResponse.redirect(new URL("/", req.url));
   }
-  return NextResponse.next();
+  // the checked user, for the activity log (lib/audit.ts); a header typed by the visitor is replaced
+  const headers = new Headers(req.headers);
+  headers.set(AUTH_EMAIL_HEADER, user.email);
+  return NextResponse.next({ request: { headers } });
 }
 
 export const config = {

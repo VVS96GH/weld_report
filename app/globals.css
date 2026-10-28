@@ -5154,3 +5154,6 @@ body.g-dragging-y * {
   color: var(--text-primary); font: inherit; font-size: 14px; text-align: start; text-decoration: none; cursor: pointer;
 }
 .user-menu-panel a:hover, .user-menu-panel button:hover { background: var(--bg-card-hover); }
+.activity-search { min-height: 30px; width: min(320px, 50%); padding-inline: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary); font-size: 13px; text-transform: none; letter-spacing: 0; }
+.activity-bad td { color: var(--danger, #ef4444); } /* token-lint: allow-hex — fallback */
+.activity-detail { max-width: 520px; overflow: hidden; text-overflow: ellipsis; font-family: var(--font-plex-mono), monospace; font-size: 11px; }

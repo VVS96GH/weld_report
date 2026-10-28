@@ -8,9 +8,10 @@ import type { NextRequest } from "next/server";
 import { backlogCsv, backlogJoints, backlogXlsx, type BacklogKind } from "@/lib/backlog-export";
 import { resolvePageSource } from "@/lib/page-source";
 
+import { audited } from "@/lib/audit";
 export const dynamic = "force-dynamic";
 
-export async function GET(request: NextRequest): Promise<Response> {
+async function GET_handler(request: NextRequest): Promise<Response> {
   if (resolvePageSource() !== "database") return Response.json({ error: "needs PAGE_SOURCE=database" }, { status: 503 });
   const kind = request.nextUrl.searchParams.get("kind");
   if (kind !== "rt" && kind !== "pwht") return Response.json({ error: "kind must be rt or pwht" }, { status: 400 });
@@ -45,3 +46,6 @@ export async function GET(request: NextRequest): Promise<Response> {
     },
   });
 }
+
+// the activity log (lib/audit.ts)
+export const GET = audited("Downloaded a B.Log export", GET_handler);
