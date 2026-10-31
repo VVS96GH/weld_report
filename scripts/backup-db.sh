@@ -14,7 +14,7 @@
 set -euo pipefail
 
 BACKUP_DIR="${BACKUP_DIR:-/mnt/c/Users/meg19/WeldReportBackup}"
-KEEP="${KEEP:-7}"
+KEEP="${KEEP:-2}"   # weekly since 2026-10-31: the last two weeks
 CONTAINER="${CONTAINER:-weld_report_db}"
 DB="${DB:-weld_report}"
 DB_USER="${DB_USER:-weld}"
