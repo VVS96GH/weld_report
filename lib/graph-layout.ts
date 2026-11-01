@@ -34,15 +34,15 @@ export const GRAPH_LAYOUT_DEFAULT: GraphLayout = {
 };
 
 export const GRAPH_LAYOUT_LIMITS: Record<keyof GraphLayout, [number, number, string]> = {
-  left: [25, 75, "Ширина левой колонки, %"],
-  status: [120, 600, "Welding Status, высота px"],
-  rate1: [80, 400, "%RT Rej, высота px"],
-  rate2: [80, 400, "%UT Rej, высота px"],
-  blog: [120, 600, "B.Log графики, высота px"],
-  blogLeft: [25, 75, "RT/UT B.Log ширина, %"],
-  donut: [150, 800, "Бублик, мин. высота px"],
-  kpi: [110, 400, "Карточки KPI, ширина px"],
-  table: [60, 160, "Таблицы, масштаб %"],
+  left: [25, 75, "Left column width, %"],
+  status: [120, 600, "Welding Status, height px"],
+  rate1: [80, 400, "%RT Rej, height px"],
+  rate2: [80, 400, "%UT Rej, height px"],
+  blog: [120, 600, "B.Log charts, height px"],
+  blogLeft: [25, 75, "RT/UT B.Log width, %"],
+  donut: [150, 800, "Donut, min height px"],
+  kpi: [110, 400, "KPI cards, width px"],
+  table: [60, 160, "Tables, scale %"],
 };
 
 export function clampLayout(v: Partial<Record<string, unknown>>): GraphLayout {

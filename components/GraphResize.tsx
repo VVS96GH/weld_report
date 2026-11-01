@@ -8,9 +8,9 @@ import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactNode } from
 import { GRAPH_LAYOUT_DEFAULT, GRAPH_LAYOUT_LIMITS, clampLayout, type GraphLayout } from "@/lib/graph-layout";
 
 /**
- * Resizable Graph page (owner, 2026-10-20). "Размеры" turns on drag handles on
+ * Resizable Graph page (owner, 2026-10-20). "Sizes" turns on drag handles on
  * every chart edge and the column splitters, plus a small panel with the exact
- * numbers; "Сохранить" writes them to data/graph-layout.json for this page.
+ * numbers; "Save" writes them to data/graph-layout.json for this page.
  */
 type Ctx = {
   edit: boolean;
@@ -133,7 +133,7 @@ export function GraphResize({ children }: { children: ReactNode }) {
       <div ref={root} className={`pv-graph-wrap${edit ? " is-editing" : ""}`} style={vars(layout)}>
         {admin ? (
           <button type="button" className={`g-edit-toggle${edit ? " is-on" : ""}`} onClick={() => setEdit((v) => !v)}>
-            {edit ? "Готово" : "⇲ Размеры"}
+            {edit ? "Done" : "⇲ Sizes"}
           </button>
         ) : null}
         {children}
@@ -141,11 +141,11 @@ export function GraphResize({ children }: { children: ReactNode }) {
           <div
             className="g-panel"
             role="dialog"
-            aria-label="Размеры"
+            aria-label="Sizes"
             style={pos ? { left: pos.x, top: pos.y, bottom: "auto" } : undefined}
           >
-            <div className="g-panel-head" onPointerDown={movePanel} title="Перетащите панель">
-              ⠿ Размеры графиков и таблиц
+            <div className="g-panel-head" onPointerDown={movePanel} title="Drag the panel">
+              ⠿ Chart and table sizes
             </div>
             {KEYS.map((k) => {
               const [lo, hi, label] = GRAPH_LAYOUT_LIMITS[k];
@@ -173,22 +173,22 @@ export function GraphResize({ children }: { children: ReactNode }) {
                   setState("dirty");
                 }}
               >
-                Сброс
+                Reset
               </button>
               <button type="button" className="ms-btn ms-btn--primary" disabled={state === "saving"} onClick={() => save(layout)}>
-                Сохранить
+                Save
               </button>
             </div>
             <p className="g-panel-msg">
               {state === "dirty"
-                ? "Есть несохранённые изменения"
+                ? "Unsaved changes"
                 : state === "saving"
-                  ? "Сохраняю…"
+                  ? "Saving…"
                   : state === "saved"
-                    ? "Сохранено"
+                    ? "Saved"
                     : state === "error"
-                      ? "Не удалось сохранить"
-                      : "Тяните синие ручки на краях графиков"}
+                      ? "Could not save"
+                      : "Drag the blue handles on the chart edges"}
             </p>
           </div>
         ) : null}

@@ -109,7 +109,7 @@ export function PdfButton() {
 
   async function thisPage() {
     setBusy("page");
-    setMsg("Готовлю PDF этой страницы…");
+    setMsg("Preparing a PDF of this page…");
     try {
       const q = new URLSearchParams({ path: window.location.pathname + window.location.search, ...themeParams() });
       const r = await fetch(`/api/pdf?${q}`);
@@ -117,7 +117,7 @@ export function PdfButton() {
       save(await r.blob(), nameOf(r, "page.pdf"));
       setMsg(null);
     } catch (e) {
-      setMsg(`Ошибка: ${e instanceof Error ? e.message : String(e)}`);
+      setMsg(`Error: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setBusy(null);
     }
@@ -126,7 +126,7 @@ export function PdfButton() {
   async function report() {
     if (!chosen.length) return;
     setBusy("report");
-    setMsg(`Собираю отчёт: 0 из ${chosen.length}…`);
+    setMsg(`Building the report: 0 of ${chosen.length}…`);
     try {
       const r = await fetch("/api/pdf/report", {
         method: "POST",
@@ -145,14 +145,14 @@ export function PdfButton() {
         };
         if (s.error) throw new Error(s.error);
         if (s.ready) break;
-        setMsg(`Собираю отчёт: ${s.done} из ${s.total}…`);
+        setMsg(`Building the report: ${s.done} of ${s.total}…`);
       }
       const f = await fetch(`/api/pdf/report?id=${start.id}&download=1`);
       if (!f.ok) throw new Error(`HTTP ${f.status}`);
       save(await f.blob(), nameOf(f, "report.pdf"));
-      setMsg(`Готово: ${chosen.length} стр.`);
+      setMsg(`Done: ${chosen.length} pages`);
     } catch (e) {
-      setMsg(`Ошибка: ${e instanceof Error ? e.message : String(e)}`);
+      setMsg(`Error: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setBusy(null);
     }
@@ -163,9 +163,9 @@ export function PdfButton() {
       <button
         type="button"
         className={`header-btn pdf-btn${busy ? " is-running" : ""}`}
-        aria-label="Сохранить в PDF"
+        aria-label="Save as PDF"
         aria-expanded={open}
-        title="Сохранить в PDF"
+        title="Save as PDF"
         onClick={() => setOpen((v) => !v)}
       >
         <span aria-hidden="true">{busy ? "…" : "PDF"}</span>
@@ -173,9 +173,9 @@ export function PdfButton() {
       {open ? (
         <div className="pdf-menu" role="dialog" aria-label="PDF">
           <button type="button" className="ms-btn ms-btn--primary pdf-menu-wide" disabled={busy !== null} onClick={thisPage}>
-            Эта страница
+            This page
           </button>
-          <div className="pdf-menu-head">Отчёт: выбранные страницы</div>
+          <div className="pdf-menu-head">Report: selected pages</div>
           <ul className="pdf-menu-list">
             {PDF_SECTIONS.map((s) => {
               const n = s.pages.filter((p) => picked.has(p.path)).length;
@@ -204,7 +204,7 @@ export function PdfButton() {
                           setExpand(expand === s.id ? null : s.id);
                         }}
                       >
-                        {expand === s.id ? "скрыть" : "страницы…"}
+                        {expand === s.id ? "hide" : "pages…"}
                       </button>
                     ) : null}
                   </label>
@@ -226,10 +226,10 @@ export function PdfButton() {
           </ul>
           <div className="pdf-menu-foot">
             <button type="button" className="ms-btn" disabled={busy !== null} onClick={() => keep(defaults())}>
-              По умолчанию
+              Default
             </button>
             <button type="button" className="ms-btn ms-btn--primary" disabled={busy !== null || !chosen.length} onClick={report}>
-              Собрать PDF ({chosen.length})
+              Build PDF ({chosen.length})
             </button>
           </div>
           {msg ? (

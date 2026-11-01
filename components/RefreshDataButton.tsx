@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
  * Header button that runs `npm run db:refresh` (owner request 2026-10-14):
- * click → "Обновить все данные?" → "Да" starts it through POST /api/refresh.
+ * click → "Refresh all data?" → "Yes" starts it through POST /api/refresh.
  *
  * While it runs, the dialog shows the tail of the refresh log. Its last step
  * restarts the report server, so the status endpoint goes silent for a while;
@@ -23,11 +23,11 @@ type Status = {
   eta?: Eta | null;
 };
 
-/** "≈ 12 мин" / "меньше минуты" */
+/** "≈ 12 min" / "less than a minute" */
 function fmtLeft(s: number): string {
-  if (s < 60) return "меньше минуты";
+  if (s < 60) return "less than a minute";
   const m = Math.round(s / 60);
-  return m < 60 ? `≈ ${m} мин` : `≈ ${Math.floor(m / 60)} ч ${String(m % 60).padStart(2, "0")} мин`;
+  return m < 60 ? `≈ ${m} min` : `≈ ${Math.floor(m / 60)} h ${String(m % 60).padStart(2, "0")} min`;
 }
 
 type Phase = "idle" | "confirm" | "starting" | "running" | "restarting" | "done" | "failed";
@@ -131,12 +131,12 @@ export function RefreshDataButton() {
   const busy = phase === "starting" || phase === "running" || phase === "restarting";
   const title: Record<Phase, string> = {
     idle: "",
-    confirm: "Обновить все данные?",
-    starting: "Запуск обновления…",
-    running: "Идёт обновление данных…",
-    restarting: "Отчёт перезапускается…",
-    done: "Данные обновлены",
-    failed: "Обновление не удалось",
+    confirm: "Refresh all data?",
+    starting: "Starting the refresh…",
+    running: "Refreshing data…",
+    restarting: "Restarting the report…",
+    done: "Data refreshed",
+    failed: "Refresh failed",
   };
 
   // Wrapped, not a bare sibling: `.header-right > button.header-btn` is the theme
@@ -148,8 +148,8 @@ export function RefreshDataButton() {
       <button
         type="button"
         className={`header-btn${busy ? " is-running" : ""}`}
-        aria-label="Обновить данные"
-        title="Обновить данные"
+        aria-label="Refresh data"
+        title="Refresh data"
         onClick={open}
       >
         <span aria-hidden="true">{"\u{1F504}"}</span>
@@ -165,35 +165,35 @@ export function RefreshDataButton() {
             <h2 id="refresh-dialog-title">{title[phase]}</h2>
             {phase === "confirm" ? (
               <p>
-                Новые файлы из папки sources будут загружены в базу. Загружаются только изменившиеся файлы. Обычно это
-                занимает от нескольких минут до получаса. В конце отчёт перезапустится.
+                New files from the sources folder will be loaded into the database. Only changed files are loaded. This usually
+                takes from a few minutes to half an hour. The report restarts at the end.
               </p>
             ) : null}
             {phase === "running" || phase === "restarting" ? (
-              <p>Можно закрыть это окно, обновление продолжится. Не выключайте компьютер и не давайте ему уснуть.</p>
+              <p>You can close this window; the refresh will continue. Do not shut down the computer or let it sleep.</p>
             ) : null}
             {phase === "running" && eta && eta.secondsLeft !== null ? (
               <p className="refresh-eta" aria-live="polite">
-                <strong>Осталось {fmtLeft(eta.secondsLeft)}</strong>
-                {eta.steps ? ` · шаг ${eta.stepIndex} из ${eta.steps}${eta.current ? ` (${eta.current})` : ""}` : ""}
+                <strong>Time left {fmtLeft(eta.secondsLeft)}</strong>
+                {eta.steps ? ` · step ${eta.stepIndex} of ${eta.steps}${eta.current ? ` (${eta.current})` : ""}` : ""}
               </p>
             ) : null}
-            {phase === "done" ? <p>Страница сейчас перезагрузится.</p> : null}
+            {phase === "done" ? <p>The page will reload now.</p> : null}
             {error ? <p role="alert">{error}</p> : null}
             {log && phase !== "confirm" ? <pre aria-live="polite">{log}</pre> : null}
             <div className="refresh-dialog-actions">
               {phase === "confirm" ? (
                 <>
                   <button type="button" className="ms-btn" onClick={close}>
-                    Нет
+                    No
                   </button>
                   <button type="button" ref={yesRef} className="ms-btn ms-btn--primary" onClick={start}>
-                    Да
+                    Yes
                   </button>
                 </>
               ) : (
                 <button type="button" className="ms-btn" onClick={close}>
-                  Закрыть
+                  Close
                 </button>
               )}
             </div>
