@@ -22,7 +22,9 @@ type Group =
    * welding status, the rate lines and the two B.Log charts; right the Weld Type
    * doughnut with the key figures beside it, the tables under it.
    */
-  | { kind: "graph"; status: ChartWidget; donut: ChartWidget; kpis: KpiWidget[]; rates: ChartWidget[]; blogs: ChartWidget[]; tables: TableWidget[] };
+  | { kind: "graph"; status: ChartWidget; donut: ChartWidget; kpis: KpiWidget[]; rates: ChartWidget[]; blogs: ChartWidget[]; tables: TableWidget[] }
+  /** The Welding Status pages: the tables on the left, the Weld Type doughnut and Joint RT/UT Monthly Progress on the right (owner, 2026-11-02). */
+  | { kind: "status"; tables: TableWidget[]; charts: ChartWidget[] };
 
 /**
  * Batches the model's flat widget list into the mockup's layout rhythm: a run of
@@ -105,6 +107,16 @@ function groupWidgets(widgets: Widget[]): Group[] {
     const rates = b.charts.filter((x) => /rej/i.test(x.title));
     const blogs = b.charts.filter((x) => !/rej/i.test(x.title));
     groups.splice(i, 2, { kind: "graph", status, donut, kpis: a.sideKpis, rates, blogs, tables: b.tables });
+  }
+  // A run of tables followed by a block's status charts (Welding Status pages): one block,
+  // the tables on the left and the two charts beside them.
+  for (let i = 0; i < groups.length; i++) {
+    let j = i;
+    while (groups[j]?.kind === "table") j++;
+    const c = groups[j];
+    if (j === i || c?.kind !== "chart" || c.kpis || !c.items.every((x) => x.canvas_id.startsWith("status_"))) continue;
+    const tables = groups.slice(i, j).map((g) => (g as { kind: "table"; item: TableWidget }).item);
+    groups.splice(i, j - i + 1, { kind: "status", tables, charts: c.items });
   }
   return groups;
 }
@@ -336,6 +348,22 @@ function renderGroup(g: Group, i: number) {
               </GraphResize>
             );
           }
+          case "status":
+            return (
+              <div className="status-layout" key={i}>
+                <div className="status-tables">{g.tables.map((t, j) => renderGroup({ kind: "table", item: t }, j))}</div>
+                <div className="status-side">
+                  {g.charts.map((c, j) => (
+                    <div className={/doughnut|pie/.test(c.chart_type) ? "card status-donut" : "card status-monthly"} key={j}>
+                      <div className="card-header">{c.title}</div>
+                      <div className="chart-container">
+                        <ChartCard widget={c} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
           case "split":
             return (
               <div className="pv-split" key={i}>

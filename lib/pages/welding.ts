@@ -141,6 +141,7 @@ import {
   RT_WELD_TYPES,
 } from "@/lib/metrics/scope";
 import { query } from "@/lib/db";
+import { jointMonthlyProgress, monthLabel, type MonthlyPoint } from "@/lib/metrics/forecast";
 
 // ── the mockup spec ─────────────────────────────────────────────────────────
 
@@ -2302,7 +2303,7 @@ async function buildSubconPage(
         // 2026-10-20) keeps each block to its own pipe, as the pbix does.
         tmcpPipe: conf.tmcpPipe === true ? true : split ? false : undefined,
       };
-      const [pivot, thisWeek, byCat, total, totalNoJ, prByCat, prTotal, weekly, dist] =
+      const [pivot, thisWeek, byCat, total, totalNoJ, prByCat, prTotal, weekly, dist, months] =
         await Promise.all([
         weldTypePivot(statusScope),
         weekEnd
@@ -2326,6 +2327,11 @@ async function buildSubconPage(
               sources: sourcesFor(conf.sub),
             }),
         weldTypeDistribution({ ...scope, excludeWeldTypes: ["THD"] }),
+        // the status pages' Joint RT/UT Monthly Progress for this block (owner, 2026-11-02):
+        // the RT B.Log Forecast chart's joints, narrowed to the block's party / SG / TMCP pipe
+        graph
+          ? Promise.resolve([] as MonthlyPoint[])
+          : jointMonthlyProgress({ ...scope, tmcpPipe: conf.tmcpPipe === true ? true : split ? false : scope.tmcpPipe }),
       ]);
       // MT+PT and Tested Joints per week by inspection date (weeklyInspections)
       const insp = await weeklyInspections({
@@ -2336,7 +2342,7 @@ async function buildSubconPage(
         serviceCat: conf.serviceCat,
         tmcpPipe: conf.tmcpPipe,
       });
-      return { conf, pivot, thisWeek, byCat, total, totalNoJ, prByCat, prTotal, weekly, insp, dist };
+      return { conf, pivot, thisWeek, byCat, total, totalNoJ, prByCat, prTotal, weekly, insp, dist, months };
     }),
   );
   if (!weekEnd) note(ctx, TREND_NOTE);
@@ -2345,6 +2351,7 @@ async function buildSubconPage(
   if (!av.sourceLoaded) note(ctx, sourceNote(confs[0]!.sub));
 
   const out: Widget[] = [];
+  const charted = new Set<(typeof blocks)[number]>();
   let blockIdx = 0;
   let tableInBlock = 0;
   const tablesPerBlock = Math.max(
@@ -2476,15 +2483,66 @@ async function buildSubconPage(
           ),
         );
       }
-      if (++tableInBlock >= tablesPerBlock && blockIdx < blocks.length - 1) {
-        blockIdx++;
-        tableInBlock = 0;
+      if (++tableInBlock >= tablesPerBlock) {
+        // the status pages: the block's Weld Type doughnut and Joint RT/UT Monthly Progress
+        // after its tables, shown beside them (owner, 2026-11-02)
+        if (!graph && !charted.has(blk)) {
+          charted.add(blk);
+          out.push(...statusCharts(blk.conf, blk.pivot, blk.months));
+        }
+        if (blockIdx < blocks.length - 1) {
+          blockIdx++;
+          tableInBlock = 0;
+        }
       }
     } else {
       out.push(emptyWidget(w));
     }
   }
   return out;
+}
+
+/** A block's short name in chart titles: CCC, GAC (SG), TEKFEN TMCP Pipe. */
+function blockName(conf: SubconConf): string {
+  return `${conf.sub}${conf.serviceCat === "SG" ? " (SG)" : ""}${conf.tmcpPipe === true ? " TMCP Pipe" : ""}`;
+}
+
+/**
+ * The Welding Status pages' two charts (owner, 2026-11-02): the Weld Type doughnut over the
+ * Cumulative Welding Status totals (the same joints; the seven biggest types and "Other"), and
+ * the block's Joint RT/UT Monthly Progress (as RT B.Log Forecast's, F / S by RT month).
+ */
+function statusCharts(conf: SubconConf, pivot: WeldTypePivot, months: MonthlyPoint[]): ChartWidget[] {
+  const name = blockName(conf);
+  const key = name.toLowerCase().replace(/[^a-z0-9]+/g, "_");
+  const all = [...mergeTypeTotals(pivot)]
+    .filter(([, v]) => v > 0)
+    .sort((a, b) => b[1] - a[1]);
+  const rest = all.slice(7).reduce((n, [, v]) => n + v, 0);
+  const slices: Array<[string | null, number]> = rest ? [...all.slice(0, 7), ["Other", rest]] : all;
+  return [
+    {
+      kind: "chart",
+      canvas_id: `status_weldtype_${key}`,
+      title: `Weld Type - ${name}`,
+      chart_type: "doughnut",
+      labels: slices.map(([t]) => t ?? "(Blank)"),
+      datasets: [{ label: "", data: slices.map(([, v]) => v) }],
+      options_notes: "legend-right",
+    },
+    {
+      kind: "chart",
+      canvas_id: `status_rt_monthly_${key}`,
+      title: `Joint RT/UT Monthly Progress (${name})`,
+      chart_type: "bar",
+      labels: months.map((p) => monthLabel(p.month)),
+      datasets: [
+        { label: "F", data: months.map((p) => p.f) },
+        { label: "S", data: months.map((p) => p.s) },
+      ],
+      options_notes: "stacked (x), stacked (y), window 12",
+    },
+  ];
 }
 
 /**

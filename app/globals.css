@@ -5157,3 +5157,49 @@ body.g-dragging-y * {
 .activity-search { min-height: 30px; width: min(320px, 50%); padding-inline: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary); font-size: 13px; text-transform: none; letter-spacing: 0; }
 .activity-bad td { color: var(--danger, #ef4444); } /* token-lint: allow-hex — fallback */
 .activity-detail { max-width: 520px; overflow: hidden; text-overflow: ellipsis; font-family: var(--font-plex-mono), monospace; font-size: 11px; }
+
+/* <SUB> Welding Status pages: the tables on the left, the Weld Type doughnut and the Joint
+   RT/UT Monthly Progress at the window's right edge (owner, 2026-11-02) */
+.status-layout {
+  display: grid;
+  grid-template-columns: minmax(0, max-content) minmax(500px, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.status-tables {
+  min-width: 0;
+}
+.status-side {
+  justify-self: end;
+  width: 500px;
+  margin-right: 12px;
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.status-side .card {
+  margin: 0;
+  padding: 10px 14px 8px;
+}
+.status-side .card-header {
+  margin-bottom: 4px;
+  padding-bottom: 6px;
+}
+/* both no taller than the tables beside them: no page scroll */
+.status-donut .chart-container {
+  height: 214px;
+}
+.status-monthly .chart-container {
+  height: 184px;
+}
+@media (max-width: 1280px) {
+  .status-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .status-side {
+    justify-self: stretch;
+    width: auto;
+    margin-right: 0;
+  }
+}
