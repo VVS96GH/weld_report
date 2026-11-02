@@ -25,7 +25,7 @@ import { z } from "zod";
 
 import { query, queryFresh, withAsOf } from "@/lib/db";
 import { chartCutoff } from "@/lib/metrics/trend";
-import { type CumKind, STATUS_LABELS } from "@/lib/welder-perf-cum";
+import { type CumKind, STATUS_LABELS, utStatusSql } from "@/lib/welder-perf-cum";
 
 export const SUMMARY_SUBS = ["CCC", "GAC", "TEKFEN", "MEDGULF"] as const;
 
@@ -82,6 +82,7 @@ export async function getSummaryPage(kind: CumKind, pending: { lastDate: string 
   const { as_of } = await withAsOf(null);
   const cutoff = chartCutoff(as_of);
   const subs = [...SUMMARY_SUBS];
+  if (kind === "ut2w") return getUtSummaryPage(cutoff, subs, pending);
   const visual = `weld_type IN ('BW','CLET','GW','MW') AND weld_date IS NOT NULL AND st IS NOT NULL`;
 
   // status table, per welder: the welders the visual shows, and their ratio
@@ -168,7 +169,7 @@ export async function getSummaryPage(kind: CumKind, pending: { lastDate: string 
         .map((st) => ({ status: st, qty: donut.find((d) => d.sub === sub && d.st === st)?.qty ?? 0 }))
         .filter((d) => d.qty > 0),
       trend: { periods, series },
-      disq: mine.filter((r) => r.st === labels[3]).map((r) => r.welder).sort(),
+      disq: mine.filter((r) => r.st === labels[labels.length - 1]).map((r) => r.welder).sort(),
       note: noteBy.get(sub) ?? null,
     };
   });
@@ -181,6 +182,87 @@ export async function getSummaryPage(kind: CumKind, pending: { lastDate: string 
     kind,
     cutoff,
     since: back(cutoff, kind === "2w" ? 15 : 28),
+    subs: out,
+    cum: { lastDate: pending.lastDate, pending: pending.rows, file: kind },
+  };
+}
+
+/**
+ * The UT Rej.Summary page (owner, 2026-11-02, as the pbix "UT Project Welders Performance.
+ * Cumulative Rejection Rate. Summary Report Last 2 weeks"): per sub-contractor the welders whose
+ * joints were UT-reported 1..15 days before the cut-off, by their UT Rej Length Ratio % LAST 2
+ * WEEKS (rejected / inspected length; none inspected yet = 0 %), the group's ratio over the
+ * window's rows, the doughnut, notes and the trend of the UT CUM workbook.
+ */
+async function getUtSummaryPage(
+  cutoff: string,
+  subs: string[],
+  pending: { lastDate: string | null; rows: number },
+): Promise<SummaryPage> {
+  const kind: CumKind = "ut2w";
+  const win = `p.has_ut AND p.weld_type IN ('BW','CLET','GW','MW') AND p.weld_date IS NOT NULL
+               AND p.weld_date <= $1::date AND $1::date - p.last_ut_date BETWEEN 1 AND 15`;
+  const tableSql = `
+    SELECT p.sub_contractor AS sub, ${utStatusSql("coalesce(ws.ut_len_w_15, 0)")} AS st, p.welder_id AS welder,
+           sum(p.defect) AS r, sum(p.insp) AS f, NULL::numeric AS wsum, NULL::numeric AS wcnt,
+           max(coalesce(ws.ut_len_w_15, 0)) AS wr
+      FROM mv_welder_perf p JOIN mv_welder_status ws USING (welder_id)
+     WHERE p.sub_contractor = ANY($2) AND ${win}
+     GROUP BY 1, 2, 3`;
+  const trendSql = `SELECT sub_contractor AS sub, period, status AS st, count(DISTINCT welder_id) AS qty
+                      FROM ref_welder_perf_cum WHERE kind = $1 AND sub_contractor = ANY($2)
+                       AND period IS NOT NULL AND status IS NOT NULL GROUP BY 1, 2, 3`;
+  const [tRows, trRows, notes] = await Promise.all([
+    query(tableSql, [cutoff, subs]),
+    queryFresh(trendSql, [kind, subs]),
+    queryFresh(`SELECT sub_contractor AS sub, body FROM welder_perf_note WHERE kind = $1 AND cutoff = $2::date`, [kind, cutoff]),
+  ]);
+  const table = z.array(TableRow).parse(tRows);
+  const trend = z.array(z.object({ sub: z.string(), period: z.string(), st: z.string(), qty: n })).parse(trRows);
+  const noteBy = new Map(z.array(z.object({ sub: z.string(), body: z.string() })).parse(notes).map((x) => [x.sub, x.body]));
+  const labels = STATUS_LABELS[kind];
+  const periodNo = (p: string) => Number(/^\s*(\d+)/.exec(p)?.[1] ?? 0);
+  const lastPeriod = Math.max(0, ...trend.map((t) => periodNo(t.period)));
+  const ratio = (rows: typeof table) => {
+    const f = rows.reduce((s, r) => s + (r.f ?? 0), 0);
+    return f > 0 ? rows.reduce((s, r) => s + (r.r ?? 0), 0) / f : rows.length ? 0 : null;
+  };
+  const out: SummarySub[] = subs.map((sub) => {
+    const mine = table.filter((r) => r.sub === sub);
+    const statuses: SummaryStatus[] = labels
+      .map((st) => {
+        const rows = mine.filter((r) => r.st === st).sort((a, b) => a.welder.localeCompare(b.welder));
+        return {
+          status: st,
+          qty: rows.length,
+          ratio: ratio(rows),
+          welders: rows.map((r) => ({ welder: r.welder, ratio: r.f && r.f > 0 ? (r.r ?? 0) / r.f : 0, welderRatio: r.wr })),
+        };
+      })
+      .filter((s) => s.qty > 0);
+    const tr = trend.filter((t) => t.sub === sub);
+    const periods = [...new Set(tr.map((t) => t.period))]
+      .filter((p) => periodNo(p) > lastPeriod - 7)
+      .sort((a, b) => periodNo(a) - periodNo(b));
+    const series = labels
+      .map((st) => ({ status: st, data: periods.map((p) => tr.find((t) => t.period === p && t.st === st)?.qty ?? null) }))
+      .filter((s) => s.data.some((v) => v !== null));
+    return {
+      sub,
+      statuses,
+      total: { qty: mine.length, ratio: ratio(mine) },
+      donut: statuses.map((s) => ({ status: s.status, qty: s.qty })),
+      trend: { periods, series },
+      disq: mine.filter((r) => r.st === labels[labels.length - 1]).map((r) => r.welder).sort(),
+      note: noteBy.get(sub) ?? null,
+    };
+  });
+  const t = new Date(`${cutoff}T00:00:00Z`);
+  t.setUTCDate(t.getUTCDate() - 15);
+  return {
+    kind,
+    cutoff,
+    since: t.toISOString().slice(0, 10),
     subs: out,
     cum: { lastDate: pending.lastDate, pending: pending.rows, file: kind },
   };

@@ -1,5 +1,5 @@
 /**
- * The two "CUM FILE Welders Performance" workbooks -> ref_welder_perf_cum
+ * The "CUM FILE Welders Performance" workbooks (RT 2 weeks / 1 month, UT 2 weeks) -> ref_welder_perf_cum
  * (migration 0046), row for row. The workbooks are the owner's master: edited by
  * hand, or appended from the Rejection Summary page (lib/welder-perf-cum.ts).
  *
@@ -18,7 +18,7 @@ async function main(): Promise<void> {
   const run = async <T extends Record<string, unknown>>(sql: string, params: unknown[] = []) =>
     (await client.query(sql, params)).rows as T[];
   try {
-    for (const kind of ["2w", "1m"] as CumKind[]) {
+    for (const kind of ["2w", "1m", "ut2w"] as CumKind[]) {
       const abs = path.resolve(CUM_FILES[kind]);
       const loadId = await openLoad(client, "WELDER_PERF_CUM", path.basename(abs), statSync(abs).size, await sha256File(abs));
       const t0 = Date.now();

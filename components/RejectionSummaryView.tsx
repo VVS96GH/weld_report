@@ -18,7 +18,9 @@ const pct = (v: number | null | undefined) => (v === null || v === undefined ? "
 
 /** Status rank 1..4 → the theme's status token (ok / monitor / critical / disqualified). */
 const STATUS_VARS = ["--wp-status-ok", "--wp-status-monitor", "--wp-status-critical", "--wp-status-disq"];
-const rank = (status: string) => Math.max(0, Math.min(3, Number(status.trim()[0]) - 1 || 0));
+// the worst UT band ("3.Action") is red, as Disq.F
+const rank = (status: string) =>
+  /Action/i.test(status) ? 3 : Math.max(0, Math.min(3, Number(status.trim()[0]) - 1 || 0));
 
 function useStatusColors(): string[] {
   const [colors, setColors] = useState<string[]>([]);
@@ -35,7 +37,7 @@ function useStatusColors(): string[] {
   return colors;
 }
 
-function StatusTable({ sub, title }: { sub: SummarySub; title: string }) {
+function StatusTable({ sub, title, ut }: { sub: SummarySub; title: string; ut: boolean }) {
   const [open, setOpen] = useState<Record<string, boolean>>({});
   return (
     <div className="rs-table">
@@ -43,9 +45,9 @@ function StatusTable({ sub, title }: { sub: SummarySub; title: string }) {
       <table className="data-table rs-status">
         <thead>
           <tr>
-            <th scope="col">STATUS</th>
-            <th scope="col">QTY Wld.ID</th>
-            <th scope="col">RT FILM Ratio %</th>
+            <th scope="col">{ut ? "STATUS UT" : "STATUS"}</th>
+            <th scope="col">{ut ? "Count of Welder ID" : "QTY Wld.ID"}</th>
+            <th scope="col">{ut ? "UT Rej Length Ratio % Last 2 weeks" : "RT FILM Ratio %"}</th>
           </tr>
         </thead>
         <tbody>
@@ -123,7 +125,7 @@ function Notes({ kind, sub }: { kind: SummaryPage["kind"]; sub: SummarySub }) {
         readOnly={!canWrite}
         aria-label={`${sub.sub} notes`}
         value={text}
-        placeholder="No welder in 4. 10 to 100% - Disq.F. Type notes here."
+        placeholder={`No welder in ${kind === "ut2w" ? "3.Action: 2% to 100%" : "4. 10 to 100% - Disq.F"}. Type notes here.`}
         onChange={(e) => {
           setText(e.target.value);
           setState("idle");
@@ -162,9 +164,14 @@ function SubRow({ kind, sub, colors, periodWord }: { kind: SummaryPage["kind"]; 
     options_notes: "area stacked (y)",
   };
   const subTitle = sub.sub === "TEKFEN" ? "TEKFEN" : sub.sub;
+  const ut = kind === "ut2w";
   return (
     <section className="card rs-row" aria-label={`${sub.sub} rejection summary`}>
-      <StatusTable sub={sub} title={`${subTitle} - Welders Performance. Rej. Rate. Summary Status ${periodWord} Since RT Date`} />
+      <StatusTable
+        sub={sub}
+        ut={ut}
+        title={`${subTitle} - Welders Performance. Rej. Rate. Summary Status ${periodWord} Since ${ut ? "UT" : "RT"} Date`}
+      />
       <Notes kind={kind} sub={sub} />
       <div className="rs-chart">
         <h4 className="rs-head">{donut.title}</h4>
@@ -184,7 +191,7 @@ function SubRow({ kind, sub, colors, periodWord }: { kind: SummaryPage["kind"]; 
             </div>
           </>
         ) : (
-          <p className="error-empty">No RT in this period.</p>
+          <p className="error-empty">No {ut ? "UT" : "RT"} in this period.</p>
         )}
       </div>
       <div className="rs-chart rs-chart--trend">
@@ -232,7 +239,8 @@ function CumBar({ data }: { data: SummaryPage }) {
   return (
     <div className="card rs-cum">
       <div className="rs-cum-text">
-        <strong>CUM file</strong> ({data.kind === "2w" ? "2 Weeks" : "1 Month"}): last RT date{" "}
+        <strong>CUM file</strong> ({data.kind === "1m" ? "1 Month" : data.kind === "ut2w" ? "UT, 2 Weeks" : "2 Weeks"}): last{" "}
+        {data.kind === "ut2w" ? "UT" : "RT"} date{" "}
         {data.cum.lastDate ? dmy(data.cum.lastDate) : "—"}.{" "}
         {data.cum.pending > 0
           ? `${data.cum.pending} new rows up to the cut-off ${dmy(data.cutoff)} are not in it yet.`
@@ -274,7 +282,9 @@ export function RejectionSummaryView({ data, note }: { data: SummaryPage | null;
     <section className="page-section active wp-page rs-page" aria-labelledby="page-heading">
       <div className="page-header wp-banner">
         <h2 id="page-heading">
-          Project Welders Performance. Cumulative Rej. Rate. Summary Report {data?.kind === "1m" ? "Last 1 Month" : "Last 2 weeks"}
+          {data?.kind === "ut2w"
+            ? "UT Project Welders Performance. Cumulative Rejection Rate. Summary Report Last 2 weeks"
+            : `Project Welders Performance. Cumulative Rej. Rate. Summary Report ${data?.kind === "1m" ? "Last 1 Month" : "Last 2 weeks"}`}
           {data ? <span className="wp-since"> Since {dmy(data.since)}</span> : null}
         </h2>
       </div>

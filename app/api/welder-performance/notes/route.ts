@@ -11,7 +11,7 @@ import { audited } from "@/lib/audit";
 export const dynamic = "force-dynamic";
 
 const Body = z.object({
-  kind: z.enum(["2w", "1m"]),
+  kind: z.enum(["2w", "1m", "ut2w"]),
   sub: z.enum(SUMMARY_SUBS),
   body: z.string().max(20_000),
 });

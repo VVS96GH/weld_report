@@ -24,7 +24,7 @@ const run: Run = (sql, params) => queryFresh(sql, params);
 
 function kindOf(request: NextRequest): CumKind | null {
   const k = request.nextUrl.searchParams.get("kind");
-  return k === "2w" || k === "1m" ? k : null;
+  return k === "2w" || k === "1m" || k === "ut2w" ? k : null;
 }
 
 async function cutoff(): Promise<string> {
@@ -39,7 +39,8 @@ export async function GET(request: NextRequest): Promise<Response> {
   if (action === "csv") {
     const c = await cutoff();
     const csv = snapshotCsv(kind, await snapshotRows(run, kind, c));
-    const name = `${kind === "2w" ? "Last 2 weeks" : "Last 1 Month"} CUM - Welders Performance. for Table ${csvDate(c)}.csv`;
+    const pre = kind === "ut2w" ? "UT" : kind === "2w" ? "Last 2 weeks" : "Last 1 Month";
+    const name = `${pre} CUM - Welders Performance. for Table ${csvDate(c)}.csv`;
     return new Response(csv, {
       headers: {
         "Content-Type": "text/csv; charset=utf-8",

@@ -10,6 +10,7 @@ export const WP_NAV = [
     pages: [
       { slug: "2-weeks", label: "Performance Last 2 Weeks" },
       { slug: "2-weeks-summary", label: "Rej.Summary Last 2 Weeks" },
+      { slug: "ut-2-weeks-summary", label: "UT Rej.Summary Last 2 Weeks" },
     ],
   },
   {

@@ -102,7 +102,7 @@ const STEPS: Step[] = [
       "sources/WPQ RECORD REGISTER/WPS PWHT Status.xlsx",
     ], afterMatviews: true, about: "WPQ register" },
   // the workbooks are found whatever the spacing of their names (lib/welder-perf-cum.ts cumFile)
-  { id: "welder-cum", script: "db:load:welder-cum", files: [cumFile("2w"), cumFile("1m")],
+  { id: "welder-cum", script: "db:load:welder-cum", files: [cumFile("2w"), cumFile("1m"), cumFile("ut2w")],
     about: "welder performance CUM workbooks (trend charts)" },
   { id: "flange", script: "db:load:flange",
     files: ["sources/Flange Progress.xlsx", "sources/ovAssets_1619.xlsx"],

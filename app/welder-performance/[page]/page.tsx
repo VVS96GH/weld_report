@@ -16,7 +16,11 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Welder Performance — Welding Statistics Dashboard" };
 
 /** The Rejection Summary pages of each section. */
-const SUMMARY: Record<string, CumKind> = { "2-weeks-summary": "2w", "1-month-summary": "1m" };
+const SUMMARY: Record<string, CumKind> = {
+  "2-weeks-summary": "2w",
+  "1-month-summary": "1m",
+  "ut-2-weeks-summary": "ut2w",
+};
 
 export default async function WelderPerformancePage(props: PageProps<"/welder-performance/[page]">) {
   const { page: slug } = await props.params;

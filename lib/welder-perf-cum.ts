@@ -23,13 +23,19 @@ import path from "node:path";
 
 import ExcelJS from "exceljs";
 
-export type CumKind = "2w" | "1m";
+export type CumKind = "2w" | "1m" | "ut2w";
 export type Run = <T extends Record<string, unknown>>(sql: string, params?: unknown[]) => Promise<T[]>;
 
-const DIR = "sources/CUM FILE Welders Performance For Graphic";
+const DIRS: Record<CumKind, string> = {
+  "2w": "sources/CUM FILE Welders Performance For Graphic",
+  "1m": "sources/CUM FILE Welders Performance For Graphic",
+  // the UT workbook (owner, 2026-11-02)
+  ut2w: "sources/CUM FILE UT  Welders Performance For Graphic",
+};
 const CUM_NAMES: Record<CumKind, string> = {
   "2w": "CUM FILE Welders Performance.  Rejection Rate. Summary Status  2 Weeks Since RT Date .xlsx",
   "1m": "CUM FILE Welders Performance.  Rejection Rate. Summary Status  1 Month Since RT Date .xlsx",
+  ut2w: "UT CUM FILE Welders Performance.  Rejection Rate. Summary Status  2 Weeks Since UT Date .xlsx",
 };
 
 /** A name compared without its spacing: "…Date .xlsx" = "…Date.xlsx" = "…Date  .xlsx". */
@@ -42,6 +48,7 @@ const loose = (name: string) => name.toLowerCase().replace(/\s+/g, "").replace(/
  * name matches without spaces. A copy ("… Date 1.xlsx") never matches.
  */
 export function cumFile(kind: CumKind): string {
+  const DIR = DIRS[kind];
   const exact = `${DIR}/${CUM_NAMES[kind]}`;
   if (existsSync(exact)) return exact;
   const want = loose(CUM_NAMES[kind]);
@@ -66,14 +73,23 @@ export const CUM_FILES: Record<CumKind, string> = {
   get "1m"() {
     return cumFile("1m");
   },
+  get ut2w() {
+    return cumFile("ut2w");
+  },
 };
-const SHEET = "CUM FILE Welders Performance";
+const SHEETS: Record<CumKind, string> = {
+  "2w": "CUM FILE Welders Performance",
+  "1m": "CUM FILE Welders Performance",
+  ut2w: "CUM FILE UT Welders Performance",
+};
 /** Days of one period of each workbook (2 and 4 weeks, Friday to Friday). */
-const PERIOD_DAYS: Record<CumKind, number> = { "2w": 14, "1m": 28 };
+const PERIOD_DAYS: Record<CumKind, number> = { "2w": 14, "1m": 28, ut2w: 14 };
 /** The pbix status labels: the 1-month column spells monitor/Critical without spaces. */
-export const STATUS_LABELS: Record<CumKind, [string, string, string, string]> = {
+export const STATUS_LABELS: Record<CumKind, readonly string[]> = {
   "2w": ["1. 0 to 5% - ok", "2. 5 to 7.5% - monitor", "3. 7.5 to 10% - Critical", "4. 10 to 100% - Disq.F"],
   "1m": ["1. 0 to 5% - ok", "2. 5 to 7.5%-monitor", "3. 7.5 to 10%-Critical", "4. 10 to 100% - Disq.F"],
+  // UT: the welder's UT rejected / inspected length (owner's bands)
+  ut2w: ["1.Ok: 0 to 1.5%", "2.Monitor: 1.5% to 2%", "3.Action: 2% to 100%"],
 };
 
 export type CumRow = {
@@ -140,6 +156,7 @@ export function parsePeriod(label: string): { no: number; start: string; end: st
  * blank. The welder's status and ratio are mv_welder_status's (same cut-off).
  */
 export async function snapshotRows(run: Run, kind: CumKind, cutoff: string): Promise<SnapshotRow[]> {
+  if (kind === "ut2w") return snapshotRowsUt(run, cutoff);
   const days = kind === "2w" ? 15 : 30;
   const col = kind === "2w" ? "rt_w_15" : "rt_w_30";
   const [l1, l2, l3, l4] = STATUS_LABELS[kind];
@@ -160,12 +177,45 @@ export async function snapshotRows(run: Run, kind: CumKind, cutoff: string): Pro
   return rows.map((r) => ({ lastRtDate: r.d, sub: r.sub, status: r.st, welder: r.welder, ratio: Number(r.ratio) }));
 }
 
+/** The SQL status of a UT rejected-length ratio (0..1), the owner's bands. */
+export const utStatusSql = (r: string) => {
+  const [l1, l2, l3] = STATUS_LABELS.ut2w.map((s) => `'${s}'`);
+  return `CASE WHEN ${r} < 0.015 THEN ${l1} WHEN ${r} < 0.02 THEN ${l2} ELSE ${l3} END`;
+};
+
+/**
+ * "UT CUM - Welders Performance. for Table" at a cut-off: per UT date, sub-contractor and
+ * welder of the joints UT-reported 1..15 days before it (BW/CLET/GW/MW, welded), the welder's
+ * UT Rej Length Ratio % LAST 2 WEEKS and its status. A welder whose UT joints carry no
+ * inspected length yet reads 0 % (owner's export, 2026-11-02).
+ */
+async function snapshotRowsUt(run: Run, cutoff: string): Promise<SnapshotRow[]> {
+  const rows = await run<{ d: string; sub: string; st: string; welder: string; ratio: string }>(
+    `SELECT DISTINCT p.last_ut_date::text AS d, p.sub_contractor AS sub,
+            ${utStatusSql("coalesce(ws.ut_len_w_15, 0)")} AS st,
+            p.welder_id AS welder, coalesce(ws.ut_len_w_15, 0) AS ratio
+       FROM mv_welder_perf p
+       JOIN mv_welder_status ws USING (welder_id)
+      WHERE p.has_ut AND p.weld_type IN ('BW', 'CLET', 'GW', 'MW')
+        AND p.weld_date IS NOT NULL AND p.weld_date <= $1::date
+        AND $1::date - p.last_ut_date BETWEEN 1 AND 15
+      ORDER BY 1, 2, 3, 4`,
+    [cutoff],
+  );
+  return rows.map((r) => ({ lastRtDate: r.d, sub: r.sub, status: r.st, welder: r.welder, ratio: Number(r.ratio) }));
+}
+
 /** The snapshot as the owner's CSV export (UTF-8 with BOM, "0.00%" ratios). */
 export function snapshotCsv(kind: CumKind, rows: SnapshotRow[]): string {
-  const ratioHead = kind === "2w" ? 'RT Film Ratio % "PR all" For Welder LAST 2 WEEKS' : 'RT Film Ratio % "PR all" For Welder LAST 1 MONTH';
+  const ut = kind === "ut2w";
+  const ratioHead = ut
+    ? 'UT Rej Length Ratio % "PR all" For Welder LAST 2 WEEKS'
+    : kind === "2w"
+      ? 'RT Film Ratio % "PR all" For Welder LAST 2 WEEKS'
+      : 'RT Film Ratio % "PR all" For Welder LAST 1 MONTH';
   const q = (cell: string) => (/[",\r\n]/.test(cell) ? `"${cell.replace(/"/g, '""')}"` : cell);
   const lines = [
-    ['Last_RT Date "PR all"', "Sub-Contractor", "STATUS", "Welder ID", ratioHead, "Count of Welder ID"].map(q).join(","),
+    [ut ? 'Last_UT Date "PR all"' : 'Last_RT Date "PR all"', "Sub-Contractor", ut ? "STATUS UT" : "STATUS", "Welder ID", ratioHead, "Count of Welder ID"].map(q).join(","),
     ...rows.map((r) =>
       [csvDate(r.lastRtDate), r.sub, r.status, r.welder, `${(r.ratio * 100).toFixed(2)}%`, "1"].map(q).join(","),
     ),
@@ -205,7 +255,7 @@ export async function readWorkbook(kind: CumKind, file = path.resolve(CUM_FILES[
   const out: CumRow[] = [];
   for await (const sheet of reader) {
     const name = (sheet as unknown as { name?: string }).name ?? "";
-    if (name !== SHEET) {
+    if (name !== SHEETS[kind]) {
       for await (const skip of sheet) void skip;
       continue;
     }
@@ -221,14 +271,15 @@ export async function readWorkbook(kind: CumKind, file = path.resolve(CUM_FILES[
         return i === undefined ? undefined : values[i];
       };
       const periodHead = [...idx.keys()].find((k) => /Period$/.test(k)) ?? "";
-      const ratioHead = [...idx.keys()].find((k) => k.startsWith("RT Film Ratio")) ?? "";
+      const ratioHead = [...idx.keys()].find((k) => /Ratio/.test(k)) ?? "";
+      const dateHead = [...idx.keys()].find((k) => /^Last_(RT|UT) Date/.test(k)) ?? "";
       const r: CumRow = {
         rowNo: row.number,
         weekStart: asDate(at("Week_Start_Date")),
         weeknum: asText(at("Weeknum")),
         weekEnd: asDate(at("Week_End_Date")),
         period: asText(at(periodHead)),
-        lastRtDate: asDate(at('Last_RT Date "PR all"')),
+        lastRtDate: asDate(at(dateHead)),
         sub: asText(at("Sub-Contractor")),
         status: asText(at("STATUS")),
         welder: asText(at("Welder ID")),
@@ -330,8 +381,8 @@ export async function appendToWorkbook(
 
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.readFile(file);
-  const sheet = wb.getWorksheet(SHEET);
-  if (!sheet) throw new Error(`sheet "${SHEET}" not found in ${file}`);
+  const sheet = wb.getWorksheet(SHEETS[kind]);
+  if (!sheet) throw new Error(`sheet "${SHEETS[kind]}" not found in ${file}`);
   let lastNo = sheet.rowCount;
   while (lastNo > 1 && !sheet.getRow(lastNo).getCell(7).value) lastNo -= 1;
   const template = sheet.getRow(lastNo);
