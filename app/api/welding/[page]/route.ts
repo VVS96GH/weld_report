@@ -58,7 +58,7 @@ export async function GET(
       }
       return Response.json(await getForecastPage(ff, asOf ? { as_of: asOf } : {}));
     }
-    const model = await getWeldingPage(entry.data, { ...(asOf ? { as_of: asOf } : {}), filters, tmcp: entry.tmcp });
+    const model = await getWeldingPage(entry.data, { ...(asOf ? { as_of: asOf } : {}), filters, tmcp: entry.tmcp, slg: entry.slg });
     return Response.json(model);
   } catch (err) {
     return Response.json(

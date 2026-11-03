@@ -69,7 +69,7 @@ export const WELDING_DATA_PAGES = WELDING_DATA_PAGE_TITLES.length;
  * numbers; lib/pages/welding.ts and lib/screens.ts keep data numbers.
  */
 export type ReportEntry =
-  | { kind: "data"; data: number; title: string; tmcp?: boolean }
+  | { kind: "data"; data: number; title: string; tmcp?: boolean; slg?: boolean }
   | { kind: "forecast"; title: string }
   /** Another report placed in the reading order: /welding/<n> sends there. */
   | { kind: "link"; title: string; href: string };
@@ -78,6 +78,7 @@ export const FORECAST_TITLE = "RT Backlog Forecast";
 export const WPS_MATERIAL_TITLE = "WPS No / Type of Material";
 export const PROJECT_NDE_TITLE = "Project NDE & PWHT Status by Service Class";
 export const TEKFEN_TMCP_TITLE = "TEKFEN WELDING STATUS Graph TMCP Pipe (9C3AQN 46 Inch)";
+export const GAC_SLG_STATUS_TITLE = "GAC WELDING STATUS (SLG Service Only)";
 export const FORECAST_DISPLAY_PAGE = 2;
 
 /**
@@ -103,6 +104,9 @@ export const REPORT_ORDER: readonly ReportEntry[] = (() => {
   // Project NDE before WPS / Material (owner, 2026-10-19)
   entries.push({ kind: "link", title: PROJECT_NDE_TITLE, href: "/project-nde" });
   entries.push({ kind: "link", title: WPS_MATERIAL_TITLE, href: "/wps-material" });
+  // GAC status on two pages (owner, 2026-11-03): page 4 renders its SLG block here; the
+  // menu shows it after "GAC WELDING STATUS (Except SLG Service)" (lib/page-order.ts)
+  entries.push({ kind: "data", data: 4, slg: true, title: GAC_SLG_STATUS_TITLE });
   return entries;
 })();
 

@@ -1198,6 +1198,9 @@ const NDE_PAGES = new Map<
 const TEKFEN_GRAPH_PAGE = 10;
 const TEKFEN_TMCP_LABEL = "TEKFEN TMCP Pipe (9C3AQN 46 Inch)";
 const TEKFEN_STATUS_PAGE = 5;
+/** The GAC status page; with `opts.slg` it renders its "SLG Service Only" twin. */
+const GAC_STATUS_PAGE = 4;
+export const GAC_SLG_TITLE = "GAC WELDING STATUS (SLG Service Only)";
 
 /**
  * The mockup's TEKFEN status page has one block; the pbix has two (owner,
@@ -1356,6 +1359,8 @@ export type WeldingPageOpts = {
   rtSet?: readonly number[];
   /** Page 10 as "TEKFEN TMCP Pipe (9C3AQN 46 Inch)" (owner, 2026-10-18: TEKFEN has two pages). */
   tmcp?: boolean;
+  /** Page 4 as its "SLG Service Only" twin (owner, 2026-11-03). */
+  slg?: boolean;
 };
 
 /**
@@ -1525,6 +1530,17 @@ export async function getWeldingPage(
     const tmcp = n === TEKFEN_GRAPH_PAGE && Boolean(opts.tmcp);
     const confs = tmcp ? [{ sub: "TEKFEN", tmcpPipe: true }] : SUBCON_PAGES.get(n)!;
     widgets = await buildSubconPage(spec, all ? [allConf(confs[0]!, subs)] : confs, ctx);
+    // GAC Welding Status on two pages (owner, 2026-11-03): page 4 keeps "Except SLG Service",
+    // its `opts.slg` twin "SLG Service Only" — the page split at that block's heading
+    if (n === GAC_STATUS_PAGE && !all) {
+      const cut = widgets.findIndex((w) => w.kind === "text" && !w.note && /SLG Service Only/i.test(w.text));
+      if (cut >= 0) {
+        const data = (w: Widget) => w.kind === "table" || w.kind === "chart" || w.kind === "kpi";
+        const before = widgets.slice(0, cut);
+        const after = widgets.slice(cut + 1);
+        widgets = opts.slg ? [...before.filter((w) => !data(w)), ...after] : [...before, ...after.filter((w) => !data(w))];
+      }
+    }
     // the TMCP twin names its scope as the pbix page does
     if (tmcp) {
       widgets = widgets.map((w) =>
@@ -1563,8 +1579,11 @@ export async function getWeldingPage(
 
   return {
     page: spec.page,
-    id: `${spec.id}${all ? "-all" : ""}${allRt ? "-allrt" : ""}`,
-    title: allRtTitle(all ? allTitle(spec.title, subs) : spec.title, allRt, rts),
+    id: `${spec.id}${n === GAC_STATUS_PAGE && opts.slg && !all ? "-slg" : ""}${all ? "-all" : ""}${allRt ? "-allrt" : ""}`,
+    title:
+      n === GAC_STATUS_PAGE && opts.slg && !all
+        ? GAC_SLG_TITLE
+        : allRtTitle(all ? allTitle(spec.title, subs) : spec.title, allRt, rts),
     subtitle: spec.subtitle ?? undefined,
     widgets,
     ...(bar

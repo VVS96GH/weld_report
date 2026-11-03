@@ -29,6 +29,8 @@ export type WeldingPageOpts = {
   rtSet?: readonly number[];
   /** Page 10 as "TEKFEN TMCP Pipe (9C3AQN 46 Inch)" (owner, 2026-10-18: TEKFEN has two pages). */
   tmcp?: boolean;
+  /** Page 4 as "GAC WELDING STATUS (SLG Service Only)" (owner, 2026-11-03: GAC status on two pages). */
+  slg?: boolean;
 };
 
 /**

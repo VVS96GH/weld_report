@@ -87,7 +87,7 @@ export default async function WeldingReportPage(props: PageProps<"/welding/[page
     );
   }
 
-  const model = await getPage(entry.data, undefined, { filters: readFilters(params), tmcp: entry.tmcp });
+  const model = await getPage(entry.data, undefined, { filters: readFilters(params), tmcp: entry.tmcp, slg: entry.slg });
   const filterWidgets = model.widgets.filter((w): w is FilterWidget => w.kind === "filter");
   const subtitle =
     model.meta?.source === "database"
