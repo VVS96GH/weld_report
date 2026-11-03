@@ -1,0 +1,79 @@
+/* RT B.Log Forecast visuals (owner, 2026-11-03; components/report/ForecastVisuals.tsx): the T.EN
+   palette for the RT % parts; any other mood takes its own chart colours. Same file on both sites. */
+:root {
+  --rt-100: #0070ef; /* T.EN blue: the main part */
+  --rt-5: #3d98b7; /* T.EN teal */
+  --rt-10: #7fb8e8; /* light blue */
+  --rt-20: #a2c61c; /* T.EN lime */
+  --rt-30: #8a9bb0; /* slate */
+  --rt-total: #e0b84e; /* the backlog total: gold accent */
+  --rt-done: #1f5fbf; /* done: deep blue */
+  --rt-track: rgb(255 255 255 / 0.06);
+}
+:root[data-theme="light"] {
+  --rt-track: rgb(0 0 0 / 0.06);
+}
+:root[data-mood]:not([data-mood="ten"]) {
+  --rt-100: var(--color-1);
+  --rt-5: var(--color-2);
+  --rt-10: var(--color-3);
+  --rt-20: var(--color-4);
+  --rt-30: var(--color-5);
+  --rt-total: var(--color-6, var(--color-4));
+  --rt-done: var(--color-1);
+}
+
+.fc-muted { color: var(--muted, var(--text-secondary)); font-weight: 400; }
+.fc-big { font-family: var(--font-display, inherit); font-size: 26px; font-weight: 700; color: var(--rt-total); line-height: 1; }
+
+/* stacked bars */
+.fc-bars { display: flex; flex-direction: column; gap: 14px; padding: 4px 6px 2px; }
+.fc-bars-head { display: flex; align-items: baseline; gap: 10px; font-size: 12px; }
+.fc-bars-rows { display: flex; flex-direction: column; gap: 12px; }
+.fc-row { display: grid; grid-template-columns: 84px minmax(0, 1fr) 112px; align-items: center; gap: 12px; }
+.fc-row-name { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; color: var(--fg, var(--text-primary)); }
+.fc-track { position: relative; height: 22px; border-radius: 7px; background: var(--rt-track); }
+.fc-fill { display: flex; height: 100%; min-width: 4px; gap: 2px; border-radius: 7px; overflow: hidden; }
+.fc-seg { min-width: 3px; height: 100%; cursor: default; transition: opacity 0.15s ease, filter 0.15s ease; }
+.fc-seg:hover { filter: brightness(1.15); }
+.fc-seg.is-dim { opacity: 0.35; }
+.fc-row-total { display: flex; justify-content: flex-end; align-items: baseline; gap: 8px; font-size: 13px; }
+.fc-row-total b { color: var(--fg, var(--text-primary)); }
+.fc-row-total .fc-muted { font-size: 11px; min-width: 42px; text-align: right; }
+.fc-tip {
+  position: absolute; bottom: calc(100% + 8px); transform: translateX(-50%); z-index: 20; white-space: nowrap;
+  padding: 6px 10px; border-radius: 8px; font-size: 12px; pointer-events: none;
+  background: var(--surface-2, var(--bg-elevated)); border: 1px solid var(--border, var(--border-color));
+  box-shadow: 0 8px 22px rgb(0 0 0 / 0.35); color: var(--fg, var(--text-primary));
+}
+.fc-tip i, .fc-chip i, .fc-gauge-foot i, .fc-ring-legend i {
+  display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 6px; vertical-align: 0;
+}
+.fc-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; padding-top: 4px; border-top: 1px solid var(--border, var(--border-color)); padding-top: 10px; }
+.fc-chip { font-size: 11px; color: var(--muted, var(--text-secondary)); display: inline-flex; align-items: center; gap: 6px; }
+.fc-chip i { margin-right: 0; }
+.fc-chip b { color: var(--fg, var(--text-primary)); font-weight: 600; }
+
+/* done half ring */
+.fc-gauge { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 6px 4px 0; }
+.fc-gauge svg { width: 100%; max-width: 230px; display: block; }
+.fc-gauge-big { font-family: var(--font-display, inherit); font-size: 32px; font-weight: 700; fill: var(--fg, var(--text-primary)); }
+.fc-gauge-sub { font-size: 12px; fill: var(--muted, var(--text-secondary)); }
+.fc-gauge-foot { display: flex; gap: 18px; font-size: 12px; color: var(--muted, var(--text-secondary)); }
+.fc-gauge-foot b { color: var(--fg, var(--text-primary)); margin-left: 4px; }
+
+/* parts ring */
+.fc-ring { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 4px 6px; }
+.fc-ring svg { width: 100%; max-width: 180px; display: block; }
+.fc-ring-big { font-family: var(--font-display, inherit); font-size: 30px; font-weight: 700; fill: var(--fg, var(--text-primary)); }
+.fc-ring-sub { font-size: 12px; fill: var(--muted, var(--text-secondary)); }
+.fc-ring-legend { width: 100%; max-width: 300px; border-collapse: collapse; font-size: 12px; }
+.fc-ring-legend td { white-space: nowrap; padding: 5px 4px; border-bottom: 1px solid var(--border, var(--border-color)); color: var(--fg, var(--text-primary)); }
+.fc-ring-legend tr:last-child td { border-bottom: 0; }
+.fc-ring-legend td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.fc-ring-legend tr { transition: opacity 0.15s ease; cursor: default; }
+.fc-ring-legend tr.is-dim { opacity: 0.4; }
+.fc-ring-legend tr.is-on td { font-weight: 700; }
+/* the half ring sits in the middle of its card */
+.card:has(> .fc-gauge) { display: flex; flex-direction: column; }
+.card > .fc-gauge { flex: 1; justify-content: center; }

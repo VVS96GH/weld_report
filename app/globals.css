@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "./styles/tokens.css";
+@import "./styles/forecast.css";
 
 /* ============================================================
    Welding Statistics Dashboard — design system, ported from

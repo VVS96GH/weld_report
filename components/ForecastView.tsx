@@ -6,6 +6,7 @@ import { usePageSubtitle } from "@/components/ReportShell";
 import { KpiCard } from "@/components/widgets/KpiCard";
 import { ChartCard } from "@/components/widgets/ChartCard";
 import { TextNote } from "@/components/widgets/TextNote";
+import { DoneGauge, ForecastBars, ForecastRing, RT_PARTS } from "@/components/widgets/ForecastVisuals";
 
 /**
  * The RT Backlog Forecast page laid out as the pbix page 20 is (owner request
@@ -26,6 +27,18 @@ import { TextNote } from "@/components/widgets/TextNote";
 const RIGHT_RT_CARDS = ["RT B.Log", "Numb RT/UT_", "RT Avrg Prod-on 2024-26 per Month", "Months to keep RT B.log", "PWHT B.Log PBI Rule"];
 const RIGHT_DIA_CARDS = ["RT Dia B.Log", "Total Welded RT Dia", "RT Dia Avrg Prod-on", "Months to keep Dia RT B.log"];
 const MIDDLE_CARDS = ["Total RT/UT Done", "RT B.Log Talisman", "RT Total Forecast B.log", "RT Dia Total Forecast B.log", "Numb RT/UT 2024", "RT Avrg Prod-on 2024-26 per Month", "QTY Years"];
+
+/** A series of a chart widget by its label (the pbix's own), as numbers. */
+function series(w: ChartWidget | undefined, label: string): number[] {
+  const d = w?.datasets.find((x) => x.label.trim() === label)?.data ?? [];
+  return d.map((v) => (typeof v === "number" ? v : Number(v) || 0));
+}
+/** A doughnut slice by its label. */
+function slice(w: ChartWidget | undefined, label: string): number {
+  const i = (w?.labels ?? []).findIndex((l) => String(l).trim().toLowerCase() === label.toLowerCase());
+  const v = i < 0 ? 0 : w?.datasets[0]?.data[i];
+  return typeof v === "number" ? v : Number(v) || 0;
+}
 
 function Chart({ widget, className }: { widget: ChartWidget; className?: string }) {
   return (
@@ -71,8 +84,8 @@ export function ForecastView({ model: source, subtitle }: { model: PageModel; su
   const hint = (w: ChartWidget | undefined, extra: string) =>
     w ? { ...w, options_notes: `${w.options_notes ?? ""} ${extra}`.trim() } : undefined;
   const bar = chart("forecast_bar");
-  const donutDone = hint(chart("forecast_donut_done"), "legend-bottom");
-  const donutBacklog = hint(chart("forecast_donut_backlog"), "legend-bottom");
+  const donutDone = chart("forecast_donut_done");
+  const donutBacklog = chart("forecast_donut_backlog");
   const joint = hint(chart("forecast_joint_monthly"), "window 12");
   const dia = hint(chart("forecast_dia_monthly"), "window 12");
   const middle = cards(MIDDLE_CARDS);
@@ -88,10 +101,35 @@ export function ForecastView({ model: source, subtitle }: { model: PageModel; su
 
       <div className="forecast-layout">
         <div className="forecast-col forecast-col--left">
-          {bar ? <Chart widget={bar} className="forecast-bar" /> : null}
+          {/* redrawn in the T.EN style (owner, 2026-11-03; components/widgets/ForecastVisuals):
+              the RT % parts only, their total drawn once */}
+          {bar ? (
+            <div className="card forecast-bar">
+              <div className="card-header">Total Forecast B.log by Sub-Contractor</div>
+              <ForecastBars
+                rows={bar.labels.map((name, i) => ({
+                  name: String(name),
+                  values: Object.fromEntries(RT_PARTS.map((p) => [p.key, series(bar, p.label)[i] ?? 0])),
+                }))}
+              />
+            </div>
+          ) : null}
           <div className="forecast-done-row">
-            {donutDone ? <Chart widget={donutDone} className="forecast-donut-small" /> : null}
-            {donutBacklog ? <Chart widget={donutBacklog} className="forecast-donut" /> : null}
+            {donutDone ? (
+              <div className="card forecast-donut-small">
+                <div className="card-header">RT/UT Done / B.log</div>
+                <DoneGauge
+                  done={slice(donutDone, "Done")}
+                  backlog={slice(donutDone, "RT Total Forecast B.Log") || slice(donutDone, "RT Total Forecast Backlog")}
+                />
+              </div>
+            ) : null}
+            {donutBacklog ? (
+              <div className="card forecast-donut">
+                <div className="card-header">Total Forecast B.log by RT %</div>
+                <ForecastRing values={Object.fromEntries(RT_PARTS.map((p) => [p.key, slice(donutBacklog, p.label)]))} />
+              </div>
+            ) : null}
           </div>
         </div>
 
