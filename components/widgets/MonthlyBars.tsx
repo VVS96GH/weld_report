@@ -1,5 +1,6 @@
 "use client";
 
+import type React from "react";
 import { useMemo, useState } from "react";
 
 /**
@@ -24,7 +25,18 @@ function niceMax(v: number): number {
   return (steps.find((x) => m <= x) ?? 10) * p;
 }
 
-export function MonthlyBars({ months, unit, defaultRange = 12 }: { months: Month[]; unit: string; defaultRange?: number }) {
+export function MonthlyBars({
+  months,
+  unit,
+  defaultRange = 12,
+  height = 200,
+}: {
+  months: Month[];
+  unit: string;
+  defaultRange?: number;
+  /** the plot's height in px (the forecast page fits one screen with 130) */
+  height?: number;
+}) {
   const [range, setRange] = useState<number>(defaultRange);
   const [end, setEnd] = useState<number>(months.length); // exclusive
   const [hover, setHover] = useState<number | null>(null);
@@ -48,7 +60,7 @@ export function MonthlyBars({ months, unit, defaultRange = 12 }: { months: Month
   const h = hover === null ? null : shown[hover];
 
   return (
-    <div className="mb">
+    <div className="mb" style={{ "--mb-h": `${height}px` } as React.CSSProperties}>
       <div className="mb-head">
         <div className="mb-last">
           <span className="fc-muted">{last.label}</span>
@@ -70,7 +82,7 @@ export function MonthlyBars({ months, unit, defaultRange = 12 }: { months: Month
           <span className="mb-key mb-key--avg">
             <i /> avg <b className="num">{n0(avg)}</b>
           </span>
-          <div className="mb-range" role="group" aria-label="Months shown">
+          <div className="mb-range" role="group" aria-label="Months shown" title={`${shown[0]?.label} – ${shown[shown.length - 1]?.label}: ${shown.length} of ${months.length} months`}>
             <button type="button" className="mb-btn" disabled={stop - size <= 0} onClick={() => setEnd(Math.max(size, stop - step))} aria-label="Earlier months">
               ◀
             </button>
@@ -140,9 +152,6 @@ export function MonthlyBars({ months, unit, defaultRange = 12 }: { months: Month
             </div>
           ) : null}
         </div>
-      </div>
-      <div className="mb-foot fc-muted">
-        {shown[0]?.label} – {shown[shown.length - 1]?.label} · {shown.length} of {months.length} months
       </div>
     </div>
   );

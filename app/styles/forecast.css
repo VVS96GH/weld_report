@@ -79,7 +79,7 @@
 .card > .fc-gauge { flex: 1; justify-content: center; }
 
 /* monthly RT/UT progress, F + S stacked (components/report/MonthlyBars.tsx) */
-.mb { display: flex; flex-direction: column; gap: 10px; padding: 2px 6px 0; }
+.mb { display: flex; flex-direction: column; gap: 6px; padding: 0 6px; }
 .mb-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
 .mb-last { display: flex; align-items: baseline; gap: 8px; font-size: 12px; }
 .mb-last b { font-family: var(--font-display, inherit); font-size: 22px; color: var(--fg, var(--text-primary)); }
@@ -97,9 +97,9 @@
 .mb-btn.is-on { background: var(--accent, var(--accent-primary)); color: #fff; }
 .mb-btn:disabled { opacity: 0.3; cursor: default; }
 .mb-plot { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 6px; }
-.mb-axis { display: flex; flex-direction: column; justify-content: space-between; height: 200px; font-size: 10px; text-align: right;
+.mb-axis { margin-top: 14px; display: flex; flex-direction: column; justify-content: space-between; height: var(--mb-h, 200px); font-size: 10px; text-align: right;
   color: var(--faint, var(--text-muted)); transform: translateY(-6px); }
-.mb-area { position: relative; height: 200px; margin: 0 0 22px; border-bottom: 1px solid var(--border, var(--border-color)); }
+.mb-area { position: relative; height: var(--mb-h, 200px); margin: 14px 0 20px; border-bottom: 1px solid var(--border, var(--border-color)); }
 .mb-grid { position: absolute; left: 0; right: 0; height: 0; border-top: 1px dashed var(--rt-track); }
 .mb-avg { position: absolute; left: 0; right: 0; height: 0; border-top: 2px dashed var(--rt-total); z-index: 2; pointer-events: none; opacity: 0.85; }
 .mb-avg span { position: absolute; right: 0; top: -17px; font-size: 10px; font-weight: 700; color: var(--rt-total);
@@ -122,4 +122,5 @@
   color: var(--fg, var(--text-primary)); }
 .mb-tip i { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 6px; }
 .mb-tip-total { border-top: 1px solid var(--border, var(--border-color)); padding-top: 3px; color: var(--muted, var(--text-secondary)); }
-.mb-foot { font-size: 11px; }
+.mb-span { font-size: 11px; white-space: nowrap; }
+.wr-page.fc-page { padding-bottom: 6px; margin-bottom: -1.5rem; } /* one screen at 100 % (owner, 2026-11-03) */

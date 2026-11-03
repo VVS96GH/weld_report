@@ -147,7 +147,7 @@ export function ForecastView({ model: source, subtitle }: { model: PageModel; su
           {joint ? (
             <div className="card forecast-monthly">
               <div className="card-header">{joint.title}</div>
-              <MonthlyBars months={monthsOf(joint)} unit="joints" />
+              <MonthlyBars months={monthsOf(joint)} unit="joints" height={120} />
             </div>
           ) : null}
           <div className="stats-row forecast-cards">
@@ -158,7 +158,7 @@ export function ForecastView({ model: source, subtitle }: { model: PageModel; su
           {dia ? (
             <div className="card forecast-monthly">
               <div className="card-header">{dia.title}</div>
-              <MonthlyBars months={monthsOf(dia)} unit="dia inch" />
+              <MonthlyBars months={monthsOf(dia)} unit="dia inch" height={120} />
             </div>
           ) : null}
           <div className="stats-row forecast-cards">
