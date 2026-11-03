@@ -4,7 +4,7 @@ import { UserMenu } from "@/components/UserMenu";
 import { LOGO_KEY } from "@/lib/theme/axes";
 import { PdfButton } from "@/components/PdfButton";
 import { ZoomControl } from "@/components/ZoomControl";
-import { createContext, Suspense, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, Suspense, useCallback, useContext, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -58,6 +58,8 @@ function currentPageFromPathname(pathname: string | null): number | null {
 export function ReportShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  // the logo: one click waits a moment, so a double click only toggles it
+  const logoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [subtitle, setSubtitle] = useState<string>(WELDING_REPORT_SUBTITLE);
 
   const isFlange = pathname?.startsWith("/flange") ?? false;
@@ -124,14 +126,23 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
           </Link>
           {/* Header chrome is navy in both schemes, so the lockup is always the dark-surface
               (negative) file — never switched by data-theme (docs/brand-README.md). */}
-          {/* a click leaves only the white circle, a second click brings the logo back (owner,
-              2026-11-03); kept in this browser for every page, set before paint (lib/theme/axes.ts) */}
+          {/* one click: page 1; a double click leaves only the white circle, another brings the
+              logo back (owner, 2026-11-03) — kept in this browser for every page (lib/theme/axes.ts) */}
           <button
             type="button"
             className="brand-lockup-link logo-toggle"
-            aria-label="T.EN — Technip Energies: show or hide the logo"
-            title="Show or hide the logo"
-            onClick={toggleLogo}
+            aria-label="T.EN — Technip Energies: back to page 1 (double-click: show or hide the logo)"
+            title="Click: page 1 · double-click: show or hide the logo"
+            onClick={(e) => {
+              if (e.detail > 1) return;
+              if (logoTimer.current) clearTimeout(logoTimer.current);
+              logoTimer.current = setTimeout(() => router.push("/welding/1"), 250);
+            }}
+            onDoubleClick={() => {
+              if (logoTimer.current) clearTimeout(logoTimer.current);
+              logoTimer.current = null;
+              toggleLogo();
+            }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img className="brand-lockup" src="/brand/ten-lockup-negative.png" alt="" aria-hidden="true" width={1200} height={582} />
