@@ -7,6 +7,7 @@ import { KpiCard } from "@/components/widgets/KpiCard";
 import { ChartCard } from "@/components/widgets/ChartCard";
 import { TextNote } from "@/components/widgets/TextNote";
 import { DoneGauge, ForecastBars, ForecastRing, RT_PARTS } from "@/components/widgets/ForecastVisuals";
+import { MonthlyBars } from "@/components/widgets/MonthlyBars";
 
 /**
  * The RT Backlog Forecast page laid out as the pbix page 20 is (owner request
@@ -81,13 +82,14 @@ export function ForecastView({ model: source, subtitle }: { model: PageModel; su
   // one screen (owner, 2026-10-15): the monthly charts show the last 12 months,
   // the scrollbar reaches the rest; the doughnuts keep their legend below so
   // the outside labels never reach the title
-  const hint = (w: ChartWidget | undefined, extra: string) =>
-    w ? { ...w, options_notes: `${w.options_notes ?? ""} ${extra}`.trim() } : undefined;
   const bar = chart("forecast_bar");
   const donutDone = chart("forecast_donut_done");
   const donutBacklog = chart("forecast_donut_backlog");
-  const joint = hint(chart("forecast_joint_monthly"), "window 12");
-  const dia = hint(chart("forecast_dia_monthly"), "window 12");
+  const joint = chart("forecast_joint_monthly");
+  const dia = chart("forecast_dia_monthly");
+  // F + S per month (owner, 2026-11-03: redrawn, components/widgets/MonthlyBars)
+  const monthsOf = (w: ChartWidget) =>
+    w.labels.map((l, i) => ({ label: String(l), f: series(w, "F")[i] ?? 0, s: series(w, "S")[i] ?? 0 }));
   const middle = cards(MIDDLE_CARDS);
   const rightRt = cards(RIGHT_RT_CARDS);
   const rightDia = cards(RIGHT_DIA_CARDS);
@@ -142,13 +144,23 @@ export function ForecastView({ model: source, subtitle }: { model: PageModel; su
         </div>
 
         <div className="forecast-col forecast-col--right">
-          {joint ? <Chart widget={joint} className="forecast-monthly" /> : null}
+          {joint ? (
+            <div className="card forecast-monthly">
+              <div className="card-header">{joint.title}</div>
+              <MonthlyBars months={monthsOf(joint)} unit="joints" />
+            </div>
+          ) : null}
           <div className="stats-row forecast-cards">
             {rightRt.map((k) => (
               <KpiCard key={k.label} widget={k} />
             ))}
           </div>
-          {dia ? <Chart widget={dia} className="forecast-monthly" /> : null}
+          {dia ? (
+            <div className="card forecast-monthly">
+              <div className="card-header">{dia.title}</div>
+              <MonthlyBars months={monthsOf(dia)} unit="dia inch" />
+            </div>
+          ) : null}
           <div className="stats-row forecast-cards">
             {rightDia.map((k) => (
               <KpiCard key={k.label} widget={k} />

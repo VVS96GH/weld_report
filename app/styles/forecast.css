@@ -77,3 +77,49 @@
 /* the half ring sits in the middle of its card */
 .card:has(> .fc-gauge) { display: flex; flex-direction: column; }
 .card > .fc-gauge { flex: 1; justify-content: center; }
+
+/* monthly RT/UT progress, F + S stacked (components/report/MonthlyBars.tsx) */
+.mb { display: flex; flex-direction: column; gap: 10px; padding: 2px 6px 0; }
+.mb-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.mb-last { display: flex; align-items: baseline; gap: 8px; font-size: 12px; }
+.mb-last b { font-family: var(--font-display, inherit); font-size: 22px; color: var(--fg, var(--text-primary)); }
+.mb-delta { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+.mb-delta.is-up { color: #7fe3a0; background: rgb(63 174 73 / 0.16); }
+.mb-delta.is-down { color: #ffb0a3; background: rgb(232 66 66 / 0.14); }
+.mb-tools { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.mb-key { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted, var(--text-secondary)); }
+.mb-key i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; }
+.mb-key b { color: var(--rt-total); }
+.mb-key--avg i { width: 14px; height: 0; border-top: 2px dashed var(--rt-total); border-radius: 0; }
+.mb-range { display: inline-flex; border: 1px solid var(--border, var(--border-color)); border-radius: 999px; overflow: hidden; }
+.mb-btn { background: none; border: 0; color: var(--muted, var(--text-secondary)); font-size: 11px; font-weight: 600; padding: 4px 10px; cursor: pointer; }
+.mb-btn:hover:not(:disabled) { color: var(--fg, var(--text-primary)); background: var(--rt-track); }
+.mb-btn.is-on { background: var(--accent, var(--accent-primary)); color: #fff; }
+.mb-btn:disabled { opacity: 0.3; cursor: default; }
+.mb-plot { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 6px; }
+.mb-axis { display: flex; flex-direction: column; justify-content: space-between; height: 200px; font-size: 10px; text-align: right;
+  color: var(--faint, var(--text-muted)); transform: translateY(-6px); }
+.mb-area { position: relative; height: 200px; margin: 0 0 22px; border-bottom: 1px solid var(--border, var(--border-color)); }
+.mb-grid { position: absolute; left: 0; right: 0; height: 0; border-top: 1px dashed var(--rt-track); }
+.mb-avg { position: absolute; left: 0; right: 0; height: 0; border-top: 2px dashed var(--rt-total); z-index: 2; pointer-events: none; opacity: 0.85; }
+.mb-avg span { position: absolute; right: 0; top: -17px; font-size: 10px; font-weight: 700; color: var(--rt-total);
+  background: var(--surface, var(--bg-card)); padding: 0 4px; border-radius: 4px; }
+.mb-cols { position: absolute; inset: 0; display: flex; gap: 6px; align-items: stretch; }
+.mb-col { position: relative; flex: 1; min-width: 0; cursor: default; transition: opacity 0.15s ease; }
+.mb-col.is-dim { opacity: 0.45; }
+.mb-stack { position: absolute; left: 12%; right: 12%; bottom: 0; display: flex; flex-direction: column; gap: 2px; min-height: 2px; }
+.mb-s, .mb-f { display: block; min-height: 2px; }
+.mb-s { background: var(--series-s, #2f6fd6); border-radius: 6px 6px 0 0; }
+.mb-f { background: var(--series-f, #e0b84e); }
+.mb-total + .mb-f { border-radius: 6px 6px 0 0; }
+.mb-total { position: absolute; left: 50%; bottom: calc(100% + 3px); transform: translateX(-50%); font-size: 11px; font-weight: 700;
+  white-space: nowrap; color: var(--fg, var(--text-primary)); }
+.mb-label { position: absolute; top: calc(100% + 5px); left: 50%; transform: translateX(-50%); font-size: 10px; white-space: nowrap;
+  color: var(--muted, var(--text-secondary)); }
+.mb-tip { position: absolute; top: 4px; transform: translateX(-50%); z-index: 5; display: flex; flex-direction: column; gap: 3px;
+  padding: 8px 10px; border-radius: 8px; font-size: 12px; pointer-events: none; white-space: nowrap;
+  background: var(--surface-2, var(--bg-elevated)); border: 1px solid var(--border, var(--border-color)); box-shadow: 0 8px 22px rgb(0 0 0 / 0.35);
+  color: var(--fg, var(--text-primary)); }
+.mb-tip i { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 6px; }
+.mb-tip-total { border-top: 1px solid var(--border, var(--border-color)); padding-top: 3px; color: var(--muted, var(--text-secondary)); }
+.mb-foot { font-size: 11px; }
