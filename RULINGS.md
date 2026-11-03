@@ -22,6 +22,7 @@ Before 2026-11-03 the rulings lived in commit messages marked "(owner)": `git lo
 | A9 | 2026-11-03 | GAC Welding Status on two pages (Except SLG Service / SLG Service Only = Service Cat SG); TEKFEN on two (Except TMCP Pipe / TMCP Pipe "9C3AQN 46 inch"); each pair in a "+ <sub> Welding Status" folder. | GAC SLG: 1,804 joints welded. | platform `lib/sub-pages.ts`; Dashboard `lib/welding-pages.ts` |
 | A10 | 2026-11-03 | Welder IDs in one spelling: trimmed, upper case. | w-1894-CCC → W-1894-CCC. | platform `core.welder_joint`, `core.joint_welder` (Dashboard: not yet — see C1) |
 | A11 | 2026-10-31 | Backups weekly (Monday, after the Sunday update), the last two kept. | — | systemd timers |
+| A12 | 2026-11-03 | Welding Status "Cumulative" / "this Week" tables: every RPD* code counts in RPD, every SOB* in SOB (as the pbix; on the platform since 2026-10-27, B6). | GAC RPD 922 + RPDF 551 = 1,473; TEKFEN 644 + 260 = 904. | platform `weld_type_grp`; Dashboard `lib/metrics/welding.ts` STATUS_TYPE |
 
 ## B. Platform (weld_platform) — computed from the owner's descriptions, never from the pbix
 
@@ -50,4 +51,4 @@ Before 2026-11-03 the rulings lived in commit messages marked "(owner)": `git lo
 | Check | Why | Status |
 |---|---|---|
 | Rej.Summary 1 month (CUM snapshot) | The Dashboard lists RT dates 1..28 days back with the pbix 0..30-day ratio; the platform cut-off − 28 .. cut-off for both. | not ruled |
-| Welding Status by Weld Type (CCC, GAC except SLG, TEKFEN except TMCP, MEDGULF) | Some Weld Type columns differ (GAC: RPD 1,473 vs 922, SW 161,115 vs 161,103; CCC BW 494,636 vs 494,666). Present before 2026-11-03; cause not yet traced (one joint, one type on the platform; RPD* folded into RPD). | found 2026-11-03 — shown as "diff" until traced and ruled |
+| Welding Status by Weld Type (CCC, GAC except SLG, TEKFEN except TMCP, MEDGULF) | Some Weld Type columns differ (GAC SW 161,115 vs 161,103; CCC BW 494,636 vs 494,666; TEKFEN TRN 1,706 vs 1,710). Present before 2026-11-03; cause not yet traced (one joint, one type on the platform). RPD fixed 2026-11-03 (A12). | found 2026-11-03 — shown as "diff" until traced and ruled |

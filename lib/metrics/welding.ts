@@ -160,6 +160,14 @@ export type WeldTypePivot = {
 };
 
 /**
+ * The Welding Status pivots fold every RPD* code into RPD and every SOB* into SOB (owner,
+ * 2026-11-03, as the pbix: GAC RPD 922 + RPDF 551 = 1,473; TEKFEN 644 + 260 = 904; RULINGS B6).
+ */
+const STATUS_TYPE =
+  "CASE WHEN w.weld_type LIKE 'RPD%' THEN 'RPD' WHEN w.weld_type LIKE 'SOB%' THEN 'SOB' ELSE w.weld_type END";
+const statusType = (t: string): string => (t.startsWith("RPD") ? "RPD" : t.startsWith("SOB") ? "SOB" : t);
+
+/**
  * The "Cumulative Welding Status" pivot: M01 by `weld_cat` × `weld_type`.
  *
  * `count(DISTINCT joint_id)` is not additive, so the `Total` column is a
@@ -183,11 +191,11 @@ export async function weldTypePivot(
   }
   const where = and(conds);
   const sql =
-    `SELECT w.weld_cat, w.weld_type, count(*) AS joints_welded,\n` +
-    `       GROUPING(w.weld_cat) AS g_cat, GROUPING(w.weld_type) AS g_type\n` +
+    `SELECT w.weld_cat, ${STATUS_TYPE} AS weld_type, count(*) AS joints_welded,\n` +
+    `       GROUPING(w.weld_cat) AS g_cat, GROUPING(${STATUS_TYPE}) AS g_type\n` +
     `  FROM ${JOINT_FROM}\n` +
     ` WHERE ${where}\n` +
-    ` GROUP BY GROUPING SETS ((w.weld_cat, w.weld_type), (w.weld_cat), ())`;
+    ` GROUP BY GROUPING SETS ((w.weld_cat, ${STATUS_TYPE}), (w.weld_cat), ())`;
   const rows = await query(sql, p.list());
   const cells = new Map<string | null, Map<string | null, number>>();
   const catTotals = new Map<string | null, number>();
@@ -213,7 +221,8 @@ export async function weldTypePivot(
     }
   }
   // a joint whose rows carry a second weld type counts in that column too (0061)
-  for (const x of await extraTypeCounts(scope, conds, p, true)) {
+  for (const x0 of await extraTypeCounts(scope, conds, p, true)) {
+    const x = { ...x0, weld_type: statusType(x0.weld_type) };
     weldTypes.add(x.weld_type);
     let row = cells.get(x.weld_cat);
     if (!row) {
