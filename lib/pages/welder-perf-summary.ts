@@ -17,15 +17,15 @@
  * (owner's 09-Oct page: CCC 0.15 %, GAC ok 0.35 %); the 1-month one is
  * Avg(`RT Film Ratio % "PR all" For Welder LAST 1 MONTH`) over the visual's rows.
  *
- * Owner, 2026-10-25: the 2-week window is 1..15 days, not the pbix visuals' 1..14 —
- * a welder whose last RT is exactly 15 days before the cut-off stays in (W-916-CCC,
- * RT 08-Oct at the 23-Oct cut-off). The header's "since" moves with it.
+ * Owner, 2026-11-03 (replacing 2026-10-25's 1..15): the 2-week window is the cut-off − 14
+ * .. the cut-off, 15 days, "Since 16-Oct-26" at the Friday 30-Oct cut-off — as the Welding
+ * Statistics Platform. Tables, doughnuts, the welders' ratios and the CSV all use it.
  */
 import { z } from "zod";
 
 import { query, queryFresh, withAsOf } from "@/lib/db";
 import { chartCutoff } from "@/lib/metrics/trend";
-import { type CumKind, STATUS_LABELS, utStatusSql } from "@/lib/welder-perf-cum";
+import { type CumKind, rtWindowSql, STATUS_LABELS, utStatusSql, utWindowSql, WINDOW_2W } from "@/lib/welder-perf-cum";
 
 export const SUMMARY_SUBS = ["CCC", "GAC", "TEKFEN", "MEDGULF"] as const;
 
@@ -61,18 +61,18 @@ const statusSql = (kind: CumKind, r: string) => {
 
 /** The base rows: welder status / ratio at the cut-off, Days Since Last RT as `d`. */
 function baseCte(kind: CumKind): string {
-  const col = kind === "2w" ? "rt_w_15" : "rt_w_30";
+  const ratios = kind === "2w" ? rtWindowSql("$1::date") : "(SELECT welder_id, rt_w_30 AS r FROM mv_welder_status)";
   return `v AS (
-  SELECT p.*, ws.${col} AS wr, ${statusSql(kind, `ws.${col}`)} AS st, $1::date - p.last_rt_date AS d
-    FROM mv_welder_perf p JOIN mv_welder_status ws USING (welder_id)
+  SELECT p.*, ws.r AS wr, ${statusSql(kind, "ws.r")} AS st, $1::date - p.last_rt_date AS d
+    FROM mv_welder_perf p JOIN ${ratios} ws USING (welder_id)
    WHERE p.sub_contractor = ANY($2) AND (p.weld_date IS NULL OR p.weld_date <= $1::date)
 )`;
 }
 
-/** The status table's row filter (the visual's). */
+/** The status table's row filter (the visual's; GAC also admits a blank Days Since). */
 function tableWindow(kind: CumKind): string {
   return kind === "2w"
-    ? `((sub_contractor = 'GAC' AND (d IS NULL OR d BETWEEN 0 AND 15)) OR (sub_contractor <> 'GAC' AND d BETWEEN 1 AND 15))`
+    ? `(d BETWEEN 0 AND ${WINDOW_2W} OR (sub_contractor = 'GAC' AND d IS NULL))`
     : `d BETWEEN 1 AND 28`;
 }
 
@@ -90,9 +90,9 @@ export async function getSummaryPage(kind: CumKind, pending: { lastDate: string 
     `WITH ${baseCte(kind)},\n` +
     `vis AS (SELECT DISTINCT sub_contractor, welder_id, st FROM v WHERE ${visual} AND ${tableWindow(kind)})\n` +
     `SELECT vis.sub_contractor AS sub, vis.st, vis.welder_id AS welder,\n` +
-    // 2 weeks: the measure, its own window 0..15 (+ BLANK) replacing the visual's
-    `       sum(v.films_r) FILTER (WHERE v.d IS NULL OR v.d BETWEEN 0 AND 15) AS r,\n` +
-    `       sum(v.films) FILTER (WHERE v.d IS NULL OR v.d BETWEEN 0 AND 15) AS f,\n` +
+    // 2 weeks: the window's films (+ a blank Days Since)
+    `       sum(v.films_r) FILTER (WHERE v.d IS NULL OR v.d BETWEEN 0 AND ${WINDOW_2W}) AS r,\n` +
+    `       sum(v.films) FILTER (WHERE v.d IS NULL OR v.d BETWEEN 0 AND ${WINDOW_2W}) AS f,\n` +
     // 1 month: Avg of the welder column over the visual's rows (row-weighted)
     `       sum(v.wr * v.n_rows) FILTER (WHERE ${tableWindow(kind)}) AS wsum,\n` +
     `       sum(v.n_rows) FILTER (WHERE ${tableWindow(kind)}) AS wcnt,\n` +
@@ -103,7 +103,7 @@ export async function getSummaryPage(kind: CumKind, pending: { lastDate: string 
   const donutSql =
     `WITH ${baseCte(kind)}\n` +
     `SELECT sub_contractor AS sub, st, count(DISTINCT welder_id) AS qty FROM v\n` +
-    ` WHERE st IS NOT NULL AND weld_type IN ('BW','CLET','GW','MW') AND d BETWEEN 1 AND ${kind === "2w" ? 15 : 28}\n GROUP BY 1, 2`;
+    ` WHERE st IS NOT NULL AND weld_type IN ('BW','CLET','GW','MW') AND ${kind === "2w" ? `d BETWEEN 0 AND ${WINDOW_2W}` : "d BETWEEN 1 AND 28"}\n GROUP BY 1, 2`;
   const trendSql =
     `SELECT sub_contractor AS sub, period, status AS st, count(DISTINCT welder_id) AS qty,
             min(last_rt_date)::text AS first_day
@@ -181,7 +181,7 @@ export async function getSummaryPage(kind: CumKind, pending: { lastDate: string 
   return {
     kind,
     cutoff,
-    since: back(cutoff, kind === "2w" ? 15 : 28),
+    since: back(cutoff, kind === "2w" ? WINDOW_2W : 28),
     subs: out,
     cum: { lastDate: pending.lastDate, pending: pending.rows, file: kind },
   };
@@ -190,7 +190,7 @@ export async function getSummaryPage(kind: CumKind, pending: { lastDate: string 
 /**
  * The UT Rej.Summary page (owner, 2026-11-02, as the pbix "UT Project Welders Performance.
  * Cumulative Rejection Rate. Summary Report Last 2 weeks"): per sub-contractor the welders whose
- * joints were UT-reported 1..15 days before the cut-off, by their UT Rej Length Ratio % LAST 2
+ * joints were UT-reported from the cut-off − 14 to the cut-off, by their UT Rej Length Ratio % LAST 2
  * WEEKS (rejected / inspected length; none inspected yet = 0 %), the group's ratio over the
  * window's rows, the doughnut, notes and the trend of the UT CUM workbook.
  */
@@ -201,12 +201,12 @@ async function getUtSummaryPage(
 ): Promise<SummaryPage> {
   const kind: CumKind = "ut2w";
   const win = `p.has_ut AND p.weld_type IN ('BW','CLET','GW','MW') AND p.weld_date IS NOT NULL
-               AND p.weld_date <= $1::date AND $1::date - p.last_ut_date BETWEEN 1 AND 15`;
+               AND p.weld_date <= $1::date AND $1::date - p.last_ut_date BETWEEN 0 AND ${WINDOW_2W}`;
   const tableSql = `
-    SELECT p.sub_contractor AS sub, ${utStatusSql("coalesce(ws.ut_len_w_15, 0)")} AS st, p.welder_id AS welder,
+    SELECT p.sub_contractor AS sub, ${utStatusSql("coalesce(ws.r, 0)")} AS st, p.welder_id AS welder,
            sum(p.defect) AS r, sum(p.insp) AS f, NULL::numeric AS wsum, NULL::numeric AS wcnt,
-           max(coalesce(ws.ut_len_w_15, 0)) AS wr
-      FROM mv_welder_perf p JOIN mv_welder_status ws USING (welder_id)
+           max(coalesce(ws.r, 0)) AS wr
+      FROM mv_welder_perf p JOIN ${utWindowSql("$1::date")} ws USING (welder_id)
      WHERE p.sub_contractor = ANY($2) AND ${win}
      GROUP BY 1, 2, 3`;
   const trendSql = `SELECT sub_contractor AS sub, period, status AS st, count(DISTINCT welder_id) AS qty
@@ -258,7 +258,7 @@ async function getUtSummaryPage(
     };
   });
   const t = new Date(`${cutoff}T00:00:00Z`);
-  t.setUTCDate(t.getUTCDate() - 15);
+  t.setUTCDate(t.getUTCDate() - WINDOW_2W);
   return {
     kind,
     cutoff,

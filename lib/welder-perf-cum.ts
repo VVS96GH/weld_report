@@ -155,10 +155,28 @@ export function parsePeriod(label: string): { no: number; start: string; end: st
  * cut-off, `Days Since Last RT` 1..15 (2 weeks) / 1..30 (1 month), status not
  * blank. The welder's status and ratio are mv_welder_status's (same cut-off).
  */
+/**
+ * Per welder, the ratio of the 2-week window: the cut-off − 14 .. the cut-off, 15 days (owner,
+ * 2026-11-03: "Since 16-Oct-26" at the Friday 30-Oct cut-off, as the Welding Statistics Platform).
+ * RT: rejected / total films (the welder's shares); UT: rejected / inspected length.
+ */
+export const WINDOW_2W = 14;
+export const rtWindowSql = (cut: string) => `(
+  SELECT welder_id,
+         sum(films_r_w) FILTER (WHERE ${cut} - last_rt_date BETWEEN 0 AND ${WINDOW_2W})
+           / nullif(sum(films_w) FILTER (WHERE ${cut} - last_rt_date BETWEEN 0 AND ${WINDOW_2W}), 0) AS r
+    FROM mv_welder_perf WHERE weld_date IS NULL OR weld_date <= ${cut} GROUP BY 1)`;
+export const utWindowSql = (cut: string) => `(
+  SELECT welder_id,
+         sum(defect) FILTER (WHERE has_ut AND ${cut} - last_ut_date BETWEEN 0 AND ${WINDOW_2W})
+           / nullif(sum(insp) FILTER (WHERE has_ut AND ${cut} - last_ut_date BETWEEN 0 AND ${WINDOW_2W}), 0) AS r
+    FROM mv_welder_perf WHERE weld_date IS NULL OR weld_date <= ${cut} GROUP BY 1)`;
+
 export async function snapshotRows(run: Run, kind: CumKind, cutoff: string): Promise<SnapshotRow[]> {
   if (kind === "ut2w") return snapshotRowsUt(run, cutoff);
-  const days = kind === "2w" ? 15 : 30;
-  const col = kind === "2w" ? "rt_w_15" : "rt_w_30";
+  const lo = kind === "2w" ? 0 : 1;
+  const days = kind === "2w" ? WINDOW_2W : 30;
+  const ratios = kind === "2w" ? rtWindowSql("$1::date") : "(SELECT welder_id, rt_w_30 AS r FROM mv_welder_status)";
   const [l1, l2, l3, l4] = STATUS_LABELS[kind];
   const rows = await run<{ d: string; sub: string; st: string; welder: string; ratio: string }>(
     `SELECT DISTINCT p.last_rt_date::text AS d, p.sub_contractor AS sub,
@@ -166,10 +184,10 @@ export async function snapshotRows(run: Run, kind: CumKind, cutoff: string): Pro
                  WHEN r >= 0.075 AND r < 0.10 THEN $4 WHEN r >= 0.10 AND r <= 1 THEN $5 END AS st,
             p.welder_id AS welder, r AS ratio
        FROM mv_welder_perf p
-       JOIN (SELECT welder_id, ${col} AS r FROM mv_welder_status) ws USING (welder_id)
+       JOIN ${ratios} ws USING (welder_id)
       WHERE p.weld_type IN ('BW', 'CLET', 'GW', 'MW')
         AND p.weld_date IS NOT NULL AND p.weld_date <= $1::date
-        AND $1::date - p.last_rt_date BETWEEN 1 AND ${days}
+        AND $1::date - p.last_rt_date BETWEEN ${lo} AND ${days}
         AND r IS NOT NULL AND r <= 1
       ORDER BY 1, 2, 3, 4`,
     [cutoff, l1, l2, l3, l4],
@@ -185,20 +203,20 @@ export const utStatusSql = (r: string) => {
 
 /**
  * "UT CUM - Welders Performance. for Table" at a cut-off: per UT date, sub-contractor and
- * welder of the joints UT-reported 1..15 days before it (BW/CLET/GW/MW, welded), the welder's
+ * welder of the joints UT-reported from the cut-off − 14 to the cut-off (BW/CLET/GW/MW, welded), the welder's
  * UT Rej Length Ratio % LAST 2 WEEKS and its status. A welder whose UT joints carry no
  * inspected length yet reads 0 % (owner's export, 2026-11-02).
  */
 async function snapshotRowsUt(run: Run, cutoff: string): Promise<SnapshotRow[]> {
   const rows = await run<{ d: string; sub: string; st: string; welder: string; ratio: string }>(
     `SELECT DISTINCT p.last_ut_date::text AS d, p.sub_contractor AS sub,
-            ${utStatusSql("coalesce(ws.ut_len_w_15, 0)")} AS st,
-            p.welder_id AS welder, coalesce(ws.ut_len_w_15, 0) AS ratio
+            ${utStatusSql("coalesce(ws.r, 0)")} AS st,
+            p.welder_id AS welder, coalesce(ws.r, 0) AS ratio
        FROM mv_welder_perf p
-       JOIN mv_welder_status ws USING (welder_id)
+       JOIN ${utWindowSql("$1::date")} ws USING (welder_id)
       WHERE p.has_ut AND p.weld_type IN ('BW', 'CLET', 'GW', 'MW')
         AND p.weld_date IS NOT NULL AND p.weld_date <= $1::date
-        AND $1::date - p.last_ut_date BETWEEN 1 AND 15
+        AND $1::date - p.last_ut_date BETWEEN 0 AND ${WINDOW_2W}
       ORDER BY 1, 2, 3, 4`,
     [cutoff],
   );
