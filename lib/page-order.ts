@@ -42,8 +42,16 @@ export type PageOption = { page: number } | { group: string; pages: number[] };
 
 /** The project-wide pages make the first group (owner, 2026-10-15). */
 const PROJECT_GROUP = "Project";
-// Project Welding & NDE Status (9) second, after page 1 (owner, 2026-10-19)
-const PROJECT_PAGES = [1, 9, 2, 3, ...[PROJECT_NDE_TITLE, WPS_MATERIAL_TITLE].map((t) => WELDING_PAGE_TITLES.indexOf(t) + 1)].filter((n) => n > 0);
+// Project Welding & NDE Status second, after page 1 (owner, 2026-10-19). By title, not number: a
+// page added before it shifts the numbers (the UT Rej.Summary page put Errors there, 2026-11-03)
+const PROJECT_NDE_STATUS_TITLE = "Project Welding & NDE Status";
+const PROJECT_PAGES = [
+  1,
+  ...[PROJECT_NDE_STATUS_TITLE].map((t) => WELDING_PAGE_TITLES.indexOf(t) + 1),
+  2,
+  3,
+  ...[PROJECT_NDE_TITLE, WPS_MATERIAL_TITLE].map((t) => WELDING_PAGE_TITLES.indexOf(t) + 1),
+].filter((n) => n > 0);
 
 /**
  * The jump list, top to bottom: Project, Welder Performance, the four

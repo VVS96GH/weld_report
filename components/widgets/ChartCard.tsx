@@ -559,21 +559,26 @@ const weldTypeColors = (title: string) =>
   /weld type\s*[-–]/i.test(title) || /weld type\s+(ccc|gac|tekfen|medgulf)/i.test(title) ? WELD_TYPE_COLORS_PARTY : WELD_TYPE_COLORS_PROJECT;
 
 /**
- * The RT B.Log Forecast page in the pbix's own colours (owner, 2026-10-19), from
- * the visuals' dataPoint fills, recoloured by the owner 2026-10-27: red total, yellow RT 100 %,
- * orange 5 %, blue 10 %, green 20 %, black 30 %; the Done doughnut green over red.
+ * The RT B.Log Forecast page in one tone with the Welding Progress page (owner, 2026-11-03,
+ * replacing the pbix's red / yellow / green of 2026-10-19 and 2026-10-27): the total gold, the RT %
+ * parts in blues from deep to pale, then bronze and slate; Done blue against the gold backlog.
  */
+const FC_PARTS = {
+  "RT Total Forecast B.log": "#E0B84E", // token-lint: allow-hex — Welding Progress gold (--series-f)
+  "RT 100%": "#2F6FD6", // token-lint: allow-hex — Welding Progress blue (--series-s)
+  "RT 5%": "#6E9FDB", // token-lint: allow-hex — light blue (RT/UT Only)
+  "RT 10%": "#A9C4EC", // token-lint: allow-hex — pale blue
+  "RT 20%": "#9A6614", // token-lint: allow-hex — bronze (PWHT+RT/UT)
+  "RT 30%": "#7C8FA6", // token-lint: allow-hex — slate
+};
 const FORECAST_COLORS: Record<string, Record<string, string>> = {
-  // owner, 2026-10-27: lilac -> red, red -> yellow, yellow -> orange, orange -> blue
-  forecast_bar: {
-    "RT Total Forecast B.log": "#EC2326", "RT 100%": "#E5F600", "RT 5%": "#F7B500",
-    "RT 10%": "#2F6FD6", "RT 20%": "#00EA0C", "RT 30%": "#000000",
+  forecast_bar: FC_PARTS,
+  forecast_donut_backlog: FC_PARTS,
+  forecast_donut_done: {
+    Done: "#2F6FD6", // token-lint: allow-hex — Welding Progress blue
+    "RT Total Forecast Backlog": "#E0B84E", // token-lint: allow-hex — gold
+    "RT Total Forecast B.Log": "#E0B84E", // token-lint: allow-hex — gold
   },
-  forecast_donut_backlog: {
-    "RT Total Forecast B.log": "#EC2326", "RT 100%": "#E5F600", "RT 5%": "#F7B500",
-    "RT 10%": "#2F6FD6", "RT 20%": "#00EA0C", "RT 30%": "#000000",
-  },
-  forecast_donut_done: { Done: "#04BD32", "RT Total Forecast Backlog": "#EC2326", "RT Total Forecast B.Log": "#EC2326" },
 };
 const forecastColor = (id: string, label: unknown) => FORECAST_COLORS[id]?.[String(label ?? "").trim()];
 
