@@ -29,7 +29,7 @@ export type GridFilters = Record<string, GridFilter>;
 export type GridSort = { key: string; dir: "asc" | "desc" } | null;
 
 export const BLANK = "(Blank)";
-export const GRID_PAGE = 200;
+export const GRID_PAGE = 500; // owner, 2026-11-03: 500 rows a page (was 200)
 /** A CSV export stops here (Excel holds 1,048,576 rows). */
 export const EXPORT_MAX = 1_000_000;
 

@@ -67,7 +67,7 @@ function describe(col: GridCol, f: GridFilter): string {
  * The Data page (owner, 2026-10-19): the detailed weld table, every row, with a
  * filter in each column header (values, contains, a pasted list, a range), sort
  * on the header, a column picker and a CSV export. Rows come from the server
- * 200 at a time as the table scrolls; all state is in the URL (lib/pages/data-grid.ts).
+ * 500 at a time as the table scrolls; all state is in the URL (lib/pages/data-grid.ts).
  */
 export function DataGridView({
   columns,
