@@ -98,6 +98,12 @@ function cacheEnabled(): boolean {
 }
 
 /** Drop every memoised result (loaders and tests may call this explicitly). */
+/** The data version (latest load + applied migrations): the browser refreshes when it moves. */
+export async function currentDataVersion(): Promise<string | null> {
+  await refreshDataVersion();
+  return dataVersion;
+}
+
 export function clearQueryCache(): void {
   readCache.clear();
 }

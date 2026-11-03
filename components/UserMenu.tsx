@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { resetMe, useMe } from "@/lib/me";
@@ -9,7 +8,6 @@ import { resetMe, useMe } from "@/lib/me";
 /** The signed-in user in the header: administration (admins), my password, sign out. */
 export function UserMenu() {
   const me = useMe();
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -25,8 +23,8 @@ export function UserMenu() {
   async function signOut() {
     await fetch("/api/auth/logout", { method: "POST" }).catch(() => null);
     resetMe();
-    router.replace("/login");
-    router.refresh();
+    // a full load, not a client step: the pages the browser kept (staleTimes) leave with the user
+    window.location.replace("/login");
   }
 
   return (

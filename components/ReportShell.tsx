@@ -1,5 +1,6 @@
 "use client";
 
+import { DataVersionWatch } from "@/components/DataVersionWatch";
 import { UserMenu } from "@/components/UserMenu";
 import { LOGO_KEY } from "@/lib/theme/axes";
 import { PdfButton } from "@/components/PdfButton";
@@ -99,6 +100,21 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
     [router],
   );
 
+  // the pages before and after this one load in the background a moment after it shows, so
+  // Prev / Next (and ← →) open at once (owner, 2026-11-03); kept 3 minutes (next.config staleTimes)
+  useEffect(() => {
+    if (!onWelding) return;
+    const t = setTimeout(() => {
+      const { prev, next } = menuNeighbours(current);
+      for (const n of [next, prev]) {
+        if (!n) continue;
+        const href = displayHref(n);
+        router.prefetch(href.startsWith("/welding/") ? `${href}${window.location.search}` : href);
+      }
+    }, 1000);
+    return () => clearTimeout(t);
+  }, [current, onWelding, router]);
+
   useEffect(() => {
     if (!onWelding) return; // ← → paging only on the welding pages (the others have their own inputs)
     function onKeyDown(e: KeyboardEvent) {
@@ -114,6 +130,7 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
   return (
     <SubtitleContext.Provider value={{ setSubtitle }}>
       <div className="app-shell">
+      {isLogin ? null : <DataVersionWatch />}
       <header className="header">
         <div className="header-left">
           {/* ONE brand element at any width (user ruling): below md the coloured official
