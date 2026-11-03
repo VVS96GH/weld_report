@@ -36,7 +36,7 @@ const GROUP_ORDER = ["CCC", "GAC", "TEKFEN", "MEDGULF"];
 /** The Welder Performance pages (4-7) are one group too (owner, 2026-10-15). */
 const WP_GROUP = "Welder Performance";
 const isWpPage = (title: string) =>
-  /^(Performance|Rej\.Summary) Last /i.test(title);
+  /^(UT )?(Performance|Rej\.Summary) Last /i.test(title);
 
 export type PageOption = { page: number } | { group: string; pages: number[] };
 
