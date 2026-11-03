@@ -398,6 +398,8 @@ export type Palette = {
   fg: string;
   /** The pbix "Weld Qty" pair: F gold / S navy (`--series-f` / `--series-s`, T.EN mood). */
   seriesF: string | null;
+  /** The hover card's background (the theme's raised surface). */
+  tipBg: string;
   seriesS: string | null;
   /** MT+PT series: red, as in the pbix Welding Status charts (`--color-danger`). */
   seriesMtPt: string | null;
@@ -421,6 +423,7 @@ const FALLBACK_PALETTE: Palette = {
   seriesF: null,
   seriesS: null,
   scale: 1,
+  tipBg: "#0c2540", // token-lint: allow-hex — fallback hover card
 };
 
 /**
@@ -489,6 +492,7 @@ function readPalette(): Palette {
       font: styles.getPropertyValue("--font-mono").trim() || undefined,
       fg: read("--fg") ?? read("--text-primary") ?? FALLBACK_PALETTE.fg,
       seriesF: read("--series-f"),
+      tipBg: read("--surface-2") ?? read("--bg-elevated") ?? FALLBACK_PALETTE.tipBg,
       seriesS: read("--series-s"),
       seriesMtPt: read("--color-danger"),
       scale: 1,
@@ -539,24 +543,41 @@ const FIXED_SERIES: Record<string, string> = {
 };
 
 /**
- * The Weld Type doughnuts in the pbix's own colours, read off the pbix visuals'
- * dataPoint fills (owner, 2026-10-19). The project doughnut and the party ones
- * ("Weld Type-CCC", "-GAC", …) carry two different sets: FW is grey on the
- * first, red on the others.
+ * The Weld Type doughnuts in one T.EN tone on every page (owner, 2026-11-03, replacing the pbix's
+ * red / black / grey of 2026-10-19): the largest types in T.EN blue, teal and gold, the smaller in
+ * light blues, lime and slates; coral only for repairs (RPD*), the "look here" colour.
  */
-const WELD_TYPE_COLORS_PROJECT: Record<string, string> = {
-  BW: "#0E4E9C", WPAD: "#6D6E71", LET: "#EC2326", SOF: "#2F899B", FW: "#939598", SOB: "#3599B8", "FW.": "#DFBFBF",
-  TRN: "#4AC5BB", RPD: "#169FDA", L4: "#5F6B6D", SW: "#D1D3D4", MW: "#FB8281", LUG: "#7F898A", CLET: "#FDAB89",
-  RPDF: "#A4DDEE", SP: "#000000", DMY: "#B687AC", RPD0: "#118DFF", SOB0: "#12239E", SOBUA: "#E66C37",
+const WELD_TYPE_COLORS: Record<string, string> = {
+  SW: "#3D98B7", // token-lint: allow-hex — T.EN teal
+  BW: "#0070EF", // token-lint: allow-hex — T.EN blue
+  FW: "#E0B84E", // token-lint: allow-hex — gold
+  THD: "#7FB8E8", // token-lint: allow-hex — light blue
+  WPAD: "#A2C61C", // token-lint: allow-hex — T.EN lime
+  LET: "#8A9BB0", // token-lint: allow-hex — slate
+  SOF: "#1F5FBF", // token-lint: allow-hex — deep blue
+  SP: "#5B6B80", // token-lint: allow-hex — dark slate
+  SOB: "#6EC3D6", // token-lint: allow-hex — light teal
+  "FW.": "#C9A03A", // token-lint: allow-hex — dark gold
+  TRN: "#4FB3A0", // token-lint: allow-hex — sea green
+  RPD: "#EE7766", // token-lint: allow-hex — T.EN coral: repairs
+  RPDF: "#F2A094", // token-lint: allow-hex — light coral
+  RPD0: "#E05A48", // token-lint: allow-hex — deep coral
+  L4: "#B9C6D6", // token-lint: allow-hex — pale slate
+  MW: "#9DB86A", // token-lint: allow-hex — olive
+  LUG: "#C7D36F", // token-lint: allow-hex — pale lime
+  CLET: "#F0CF6A", // token-lint: allow-hex — light gold
+  DMY: "#6F7D8F", // token-lint: allow-hex — grey slate
+  BON: "#2A86C9", // token-lint: allow-hex — mid blue
+  GW: "#A9C4EC", // token-lint: allow-hex — pale blue
+  SLW: "#5FA8D3", // token-lint: allow-hex — sky
+  SOB0: "#12487E", // token-lint: allow-hex — navy
+  SOBUA: "#D9B44A", // token-lint: allow-hex — ochre
 };
-const WELD_TYPE_COLORS_PARTY: Record<string, string> = {
-  BW: "#0E4E9C", WPAD: "#EC2326", LET: "#6D6E71", SOF: "#2F899B", FW: "#EC2326", SOB: "#D1D3D4", "FW.": "#000000",
-  TRN: "#169FDA", RPD: "#939598", L4: "#DFBFBF", SW: "#3599B8", MW: "#5F6B6D", LUG: "#FB8281", CLET: "#2F899B",
-  RPDF: "#7F898A", SP: "#169FDA", SOBUA: "#F4FF57",
+/** The colour set of a Weld Type doughnut: one set for the project and every party. */
+const weldTypeColors = (title: string) => {
+  void title;
+  return WELD_TYPE_COLORS;
 };
-/** The colour set of a Weld Type doughnut by its title: "Weld Type-<party>" or the project one. */
-const weldTypeColors = (title: string) =>
-  /weld type\s*[-–]/i.test(title) || /weld type\s+(ccc|gac|tekfen|medgulf)/i.test(title) ? WELD_TYPE_COLORS_PARTY : WELD_TYPE_COLORS_PROJECT;
 
 /**
  * The RT B.Log Forecast page in one tone with the Welding Progress page (owner, 2026-11-03,
@@ -711,20 +732,26 @@ function valueLabels(type: string, stacked: boolean, percent: boolean, circular:
     // short to hold the text; the stack total is drawn by stackTotalsPlugin. With
     // eight or more categories the bars are narrow, so the label stands upright
     // (owner request 2026-09-07: "числа внутри колонки расположи вертикально").
-    const upright = categoryCount >= 8;
+    // modern style (owner, 2026-11-03): no turned numbers — a segment shows its value only
+    // when the text fits level inside it; the total above the stack and the hover card stay
+    void categoryCount;
     return {
       display: (ctx: DatalabelCtx) => {
         const v = ctx.dataset.data[ctx.dataIndex];
-        const scale = ctx.chart.scales.y;
+        const scale = horizontal ? ctx.chart.scales.x : ctx.chart.scales.y;
         if (typeof v !== "number" || !scale) return false;
         const px = Math.abs(scale.getPixelForValue(v) - scale.getPixelForValue(0));
-        return px >= (upright ? 40 : 14);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const el = (ctx.chart.getDatasetMeta((ctx as AreaCtx).datasetIndex).data[ctx.dataIndex] as any) ?? {};
+        const across = horizontal ? Number(el.height ?? 0) : Number(el.width ?? 0);
+        const text = fmtValue(v, percent).length * 7 * palette.scale + 6;
+        return horizontal ? px >= text && across >= 14 : px >= 16 && across >= text;
       },
       formatter: (v: unknown) => fmtValue(v, percent),
       color: "#ffffff", // token-lint: allow-hex — ink on a saturated bar fill, both schemes
       anchor: "center",
       align: "center",
-      rotation: upright ? -90 : 0,
+      rotation: 0,
       clamp: true,
       font,
     };
@@ -875,6 +902,10 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
               palette.colors[i % palette.colors.length],
             ),
             borderColor: "transparent",
+            borderWidth: 0,
+            spacing: 2,
+            borderRadius: 4,
+            hoverOffset: 8,
           },
         ],
       };
@@ -899,9 +930,29 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
         if (area) {
           return { ...base, borderColor: color, backgroundColor: withAlpha(color, 0.3), fill: i === 0 ? "origin" : "-1", tension: 0.25, pointRadius: 3 };
         }
-        return { ...base, borderColor: color, backgroundColor: color, tension: thresholds ? 0 : 0.3, pointRadius: thresholds ? 3 : 2 };
+        return {
+          ...base,
+          borderColor: color,
+          backgroundColor: color,
+          borderWidth: 2.5,
+          tension: thresholds ? 0 : 0.3,
+          pointRadius: thresholds ? 3.5 : 3,
+          pointHoverRadius: 6,
+          pointBorderColor: "#ffffff", // token-lint: allow-hex — the point's ring on any fill
+          pointBorderWidth: 1.5,
+        };
       }
-      return { ...base, backgroundColor: color, borderColor: color };
+      // modern T.EN bars (owner, 2026-11-03): rounded, no border, a thickness cap
+      const stk = (widget.options_notes ?? "").includes("stacked");
+      return {
+        ...base,
+        backgroundColor: color,
+        borderColor: color,
+        borderWidth: 0,
+        borderRadius: stk ? 3 : 6,
+        borderSkipped: stk ? false : "start",
+        maxBarThickness: 46,
+      };
     });
     if (thresholds) {
       const flat = (v: number) => labels.map(() => v);
@@ -1055,11 +1106,31 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
         // pbix-style named slice labels already name every slice, so the legend goes
                 // "legend-none": the page draws its own legend (Rej. summary doughnuts)
         legend: { display: !(circular && notes.includes("label-name-pct")) && !notes.includes("legend-none"), position: notes.includes("legend-bottom") ? "bottom" : widget.canvas_id === "chart1_weldtype" || notes.includes("legend-right") ? "right" : "top",
-          labels: { padding: notes.includes("legend-bottom") ? 18 : 10, color: palette.text, boxWidth: 12, font: { size: Math.round(10 * palette.scale), family: palette.font },
+          labels: { usePointStyle: true, pointStyle: "rectRounded", padding: notes.includes("legend-bottom") ? 18 : 10, color: palette.text, boxWidth: 12, font: { size: Math.round(10 * palette.scale), family: palette.font },
           // a doughnut with many slices (page 1 lists every weld type) keeps its
           // legend to the 7 largest so the chart keeps its size; the rest show on hover
           ...(circular ? { filter: (item: { index?: number }) => (item.index ?? 0) < 7 } : {}) } },
-        tooltip: { enabled: true },
+        // the hover card in the theme's colours (owner, 2026-11-03)
+        tooltip: {
+          enabled: true,
+          backgroundColor: palette.tipBg,
+          borderColor: palette.grid,
+          borderWidth: 1,
+          titleColor: palette.fg,
+          bodyColor: palette.fg,
+          footerColor: palette.text,
+          padding: 10,
+          cornerRadius: 8,
+          caretSize: 6,
+          usePointStyle: true,
+          boxPadding: 4,
+          titleFont: { weight: 700, family: palette.font },
+          bodyFont: { family: palette.font },
+          callbacks: {
+            label: (c: { dataset: { label?: string }; formattedValue: string; label?: string }) =>
+              ` ${c.dataset.label || c.label || ""}: ${c.formattedValue}`,
+          },
+        },
         datalabels: smallRing(widget.canvas_id, palette.scale, notes.includes("area") ? areaLabels(palette) : valueLabels(widget.chart_type, stackedX || stackedY, percentAxis, circular, palette, widget.datasets.length, end - start, horizontal, notes.includes("label-name-pct"))),
         centerTotal:
           circular && notes.includes("center-total")
@@ -1108,7 +1179,8 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
                   return yearAxis ? label.replace(YEAR_SUFFIX, "") : axisLabel(label);
                 },
               },
-              grid: { color: palette.grid },
+              grid: { display: false },
+              border: { color: palette.grid },
               title: yearAxis && yearTitle
                 ? { display: true, text: yearTitle, color: palette.text, font: { size: 11, family: palette.font } }
                 : undefined,
@@ -1135,7 +1207,8 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
                   ? (v: number | string) => `${v}%`
                   : (v: number | string) => (typeof v === "number" ? v.toLocaleString("en-US") : v),
               },
-              grid: { color: palette.grid },
+              grid: { color: palette.grid, drawTicks: false },
+              border: { display: false, dash: [3, 4] },
             };
             return horizontal ? { x: value, y: category } : { x: category, y: value };
           })(),
