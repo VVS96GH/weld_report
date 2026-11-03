@@ -17,15 +17,16 @@
  * (owner's 09-Oct page: CCC 0.15 %, GAC ok 0.35 %); the 1-month one is
  * Avg(`RT Film Ratio % "PR all" For Welder LAST 1 MONTH`) over the visual's rows.
  *
- * Owner, 2026-11-03 (replacing 2026-10-25's 1..15): the 2-week window is the cut-off − 14
- * .. the cut-off, 15 days, "Since 16-Oct-26" at the Friday 30-Oct cut-off — as the Welding
- * Statistics Platform. Tables, doughnuts, the welders' ratios and the CSV all use it.
+ * Owner, 2026-11-03 (replacing 2026-10-25's 1..15): the 2-week window is Days Since 0..15
+ * (the pbix measure, one day of margin); the header shows the Friday two weeks back, "Since
+ * 16-Oct-26" at the Friday 30-Oct cut-off. Tables, doughnuts, the welders' ratios and the CSV
+ * all use the window.
  */
 import { z } from "zod";
 
 import { query, queryFresh, withAsOf } from "@/lib/db";
 import { chartCutoff } from "@/lib/metrics/trend";
-import { type CumKind, rtWindowSql, STATUS_LABELS, utStatusSql, utWindowSql, WINDOW_2W } from "@/lib/welder-perf-cum";
+import { type CumKind, rtWindowSql, STATUS_LABELS, utStatusSql, utWindowSql, SINCE_2W, WINDOW_2W } from "@/lib/welder-perf-cum";
 
 export const SUMMARY_SUBS = ["CCC", "GAC", "TEKFEN", "MEDGULF"] as const;
 
@@ -181,7 +182,7 @@ export async function getSummaryPage(kind: CumKind, pending: { lastDate: string 
   return {
     kind,
     cutoff,
-    since: back(cutoff, kind === "2w" ? WINDOW_2W : 28),
+    since: back(cutoff, kind === "2w" ? SINCE_2W : 28),
     subs: out,
     cum: { lastDate: pending.lastDate, pending: pending.rows, file: kind },
   };
@@ -190,7 +191,7 @@ export async function getSummaryPage(kind: CumKind, pending: { lastDate: string 
 /**
  * The UT Rej.Summary page (owner, 2026-11-02, as the pbix "UT Project Welders Performance.
  * Cumulative Rejection Rate. Summary Report Last 2 weeks"): per sub-contractor the welders whose
- * joints were UT-reported from the cut-off − 14 to the cut-off, by their UT Rej Length Ratio % LAST 2
+ * joints were UT-reported 0..15 days before the cut-off, by their UT Rej Length Ratio % LAST 2
  * WEEKS (rejected / inspected length; none inspected yet = 0 %), the group's ratio over the
  * window's rows, the doughnut, notes and the trend of the UT CUM workbook.
  */
@@ -258,7 +259,7 @@ async function getUtSummaryPage(
     };
   });
   const t = new Date(`${cutoff}T00:00:00Z`);
-  t.setUTCDate(t.getUTCDate() - WINDOW_2W);
+  t.setUTCDate(t.getUTCDate() - SINCE_2W);
   return {
     kind,
     cutoff,

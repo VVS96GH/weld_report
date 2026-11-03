@@ -156,11 +156,13 @@ export function parsePeriod(label: string): { no: number; start: string; end: st
  * blank. The welder's status and ratio are mv_welder_status's (same cut-off).
  */
 /**
- * Per welder, the ratio of the 2-week window: the cut-off − 14 .. the cut-off, 15 days (owner,
- * 2026-11-03: "Since 16-Oct-26" at the Friday 30-Oct cut-off, as the Welding Statistics Platform).
- * RT: rejected / total films (the welder's shares); UT: rejected / inspected length.
+ * The 2-week window (owner, 2026-11-03): Days Since 0..15 — the cut-off − 15 .. the Friday cut-off,
+ * the pbix measure's, one day of margin. The header shows the Friday two weeks back (SINCE_2W:
+ * "Since 16-Oct-26" at 30-Oct-26). RT: rejected / total films on the welder's rows; UT: rejected /
+ * inspected length.
  */
-export const WINDOW_2W = 14;
+export const WINDOW_2W = 15;
+export const SINCE_2W = 14;
 export const rtWindowSql = (cut: string) => `(
   SELECT welder_id,
          sum(films_r_w) FILTER (WHERE ${cut} - last_rt_date BETWEEN 0 AND ${WINDOW_2W})
@@ -203,7 +205,7 @@ export const utStatusSql = (r: string) => {
 
 /**
  * "UT CUM - Welders Performance. for Table" at a cut-off: per UT date, sub-contractor and
- * welder of the joints UT-reported from the cut-off − 14 to the cut-off (BW/CLET/GW/MW, welded), the welder's
+ * welder of the joints UT-reported 0..15 days before the cut-off (BW/CLET/GW/MW, welded), the welder's
  * UT Rej Length Ratio % LAST 2 WEEKS and its status. A welder whose UT joints carry no
  * inspected length yet reads 0 % (owner's export, 2026-11-02).
  */
