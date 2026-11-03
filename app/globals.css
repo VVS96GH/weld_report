@@ -5203,3 +5203,9 @@ body.g-dragging-y * {
     margin-right: 0;
   }
 }
+
+/* The header logo toggle (owner, 2026-11-03): only the white circle, where the logo's circle is */
+.logo-toggle { position: relative; padding: 0; border: 0; background: none; cursor: pointer; line-height: 0; }
+.logo-toggle .logo-dot { display: none; position: absolute; left: 1%; top: 2.06%; width: 46.5%; height: 95.9%; border-radius: 50%; background: #fff; }
+html[data-logo="dot"] .logo-toggle .brand-lockup { visibility: hidden; }
+html[data-logo="dot"] .logo-toggle .logo-dot { display: block; }

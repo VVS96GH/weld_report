@@ -1,6 +1,7 @@
 "use client";
 
 import { UserMenu } from "@/components/UserMenu";
+import { LOGO_KEY } from "@/lib/theme/axes";
 import { PdfButton } from "@/components/PdfButton";
 import { ZoomControl } from "@/components/ZoomControl";
 import { createContext, Suspense, useCallback, useContext, useEffect, useState } from "react";
@@ -26,6 +27,19 @@ const SubtitleContext = createContext<SubtitleApi | null>(null);
  * ReportShell owns the subtitle state; this hook just pushes updates into it, since
  * ReportShell (in the root layout) has no direct prop channel from the page below it.
  */
+
+function toggleLogo() {
+  const d = document.documentElement;
+  const dot = d.getAttribute("data-logo") !== "dot";
+  if (dot) d.setAttribute("data-logo", "dot");
+  else d.removeAttribute("data-logo");
+  try {
+    window.localStorage.setItem(LOGO_KEY, dot ? "dot" : "full");
+  } catch {
+    // not kept: this page only
+  }
+}
+
 export function usePageSubtitle(subtitle: string) {
   const ctx = useContext(SubtitleContext);
   useEffect(() => {
@@ -110,10 +124,19 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
           </Link>
           {/* Header chrome is navy in both schemes, so the lockup is always the dark-surface
               (negative) file — never switched by data-theme (docs/brand-README.md). */}
-          <Link href="/welding/1" className="brand-lockup-link" aria-label="T.EN — Technip Energies, back to page 1">
+          {/* a click leaves only the white circle, a second click brings the logo back (owner,
+              2026-11-03); kept in this browser for every page, set before paint (lib/theme/axes.ts) */}
+          <button
+            type="button"
+            className="brand-lockup-link logo-toggle"
+            aria-label="T.EN — Technip Energies: show or hide the logo"
+            title="Show or hide the logo"
+            onClick={toggleLogo}
+          >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img className="brand-lockup" src="/brand/ten-lockup-negative.png" alt="" aria-hidden="true" width={1200} height={582} />
-          </Link>
+            <span className="logo-dot" aria-hidden="true" />
+          </button>
           <div className="header-title">
             <h1>Welding Statistics Dashboard</h1>
             <div className="subtitle">{subtitle}</div>

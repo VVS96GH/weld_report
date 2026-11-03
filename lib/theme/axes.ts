@@ -41,5 +41,9 @@ export const PRE_PAINT_SCRIPT = `(function(){try{var d=document.documentElement,
 var m=ls.getItem(${JSON.stringify(MOOD_KEY)});if(m&&${JSON.stringify(MOOD_IDS)}.indexOf(m)>=0){d.setAttribute("data-mood",m);}
 var t=ls.getItem(${JSON.stringify(THEME_KEY)});if(t==="dark"||t==="light"){d.setAttribute("data-theme",t);}
 var n=ls.getItem(${JSON.stringify(DENSITY_KEY)});if(n&&${JSON.stringify(DENSITY_IDS)}.indexOf(n)>=0){d.setAttribute("data-density",n);}
+if(ls.getItem("weld-report-logo")==="dot"){d.setAttribute("data-logo","dot");}
 if(d.getAttribute("data-mood")==="ten"&&d.getAttribute("data-theme")==="light"){d.style.background="#eef1f4";} // token-lint: allow-hex — spec §2 pre-paint literal
 }catch(e){}})();`;
+
+/** The header logo, full or only its white circle (owner, 2026-11-03). */
+export const LOGO_KEY = "weld-report-logo";
