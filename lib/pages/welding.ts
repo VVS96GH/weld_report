@@ -1201,6 +1201,24 @@ const TEKFEN_STATUS_PAGE = 5;
 /** The GAC status page; with `opts.slg` it renders its "SLG Service Only" twin. */
 const GAC_STATUS_PAGE = 4;
 export const GAC_SLG_TITLE = "GAC WELDING STATUS (SLG Service Only)";
+export const TEKFEN_STATUS_TITLE = "TEKFEN WELDING STATUS (Except TMCP Pipe)";
+export const TEKFEN_TMCP_STATUS_TITLE = 'TEKFEN WELDING STATUS (TMCP Pipe "9C3AQN 46 inch")';
+/** The status pages shown as two (owner, 2026-11-03): the second block's heading, its option, both titles. */
+const SPLIT_STATUS = new Map<
+  number,
+  { marker: RegExp; second: (o: WeldingPageOpts) => boolean; titles: [string, string] }
+>([
+  [GAC_STATUS_PAGE, { marker: /SLG Service Only/i, second: (o) => Boolean(o.slg), titles: ["", GAC_SLG_TITLE] }],
+  [
+    TEKFEN_STATUS_PAGE,
+    { marker: /TMCP Pipe/i, second: (o) => Boolean(o.tmcp), titles: [TEKFEN_STATUS_TITLE, TEKFEN_TMCP_STATUS_TITLE] },
+  ],
+]);
+/** The page's own title when it is one of a split pair ("" keeps the spec's). */
+function splitTitle(n: number, opts: WeldingPageOpts): string {
+  const sp = SPLIT_STATUS.get(n);
+  return sp ? sp.titles[sp.second(opts) ? 1 : 0] : "";
+}
 
 /**
  * The mockup's TEKFEN status page has one block; the pbix has two (owner,
@@ -1357,7 +1375,8 @@ export type WeldingPageOpts = {
   subcoSet?: readonly string[];
   /** Screens multi-select: 2+ RT % values → the ALL-RT structure over just them. */
   rtSet?: readonly number[];
-  /** Page 10 as "TEKFEN TMCP Pipe (9C3AQN 46 Inch)" (owner, 2026-10-18: TEKFEN has two pages). */
+  /** Page 10 as "TEKFEN TMCP Pipe (9C3AQN 46 Inch)" (owner, 2026-10-18: TEKFEN has two pages);
+   *  page 5 as its TMCP Pipe block (owner, 2026-11-03). */
   tmcp?: boolean;
   /** Page 4 as its "SLG Service Only" twin (owner, 2026-11-03). */
   slg?: boolean;
@@ -1530,15 +1549,16 @@ export async function getWeldingPage(
     const tmcp = n === TEKFEN_GRAPH_PAGE && Boolean(opts.tmcp);
     const confs = tmcp ? [{ sub: "TEKFEN", tmcpPipe: true }] : SUBCON_PAGES.get(n)!;
     widgets = await buildSubconPage(spec, all ? [allConf(confs[0]!, subs)] : confs, ctx);
-    // GAC Welding Status on two pages (owner, 2026-11-03): page 4 keeps "Except SLG Service",
-    // its `opts.slg` twin "SLG Service Only" — the page split at that block's heading
-    if (n === GAC_STATUS_PAGE && !all) {
-      const cut = widgets.findIndex((w) => w.kind === "text" && !w.note && /SLG Service Only/i.test(w.text));
+    // GAC / TEKFEN Welding Status on two pages each (owner, 2026-11-03): pages 4 / 5 keep their
+    // first block, their twins (`opts.slg` / `opts.tmcp`) the second — split at its heading
+    const split = SPLIT_STATUS.get(n);
+    if (split && !all) {
+      const cut = widgets.findIndex((w) => w.kind === "text" && !w.note && split.marker.test(w.text));
       if (cut >= 0) {
         const data = (w: Widget) => w.kind === "table" || w.kind === "chart" || w.kind === "kpi";
         const before = widgets.slice(0, cut);
         const after = widgets.slice(cut + 1);
-        widgets = opts.slg ? [...before.filter((w) => !data(w)), ...after] : [...before, ...after.filter((w) => !data(w))];
+        widgets = split.second(opts) ? [...before.filter((w) => !data(w)), ...after] : [...before, ...after.filter((w) => !data(w))];
       }
     }
     // the TMCP twin names its scope as the pbix page does
@@ -1579,11 +1599,8 @@ export async function getWeldingPage(
 
   return {
     page: spec.page,
-    id: `${spec.id}${n === GAC_STATUS_PAGE && opts.slg && !all ? "-slg" : ""}${all ? "-all" : ""}${allRt ? "-allrt" : ""}`,
-    title:
-      n === GAC_STATUS_PAGE && opts.slg && !all
-        ? GAC_SLG_TITLE
-        : allRtTitle(all ? allTitle(spec.title, subs) : spec.title, allRt, rts),
+    id: `${spec.id}${SPLIT_STATUS.get(n)?.second(opts) && !all ? "-2" : ""}${all ? "-all" : ""}${allRt ? "-allrt" : ""}`,
+    title: (!all && splitTitle(n, opts)) || allRtTitle(all ? allTitle(spec.title, subs) : spec.title, allRt, rts),
     subtitle: spec.subtitle ?? undefined,
     widgets,
     ...(bar

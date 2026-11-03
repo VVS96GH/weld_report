@@ -15,7 +15,7 @@ export const WELDING_DATA_PAGE_TITLES: readonly string[] = [
   "Project Welding & NDE Status",
   "CCC WELDING STATUS",
   "GAC WELDING STATUS (Except SLG Service)",
-  "TEKFEN WELDING STATUS",
+  "TEKFEN WELDING STATUS (Except TMCP Pipe)",
   "MEDGULF WELDING STATUS",
   // the chart pages say so (owner, 2026-10-15): the table pages above share the names
   "CCC WELDING STATUS Graph",
@@ -79,6 +79,7 @@ export const WPS_MATERIAL_TITLE = "WPS No / Type of Material";
 export const PROJECT_NDE_TITLE = "Project NDE & PWHT Status by Service Class";
 export const TEKFEN_TMCP_TITLE = "TEKFEN WELDING STATUS Graph TMCP Pipe (9C3AQN 46 Inch)";
 export const GAC_SLG_STATUS_TITLE = "GAC WELDING STATUS (SLG Service Only)";
+export const TEKFEN_TMCP_STATUS_TITLE = 'TEKFEN WELDING STATUS (TMCP Pipe "9C3AQN 46 inch")';
 export const FORECAST_DISPLAY_PAGE = 2;
 
 /**
@@ -107,6 +108,7 @@ export const REPORT_ORDER: readonly ReportEntry[] = (() => {
   // GAC status on two pages (owner, 2026-11-03): page 4 renders its SLG block here; the
   // menu shows it after "GAC WELDING STATUS (Except SLG Service)" (lib/page-order.ts)
   entries.push({ kind: "data", data: 4, slg: true, title: GAC_SLG_STATUS_TITLE });
+  entries.push({ kind: "data", data: 5, tmcp: true, title: TEKFEN_TMCP_STATUS_TITLE });
   return entries;
 })();
 

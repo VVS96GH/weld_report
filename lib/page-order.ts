@@ -1,4 +1,4 @@
-import { GAC_SLG_STATUS_TITLE, PROJECT_NDE_TITLE, TEKFEN_TMCP_TITLE, WELDING_PAGE_TITLES, WPS_MATERIAL_TITLE } from "@/lib/welding-pages";
+import { GAC_SLG_STATUS_TITLE, PROJECT_NDE_TITLE, TEKFEN_TMCP_STATUS_TITLE, TEKFEN_TMCP_TITLE, WELDING_PAGE_TITLES, WPS_MATERIAL_TITLE } from "@/lib/welding-pages";
 
 /**
  * The page menu's order (owner, 2026-10-15): pages are grouped (Project, Welder
@@ -17,6 +17,7 @@ const MENU_AFTER = new Map<number, number>([
   [WELDING_PAGE_TITLES.indexOf(TEKFEN_TMCP_TITLE) + 1, WELDING_PAGE_TITLES.indexOf("TEKFEN WELDING STATUS Graph") + 1],
   // the GAC SLG status page follows the GAC (Except SLG) one
   [WELDING_PAGE_TITLES.indexOf(GAC_SLG_STATUS_TITLE) + 1, WELDING_PAGE_TITLES.indexOf("GAC WELDING STATUS (Except SLG Service)") + 1],
+  [WELDING_PAGE_TITLES.indexOf(TEKFEN_TMCP_STATUS_TITLE) + 1, WELDING_PAGE_TITLES.indexOf("TEKFEN WELDING STATUS (Except TMCP Pipe)") + 1],
 ]);
 
 /** `pages` with every MENU_AFTER page moved right behind its anchor. */
@@ -97,7 +98,7 @@ export function rtSplit(
     const title = WELDING_PAGE_TITLES[n - 1] ?? "";
     const pct = /\bRT\s*(\d+)\s*%/i.exec(title)?.[1];
     // GAC's two status pages share a folder (owner, 2026-11-03)
-    const status = /^(GAC) WELDING STATUS \((Except|SLG)/i.exec(title)?.[1];
+    const status = /^(GAC|TEKFEN) WELDING STATUS \((Except|SLG|TMCP)/i.exec(title)?.[1];
     const rt = status
       ? `${status} Welding Status`
       : pct
