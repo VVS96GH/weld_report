@@ -183,3 +183,8 @@ before trusting a green badge. Never commit tokens or passwords; `.env` is git-i
 - `sonnet-orchestration-prompt.md` is the user's protocol for driving Opus/Sonnet subagents
   (routing by "can I pre-decide every ruling?", the R→P→G→I→V→C checkpoint format, one writer
   per lane). Read it before orchestrating multi-agent work here.
+
+## Rulings and the database
+
+- `RULINGS.md` holds the owner's rulings (also in weld_platform, identical). A counted rule changes there first.
+- `docs/database.md` (+ .docx) is generated from the live catalog: `npm run db:docs`.
