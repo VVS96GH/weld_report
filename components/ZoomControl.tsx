@@ -5,8 +5,27 @@ import { usePathname } from "next/navigation";
 
 const MIN = 30;
 const MAX = 200;
-const KEY = "page-zoom";
 type Mode = "fit" | number;
+
+/**
+ * The device class (owner, 2026-11-04: phones, iPads and laptops adapt by themselves):
+ * phone  < 768 px wide: the page re-flows into one column at 100 % (styles/responsive.css),
+ *                       "fit" never shrinks it; pinch-zoom stays the phone's own;
+ * tablet < 1280 px, or a touch screen up to 1400 px: "fit" fits the WIDTH only, the page scrolls;
+ * laptop / desktop: as before, "fit" fits the whole page, never below READABLE by itself.
+ * Same logic on the Welding Statistics Platform.
+ */
+type Device = "phone" | "tablet" | "desktop";
+function deviceClass(): Device {
+  const w = window.innerWidth;
+  const touch = window.matchMedia("(pointer: coarse)").matches;
+  if (w < 768) return "phone";
+  if (w < 1280 || (touch && w <= 1400)) return "tablet";
+  return "desktop";
+}
+const READABLE = 60;
+/** Remembered per device class: a phone's choice never changes the PC's. */
+const keyFor = (d: Device) => (d === "desktop" ? "page-zoom" : `page-zoom:${d}`);
 
 /** The page content the zoom applies to (header and nav stay as they are). */
 const target = () => document.querySelector<HTMLElement>(".main-content");
@@ -35,20 +54,27 @@ export function ZoomControl() {
   const fit = useCallback(() => {
     const el = target();
     if (!el) return;
+    const d = deviceClass();
+    document.documentElement.dataset.device = d;
     el.style.zoom = "";
+    if (d === "phone") {
+      apply(100);
+      return;
+    }
     const top = el.getBoundingClientRect().top;
     const availH = window.innerHeight - top - 8;
-    const availW = document.documentElement.clientWidth;
+    const availW = el.clientWidth || document.documentElement.clientWidth;
     const h = el.scrollHeight;
     const w = el.scrollWidth;
-    const p = Math.max(MIN, Math.min(100, Math.floor(Math.min(availH / h, availW / w) * 100)));
+    const k = d === "tablet" ? availW / w : Math.min(availH / h, availW / w);
+    const p = Math.max(READABLE, Math.min(100, Math.floor(k * 100)));
     apply(p);
   }, [apply]);
 
   const choose = (m: Mode) => {
     setMode(m);
     try {
-      localStorage.setItem(KEY, String(m));
+      localStorage.setItem(keyFor(deviceClass()), String(m));
     } catch {
       /* storage blocked: the zoom lasts this page only */
     }
@@ -58,9 +84,12 @@ export function ZoomControl() {
 
   // the remembered choice, after the page has rendered
   useEffect(() => {
-    let m: Mode = 100;
+    const d = deviceClass();
+    document.documentElement.dataset.device = d;
+    // a phone or tablet opens fitted: its own re-flow, or the width
+    let m: Mode = d === "desktop" ? 100 : "fit";
     try {
-      const v = localStorage.getItem(KEY);
+      const v = localStorage.getItem(keyFor(d));
       if (v === "fit") m = "fit";
       else if (v && Number.isFinite(Number(v))) m = Math.max(MIN, Math.min(MAX, Number(v)));
     } catch {

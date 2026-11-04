@@ -1,0 +1,60 @@
+/* Phones, iPads, laptops (owner, 2026-11-04): every page adapts by itself.
+   The page zoom (components/ZoomControl.tsx) knows the device class: a phone re-flows here at
+   100 %, a tablet fits its width, a laptop or desktop keeps the owner's choice.
+   Same rules on the Welding Statistics Platform (its own class names). */
+
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body { overflow-x: hidden; }
+img, svg, canvas { max-width: 100%; }
+
+/* hand-sized cards keep their size on a large screen only */
+@media (max-width: 1023px) {
+  .card.is-sized, [data-card].is-sized { width: auto !important; max-width: 100% !important; justify-self: stretch; }
+}
+
+/* ---------- phone ---------- */
+@media (max-width: 767px) {
+  /* header: not sticky (it would cover half the screen), brand on one line, small buttons */
+  .header, [data-mood] .header { position: relative; flex-wrap: wrap; gap: 8px 10px; padding: 8px 12px; }
+  .header-left { min-width: 0; flex: 1 1 auto; gap: 10px; }
+  .header-left .brand-lockup-link, .header-left .brand-mark { flex: none; }
+  .header-left .brand-lockup { height: 32px; width: auto; }
+  .header-left .brand-mark img { width: 32px; height: 32px; }
+  .header-title { min-width: 0; }
+  .header-title h1, [data-mood] .header-title h1 { font-size: 15px !important; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .header-title .subtitle { font-size: 10px; letter-spacing: 0.08em; }
+  .header-right { width: 100%; justify-content: flex-end; gap: 6px; flex-wrap: wrap; }
+  .header-btn, [data-mood] .header-btn { width: 36px; height: 36px; min-width: 36px; font-size: 1rem; }
+  .layout-edit-btn, .card-grip, .layout-bar { display: none !important; } /* no hover on a phone: sizes are set on a PC */
+
+  /* page menu: the reports scroll sideways, Prev / page / Next in one row */
+  .page-nav, [data-mood] .page-nav { padding: 6px 12px 8px; gap: 6px; }
+  .report-switcher { max-width: 100%; overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }
+  .report-switcher::-webkit-scrollbar { display: none; }
+  .report-switcher .report-pill { white-space: nowrap; flex: none; }
+  .page-title-display { display: none; } /* the page's own title follows right under */
+  .nav-controls, [data-mood] .nav-controls { width: 100%; flex-wrap: nowrap !important; gap: 6px; }
+  .nav-controls .nav-btn { flex: none; padding-inline: 10px; white-space: nowrap; }
+  .nav-controls .page-jump, [data-mood] .nav-controls .page-select { flex: 1 1 auto !important; min-width: 0; width: auto; }
+  .page-jump-panel { position: fixed !important; left: 12px !important; right: 12px !important; width: auto !important; max-width: none !important; max-height: 60vh; }
+  .wp-nav { flex-wrap: wrap; }
+
+  /* the filters tab: a small handle low on the right */
+  .fdrawer-tab { top: auto !important; bottom: 64px; min-height: 76px; }
+
+  /* page body: wide tables scroll inside their card */
+  .main-content { padding-inline: 12px; }
+  .table-scroll, .table-wrap, .data-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; }
+  .wp-cum, .cum-bar { border-radius: 14px; }
+  .fc-row { grid-template-columns: 64px minmax(0, 1fr) 92px; gap: 8px; }
+
+  /* the zoom bar: small, out of the way of the content */
+  .zoom-bar { right: 8px; bottom: 8px; padding: 2px 6px; gap: 2px; }
+  .zoom-range { width: 64px; }
+}
+
+/* ---------- touch screens (phones, iPads): bigger targets ---------- */
+@media (pointer: coarse) {
+  .mb-btn { padding: 6px 12px; }
+  .zoom-btn { padding: 4px 8px; }
+}

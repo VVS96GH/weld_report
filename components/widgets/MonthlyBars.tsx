@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 /**
  * Monthly RT/UT progress, F + S stacked (owner, 2026-11-03), in the T.EN style without Chart.js:
@@ -40,6 +40,16 @@ export function MonthlyBars({
   const [range, setRange] = useState<number>(defaultRange);
   const [end, setEnd] = useState<number>(months.length); // exclusive
   const [hover, setHover] = useState<number | null>(null);
+  // labels and totals that fit the plot's width (a phone shows fewer): ~64 px a label
+  const area = useRef<HTMLDivElement>(null);
+  const [fits, setFits] = useState(14);
+  useEffect(() => {
+    const el = area.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setFits(Math.max(3, Math.min(14, Math.floor(el.clientWidth / 64)))));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const size = range === 0 ? months.length : Math.min(range, months.length);
   const stop = Math.min(Math.max(end, size), months.length);
@@ -53,7 +63,7 @@ export function MonthlyBars({
   const lastT = last ? last.f + last.s : 0;
   const prevT = prev ? prev.f + prev.s : 0;
   const delta = prevT ? ((lastT - prevT) / prevT) * 100 : null;
-  const every = Math.ceil(shown.length / 14); // month labels thin out on long ranges
+  const every = Math.ceil(shown.length / fits); // month labels thin out on long ranges and narrow screens
   const step = Math.max(1, Math.round(size / 3));
 
   if (months.length === 0) return <p className="fc-muted px-2 py-4 text-sm">No months yet.</p>;
@@ -112,7 +122,7 @@ export function MonthlyBars({
             <span key={t}>{short(t)}</span>
           ))}
         </div>
-        <div className="mb-area">
+        <div className="mb-area" ref={area}>
           {ticks.slice(1).map((t) => (
             <i key={t} className="mb-grid" style={{ bottom: `${(100 * t) / top}%` }} />
           ))}
@@ -128,7 +138,7 @@ export function MonthlyBars({
                 >
                   <div className="mb-stack" style={{ height: `${(100 * t) / top}%` }}>
                     {/* a long range keeps its totals for the hover card: they would overlap */}
-                    {shown.length <= 14 || hover === i ? <span className="mb-total num">{shown.length > 14 ? short(t) : n0(t)}</span> : null}
+                    {shown.length <= fits || hover === i ? <span className="mb-total num">{shown.length > 14 ? short(t) : n0(t)}</span> : null}
                     {m.s > 0 ? <span className="mb-s" style={{ flexGrow: m.s }} /> : null}
                     {m.f > 0 ? <span className="mb-f" style={{ flexGrow: m.f }} /> : null}
                   </div>

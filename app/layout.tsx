@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Cinzel, IBM_Plex_Mono, Inter, Poppins } from "next/font/google";
 import "./globals.css";
+import "./styles/responsive.css"; // after globals: its phone rules win
 
 import { ReportShell } from "@/components/ReportShell";
 import { DEFAULT_DENSITY, DEFAULT_MOOD, DEFAULT_THEME, PRE_PAINT_SCRIPT, TEN_HTML_BACKGROUND } from "@/lib/theme/axes";

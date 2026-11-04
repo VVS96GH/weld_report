@@ -16,7 +16,7 @@ export function LayoutEditButton({ className = "header-btn" }: { className?: str
   return (
     <button
       type="button"
-      className={`${className}${on ? " is-on" : ""}`}
+      className={`${className} layout-edit-btn${on ? " is-on" : ""}`}
       aria-pressed={on}
       title={on ? "Done editing the layout" : "Edit the layout: resize tables and charts"}
       aria-label="Edit the layout"
