@@ -357,7 +357,10 @@ const stackTotalsPlugin = {
     ctx.font = `600 ${opts.size ?? 12}px ${opts.font}`;
     ctx.textAlign = "center";
     ctx.textBaseline = "bottom";
-    for (let i = 0; i < count; i++) {
+    // from the last period back: a total that would touch the one to its right is left to the
+    // hover card (narrow screens, phones); the latest period always shows (owner, 2026-11-04)
+    let leftEdge = Number.POSITIVE_INFINITY;
+    for (let i = count - 1; i >= 0; i--) {
       let total = 0;
       let top = Number.POSITIVE_INFINITY;
       let x: number | null = null;
@@ -374,7 +377,11 @@ const stackTotalsPlugin = {
         x = el.x;
       });
       if (!any || x === null) continue;
-      ctx.fillText(fmtValue(total, opts.percent), x, top - 3);
+      const text = fmtValue(total, opts.percent);
+      const half = ctx.measureText(text).width / 2;
+      if (x + half + 3 > leftEdge) continue;
+      ctx.fillText(text, x, top - 3);
+      leftEdge = x - half;
     }
     ctx.restore();
   },
