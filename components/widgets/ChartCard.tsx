@@ -825,7 +825,13 @@ function isCircular(type: string): boolean {
  */
 /** A label that names a period: 30-Oct-26, Oct 2026, Nov 2025, Q1 24, 2026-10, W44 … */
 const PERIOD_LABEL =
-  /^(\d{1,2}[-\s][A-Za-z]{3,9}[-\s]\d{2,4}|[A-Za-z]{3,9}\.?[-\s]?'?\d{2,4}|Q[1-4][-\s]?'?\d{2,4}|\d{4}[-/]\d{1,2}([-/]\d{1,2})?|W(eek)?\s?\d{1,2}|\d{1,3}\.\s.*\d{2})$/;
+  /^((Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?|\d{1,2}[-\s][A-Za-z]{3,9}[-\s]\d{2,4}|[A-Za-z]{3,9}\.?[-\s]?'?\d{2,4}|Q[1-4][-\s]?'?\d{2,4}|\d{4}[-/]\d{1,2}([-/]\d{1,2})?|W(eek)?\s?\d{1,2}|\d{1,3}\.\s.*\d{2})$/;
+
+/** The series a grouped chart's period header follows: the "F"+"S" (all joints) one, else the first. */
+function headSeries(widget: ChartWidget): number {
+  const i = widget.datasets.findIndex((d) => /"?F"?\s*\+\s*"?S"?|total/i.test(d.label));
+  return i >= 0 ? i : 0;
+}
 
 /**
  * The period header (owner, 2026-11-03, as the RT B.Log Forecast monthly charts): a vertical bar
@@ -836,7 +842,6 @@ function isPeriodBar(widget: ChartWidget): boolean {
   const notes = (widget.options_notes ?? "").toLowerCase();
   if (widget.chart_type !== "bar" || (notes.includes("indexaxis") && notes.includes("y"))) return false;
   if (widget.labels.length < 4) return false;
-  if (!(notes.includes("stacked") || widget.datasets.length === 1)) return false;
   return widget.labels.every((l) => PERIOD_LABEL.test(String(l).trim()));
 }
 
@@ -921,7 +926,11 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
   // the period header's figures: each period's total (the stack), the average of those shown,
   // the last period against the one before
   const periodTotals = periodBar
-    ? widget.labels.map((_, i) => widget.datasets.reduce((a, d) => a + (toNum(d.data[i] ?? null) ?? 0), 0))
+    ? widget.labels.map((_, i) =>
+        stackedX || stackedY
+          ? widget.datasets.reduce((a, d) => a + (toNum(d.data[i] ?? null) ?? 0), 0)
+          : (toNum(widget.datasets[headSeries(widget)]?.data[i] ?? null) ?? 0),
+      )
     : [];
   const shownTotals = periodTotals.slice(start, end);
   const periodAvg = shownTotals.length ? shownTotals.reduce((a, b) => a + b, 0) / shownTotals.length : 0;
@@ -1324,6 +1333,9 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
           <div className="mb-last">
             <span className="fc-muted">{axisLabel(widget.labels[n - 1])}</span>
             <b className="num">{fmtValue(lastT, percentAxis)}</b>
+            {!(stackedX || stackedY) && widget.datasets.length > 1 ? (
+              <span className="fc-muted">{widget.datasets[headSeries(widget)]?.label}</span>
+            ) : null}
             {delta !== null ? (
               <span className={`mb-delta ${delta >= 0 ? "is-up" : "is-down"}`}>
                 {delta >= 0 ? "▲" : "▼"} {Math.abs(delta).toFixed(0)}% vs {axisLabel(widget.labels[n - 2])}
