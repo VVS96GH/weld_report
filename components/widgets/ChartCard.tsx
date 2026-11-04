@@ -702,8 +702,9 @@ function valueLabels(type: string, stacked: boolean, percent: boolean, circular:
         const ds = ctx.dataset as { threshold?: boolean; data: unknown[] };
         // the limit's name sits above the dashed line near its right end (second-to-last
         // point, so the text is never clipped by the chart edge)
-        // a limit's name is placed by thresholdLabelPlugin, clear of every number
-        return !ds.threshold;
+        // a limit's name is placed by thresholdLabelPlugin, clear of every number;
+        // a point value that would cover its neighbour (narrow screens) is left to the hover card
+        return ds.threshold ? false : "auto";
       },
       formatter: (v: unknown, ctx: DatalabelCtx) => {
         const ds = ctx.dataset as { threshold?: boolean; label?: string };
@@ -778,7 +779,9 @@ function valueLabels(type: string, stacked: boolean, percent: boolean, circular:
   }
   const rotated = seriesCount > 2;
   return {
-    display: true,
+    // "auto": on a narrow screen (phone) a label that would cover its neighbour is left to the
+    // hover card; on a wide one every label fits and shows (owner, 2026-11-04)
+    display: "auto",
     formatter: (v: unknown) => fmtValue(v, percent),
     color: palette.fg,
     anchor: "end",

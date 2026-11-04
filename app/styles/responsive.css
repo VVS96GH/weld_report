@@ -36,6 +36,7 @@ img, svg, canvas { max-width: 100%; }
   .nav-controls, [data-mood] .nav-controls { width: 100%; flex-wrap: nowrap !important; gap: 6px; }
   .nav-controls .nav-btn { flex: none; padding-inline: 10px; white-space: nowrap; }
   .nav-controls .page-jump, [data-mood] .nav-controls .page-select { flex: 1 1 auto !important; min-width: 0; width: auto; }
+  .nav-controls .page-jump > .page-select { width: 100%; }
   .page-jump-panel { position: fixed !important; left: 12px !important; right: 12px !important; width: auto !important; max-width: none !important; max-height: 60vh; }
   .wp-nav { flex-wrap: wrap; }
 
