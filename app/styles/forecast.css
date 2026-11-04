@@ -124,3 +124,9 @@
 .mb-tip-total { border-top: 1px solid var(--border, var(--border-color)); padding-top: 3px; color: var(--muted, var(--text-secondary)); }
 .mb-span { font-size: 11px; white-space: nowrap; }
 .wr-page.fc-page { padding-bottom: 6px; margin-bottom: -1.5rem; } /* one screen at 100 % (owner, 2026-11-03) */
+
+/* the period header on time-series bar charts (components ChartCard: isPeriodBar) */
+.pb { display: flex; flex-direction: column; height: 100%; min-height: 0; gap: 4px; }
+.pb-head { padding: 0 4px; }
+.pb-head .mb-last b { font-size: 18px; }
+.pb-canvas { position: relative; flex: 1; min-height: 0; }

@@ -823,6 +823,45 @@ function isCircular(type: string): boolean {
  * so charts whose `options_notes` mention "has datalabels plugin" render without
  * on-bar value labels.
  */
+/** A label that names a period: 30-Oct-26, Oct 2026, Nov 2025, Q1 24, 2026-10, W44 … */
+const PERIOD_LABEL =
+  /^(\d{1,2}[-\s][A-Za-z]{3,9}[-\s]\d{2,4}|[A-Za-z]{3,9}\.?[-\s]?'?\d{2,4}|Q[1-4][-\s]?'?\d{2,4}|\d{4}[-/]\d{1,2}([-/]\d{1,2})?|W(eek)?\s?\d{1,2}|\d{1,3}\.\s.*\d{2})$/;
+
+/**
+ * The period header (owner, 2026-11-03, as the RT B.Log Forecast monthly charts): a vertical bar
+ * chart over periods, stacked or of one series, shows its last period against the one before, the
+ * average of the periods shown (also a dashed line) and 6 / 12 / 24 / All with arrows.
+ */
+function isPeriodBar(widget: ChartWidget): boolean {
+  const notes = (widget.options_notes ?? "").toLowerCase();
+  if (widget.chart_type !== "bar" || (notes.includes("indexaxis") && notes.includes("y"))) return false;
+  if (widget.labels.length < 4) return false;
+  if (!(notes.includes("stacked") || widget.datasets.length === 1)) return false;
+  return widget.labels.every((l) => PERIOD_LABEL.test(String(l).trim()));
+}
+
+const avgLinePlugin = {
+  id: "avgLine",
+  afterDatasetsDraw(chart: ChartJS) {
+    const o = (chart.options.plugins as Record<string, unknown> | undefined)?.avgLine as { value: number; color: string } | undefined;
+    const y = chart.scales.y;
+    if (!o || !y || !Number.isFinite(o.value) || o.value <= 0) return;
+    const py = y.getPixelForValue(o.value);
+    const { left, right } = chart.chartArea;
+    const ctx = chart.ctx;
+    ctx.save();
+    ctx.strokeStyle = o.color;
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([6, 4]);
+    ctx.globalAlpha = 0.9;
+    ctx.beginPath();
+    ctx.moveTo(left, py);
+    ctx.lineTo(right, py);
+    ctx.stroke();
+    ctx.restore();
+  },
+};
+
 export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; paletteOverride?: Partial<Palette> }) {
   const [version, setVersion] = useState(0);
 
@@ -832,7 +871,11 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
   // чтоб отображалось 24 месяца"). Circular charts never window.
   // "window N" in options_notes narrows the visible span (the flange monthly chart
   // shows its last five months, as the pbix does; owner request 2026-09-08).
-  const visible = Number(/\bwindow (\d+)\b/.exec(widget.options_notes ?? "")?.[1]) || VISIBLE_CATEGORIES;
+  const baseVisible = Number(/\bwindow (\d+)\b/.exec(widget.options_notes ?? "")?.[1]) || VISIBLE_CATEGORIES;
+  const periodBar = isPeriodBar(widget);
+  // 6 / 12 / 24 / All on a period chart (null: the chart's own span, 0: all)
+  const [range, setRange] = useState<number | null>(null);
+  const visible = range === null ? baseVisible : range === 0 ? widget.labels.length : range;
   const windowed = !isCircular(widget.chart_type) && widget.labels.length > visible;
   const maxStart = Math.max(0, widget.labels.length - visible);
   const [windowStart, setWindowStart] = useState(maxStart);
@@ -875,6 +918,13 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
   // axis, as the pbix Year ▸ Month hierarchy draws it ("2025 – 2026" if the
   // visible window spans two years).
   const yearAxis = notes.includes("year-axis-title");
+  // the period header's figures: each period's total (the stack), the average of those shown,
+  // the last period against the one before
+  const periodTotals = periodBar
+    ? widget.labels.map((_, i) => widget.datasets.reduce((a, d) => a + (toNum(d.data[i] ?? null) ?? 0), 0))
+    : [];
+  const shownTotals = periodTotals.slice(start, end);
+  const periodAvg = shownTotals.length ? shownTotals.reduce((a, b) => a + b, 0) / shownTotals.length : 0;
   const visibleYears = yearAxis
     ? [...new Set(widget.labels.slice(start, end).map((l) => YEAR_SUFFIX.exec(l)?.[1]).filter(Boolean))]
     : [];
@@ -1154,6 +1204,7 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
         barLegendGap: {
           px: widget.chart_type === "bar" && !(stackedX || stackedY) && !horizontal && widget.datasets.length > 2 ? Math.round(26 * palette.scale) : 0,
         },
+        avgLine: periodBar ? { value: periodAvg, color: palette.seriesF ?? "#e0b84e" } : undefined, // token-lint: allow-hex — gold fallback
         stackTotals:
           widget.chart_type === "bar" && (stackedX || stackedY)
             ? { color: palette.fg, font: palette.font ?? "sans-serif", percent: percentAxis, size: Math.round(12 * palette.scale) }
@@ -1213,7 +1264,7 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
             return horizontal ? { x: value, y: category } : { x: category, y: value };
           })(),
     }),
-    [palette, stackedX, stackedY, percentAxis, horizontal, circular, widget.chart_type, widget.datasets.length, widget.canvas_id, start, end, thresholds, notes, yearAxis, yearTitle, yCenter, visibleMax, rotation],
+    [palette, stackedX, stackedY, percentAxis, horizontal, circular, widget.chart_type, widget.datasets.length, widget.canvas_id, start, end, thresholds, notes, yearAxis, yearTitle, yCenter, visibleMax, rotation, periodBar, periodAvg],
   );
 
   // Trend charts fed by the not-yet-seeded weld_weekly_snapshot table (e.g. page 1's
@@ -1253,7 +1304,59 @@ export function ChartCard({ widget, paletteOverride }: { widget: ChartWidget; pa
       break;
     case "bar":
     default:
-      chart = <Chart key={version} type="bar" data={data} options={options} plugins={[stackTotalsPlugin, barLegendGapPlugin]} />;
+      chart = <Chart key={version} type="bar" data={data} options={options} plugins={[stackTotalsPlugin, barLegendGapPlugin, avgLinePlugin]} />;
+  }
+  if (periodBar) {
+    const n = widget.labels.length;
+    const lastT = periodTotals[n - 1] ?? 0;
+    const prevT = periodTotals[n - 2] ?? 0;
+    const delta = prevT ? ((lastT - prevT) / prevT) * 100 : null;
+    const ranges = [6, 12, 24, 0].filter((r) => r === 0 || r < n);
+    const size = Math.min(visible, n);
+    const step = Math.max(1, Math.round(size / 3));
+    const pick = (r: number) => {
+      setRange(r);
+      setWindowStart(Math.max(0, n - (r === 0 ? n : r)));
+    };
+    return (
+      <div className="pb">
+        <div className="mb-head pb-head">
+          <div className="mb-last">
+            <span className="fc-muted">{axisLabel(widget.labels[n - 1])}</span>
+            <b className="num">{fmtValue(lastT, percentAxis)}</b>
+            {delta !== null ? (
+              <span className={`mb-delta ${delta >= 0 ? "is-up" : "is-down"}`}>
+                {delta >= 0 ? "▲" : "▼"} {Math.abs(delta).toFixed(0)}% vs {axisLabel(widget.labels[n - 2])}
+              </span>
+            ) : null}
+          </div>
+          <div className="mb-tools">
+            <span className="mb-key mb-key--avg">
+              <i /> avg <b className="num">{fmtValue(percentAxis ? periodAvg : Math.round(periodAvg), percentAxis)}</b>
+            </span>
+            {n > 6 ? (
+              <div className="mb-range" role="group" aria-label="Periods shown" title={`${axisLabel(widget.labels[start])} – ${axisLabel(widget.labels[end - 1])}: ${end - start} of ${n}`}>
+                <button type="button" className="mb-btn" disabled={start <= 0} aria-label="Earlier" onClick={() => setWindowStart(Math.max(0, start - step))}>
+                  ◀
+                </button>
+                {ranges.map((r) => {
+                  const on = (r === 0 ? n : r) === size && (r === 0 || r < n);
+                  return (
+                    <button key={r} type="button" className={`mb-btn${on ? " is-on" : ""}`} aria-pressed={on} onClick={() => pick(r)}>
+                      {r === 0 ? "All" : r}
+                    </button>
+                  );
+                })}
+                <button type="button" className="mb-btn" disabled={end >= n} aria-label="Later" onClick={() => setWindowStart(Math.min(n - size, start + step))}>
+                  ▶
+                </button>
+              </div>
+            ) : null}
+          </div>
+        </div>
+        <div className="pb-canvas">{chart}</div>
+      </div>
+    );
   }
   if (!windowed) return chart;
 
