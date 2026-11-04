@@ -1,5 +1,7 @@
 "use client";
 
+import { CardResizer } from "@/components/CardResizer";
+import { LayoutEditButton } from "@/components/LayoutEditButton";
 import { DataVersionWatch } from "@/components/DataVersionWatch";
 import { UserMenu } from "@/components/UserMenu";
 import { LOGO_KEY } from "@/lib/theme/axes";
@@ -131,6 +133,7 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
     <SubtitleContext.Provider value={{ setSubtitle }}>
       <div className="app-shell">
       {isLogin ? null : <DataVersionWatch />}
+      {isLogin ? null : <CardResizer />}
       <header className="header">
         <div className="header-left">
           {/* ONE brand element at any width (user ruling): below md the coloured official
@@ -174,6 +177,7 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
         {isLogin ? null : (
           <div className="header-right">
             <PdfButton />
+            <LayoutEditButton />
             <ThemeMoodControls />
             <RefreshDataButton />
             <UserMenu />

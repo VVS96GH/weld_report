@@ -2,7 +2,9 @@
 
 import { Fragment, useState } from "react";
 
+import { ColFilterMenu } from "@/components/ColFilterMenu";
 import { ColHead, colThProps } from "@/components/ColHead";
+import { usePageFilters } from "@/lib/page-filters";
 import { tableKeyOf, useTablePrefs } from "@/lib/col-prefs";
 import type { TableWidget } from "@/lib/page-model";
 import { nextSort, sortGroupedRows, type SortState } from "@/lib/table-sort";
@@ -84,6 +86,12 @@ export function DataTable({ widget, collapsible = false }: { widget: TableWidget
   const isTotalAt = (ri: number) => totalIsLastRow && ri === widget.rows.length - 1;
   const order = sortGroupedRows(widget.rows, sort, isChild, isTotalAt);
   const onSort = (col: number) => setSort((cur) => nextSort(cur, col));
+  // the first column's menu (owner, 2026-11-04, as the platform): WPS No. and Service Class
+  // tables drive the page's own WPS / Service Class slicer
+  const pageFilters = usePageFilters();
+  const menuId = /^WPS No\.?$/i.test(widget.columns[0] ?? "") ? "wps" : /^Service Class\+Weld Cat/i.test(widget.columns[0] ?? "") ? "sclass" : null;
+  const fw = menuId ? pageFilters.find((f) => f.id === menuId) : undefined;
+  const colMenu = fw ? { col: 0, param: fw.id, options: fw.options.filter((o) => o !== "All") } : null;
 
   const renderCells = (row: string[]) =>
     row.map((cell, ci) =>
@@ -108,6 +116,9 @@ export function DataTable({ widget, collapsible = false }: { widget: TableWidget
                 {/* a box with a max width: a long header wraps instead of widening its column */}
                 <HeaderText col={col} />
               </ColHead>
+              {i === 0 && colMenu ? (
+                <ColFilterMenu filter={colMenu} label={col} sort={sort} setSort={setSort} />
+              ) : null}
             </th>
           ))}
         </tr>

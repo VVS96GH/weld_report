@@ -5210,3 +5210,25 @@ body.g-dragging-y * {
 .logo-toggle .logo-dot { display: none; position: absolute; left: 1%; top: 2.06%; width: 46.5%; height: 95.9%; border-radius: 50%; background: #fff; }
 html[data-logo="dot"] .logo-toggle .brand-lockup { visibility: hidden; }
 html[data-logo="dot"] .logo-toggle .logo-dot { display: block; }
+
+/* hand-sized cards (components/CardResizer.tsx, owner 2026-11-04): one grip on <body> */
+.card-grip {
+  position: fixed; z-index: 900; width: 14px; height: 14px; display: none; cursor: nwse-resize; touch-action: none; opacity: 0.85;
+  background: linear-gradient(135deg, transparent 45%, var(--muted, #a8c0d6) 45%, var(--muted, #a8c0d6) 55%, transparent 55%,
+    transparent 70%, var(--muted, #a8c0d6) 70%, var(--muted, #a8c0d6) 80%, transparent 80%);
+}
+.card-grip:hover { opacity: 1; }
+.card.is-sized { display: flex; flex-direction: column; overflow: hidden; max-width: none !important; justify-self: start; align-self: start; flex: none; }
+.card.is-sized .chart-container { flex: 1 1 auto; height: auto !important; min-height: 80px; }
+.card.is-sized .table-scroll, .card.is-sized .table-container { flex: 1 1 auto; min-height: 0; overflow: auto; }
+/* the layout edit mode (owner, 2026-11-04): dashed card frames, the bar on top */
+html[data-layout-edit] .main-content .card { outline: 1.5px dashed var(--accent, #0070ef); outline-offset: 2px; }
+.layout-bar {
+  position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 950; display: none; align-items: center; gap: 10px;
+  padding: 8px 10px 8px 16px; border-radius: 999px; font-size: 13px; color: var(--fg, #eaf2fa);
+  background: var(--surface-2, #0c2540); border: 1px solid var(--accent, #0070ef); box-shadow: 0 10px 30px rgb(0 0 0 / 0.45);
+}
+html[data-layout-edit] .layout-bar { display: flex; }
+.hdr-btn.is-on, .header-btn.is-on { background: var(--accent, #0070ef); border-color: var(--accent, #0070ef); }
+.dg-none { font-size: 0.75rem; color: var(--text-secondary); padding: 6px; }
+.dg-panel-body .dg-has { display: flex; flex-direction: column; gap: 4px; font-size: 0.75rem; color: var(--text-secondary); }

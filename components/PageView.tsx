@@ -1,11 +1,12 @@
 "use client";
 
 import type { ReactNode } from "react";
-import type { ChartWidget, KpiWidget, PageModel, TableWidget, TextWidget, Widget } from "@/lib/page-model";
+import type { ChartWidget, FilterWidget, KpiWidget, PageModel, TableWidget, TextWidget, Widget } from "@/lib/page-model";
 import { usePageSubtitle } from "@/components/ReportShell";
 import { relabelModel } from "@/lib/labels";
 import { KpiCard } from "@/components/widgets/KpiCard";
 import { DataTable } from "@/components/widgets/DataTable";
+import { PageFiltersContext } from "@/lib/page-filters";
 import { ChartCard } from "@/components/widgets/ChartCard";
 import { TextNote } from "@/components/widgets/TextNote";
 import { GHandle, GraphResize } from "@/components/GraphResize";
@@ -175,7 +176,9 @@ export function PageView({ model: source, subtitle, top }: { model: PageModel; s
   const before = groupWidgets(widgets.slice(0, cut));
   const after = groupWidgets(widgets.slice(cut));
 
+  const filters = source.widgets.filter((w): w is FilterWidget => w.kind === "filter");
   return (
+    <PageFiltersContext.Provider value={filters}>
     <section className="page-section active pv-page" aria-labelledby="page-heading">
       {/* the CUM bar shares the title's row, one line for both (owner, 2026-10-19) */}
       <div className={top ? "page-header pv-header-with-top" : "page-header"}>
@@ -205,6 +208,7 @@ export function PageView({ model: source, subtitle, top }: { model: PageModel; s
         after.map((g, i) => renderGroup(g, i + before.length))
       )}
     </section>
+    </PageFiltersContext.Provider>
   );
 }
 
