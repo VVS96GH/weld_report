@@ -52,3 +52,9 @@ Before 2026-11-03 the rulings lived in commit messages marked "(owner)": `git lo
 |---|---|---|
 | Rej.Summary 1 month (CUM snapshot) | The Dashboard lists RT dates 1..28 days back with the pbix 0..30-day ratio; the platform cut-off − 28 .. cut-off for both. | not ruled |
 | Welding Status by Weld Type (CCC, GAC except SLG, TEKFEN except TMCP, MEDGULF) | Some Weld Type columns differ (GAC SW 161,115 vs 161,103; CCC BW 494,636 vs 494,666; TEKFEN TRN 1,706 vs 1,710). Present before 2026-11-03; cause not yet traced (one joint, one type on the platform). RPD fixed 2026-11-03 (A12). | found 2026-11-03 — shown as "diff" until traced and ruled |
+
+## E. 2026-11-04
+
+| # | Date | Ruling | Example / check | Code |
+|---|---|---|---|---|
+| A13 | 2026-11-04 | RT/UT and PWHT B.Log charts (Welding Progress, Graph pages): the history is the owner's "CUM Trend file RT and PWHT Backlog" (sheet TREND, summed over the page's parties), the cut-off week is computed; "Insert into CUM file" writes the cut-off week (backup first). Each site its own copy (A7). | Project RT: 755 / 711 / 632 / 654, PWHT 750 / 731 / 594 / 629 / 646, as the Dashboard. | platform `services/backlog_trend.py`; Dashboard `lib/backlog-trend-cum.ts` |
