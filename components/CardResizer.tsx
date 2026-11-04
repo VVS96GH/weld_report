@@ -17,13 +17,13 @@ import { useEffect } from "react";
 const KEY = "card-size:";
 const MIN_W = 220;
 const MIN_H = 120;
-const SEL = ".main-content .card";
+const SEL = ".main-content .card, .main-content [data-card]";
 
 type Size = { w?: number; h?: number };
 
 const cards = () =>
   Array.from(document.querySelectorAll<HTMLElement>(SEL)).filter(
-    (c) => !c.parentElement?.closest(".card") && !!c.querySelector("table, canvas, svg"),
+    (c) => !c.parentElement?.closest(".card, [data-card]") && !!c.querySelector("table, canvas, svg"),
   );
 
 function cardKey(path: string, card: HTMLElement): string {
