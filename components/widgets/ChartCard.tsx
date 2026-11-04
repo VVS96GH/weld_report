@@ -379,9 +379,10 @@ const stackTotalsPlugin = {
       if (!any || x === null) continue;
       const text = fmtValue(total, opts.percent);
       const half = ctx.measureText(text).width / 2;
-      if (x + half + 3 > leftEdge) continue;
-      ctx.fillText(text, x, top - 3);
-      leftEdge = x - half;
+      const cx = Math.min(x, chart.width - half - 2); // never cut by the canvas edge
+      if (cx + half + 3 > leftEdge) continue;
+      ctx.fillText(text, cx, top - 3);
+      leftEdge = cx - half;
     }
     ctx.restore();
   },
