@@ -70,6 +70,8 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
   // The Errors page (2026-10-14): data errors for the sub-contractors to correct.
   const isErrors = pathname?.startsWith("/errors") ?? false;
   const isData = pathname?.startsWith("/data") ?? false;
+  // the source files and their loads (2026-11-08)
+  const isSources = pathname?.startsWith("/sources") ?? false;
   // The WELDER PERFORMANCE tab (2026-10-14): its own pages, 2 weeks / 1 month, …
   const wpSlug = pathname?.match(/^\/welder-performance(?:\/([a-z0-9-]+))?/)?.[1] ?? (pathname?.startsWith("/welder-performance") ? WP_FIRST : null);
   const isWelders = wpSlug !== null;
@@ -86,6 +88,8 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
     ? "Flange Inspection Dashboard"
     : isErrors
       ? "Errors"
+      : isSources
+      ? "Sources"
       : isWelders
       ? "Welder Performance"
       : isScreens
@@ -189,7 +193,7 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
       <nav className="page-nav" aria-label="Report navigation">
         {/* Report switcher: two pill links; the current report carries aria-current. */}
         <div className="report-switcher" role="group" aria-label="Report">
-          <Link href="/welding/1" className="report-pill" aria-current={isFlange || isScreens || isErrors || isWelders || isData ? undefined : "page"}>
+          <Link href="/welding/1" className="report-pill" aria-current={isFlange || isScreens || isErrors || isWelders || isData || isSources ? undefined : "page"}>
             Welding
           </Link>
           <Link href="/flange" className="report-pill" aria-current={isFlange ? "page" : undefined}>
@@ -206,6 +210,9 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
           </Link>
           <Link href="/data" className="report-pill" aria-current={isData ? "page" : undefined}>
             Data
+          </Link>
+          <Link href="/sources" className="report-pill" aria-current={isSources ? "page" : undefined}>
+            Sources
           </Link>
         </div>
         {isScreens ? (
@@ -227,9 +234,9 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
                 Page {menuPosition(current)} / {WELDING_TOTAL_PAGES}
               </span>
             ) : null}
-            {isWelders || isData ? null : <span className="page-title-display">{relabel(title)}</span>}
-            {/* the Data page lists its own filters as chips */}
-            {isData ? null : (
+            {isWelders || isData || isSources ? null : <span className="page-title-display">{relabel(title)}</span>}
+            {/* the Data page lists its own filters as chips; Sources has none */}
+            {isData || isSources ? null : (
               <Suspense fallback={null}>
                 <FilterSummary />
               </Suspense>

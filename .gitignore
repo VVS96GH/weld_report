@@ -56,3 +56,5 @@ next-env.d.ts
 /.data-refresh.log
 /.data-refresh.pid
 data/graph-layout.json
+.data-refresh-progress.json
+.data-refresh-progress.json.tmp

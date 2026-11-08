@@ -32,86 +32,11 @@
 import { createHash } from "node:crypto";
 import { spawn, spawnSync } from "node:child_process";
 import { createReadStream, existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
-import { TREND_RT_PWHT_FILE } from "./lib/source-path";
 import path from "node:path";
 import { Client } from "pg";
 import { formatRefreshes, refreshMatviews, requireEnvUrl } from "./load-common";
-import { cumFile } from "../lib/welder-perf-cum";
-
-interface Step {
-  id: string;
-  /** npm script that loads it. */
-  script: string;
-  /** Input files, relative to the repo root. */
-  files: string[];
-  /** Inputs the loader itself treats as optional. */
-  optional?: string[];
-  /** Steps that must run again once this one has. */
-  forces?: string[];
-  /** true when the step changes a table the joint matviews read. */
-  matviews?: boolean;
-  /** Runs after the single matview refresh (it reads `mv_joint`). */
-  afterMatviews?: boolean;
-  about: string;
-}
-
-const WELD_DUMP = process.env.WELD_DUMP_PATH ?? "sources/Weld Dump.txt";
-
-const STEPS: Step[] = [
-  { id: "weld-dump", script: "db:load", files: [WELD_DUMP],
-    forces: ["weld-length"], matviews: true, about: "Weld Dump (GAC / TEKFEN / MEDGULF)" },
-  { id: "snapshot", script: "db:seed:snapshot", files: [
-      TREND_RT_PWHT_FILE,
-      "sources/CUM Trend RT% UT% RejRate/CUM Trend RT% UT% RejRate.xlsx",
-      "sources/CUM Trend Active Welders/CUM Trend Active Welders.xlsx",
-      "sources/CUM MPI Done .xlsx",
-    ], about: "weekly trend workbooks" },
-  { id: "spool", script: "db:load:spool", files: ["sources/Spool Dump.txt", "sources/Spool.csv"],
-    matviews: true, about: "spool masters" },
-  { id: "ccc-joints", script: "db:load:ccc-joints",
-    files: ["sources/AllTrain_CSVExport_Joint Record.csv"],
-    forces: ["ccc"], matviews: true, about: "CCC joint record" },
-  { id: "ccc", script: "db:load:ccc", files: [
-      "sources/CSVExport_Welder Record.csv",
-      "sources/CSVExport_Welder Record - FOR PIC UPDATE  (ACC  REJ ).xlsx",
-    ], forces: ["weld-length", "exclusions"], matviews: true, about: "CCC welder record (~7 min)" },
-  { id: "ut-ccc", script: "db:load:ut-ccc", files: ["sources/UT TRACKER (CCC)_Talisman.xlsx"],
-    matviews: true, about: "CCC UT tracker + overlay" },
-  { id: "ut-trackers", script: "db:load:ut-trackers",
-    files: ["sources/UT TRACKER (GAC)_Master.xlsx", "sources/UT TRACKER (TEK).xlsx"],
-    about: "UT trackers GAC / TEK (CTJV verification columns)" },
-  { id: "exclusions", script: "db:load:exclusions", files: ["sources/TO BE EXLUDE FROM DATA.xlsx"],
-    about: "exclusion list" },
-  { id: "acciona", script: "db:load:acciona",
-    files: ["sources/Acciona/Acciona_Latest Add to Query.xlsx"],
-    forces: ["weld-length"], matviews: true, about: "Acciona" },
-  { id: "inco", script: "db:load:inco", files: ["sources/Inco/Master Weld_Latest.xlsx"],
-    forces: ["weld-length"], matviews: true, about: "Inco" },
-  { id: "weld-length", script: "db:load:weld-length", files: [
-      "sources/Weld Length/Weld Length.xlsx", "sources/Weld Length/Rework code.xlsx",
-    ], matviews: true, about: "dia -> weld length, weld_length_m" },
-  { id: "welders", script: "db:load:welders", files: [
-      "sources/Welders/SCTR NFE WELDERS APPLIED.xls",
-      "sources/Welders/Welders Power Q for PBI .xlsx",
-    ], about: "welder registers" },
-  { id: "ha-guide", script: "db:load:ha-guide", files: ["sources/l0_abs_guide.csv"],
-    optional: ["sources/HA.csv"], matviews: true, about: "HA guide" },
-  { id: "wps", script: "db:load:wps", files: [
-      "sources/WPQ RECORD REGISTER/WPQ RECORD REGISTER.xlsx",
-      "sources/WPQ RECORD REGISTER/CUM WPS Status.xlsx",
-      "sources/WPQ RECORD REGISTER/WPS PWHT Status.xlsx",
-    ], afterMatviews: true, about: "WPQ register" },
-  // the workbooks are found whatever the spacing of their names (lib/welder-perf-cum.ts cumFile)
-  { id: "welder-cum", script: "db:load:welder-cum", files: [cumFile("2w"), cumFile("1m"), cumFile("ut2w")],
-    about: "welder performance CUM workbooks (trend charts)" },
-  { id: "flange", script: "db:load:flange",
-    files: ["sources/Flange Progress.xlsx", "sources/ovAssets_1619.xlsx"],
-    afterMatviews: true, about: "flange register" },
-  { id: "flange-breakdown", script: "db:load:flange-breakdown",
-    files: ["sources/CUM Trend Flange Progress Break Down Rate %.xlsx"], about: "flange break-down weekly rate" },
-  { id: "talisman", script: "db:load:talisman", files: ["sources/Joint.csv"],
-    afterMatviews: true, about: "Talisman joints" },
-];
+import { STEPS, type Step } from "../lib/refresh-steps";
+import { progressStart, progressStep, progressEnd } from "../lib/refresh-progress";
 
 // ── state ───────────────────────────────────────────────────────────────────
 
@@ -313,7 +238,13 @@ async function main(): Promise<void> {
     return;
   }
 
-  // 3. run
+  // 3. run — in the order below; the Sources page follows it (lib/refresh-progress.ts)
+  const execOrder: { id: string; title: string; reason: string }[] = [
+    ...order.filter((s) => !s.afterMatviews).map((s) => ({ id: s.id, title: s.title, reason: plan.get(s.id) ?? "" })),
+    ...(needMatviews ? [{ id: "matviews", title: "Joint views (one refresh for the run)", reason: "" }] : []),
+    ...order.filter((s) => s.afterMatviews).map((s) => ({ id: s.id, title: s.title, reason: plan.get(s.id) ?? "" })),
+  ];
+  progressStart(execOrder);
   const timings: [string, number][] = [];
   const runStep = async (step: Step): Promise<void> => {
     const t = Date.now();
@@ -325,8 +256,10 @@ async function main(): Promise<void> {
     if (step.matviews) state.matviewsStale = true;
     writeState(state);
 
+    progressStep(step.id, "running");
     const code = await run(step.script);
     if (code !== 0) {
+      progressStep(step.id, "failed");
       throw new Error(`step "${step.id}" failed (exit ${code}). Fix the file and run `
         + "`npm run db:refresh` again — it resumes from this step.");
     }
@@ -338,6 +271,7 @@ async function main(): Promise<void> {
     state.durations = { ...state.durations, [step.id]: Date.now() - t };
     writeState(state);
     timings.push([step.id, Date.now() - t]);
+    progressStep(step.id, "done");
     say(`✔ ${step.id} in ${fmtSecs(Date.now() - t)}`);
   };
 
@@ -346,7 +280,9 @@ async function main(): Promise<void> {
   if (needMatviews) {
     const t = Date.now();
     say("▶ matviews — one refresh for the whole run");
+    progressStep("matviews", "running");
     const res = await withDb((c) => refreshMatviews(c));
+    progressStep("matviews", "done");
     state.matviewsStale = false;
     state.durations = { ...state.durations, matviews: Date.now() - t };
     writeState(state);
@@ -371,6 +307,7 @@ async function main(): Promise<void> {
   console.log(`  ${"total".padEnd(12)} ${fmtSecs(Date.now() - t0).padStart(12)}`);
   console.log("");
   say(`done — report date (max weld date) is now ${asOf ?? "unknown"}`);
+  progressEnd(true);
   if (Number(dates.future) > 0) {
     say(`note: ${dates.future} weld row(s) are dated AFTER the load — a typo in the source; `
       + "they do not move the report date");
@@ -379,6 +316,7 @@ async function main(): Promise<void> {
 }
 
 main().catch((err) => {
+  progressEnd(false, err instanceof Error ? err.message : String(err));
   console.error(`\n[refresh] FAILED: ${err instanceof Error ? err.message : String(err)}`);
   process.exit(1);
 });
