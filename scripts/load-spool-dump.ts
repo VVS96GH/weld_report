@@ -50,7 +50,7 @@ const SPOOL_DUMP: MasterSpec = {
   file: "sources/Spool Dump.txt",
   delimiter: ";",
   encoding: "windows-1252",
-  width: 102,
+  width: 103, // 08-Nov-2026: RNSCOMPDT added after TESTPACK EXCEPTION (was 102); columns are read by header name
   expectedLines: 202_352,
   expectedLoaded: 198_647,
   map: SPOOL_DUMP_MAP,  dateCols: ["material_issue", "mir_date", "start_fab", "fabricated", "qc_release",

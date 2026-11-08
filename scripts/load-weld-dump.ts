@@ -25,13 +25,13 @@
  */
 
 import { createHash } from "node:crypto";
-import { createReadStream, statSync, existsSync } from "node:fs";
+import { closeSync, createReadStream, existsSync, openSync, readFileSync, readSync, statSync } from "node:fs";
 import { once } from "node:events";
 import path from "node:path";
 import { Client } from "pg";
 import { from as copyFrom } from "pg-copy-streams";
 import { formatRefreshes, refreshMatviews } from "./load-common";
-import { sourceColumns } from "./weld-columns";
+import { COLUMNS_JSON, sourceColumns } from "./weld-columns";
 import {
   DROPPED_WELD_DATES,
   LITERAL_TOKENS,
@@ -43,6 +43,59 @@ import { weldCutoff } from "./lib/weld-cutoff";
 
 /** Every data record holds exactly this many fields (profile.md §1.2c). */
 const FIELD_COUNT = 223;
+
+/**
+ * Columns the export added after the contract was profiled (08-Nov-2026: RNSCOMPDT after
+ * Piping Group). The header is read first: every name the contract does not know is cut from
+ * each record before anything else sees it, so the contract, staging and `weld` stay as they
+ * are. Anything else in the header (a missing, renamed or moved column) stops the load.
+ */
+interface HeaderPlan {
+  /** 0-based positions of the unknown columns in the file. */
+  drop: number[];
+  /** Fields a record holds in the file (FIELD_COUNT + the dropped ones). */
+  fileFields: number;
+}
+
+function headerPlan(filePath: string): HeaderPlan {
+  const known = (JSON.parse(readFileSync(COLUMNS_JSON, "utf8")) as { raw_name: string }[]).map(
+    (c) => c.raw_name.trim(),
+  );
+  const fd = openSync(filePath, "r");
+  const buf = Buffer.alloc(1 << 16);
+  const n = readSync(fd, buf, 0, buf.length, 0);
+  closeSync(fd);
+  const text = buf.subarray(0, n).toString("utf8").replace(/^\uFEFF/, "");
+  const end = text.indexOf("\r\n");
+  if (end < 0) throw new Error("Weld Dump: no header line");
+  const header = text.slice(0, end).split(";").map((h) => h.trim());
+  const knownSet = new Set(known);
+  const drop = header.map((h, i) => (knownSet.has(h) ? -1 : i)).filter((i) => i >= 0);
+  const rest = header.filter((h) => knownSet.has(h));
+  if (rest.length !== known.length || rest.some((h, i) => h !== known[i])) {
+    const i = rest.findIndex((h, k) => h !== known[k]);
+    throw new Error(
+      `Weld Dump header does not match the contract (${header.length} names; first difference at ` +
+        `#${i + 1}: ${JSON.stringify(rest[i])} vs ${JSON.stringify(known[i])})`,
+    );
+  }
+  const fileFields = FIELD_COUNT + drop.length;
+  if (drop.some((i) => i >= fileFields)) {
+    throw new Error(`Weld Dump: an added column sits after the data fields: ${drop.join(",")}`);
+  }
+  if (drop.length) {
+    console.log(`header  ${drop.length} column(s) not in the contract, left out: ${drop.map((i) => header[i]).join(", ")}`);
+  }
+  return { drop, fileFields };
+}
+
+/** The record without the dropped fields. */
+function cutFields(raw: string, drop: number[]): string {
+  if (!drop.length) return raw;
+  const f = raw.split(";");
+  for (let k = drop.length - 1; k >= 0; k -= 1) f.splice(drop[k], 1);
+  return f.join(";");
+}
 const SEMI = 59; // ';'
 const SOURCE = "WELD_DUMP";
 
@@ -88,6 +141,12 @@ function parseArgs(argv: string[]): Options {
 async function* iterRecords(
   filePath: string,
 ): AsyncGenerator<{ lineNo: number; raw: string; fields: number; pieces: number }> {
+  const plan = headerPlan(filePath);
+  const want = plan.fileFields;
+  const out = (raw: string, fields: number) =>
+    fields === want
+      ? { raw: cutFields(raw, plan.drop), fields: fields - plan.drop.length }
+      : { raw, fields };
   const stream = createReadStream(filePath, { highWaterMark: 1 << 24 });
   const decoder = new TextDecoder("utf-8");
   let tail = "";
@@ -101,7 +160,7 @@ async function* iterRecords(
     p: string,
   ): Generator<{ lineNo: number; raw: string; fields: number; pieces: number }> {
     if (!seenHeader) {
-      seenHeader = true; // the header record carries 226 names, not 223 fields
+      seenHeader = true; // the header record carries 226 names (+ added ones), not 223 fields
       return;
     }
     const semis = countSemis(p);
@@ -114,9 +173,9 @@ async function* iterRecords(
       bufSemis += semis;
       bufPieces += 1;
     }
-    if (bufSemis + 1 >= FIELD_COUNT) {
+    if (bufSemis + 1 >= want) {
       lineNo += 1;
-      yield { lineNo, raw: buf, fields: bufSemis + 1, pieces: bufPieces };
+      yield { lineNo, ...out(buf, bufSemis + 1), pieces: bufPieces };
       buf = null;
       bufSemis = 0;
       bufPieces = 0;
@@ -142,7 +201,7 @@ async function* iterRecords(
       bufPieces += 1;
       if (buf.trim() !== "") {
         lineNo += 1;
-        yield { lineNo, raw: buf, fields: bufSemis + 1, pieces: bufPieces };
+        yield { lineNo, ...out(buf, bufSemis + 1), pieces: bufPieces };
       }
     }
   }
