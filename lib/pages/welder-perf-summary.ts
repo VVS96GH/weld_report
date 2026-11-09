@@ -8,8 +8,9 @@
  * The visuals' own filters, verbatim from the pbix:
  *   status tables  BW/CLET/GW/MW, welded, status not blank, Days Since Last RT
  *                  2 weeks: 1..15 (GAC: 0..15, which in DAX also admits a BLANK
- *                  Days Since); 1 month: 1..28 (owner 2026-10-25, the doughnut's window;
- *                  the pbix visual had > 0 and < 30)
+ *                  Days Since); 1 month: 0..28, four weeks (owner 2026-11-09, replacing
+ *                  2026-10-25's 1..28; the pbix visual had > 0 and < 30). The 1-month
+ *                  ratio stays the welder's 0..30 days (rt_w_30)
  *   doughnuts      Days Since Last RT 1..15 (1 month: < 29), status not blank,
  *                  BW/CLET/GW/MW (a page-level filter: CCC 161 ok, not 162)
  * The 2-week ratio is the measure `Last 2 weeks RT FILM Ratio %`, whose own
@@ -26,7 +27,7 @@ import { z } from "zod";
 
 import { query, queryFresh, withAsOf } from "@/lib/db";
 import { chartCutoff } from "@/lib/metrics/trend";
-import { type CumKind, rtWindowSql, STATUS_LABELS, utStatusSql, utWindowSql, SINCE_2W, WINDOW_2W } from "@/lib/welder-perf-cum";
+import { type CumKind, rtWindowSql, STATUS_LABELS, utStatusSql, utWindowSql, SHOW_1M, SINCE_2W, WINDOW_2W } from "@/lib/welder-perf-cum";
 
 export const SUMMARY_SUBS = ["CCC", "GAC", "TEKFEN", "MEDGULF"] as const;
 
@@ -74,7 +75,7 @@ function baseCte(kind: CumKind): string {
 function tableWindow(kind: CumKind): string {
   return kind === "2w"
     ? `(d BETWEEN 0 AND ${WINDOW_2W} OR (sub_contractor = 'GAC' AND d IS NULL))`
-    : `d BETWEEN 1 AND 28`;
+    : `d BETWEEN 0 AND ${SHOW_1M}`;
 }
 
 const TableRow = z.object({ sub: z.string(), st: z.string(), welder: z.string(), r: nn, f: nn, wsum: nn, wcnt: nn, wr: nn });
@@ -104,7 +105,7 @@ export async function getSummaryPage(kind: CumKind, pending: { lastDate: string 
   const donutSql =
     `WITH ${baseCte(kind)}\n` +
     `SELECT sub_contractor AS sub, st, count(DISTINCT welder_id) AS qty FROM v\n` +
-    ` WHERE st IS NOT NULL AND weld_type IN ('BW','CLET','GW','MW') AND ${kind === "2w" ? `d BETWEEN 0 AND ${WINDOW_2W}` : "d BETWEEN 1 AND 28"}\n GROUP BY 1, 2`;
+    ` WHERE st IS NOT NULL AND weld_type IN ('BW','CLET','GW','MW') AND ${kind === "2w" ? `d BETWEEN 0 AND ${WINDOW_2W}` : `d BETWEEN 0 AND ${SHOW_1M}`}\n GROUP BY 1, 2`;
   const trendSql =
     `SELECT sub_contractor AS sub, period, status AS st, count(DISTINCT welder_id) AS qty,
             min(last_rt_date)::text AS first_day
@@ -182,7 +183,7 @@ export async function getSummaryPage(kind: CumKind, pending: { lastDate: string 
   return {
     kind,
     cutoff,
-    since: back(cutoff, kind === "2w" ? SINCE_2W : 28),
+    since: back(cutoff, kind === "2w" ? SINCE_2W : SHOW_1M),
     subs: out,
     cum: { lastDate: pending.lastDate, pending: pending.rows, file: kind },
   };

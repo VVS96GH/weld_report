@@ -152,7 +152,7 @@ export function parsePeriod(label: string): { no: number; start: string; end: st
 /**
  * "CUM - Welders Performance. for Table" at a cut-off: one row per (RT date,
  * sub-contractor, status, welder), Inco out, BW/CLET/GW/MW, welded by the
- * cut-off, `Days Since Last RT` 1..15 (2 weeks) / 1..30 (1 month), status not
+ * cut-off, `Days Since Last RT` 0..15 (2 weeks) / 0..28 (1 month, owner 2026-11-09), status not
  * blank. The welder's status and ratio are mv_welder_status's (same cut-off).
  */
 /**
@@ -162,6 +162,11 @@ export function parsePeriod(label: string): { no: number; start: string; end: st
  * inspected length.
  */
 export const WINDOW_2W = 15;
+/**
+ * The 1-month window (owner, 2026-11-09): the rate is the welder's over 0..30 days (rt_w_30), the
+ * tables, doughnut and CSV list RT dates 0..28 days before the cut-off — four weeks.
+ */
+export const SHOW_1M = 28;
 export const SINCE_2W = 14;
 export const rtWindowSql = (cut: string) => `(
   SELECT welder_id,
@@ -176,8 +181,7 @@ export const utWindowSql = (cut: string) => `(
 
 export async function snapshotRows(run: Run, kind: CumKind, cutoff: string): Promise<SnapshotRow[]> {
   if (kind === "ut2w") return snapshotRowsUt(run, cutoff);
-  const lo = kind === "2w" ? 0 : 1;
-  const days = kind === "2w" ? WINDOW_2W : 30;
+  const days = kind === "2w" ? WINDOW_2W : SHOW_1M;
   const ratios = kind === "2w" ? rtWindowSql("$1::date") : "(SELECT welder_id, rt_w_30 AS r FROM mv_welder_status)";
   const [l1, l2, l3, l4] = STATUS_LABELS[kind];
   const rows = await run<{ d: string; sub: string; st: string; welder: string; ratio: string }>(
@@ -189,7 +193,7 @@ export async function snapshotRows(run: Run, kind: CumKind, cutoff: string): Pro
        JOIN ${ratios} ws USING (welder_id)
       WHERE p.weld_type IN ('BW', 'CLET', 'GW', 'MW')
         AND p.weld_date IS NOT NULL AND p.weld_date <= $1::date
-        AND $1::date - p.last_rt_date BETWEEN ${lo} AND ${days}
+        AND $1::date - p.last_rt_date BETWEEN 0 AND ${days}
         AND r IS NOT NULL AND r <= 1
       ORDER BY 1, 2, 3, 4`,
     [cutoff, l1, l2, l3, l4],
@@ -354,7 +358,9 @@ export async function planAppend(run: Run, kind: CumKind, cutoff: string): Promi
   );
   const lastDate = last[0]?.d ?? null;
   const snap = await snapshotRows(run, kind, cutoff);
-  const fresh = snap.filter((r) => lastDate === null || r.lastRtDate > lastDate);
+  // a period runs Friday .. Thursday: RT dates of the cut-off Friday itself go with the next insert
+  // (owner, 2026-11-08 — no one-day stub period)
+  const fresh = snap.filter((r) => (lastDate === null || r.lastRtDate > lastDate) && r.lastRtDate < cutoff);
   let period = last[0]?.period ? parsePeriod(last[0].period) : null;
   let label = last[0]?.period ?? "";
   const baseWs = last[0]?.ws ?? null;
