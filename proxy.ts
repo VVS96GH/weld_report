@@ -10,7 +10,7 @@ import { SESSION_COOKIE, userByToken } from "@/lib/auth";
  * (Views, column preferences, graph layout, notes) and the users. Reading, the exports and the
  * PDFs are for everyone signed in.
  */
-const OPEN = new Set(["/login", "/api/auth/login", "/api/auth/logout", "/api/health"]);
+const OPEN = new Set(["/login", "/api/auth/login", "/api/auth/logout", "/api/health", "/robots.txt"]);
 // writes everyone signed in may do: their own password, and asking for a PDF report
 const USER_WRITES = new Set(["/api/auth/password", "/api/pdf/report"]);
 const MUST_CHANGE_OPEN = new Set(["/account", "/api/auth/me", "/api/auth/password", "/api/auth/logout"]);

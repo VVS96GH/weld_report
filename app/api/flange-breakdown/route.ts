@@ -6,6 +6,7 @@
  *   POST ?action=reload   re-read the workbook after a hand edit
  */
 import { readFile } from "node:fs/promises";
+import { guardDownloads } from "@/lib/downloads";
 import path from "node:path";
 import type { NextRequest } from "next/server";
 
@@ -21,7 +22,7 @@ import { resolvePageSource } from "@/lib/page-source";
 import { audited } from "@/lib/audit";
 export const dynamic = "force-dynamic";
 
-export async function GET(request: NextRequest): Promise<Response> {
+async function GET_handler(request: NextRequest): Promise<Response> {
   if (resolvePageSource() !== "database") return Response.json({ error: "needs PAGE_SOURCE=database" }, { status: 503 });
   const action = request.nextUrl.searchParams.get("action");
   if (action === "csv") {
@@ -66,3 +67,5 @@ async function POST_handler(request: NextRequest): Promise<Response> {
 
 // the activity log (lib/audit.ts)
 export const POST = audited("CUM flange file", POST_handler);
+
+export const GET = guardDownloads("Downloaded a CUM flange file", GET_handler);

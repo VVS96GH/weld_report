@@ -4,13 +4,14 @@
  * sub-contractor who must correct it.
  */
 import type { NextRequest } from "next/server";
+import { guardDownloads } from "@/lib/downloads";
 
 import { resolvePageSource } from "@/lib/page-source";
 import { checkById, errorCsv } from "@/lib/pages/errors";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(request: NextRequest, ctx: RouteContext<"/api/errors/[check]">): Promise<Response> {
+async function GET_handler(request: NextRequest, ctx: RouteContext<"/api/errors/[check]">): Promise<Response> {
   if (resolvePageSource() !== "database") {
     return Response.json({ error: "error checks need PAGE_SOURCE=database" }, { status: 503 });
   }
@@ -39,3 +40,5 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/api/errors/[
     },
   });
 }
+
+export const GET = guardDownloads("Downloaded an error check (CSV)", GET_handler);

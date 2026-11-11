@@ -3,11 +3,11 @@
  * (lib/page-pdf.ts), for the header's PDF button.
  */
 import type { NextRequest } from "next/server";
+import { guardDownloads } from "@/lib/downloads";
 
 import { SESSION_COOKIE } from "@/lib/auth";
 import { pagePdf } from "@/lib/page-pdf";
 
-import { audited } from "@/lib/audit";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
@@ -40,4 +40,4 @@ async function GET_handler(request: NextRequest): Promise<Response> {
 }
 
 // the activity log (lib/audit.ts)
-export const GET = audited("Downloaded a PDF", GET_handler);
+export const GET = guardDownloads("Downloaded a PDF", GET_handler);

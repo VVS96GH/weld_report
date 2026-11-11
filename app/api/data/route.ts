@@ -7,13 +7,14 @@
  *   GET ?action=tsv&f=&c=&s=             the rows as tab-separated text for Copy ▸ Column / Table
  */
 import type { NextRequest } from "next/server";
+import { guardDownloads } from "@/lib/downloads";
 
 import { resolvePageSource } from "@/lib/page-source";
 import { gridCount, gridCsv, gridRows, gridTsv, gridValues, parseColumns, parseFilters, parseSort } from "@/lib/pages/data-grid";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(request: NextRequest): Promise<Response> {
+async function GET_handler(request: NextRequest): Promise<Response> {
   if (resolvePageSource() !== "database") return Response.json({ error: "needs PAGE_SOURCE=database" }, { status: 503 });
   const sp = request.nextUrl.searchParams;
   const filters = parseFilters(sp.get("f"));
@@ -64,3 +65,5 @@ export async function GET(request: NextRequest): Promise<Response> {
   }
   return Response.json({ error: "action must be rows, count, values or csv" }, { status: 400 });
 }
+
+export const GET = guardDownloads("Downloaded weld data (CSV)", GET_handler, (r) => r.nextUrl.searchParams.get("action") === "csv");

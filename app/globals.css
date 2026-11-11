@@ -5233,3 +5233,7 @@ html[data-layout-edit] .layout-bar { display: flex; }
 .hdr-btn.is-on, .header-btn.is-on { background: var(--accent, #0070ef); border-color: var(--accent, #0070ef); }
 .dg-none { font-size: 0.75rem; color: var(--text-secondary); padding: 6px; }
 .dg-panel-body .dg-has { display: flex; flex-direction: column; gap: 4px; font-size: 0.75rem; color: var(--text-secondary); }
+
+/* the user's watermark over every page (owner, 2026-11-11: protect the site from copying) */
+.wm-overlay { position: fixed; inset: 0; z-index: 2147483000; pointer-events: none; background-repeat: repeat; }
+@media print { .wm-overlay { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }

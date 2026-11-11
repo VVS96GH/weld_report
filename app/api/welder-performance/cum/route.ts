@@ -6,6 +6,7 @@
  *   POST ?kind=2w&action=reload  re-read the workbook after a hand edit
  */
 import { readFile } from "node:fs/promises";
+import { guardDownloads } from "@/lib/downloads";
 import path from "node:path";
 import type { NextRequest } from "next/server";
 
@@ -31,7 +32,7 @@ async function cutoff(): Promise<string> {
   return chartCutoff((await withAsOf(null)).as_of);
 }
 
-export async function GET(request: NextRequest): Promise<Response> {
+async function GET_handler(request: NextRequest): Promise<Response> {
   if (resolvePageSource() !== "database") return Response.json({ error: "needs PAGE_SOURCE=database" }, { status: 503 });
   const kind = kindOf(request);
   if (!kind) return Response.json({ error: "kind must be 2w or 1m" }, { status: 400 });
@@ -87,3 +88,5 @@ async function POST_handler(request: NextRequest): Promise<Response> {
 
 // the activity log (lib/audit.ts)
 export const POST = audited("CUM welder performance file", POST_handler);
+
+export const GET = guardDownloads("Downloaded a CUM welder performance file", GET_handler);

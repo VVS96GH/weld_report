@@ -80,3 +80,15 @@ export function logDenied(req: NextRequest, email: string, status: number, why: 
     JSON.stringify({ path: req.nextUrl.pathname, denied: why }),
   ]).catch(() => {});
 }
+
+/** One row of the activity log written by hand (lib/downloads.ts: a download, a refused one). */
+export function logEvent(req: NextRequest, email: string, action: string, status: number, detail: Record<string, unknown>): void {
+  void queryFresh("INSERT INTO audit_event (email, action, status, ip, detail) VALUES ($1, $2, $3, $4, $5)", [
+    email.trim().toLowerCase(),
+    action,
+    status,
+    ipOf(req),
+    JSON.stringify(detail),
+  ]).catch(() => {}); // the log never breaks the request
+}
+

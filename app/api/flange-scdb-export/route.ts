@@ -4,9 +4,9 @@
  * "Joint ID Max Joint_Date" rule) — lib/flange-scdb-export.ts.
  */
 import { scdbWorkbook } from "@/lib/flange-scdb-export";
+import { guardDownloads } from "@/lib/downloads";
 import { resolvePageSource } from "@/lib/page-source";
 
-import { audited } from "@/lib/audit";
 export const dynamic = "force-dynamic";
 
 const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
@@ -28,4 +28,4 @@ async function GET_handler(): Promise<Response> {
 }
 
 // the activity log (lib/audit.ts)
-export const GET = audited("Downloaded the SCDB form", GET_handler);
+export const GET = guardDownloads("Downloaded the SCDB form", GET_handler);

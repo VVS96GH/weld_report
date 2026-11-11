@@ -4,11 +4,11 @@
  * (lib/backlog-export.ts).
  */
 import type { NextRequest } from "next/server";
+import { guardDownloads } from "@/lib/downloads";
 
 import { backlogCsv, backlogJoints, backlogXlsx, type BacklogKind } from "@/lib/backlog-export";
 import { resolvePageSource } from "@/lib/page-source";
 
-import { audited } from "@/lib/audit";
 export const dynamic = "force-dynamic";
 
 async function GET_handler(request: NextRequest): Promise<Response> {
@@ -48,4 +48,4 @@ async function GET_handler(request: NextRequest): Promise<Response> {
 }
 
 // the activity log (lib/audit.ts)
-export const GET = audited("Downloaded a B.Log export", GET_handler);
+export const GET = guardDownloads("Downloaded a B.Log export", GET_handler);

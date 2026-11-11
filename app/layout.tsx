@@ -4,6 +4,7 @@ import "./globals.css";
 import "./styles/responsive.css"; // after globals: its phone rules win
 
 import { ReportShell } from "@/components/ReportShell";
+import { Watermark } from "@/components/Watermark";
 import { DEFAULT_DENSITY, DEFAULT_MOOD, DEFAULT_THEME, PRE_PAINT_SCRIPT, TEN_HTML_BACKGROUND } from "@/lib/theme/axes";
 
 // Self-hosted through next/font: downloaded at build time and served from
@@ -66,6 +67,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       </head>
       <body>
         <ReportShell>{children}</ReportShell>
+        <Watermark />
       </body>
     </html>
   );
