@@ -9,6 +9,7 @@
  * CSV half is filtered:
  *     CSV rows with `RT/UT Report No.` = ''      4,791,434
  *   + every row of the ACC/REJ workbook            641,575
+ *     ...but its rows with a Del Flag (DD), dropped as the pbix's #"DelFlag Exlude DD" (2026-11-16)
  *   = 5,433,009                                            = the pbix row count
  * Loading the CSV whole would double-count 639,298 tested rows; loading only the
  * CSV would lose the workbook's corrected ACC/REJ results.
@@ -50,7 +51,7 @@ const EXPECTED = { csvLines: 5_430_732, csvKept: 4_791_434, xlsxRows: 641_575, t
 
 interface Stats {
   csvLines: number; csvKept: number; csvSkippedTested: number;
-  xlsxRows: number; excludedByM: number; excludedRs1: number; afterCutoff: number; written: number;
+  xlsxRows: number; xlsxDelFlag: number; excludedByM: number; excludedRs1: number; afterCutoff: number; written: number;
   weldTypeChanged: number; rtWeldStatus: Map<string, number>;
   repairReweld: Map<string, number>; dateFailures: Map<string, number>;
   distinctJointIds: number; peakRssMb: number;
@@ -58,7 +59,7 @@ interface Stats {
 
 function newStats(): Stats {
   return {
-    csvLines: 0, csvKept: 0, csvSkippedTested: 0, xlsxRows: 0, excludedByM: 0, excludedRs1: 0, afterCutoff: 0, written: 0,
+    csvLines: 0, csvKept: 0, csvSkippedTested: 0, xlsxRows: 0, xlsxDelFlag: 0, excludedByM: 0, excludedRs1: 0, afterCutoff: 0, written: 0,
     weldTypeChanged: 0, rtWeldStatus: new Map(), repairReweld: new Map(),
     dateFailures: new Map(), distinctJointIds: 0, peakRssMb: 0,
   };
@@ -233,6 +234,12 @@ async function* streamXlsx(loadId: number, seq: Map<string, number>, stats: Stat
         const i = header?.get(h);
         return i === undefined ? "" : (cells[i] ?? "");
       };
+      // the pbix's #"DelFlag Exlude DD" (owner, 2026-11-16): keep [Del Flag] = null only — a row
+      // flagged DD is deleted in the source
+      if (g("Del Flag").trim() !== "") {
+        stats.xlsxDelFlag += 1;
+        continue;
+      }
       const row = buildRow(g, loadId, seq, stats);
       if (row) yield row;
       if ((stats.xlsxRows & 0xffff) === 0) trackRss(stats);
@@ -246,6 +253,7 @@ function report(stats: Stats, t0: number): boolean {
   console.log(`  CSV skipped, tested   ${fmt(stats.csvSkippedTested).padStart(11)}  (RT/UT Report No. <> '')`);
   console.log(`  CSV kept, untested    ${fmt(stats.csvKept).padStart(11)}  (expected ${fmt(EXPECTED.csvKept)})`);
   console.log(`  XLSX rows             ${fmt(stats.xlsxRows).padStart(11)}  (expected ${fmt(EXPECTED.xlsxRows)})`);
+  console.log(`  ...minus Del Flag DD   ${fmt(stats.xlsxDelFlag).padStart(11)}  (#"DelFlag Exlude DD")`);
   console.log(`  union                 ${fmt(stats.csvKept + stats.xlsxRows).padStart(11)}  (expected ${fmt(EXPECTED.total)})`);
   console.log(`  ...minus the M's 4 hard-coded Joint IDs  ${fmt(stats.excludedByM)}`);
   console.log(`  ...minus the RS1 RT B.log step's Joint IDs ${fmt(stats.excludedRs1)}`);
@@ -384,6 +392,7 @@ async function live(): Promise<void> {
       csv_skipped_tested: stats.csvSkippedTested,
       csv_kept: stats.csvKept,
       xlsx_rows: stats.xlsxRows,
+      xlsx_del_flag_dropped: stats.xlsxDelFlag,
       excluded_by_m: stats.excludedByM,
       excluded_rs1_rt_blog: stats.excludedRs1,
       weld_cutoff: CUTOFF,
